@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic React Admin Development"
+  short_description: "Build the secure non-clinical React admin dashboard."
+  default_prompt: "Use $clinic-react-admin-development to implement the admin dashboard work for the active clinic phase."

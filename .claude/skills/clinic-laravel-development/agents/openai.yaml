@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Laravel Development"
+  short_description: "Build secure Laravel domain and application services."
+  default_prompt: "Use $clinic-laravel-development to implement the Laravel portion of the active clinic phase."

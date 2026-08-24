@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Observability Performance"
+  short_description: "Implement telemetry, SLOs, load tests, and resilience."
+  default_prompt: "Use $clinic-observability-performance to instrument and performance-test the active clinic phase."

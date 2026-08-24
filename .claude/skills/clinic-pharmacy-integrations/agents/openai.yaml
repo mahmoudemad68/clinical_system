@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Pharmacy Integrations"
+  short_description: "Build safe read-only pharmacy system integrations."
+  default_prompt: "Use $clinic-pharmacy-integrations to implement an external pharmacy connector or synchronization flow."

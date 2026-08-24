@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Architecture Contracts"
+  short_description: "Maintain module boundaries and shared delivery contracts."
+  default_prompt: "Use $clinic-architecture-contracts to implement or review the clinic platform architecture contracts."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic AI Evaluation Governance"
+  short_description: "Evaluate AI safety, quality, tools, latency, and cost."
+  default_prompt: "Use $clinic-ai-evaluation-governance to build or run the clinic AI evaluation and promotion gate."

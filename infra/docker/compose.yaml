@@ -1,0 +1,227 @@
+# Local development and integration stack.
+#
+# Profiles keep the footprint honest on a developer machine. `core` is what you
+# need to run and test the API; the rest are opt-in:
+#
+#   docker compose --profile core up -d
+#   docker compose --profile core --profile observability up -d
+#   docker compose --profile ai up -d
+#
+# Every credential here is a local development value. Real credentials live in
+# an approved secret manager, are injected at runtime, and are never committed
+# (plan.md section 169). Nothing in this file may be reused in any shared
+# environment.
+
+name: clinic
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+
+  # ------------------------------------------------------------------ core
+
+  postgres:
+    <<: [*restart, *logging]
+    profiles: [core, ai, observability, full]
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_DB: clinic
+      POSTGRES_USER: clinic_owner
+      POSTGRES_PASSWORD: local_dev_only_not_a_secret
+      # Deterministic collation. A locale change under a populated database
+      # silently invalidates text indexes, which is a genuinely nasty failure.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    command:
+      - postgres
+      # Log anything slower than 200ms so a bad query is visible in development
+      # rather than discovered under load in Phase 21.
+      - -c
+      - log_min_duration_statement=200
+      - -c
+      - max_connections=100
+      - -c
+      - shared_buffers=256MB
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clinic_owner -d clinic"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  # Two logical Redis roles on one instance locally, separated by database
+  # index. Production separates them into distinct instances (plan.md section
+  # 114). The application addresses them through separate named connections
+  # from day one, so that separation is configuration, not a code change.
+  redis:
+    <<: [*restart, *logging]
+    profiles: [core, ai, observability, full]
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  core-api:
+    <<: [*restart, *logging]
+    profiles: [core, full]
+    build:
+      context: ../..
+      dockerfile: infra/docker/core-api.Dockerfile
+      target: runtime
+      args:
+        APP_VERSION: ${APP_VERSION:-0.1.0-local}
+        BUILD_COMMIT: ${BUILD_COMMIT:-local}
+    env_file:
+      - ../environments/local.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/live || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+
+  # ---------------------------------------------------------------- storage
+
+  minio:
+    <<: [*restart, *logging]
+    profiles: [core, ai, full]
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: clinic_local
+      MINIO_ROOT_PASSWORD: local_dev_only_not_a_secret
+    volumes:
+      - minio-data:/data
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # --------------------------------------------------------------------- ai
+
+  qdrant:
+    <<: [*restart, *logging]
+    profiles: [ai, full]
+    image: qdrant/qdrant:v1.19.0
+    environment:
+      QDRANT__SERVICE__API_KEY: local_dev_only_not_a_secret
+      QDRANT__LOG_LEVEL: INFO
+    volumes:
+      - qdrant-data:/qdrant/storage
+    ports:
+      - "127.0.0.1:6333:6333"
+
+  ai-service:
+    <<: [*restart, *logging]
+    profiles: [ai, full]
+    build:
+      context: ../..
+      dockerfile: infra/docker/ai-service.Dockerfile
+      target: runtime
+    env_file:
+      - ../environments/local.env
+    depends_on:
+      qdrant:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8001:8001"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/live').status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  # ------------------------------------------------------------ observability
+
+  otel-collector:
+    <<: [*restart, *logging]
+    profiles: [observability, full]
+    image: otel/opentelemetry-collector-contrib:0.130.0
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ../monitoring/otel-collector.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "127.0.0.1:4317:4317"   # OTLP gRPC
+      - "127.0.0.1:4318:4318"   # OTLP HTTP
+      - "127.0.0.1:8889:8889"   # Prometheus scrape of collector-exported metrics
+
+  prometheus:
+    <<: [*restart, *logging]
+    profiles: [observability, full]
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+      - --storage.tsdb.retention.time=72h
+      - --web.enable-lifecycle
+    volumes:
+      - ../monitoring/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - ../monitoring/alerts:/etc/prometheus/alerts:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    <<: [*restart, *logging]
+    profiles: [observability, full]
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: local_dev_only_not_a_secret
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "127.0.0.1:3001:3000"
+
+volumes:
+  postgres-data:
+  minio-data:
+  qdrant-data:
+  prometheus-data:
+  grafana-data:

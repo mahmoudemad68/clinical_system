@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Production DR Release"
+  short_description: "Implement recovery, safe release, and production handover."
+  default_prompt: "Use $clinic-production-dr-release to implement or rehearse clinic recovery and production release."

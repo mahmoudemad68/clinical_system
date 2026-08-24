@@ -1,0 +1,40 @@
+# Normalize line endings so contract hashes and lockfiles stay stable across
+# Linux CI runners and Windows/macOS Flutter desktop development machines.
+* text=auto eol=lf
+
+*.bat            text eol=crlf
+*.ps1            text eol=crlf
+
+*.php            text diff=php
+*.dart           text
+*.ts             text
+*.tsx            text
+*.py             text diff=python
+*.md             text diff=markdown
+*.json           text
+*.yaml           text
+*.yml            text
+*.sql            text
+
+# Lockfiles are generated. Keep them in git, but do not offer merge assistance
+# that could silently produce an unresolved dependency set.
+composer.lock    -diff merge=binary linguist-generated=true
+package-lock.json -diff merge=binary linguist-generated=true
+pubspec.lock     -diff merge=binary linguist-generated=true
+uv.lock          -diff merge=binary linguist-generated=true
+requirements*.txt -diff linguist-generated=true
+
+# Generated contract clients must never be hand-edited.
+**/generated/**  linguist-generated=true
+
+# Binary assets
+*.png            binary
+*.jpg            binary
+*.jpeg           binary
+*.gif            binary
+*.ico            binary
+*.pdf            binary
+*.ttf            binary
+*.otf            binary
+*.woff           binary
+*.woff2          binary

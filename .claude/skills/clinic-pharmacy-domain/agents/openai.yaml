@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Pharmacy Domain"
+  short_description: "Implement inventory, purchasing, POS, and medicine search."
+  default_prompt: "Use $clinic-pharmacy-domain to implement the native pharmacy work for the active clinic phase."

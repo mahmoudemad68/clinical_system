@@ -1,0 +1,98 @@
+# Review ownership for the clinic platform.
+#
+# Source requirement: docs/phases/00_cross_cutting_architecture_and_delivery_contract.md
+# section "Detailed implementation work" item 1.4 — review rules for clinical,
+# pharmacy-financial, identity, infrastructure, and AI safety areas.
+#
+# STATUS: the team handles below are PLACEHOLDERS. They must be created in the
+# GitHub organization and populated with the accountable owners named by the
+# Phase 00 entry criteria (one accountable owner each for clinical, pharmacy,
+# privacy/legal, security, and operations) before branch protection can enforce
+# this file. Until then this file documents intent and CI cannot rely on it.
+# Tracked as gate G-01-04 in docs/evidence/phase-00/evidence-ledger.md.
+#
+# Later-listed patterns win, so ordering is significant: broad defaults first,
+# safety-critical narrow paths last.
+
+# ---------------------------------------------------------------------------
+# Default: platform architecture owns anything not claimed below.
+# ---------------------------------------------------------------------------
+*                                       @clinic/platform-architecture
+
+# ---------------------------------------------------------------------------
+# Contracts and architecture decisions. A contract change is a cross-client
+# change; it never merges on a single stack owner's approval.
+# ---------------------------------------------------------------------------
+/packages/contracts/                    @clinic/platform-architecture @clinic/api-contracts
+/docs/adr/                              @clinic/platform-architecture
+/docs/architecture/                     @clinic/platform-architecture
+/.github/                               @clinic/platform-architecture @clinic/devops
+/infra/                                 @clinic/devops @clinic/platform-architecture
+
+# ---------------------------------------------------------------------------
+# Deployment units
+# ---------------------------------------------------------------------------
+/apps/core-api/                         @clinic/backend
+/apps/ai-service/                       @clinic/ai-platform
+/apps/admin-web/                        @clinic/frontend-admin
+/apps/patient-app/                      @clinic/mobile
+/apps/doctor-desktop/                   @clinic/desktop
+/apps/pharmacy-desktop/                 @clinic/desktop
+/packages/flutter/                      @clinic/mobile @clinic/desktop
+
+# ---------------------------------------------------------------------------
+# Identity and authorization. Deny-by-default authorization is a system
+# invariant (docs/phases/README.md invariant 6); changes need security review.
+# ---------------------------------------------------------------------------
+/apps/core-api/app/Modules/Auth/        @clinic/backend @clinic/security
+/apps/core-api/app/Modules/Identity/    @clinic/backend @clinic/security
+/apps/core-api/app/Modules/Audit/       @clinic/backend @clinic/security
+**/Policies/                            @clinic/backend @clinic/security
+
+# ---------------------------------------------------------------------------
+# Clinical areas. Clinical state and record access require clinical ownership;
+# engineering cannot self-approve a clinical rule (plan.md section 164).
+# ---------------------------------------------------------------------------
+/apps/core-api/app/Modules/Clinical/         @clinic/backend @clinic/clinical-owner
+/apps/core-api/app/Modules/Prescriptions/    @clinic/backend @clinic/clinical-owner
+/apps/core-api/app/Modules/Labs/             @clinic/backend @clinic/clinical-owner
+/apps/core-api/app/Modules/Appointments/     @clinic/backend @clinic/clinical-owner
+/apps/core-api/app/Modules/Queue/            @clinic/backend @clinic/clinical-owner
+
+# ---------------------------------------------------------------------------
+# Pharmacy and financial areas. Stock ledger, invoices, and refunds are
+# financial records; changes require pharmacy plus finance-accountable review.
+# ---------------------------------------------------------------------------
+/apps/core-api/app/Modules/Inventory/        @clinic/backend @clinic/pharmacy-owner
+/apps/core-api/app/Modules/POS/              @clinic/backend @clinic/pharmacy-owner @clinic/finance
+/apps/core-api/app/Modules/Purchasing/       @clinic/backend @clinic/pharmacy-owner
+/apps/core-api/app/Modules/MedicationCatalog/ @clinic/backend @clinic/pharmacy-owner @clinic/clinical-owner
+/apps/core-api/app/Modules/Integrations/     @clinic/backend @clinic/pharmacy-owner
+
+# ---------------------------------------------------------------------------
+# AI safety. Prompt, retrieval, tool-policy, and evaluation changes carry the
+# AI-safety gate; deterministic code owns permissions and final writes
+# (docs/phases/README.md invariant 15).
+# ---------------------------------------------------------------------------
+/apps/ai-service/                            @clinic/ai-platform @clinic/ai-safety
+/packages/contracts/ai_internal/             @clinic/ai-platform @clinic/ai-safety @clinic/platform-architecture
+/apps/core-api/app/Modules/AI/               @clinic/backend @clinic/ai-safety
+/apps/core-api/app/Modules/KnowledgeBase/    @clinic/backend @clinic/ai-safety
+
+# ---------------------------------------------------------------------------
+# Security, privacy, and release evidence. These paths are the assurance
+# record; the implementer of a finding never approves its own closure.
+# ---------------------------------------------------------------------------
+/docs/threat-models/                    @clinic/security @clinic/privacy-legal
+/docs/data-classification/              @clinic/privacy-legal @clinic/security
+/docs/evidence/                         @clinic/security @clinic/qa
+/docs/runbooks/                         @clinic/devops @clinic/security
+/.github/workflows/security.yml         @clinic/security @clinic/devops
+/.gitleaks.toml                         @clinic/security
+/.semgrep.yml                           @clinic/security
+
+# ---------------------------------------------------------------------------
+# Roadmap sources of truth. Changing scope is a product decision.
+# ---------------------------------------------------------------------------
+/plan.md                                @clinic/product @clinic/platform-architecture
+/docs/phases/                           @clinic/product @clinic/platform-architecture

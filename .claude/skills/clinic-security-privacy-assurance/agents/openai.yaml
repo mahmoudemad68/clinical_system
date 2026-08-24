@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Security Privacy Assurance"
+  short_description: "Threat-model and validate security and privacy controls."
+  default_prompt: "Use $clinic-security-privacy-assurance to review or test the active clinic phase for security and privacy."

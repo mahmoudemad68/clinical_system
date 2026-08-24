@@ -1,0 +1,76 @@
+[project]
+name = "clinic-ai-service"
+version = "0.1.0"
+description = "Isolated AI service for the clinic platform. Phase 00 scaffold: health contract only."
+requires-python = ">=3.12"
+license = { text = "UNLICENSED" }
+
+# Phase 00 scaffolds the service and its health contract only. Provider, Qdrant,
+# embedding, and reranker packages arrive in Phase 16 behind owned ports
+# (phase file, "AI baseline (scaffold only in this phase)").
+#
+# Versions are pinned exactly and mirrored into requirements.txt with hashes,
+# which is what CI installs (ADR 0008).
+dependencies = [
+    "fastapi==0.141.1",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.15.0",
+    "httpx==0.28.1",
+    "uvicorn[standard]==0.52.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "respx==0.23.1",
+    "hypothesis==6.165.10",
+    "mypy==2.3.1",
+    "ruff==0.16.4",
+    "pip-tools==7.6.1",
+]
+
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # import sorting
+    "B",         # bugbear
+    "S",         # bandit: security lint in the linter, not only in CI
+    "ASYNC",     # async correctness
+    "UP",        # pyupgrade
+    "RUF",
+]
+ignore = [
+    "E501",      # line length is handled by the formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Assertions are the point of a test file.
+"tests/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+disallow_any_explicit = false
+# The AI service handles untrusted model output. Type strictness is a cheap
+# guard against that content flowing somewhere it was never shaped for.
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q --strict-markers --strict-config"

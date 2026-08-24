@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic PostgreSQL Consistency"
+  short_description: "Enforce PostgreSQL schemas, constraints, and transactions."
+  default_prompt: "Use $clinic-postgresql-consistency to implement the database work for the active clinic phase."

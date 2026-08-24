@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Phase Implementation"
+  short_description: "Execute numbered clinic phases with companion skills."
+  default_prompt: "Use $clinic-phase-implementation to implement the next numbered clinic roadmap phase."

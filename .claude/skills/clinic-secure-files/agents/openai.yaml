@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Secure Files"
+  short_description: "Build quarantined clinical file and document pipelines."
+  default_prompt: "Use $clinic-secure-files to implement the secure clinical file or document pipeline."

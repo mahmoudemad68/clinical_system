@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Test Engineering"
+  short_description: "Implement the clinic test pyramid and release evidence."
+  default_prompt: "Use $clinic-test-engineering to add the required unit, integration, contract, E2E, and system tests."

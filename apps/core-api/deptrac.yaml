@@ -1,0 +1,163 @@
+# Module boundary enforcement (ADR 0001, ADR 0002).
+#
+# This file is the executable form of the dependency rule in
+# docs/architecture/c4-component-module-dependency.md:
+#
+#   HTTP / Infrastructure / Jobs  ->  Application  ->  Domain
+#   Domain  ->  PHP standard library and domain-owned interfaces only
+#
+# A convention that is not enforced decays. This is the enforcement.
+
+parameters:
+
+  paths:
+    - ./app
+
+  exclude_files:
+    - '#.*test.*#i'
+
+  layers:
+
+    # ---------------------------------------------------------------- layers
+    # Layers are matched most-specific-first within each module.
+
+    - name: Domain
+      collectors:
+        - type: directory
+          value: app/Modules/.*/Domain/.*
+
+    - name: Application
+      collectors:
+        - type: directory
+          value: app/Modules/.*/Application/.*
+
+    # The composition root. A service provider assembles the object graph, so
+    # it legitimately names every layer — that is its entire job. It is carved
+    # out of Infrastructure rather than granted a blanket exception, so the
+    # exemption is exactly one directory wide and visible here.
+    #
+    # Nothing but wiring may live in these files. A business rule inside a
+    # provider would be invisible to every other rule in this ruleset.
+    - name: Composition
+      collectors:
+        - type: directory
+          value: app/Modules/.*/Infrastructure/Providers/.*
+
+    - name: Infrastructure
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: app/Modules/.*/Infrastructure/.*
+          must_not:
+            - type: directory
+              value: app/Modules/.*/Infrastructure/Providers/.*
+
+    - name: Http
+      collectors:
+        - type: directory
+          value: app/Modules/.*/Http/.*
+
+    - name: Jobs
+      collectors:
+        - type: directory
+          value: app/Modules/.*/Jobs/.*
+
+    - name: Policies
+      collectors:
+        - type: directory
+          value: app/Modules/.*/Policies/.*
+
+    # ------------------------------------------------------------- framework
+    # Everything the Domain layer must not touch. Listing the framework as its
+    # own layer is what makes "Domain depends on nothing but PHP" checkable.
+
+    - name: Framework
+      collectors:
+        - type: classLike
+          value: ^Illuminate\\.*
+        - type: classLike
+          value: ^Laravel\\.*
+        - type: classLike
+          value: ^Symfony\\Component\\HttpFoundation\\.*
+        - type: classLike
+          value: ^Symfony\\Component\\HttpKernel\\.*
+
+    - name: Providers
+      collectors:
+        - type: classLike
+          value: ^Sentry\\.*
+        - type: classLike
+          value: ^OpenTelemetry\\.*
+        - type: classLike
+          value: ^GuzzleHttp\\.*
+        - type: classLike
+          value: ^Predis\\.*
+
+    # Value-object support libraries the Domain layer is permitted to use.
+    # symfony/uid is a pure value type with no framework coupling; brick/money
+    # is arithmetic. Both are deliberate, narrow exceptions rather than a
+    # blanket allowance for "Symfony" or "vendor code".
+    - name: DomainSafeVendor
+      collectors:
+        - type: classLike
+          value: ^Symfony\\Component\\Uid\\.*
+        - type: classLike
+          value: ^Brick\\Money\\.*
+
+  ruleset:
+
+    # The innermost layer. It may speak to PHP itself and to the two vetted
+    # value-object libraries, and to nothing else. In particular it may not
+    # reach Application, Infrastructure, Http, or any framework class.
+    Domain:
+      - DomainSafeVendor
+
+    # Coordinates transactions and ports. Knows the Domain. Does not know how
+    # anything is stored, served, or delivered.
+    Application:
+      - Domain
+      - DomainSafeVendor
+
+    # Implements domain-owned ports. May use the framework and provider SDKs;
+    # that is its entire purpose.
+    Infrastructure:
+      - Domain
+      - Application
+      - DomainSafeVendor
+      - Framework
+      - Providers
+
+    # Transport only: authenticate, validate, build one command, invoke one
+    # handler, map the result.
+    Http:
+      - Domain
+      - Application
+      - DomainSafeVendor
+      - Framework
+
+    # Jobs carry stable IDs, reload current state, re-authorize, stay idempotent.
+    Jobs:
+      - Domain
+      - Application
+      - DomainSafeVendor
+      - Framework
+
+    # Policies decide allow or generic denial from a typed authorization
+    # context. They read the Domain and never a client-supplied identifier.
+    Policies:
+      - Domain
+      - Application
+      - Framework
+
+    # The composition root sees everything, because wiring is what it does.
+    Composition:
+      - Domain
+      - Application
+      - Infrastructure
+      - Http
+      - Jobs
+      - Policies
+      - DomainSafeVendor
+      - Framework
+      - Providers

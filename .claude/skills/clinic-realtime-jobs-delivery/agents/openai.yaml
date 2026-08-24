@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Realtime Jobs Delivery"
+  short_description: "Build Reverb, Horizon, outbox, and delivery workflows."
+  default_prompt: "Use $clinic-realtime-jobs-delivery to implement the asynchronous or realtime work for the active clinic phase."

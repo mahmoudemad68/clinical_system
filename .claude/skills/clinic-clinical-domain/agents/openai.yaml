@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Clinical Domain"
+  short_description: "Implement clinical workflows and contextual access rules."
+  default_prompt: "Use $clinic-clinical-domain to implement the clinical domain work for the active clinic phase."

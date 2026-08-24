@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic AI Platform"
+  short_description: "Build isolated FastAPI, Qdrant, ingestion, and retrieval."
+  default_prompt: "Use $clinic-ai-platform to implement the shared AI platform or RAG infrastructure."

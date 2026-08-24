@@ -1,0 +1,57 @@
+# Redocly configuration for the clinic platform HTTP contract.
+#
+# Every rule that deviates from the recommended ruleset is listed with a reason.
+# An undocumented "off" is not acceptable: the contract is the source of truth
+# (ADR 0003), and a silenced rule is a silently relaxed contract.
+
+extends:
+  - recommended
+
+apis:
+  core@v1:
+    root: packages/contracts/openapi/openapi.yaml
+    # openapi-typescript reads this config too. Declaring the generated output
+    # here keeps one place that says where the TypeScript client lands, so the
+    # contract and its generated consumer cannot drift apart in scripts.
+    x-openapi-ts:
+      output: apps/admin-web/src/api/generated/schema.d.ts
+
+rules:
+  # ---------------------------------------------------------------- enforced
+  # Structural correctness and the conventions Phase 00 fixes.
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-summary: error
+  no-invalid-media-type-examples: error
+  no-invalid-schema-examples: error
+  path-params-defined: error
+  no-identical-paths: error
+  no-ambiguous-paths: error
+  security-defined: error
+  spec-strict-refs: error
+
+  # ------------------------------------------------------------------ tuned
+
+  # Phase 00 fixes shared conventions (Money, Quantity, TimeZoneId,
+  # CountryCode, cursor parameters, the Forbidden/NotFound responses, and the
+  # admin session scheme) that Phase 01 onward consume. They are declared here
+  # deliberately so later phases inherit them rather than reinventing them.
+  # Re-enable once the contract carries real operations, expected by Phase 03.
+  no-unused-components: off
+
+  # servers[0] is the documented local Docker Compose origin. Developers and
+  # generated test clients need it. Staging and production entries are real.
+  no-server-example.com: off
+  no-server-trailing-slash: error
+
+  # /live and /ready are unauthenticated operational probes with no client-error
+  # path: they answer 200 or 503 and nothing else. Inventing a 4XX response to
+  # satisfy a lint rule would describe behavior the server does not have.
+  # Every /api/v1 operation does carry its 4XX responses.
+  operation-4xx-response: off
+  operation-2xx-response: error
+
+  # The API is proprietary and has no public license URL.
+  info-license: off
+  info-license-strict: off
+  info-contact: error

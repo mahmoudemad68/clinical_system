@@ -1,0 +1,525 @@
+# Phase 00 — Cross-Cutting Architecture and Delivery Contract
+
+## Objective
+
+Create the technical foundation that makes every later phase safe to implement: repository layout, enforceable module boundaries, shared contracts, local/staging environments, continuous integration, observability baseline, data classification, threat model, test harnesses, and release conventions.
+
+This phase delivers no clinical feature. Its observable outcome is that a minimal authenticated health/readiness slice can travel from each client through the API, database/Redis adapters, outbox worker, and telemetry pipeline in a reproducible environment without granting access to real patient data.
+
+## Plan traceability
+
+- Sections 1-5: final system shape, modular-monolith style, stack, Flutter monorepo, React admin.
+- Sections 99 and 102-115: realtime shape, queues, Horizon, outbox, API rules, idempotency, PostgreSQL, IDs, indexes, partitioning, Redis, and cache strategy.
+- Sections 132-142: performance/capacity targets, horizontal topology, connection pooling, AI worker separation, availability, and health checks.
+- Sections 148-155: localization/country/location conventions and client failure/offline behavior.
+- Sections 156 and 160-170: test pyramid, load tooling, environments, Docker, CI, migrations, secrets, and feature flags.
+- Sections 171-176: V1 exclusions, data ownership, consistency, background-work rule, implementation order, and final definition of done.
+
+## Entry criteria
+
+- `plan.md` is accepted as the V1 product/architecture source.
+- Engineering agrees that production infrastructure sizing is a benchmark hypothesis, not a guarantee.
+- Product identifies one accountable owner for clinical, pharmacy, privacy/legal, security, and operations approvals.
+
+## Non-goals
+
+- No production tenant or real patient data.
+- No microservice decomposition of the Laravel core.
+- No online payment, emergency specialist chat, medication alternatives/reservation, branch transfer, supplier API, adherence tracking, image diagnosis, multi-country behavior, or complex admin roles.
+- No AI feature beyond an isolated stub health contract; AI implementation starts in Phase 16.
+- No premature table partitioning, sharding, Elasticsearch/OpenSearch, or Kubernetes requirement.
+
+## Architecture decisions
+
+### System boundaries
+
+```text
+Flutter patient / doctor / pharmacy       React admin
+                 \                         /
+                  \ HTTPS + JSON/OpenAPI /
+                   API gateway / load balancer
+                              |
+                 Laravel modular monolith
+                  |       |       |       |
+             PostgreSQL Redis  Reverb  private S3
+                  |
+        transactional outbox -> queue consumers
+
+                 isolated internal contract
+                              |
+                       FastAPI AI service
+                              |
+                      Qdrant + model ports
+```
+
+- The Laravel process owns authentication, authorization, operational state, medical state, financial state, tenant scoping, and tool authorization.
+- FastAPI may read only the minimum authorized context provided through an internal service contract. It cannot connect as a broad application user or mutate core tables.
+- Clients never connect directly to PostgreSQL, Redis, S3, Qdrant, or provider APIs.
+- Direct module-to-module table writes are prohibited. A module calls a public application port or consumes a published domain/integration event.
+
+### Repository layout
+
+Use one repository initially so contracts and cross-client changes can be atomic while deployment units remain independent.
+
+```text
+apps/
+  core-api/                 # Laravel 13 modular monolith
+  ai-service/               # FastAPI API and workers
+  admin-web/                # React + TypeScript
+  patient-app/              # Flutter Android/iOS
+  doctor-desktop/           # Flutter Desktop
+  pharmacy-desktop/         # Flutter Desktop
+packages/
+  flutter/
+    api_client/
+    authentication/
+    common_models/
+    design_system/
+    error_handling/
+    local_database/
+    localization/
+    networking/
+    notifications/
+    realtime/
+    secure_storage/
+  contracts/
+    openapi/
+    events/
+    ai_internal/
+infra/
+  docker/
+  environments/
+  monitoring/
+  load-tests/
+docs/
+  adr/
+  architecture/
+  data-classification/
+  runbooks/
+  threat-models/
+```
+
+Flutter workspace management uses Melos. JavaScript workspaces use the repository-standard package manager with a committed lockfile. Python uses a `pyproject.toml` plus a locked resolution. PHP uses Composer with a committed `composer.lock`.
+
+### Laravel module layout
+
+Each business module follows the same inward dependency direction:
+
+```text
+Modules/<Name>/
+  Domain/
+    Entities/
+    ValueObjects/
+    Rules/
+    Events/
+    Exceptions/
+    Contracts/              # repository/provider ports owned by the domain
+  Application/
+    Commands/
+    Queries/
+    Handlers/
+    DTOs/
+  Infrastructure/
+    Persistence/
+    Providers/
+    Listeners/
+  Http/
+    Controllers/
+    Requests/
+    Resources/
+    Routes/
+  Policies/
+  Jobs/
+  Tests/
+```
+
+Dependency rule:
+
+```text
+HTTP / Infrastructure / Jobs -> Application -> Domain
+Domain -> PHP standard library only
+```
+
+- Controllers authenticate, validate transport input, create a command/query, invoke one handler, and map the result. They contain no business transitions.
+- Application handlers coordinate transactions and ports. They do not format HTTP responses or call facades hidden from tests.
+- Domain objects enforce invariants and expose intent-revealing transitions.
+- Infrastructure implements ports for Eloquent/PostgreSQL, Redis, S3, FCM, SMS, Reverb, and other providers.
+- Policies receive a typed authorization context. They must not depend on a client-supplied role, tenant, doctor, patient, or scope identifier.
+- Jobs carry stable IDs and schema versions, reload current state, re-authorize where needed, and are idempotent.
+
+SOLID enforcement:
+
+- **Single responsibility:** each module/state machine owns one business capability; side effects are adapters.
+- **Open/closed:** providers and external pharmacy systems add adapters behind ports.
+- **Liskov substitution:** adapter contract tests must pass for every implementation, including fakes.
+- **Interface segregation:** separate `SendOtp`, `SendPush`, `StoreObject`, `ScanObject`, `GenerateText`, and `RetrieveKnowledge` ports; do not create a vendor “god service.”
+- **Dependency inversion:** application/domain code owns interfaces; framework/provider code depends on them.
+
+Use `deptrac/deptrac` (or an ADR-approved equivalent) in CI to reject forbidden imports, and architecture tests to reject access from one module's infrastructure namespace to another module's models/tables.
+
+### Cross-module transaction coordination
+
+Critical workflows that span modules are not implemented as eventually consistent event chains. Booking, consultation start/end, prescription exposure, purchase receipt, POS sale/cancellation, and refund require one explicit application coordinator:
+
+1. A coordinator owns the use-case contract and transaction boundary.
+2. It calls narrow module-owned command ports; it never imports another module's Eloquent model or updates another module's table directly.
+3. Every called port receives the same transaction context/unit of work and returns typed results, not framework models.
+4. Domain events are collected during the transaction and written to the outbox before commit.
+5. External/realtime/notification/analytics work begins only after commit.
+6. Failure in any strong-consistency step rolls back the whole workflow; compensation is reserved for effects that cannot share the database transaction.
+
+Examples:
+
+- `BookAppointmentCoordinator`: Appointments owns availability/booking; Identity supplies the patient reference; the coordinator commits appointment, slot constraint, status event, audit, idempotency, and outbox atomically.
+- `StartConsultationCoordinator`: Queue validates checked-in eligibility; Clinical creates the encounter/access grant; Appointments changes state; the outbox carries the sanitized current-patient event.
+- `CompleteConsultationCoordinator`: Clinical finalizes the encounter and revokes access; Queue advances; Appointments completes; Chat records its future write window; outbox notifications are committed together.
+- `CompleteSaleCoordinator`: POS validates cart/payment intent; Inventory allocates FEFO and appends movements; the invoice/payment and outbox commit together.
+
+Architecture tests must prove that only the approved coordinator uses the participating command ports and that integration-event handlers cannot perform a delayed write that is required for the originating invariant.
+
+### Client architecture
+
+Each Flutter feature uses presentation, domain, and data layers:
+
+```text
+presentation -> application/controller -> domain port <- repository -> API/local adapters
+```
+
+- Riverpod provides dependency wiring and observable state.
+- UI state is not the authority for permissions or final business state.
+- Repositories own caching, mapping, error normalization, and safe retry decisions.
+- Generated API DTOs stay at the network edge and map into client domain/view models.
+- Local databases store the minimum needed, encrypt sensitive rows/database files, and expose sync state.
+
+React uses feature folders with route/page, components, schema, query/mutation hooks, and generated API types. TanStack Query owns server state. Component state remains local unless a proven cross-route need exists. Authorization in the UI affects discoverability only; Laravel remains authoritative.
+
+### Shared request flow
+
+Every externally reachable mutation follows this order:
+
+1. Gateway enforces TLS, request-size limits, and coarse abuse controls.
+2. Middleware assigns/validates a correlation ID and authenticates the session/device token.
+3. Route/request schema rejects malformed, unknown, oversized, or semantically invalid fields.
+4. The policy loads server-owned actor/resource/context and returns allow or a generic denial.
+5. The application handler checks the idempotency record when the operation is replayable.
+6. Domain objects validate the transition using current persisted version/state.
+7. A bounded database transaction writes authoritative records, audit metadata, and any required outbox event.
+8. Commit succeeds or the entire critical change rolls back.
+9. The idempotency response is finalized without storing secrets/large clinical payloads.
+10. The API returns the stable envelope immediately.
+11. Workers claim outbox rows, execute bounded provider calls, record delivery attempts, and mark success/retry/dead-letter.
+
+No HTTP request waits for PDF extraction, OCR, embeddings, push delivery, analytics aggregation, external inventory sync, backups, or other unbounded work.
+
+### API contract
+
+- Prefix public endpoints with `/api/v1`.
+- OpenAPI is the source of truth for HTTP shape. CI validates it, detects breaking changes, and regenerates typed clients.
+- Response envelope:
+
+```json
+{
+  "data": {},
+  "meta": {},
+  "errors": [],
+  "request_id": "uuid-v7"
+}
+```
+
+- Use RFC 3339/ISO-8601 UTC timestamps with explicit offsets; never ambiguous local date-times.
+- Use cursor pagination for large/mutable collections. Cursors are opaque, signed if they contain state, size-bounded, and scoped to filter/order/actor.
+- Use `400` for malformed protocol/input, `401` for unauthenticated, `403` for denied, `404` when hiding resource existence is safer, `409` for state/version/idempotency conflict, `422` for field/business validation, `429` for throttling, and `5xx` for server/dependency failure.
+- Error responses expose stable machine codes and safe human messages, never stack traces, SQL, object keys, provider payloads, or protected resource existence.
+- Money is `{amount_minor: integer, currency: "EGP"}`. UUIDv7 identifiers are strings. Quantities include a unit identifier.
+- Contract changes are backward-compatible first; removals require deprecation telemetry and a later phase/release.
+
+### Events and outbox
+
+Event envelope:
+
+```text
+event_id UUIDv7
+event_type namespaced past-tense name
+schema_version positive integer
+aggregate_type / aggregate_id
+occurred_at UTC
+actor_id nullable
+correlation_id / causation_id
+payload minimal and classified
+```
+
+Outbox processing logic:
+
+1. Insert the domain change and outbox row in one PostgreSQL transaction.
+2. A worker claims rows with `FOR UPDATE SKIP LOCKED` or an equivalent safe claim.
+3. Publish/handle using `event_id` as the consumer idempotency key.
+4. Record attempt count, next attempt, last safe error class, and processed timestamp.
+5. Retry only transient failures with capped exponential backoff plus jitter.
+6. Move exhausted failures to an operator-visible dead-letter state; do not silently discard.
+7. A repair command can replay an explicitly selected event/range without creating duplicate effects.
+
+Events carry identifiers and required non-sensitive facts, not entire patient, prescription, lab, or AI payloads.
+
+### Queue ownership across PHP and Python
+
+Laravel Horizon consumes Laravel-owned Redis jobs only. Python workers must never deserialize or acknowledge Laravel/PHP job payloads.
+
+- Laravel lanes (`critical`, `notifications`, `files`, `integrations`, `analytics`, `reports`, `backups`, and Laravel-side AI orchestration) use Horizon and PHP job classes.
+- Laravel starts Python work through an authenticated, versioned internal HTTP command or an ADR-approved typed JSON message envelope carrying an idempotency key, deadline, schema version, and minimal object references.
+- FastAPI persists/queues that command through an AI-owned `TaskQueue` port. Its implementation may use a dedicated Redis namespace/instance and a Python-native worker library selected in Phase 16.
+- Python workers return status/result references through an authenticated callback or a polled internal resource. They never write Laravel core tables or consume PHP serialization.
+- Both sides retain independent retry budgets. A cross-boundary duplicate resolves through the same idempotency key, and a timeout is an unknown outcome to reconcile, not permission to create a second task.
+
+### Idempotency contract
+
+Apply to booking, check-in, consultation completion, prescription finalization/amendment, purchase receipt, POS sale, cancellation, return/refund, and external synchronization.
+
+1. Client generates a cryptographically random `Idempotency-Key` per user intent and reuses it only for retries of the identical request.
+2. Server scopes the key to authenticated actor/device, endpoint/operation, and tenant where applicable.
+3. Server stores a canonical request hash, state (`PROCESSING`, `SUCCEEDED`, `FAILED_RETRYABLE`), status code, safe response reference, and expiry.
+4. Same key + same hash returns the original outcome.
+5. Same key + different hash returns `409 IDEMPOTENCY_KEY_REUSED`.
+6. A concurrent duplicate waits briefly or returns `409/202` with a polling reference; it never starts a second transition.
+7. Permanent validation/authorization failure is not cached as a successful business result.
+8. Retention exceeds the maximum client retry/offline window for that operation.
+
+### Database and consistency conventions
+
+- PostgreSQL/PostGIS is authoritative; use relational columns for filtered/joined invariants and JSONB only for bounded extensible metadata.
+- IDs are UUIDv7 and public APIs never expose sequential identifiers.
+- Every mutable aggregate uses a version number or compare-and-set condition where stale writes could lose data.
+- Foreign keys, check constraints, unique/exclusion constraints, and transaction isolation enforce invariants even if application checks race.
+- Store instants in UTC and schedule intent with IANA time zone (`Africa/Cairo` initially).
+- Use `citext`/normalized values only where semantics are defined. Never locale-lowercase national IDs, barcodes, or opaque identifiers.
+- Migrations follow expand -> deploy -> backfill -> switch -> contract. A migration must not take an unbounded lock on a high-volume table.
+- Seed only synthetic data. Staging cannot clone raw production medical data.
+- Strong consistency applies to access, appointments, medical records, prescriptions, payments, invoices, movements, and refunds. Notifications, analytics, indexes, and mirrors are eventual.
+- Do not partition tables until measured volume/query evidence justifies it. Candidate tables remain audit events, deliveries, AI usage, stock movements, and appointment events.
+
+### Cache and Redis conventions
+
+- Redis is used for cache, rate limits, locks, queues, realtime pub/sub, and short-lived coordination only.
+- Every cache entry declares owner, key shape, classification, TTL, invalidation trigger, maximum payload, and behavior when missing/stale.
+- Avoid PHI caches. A reviewed exception must encrypt content, sharply bound TTL and access, and prove deletion/invalidation.
+- Distributed locks have an owner token, short lease, bounded wait, and safe release. Database constraints remain the final concurrency defense.
+- Production separates queue Redis from cache/realtime Redis once load evidence or production tier requires it.
+- An empty Redis after restart must degrade performance temporarily, not lose medical/business truth.
+
+### Configuration, secrets, and feature flags
+
+- Validate required configuration at process startup; readiness stays false when a critical configuration is invalid.
+- Secrets live in an approved secret manager, are injected at runtime, are never committed, and have owners/rotation procedures.
+- Separate credentials per environment and workload. AI, queue, migrations, read-only reporting, and backup jobs do not share broad credentials.
+- Feature flags are server-owned, environment-aware, audited, and fail closed for risky features. Define the future flags listed in `plan.md` as disabled metadata only.
+- Never use a client flag to bypass authorization or activate a server capability.
+- Container images and dependencies use immutable versions/digests. Generate an SBOM and scan before promotion.
+
+## Packages and tools
+
+Versions are resolved during implementation against Laravel 13 and the current supported Flutter/React/Python runtimes, then pinned in lockfiles. Do not copy unverified version ranges from this document.
+
+### Laravel/PHP baseline
+
+- `laravel/framework`, `laravel/sanctum`, `laravel/horizon`, `laravel/reverb`, `laravel/octane`, and FrankenPHP runtime.
+- `laravel/pennant` for server feature flags.
+- `brick/money` for money value objects; Symfony UID/Laravel UUIDv7 support for identifiers.
+- `deptrac/deptrac` and architecture tests for module dependency enforcement.
+- Pest or PHPUnit as one repository-standard test runner; Laravel HTTP/database fakes; Mockery only at external boundaries.
+- Larastan/PHPStan for static analysis and Laravel Pint for formatting.
+- OpenTelemetry PHP SDK/instrumentation and Sentry Laravel SDK, configured with centralized redaction.
+
+### Flutter baseline
+
+- `melos`, `flutter_riverpod`/Riverpod code generation, `dio`, `go_router`, `freezed`, `json_serializable`, `drift`, `flutter_secure_storage`, `firebase_messaging`, `intl`, and `connectivity_plus`.
+- Drift over `sqlite3` v3 configured through native hooks for SQLCipher or SQLite3MultipleCiphers. Do not adopt the end-of-life `sqlcipher_flutter_libs` package. Adoption still requires a target-OS compatibility spike plus documented key rotation, recovery, backup exclusion, and migration tests.
+- `flutter_test`, SDK `integration_test`, `mocktail`, golden-test tooling, and Patrol only for flows needing native dialogs/notifications.
+- `very_good_analysis` or an ADR-approved lint profile, applied consistently across shared packages and apps.
+
+### React baseline
+
+- React, TypeScript, Vite, TanStack Query, React Router, React Hook Form, Zod, Hook Form resolvers, MUI, i18next, and ECharts.
+- OpenAPI-generated types/client or `openapi-typescript` + `openapi-fetch`; one transport wrapper owns credentials, CSRF, request IDs, and error mapping.
+- Vitest, React Testing Library, MSW, Playwright, and axe-core integration for tests/accessibility.
+- ESLint, type-aware rules, Prettier, and dependency-boundary linting.
+
+### AI baseline (scaffold only in this phase)
+
+- FastAPI, Pydantic, `pydantic-settings`, HTTPX, and Uvicorn/Gunicorn-compatible deployment.
+- `pytest`, `pytest-asyncio`, `respx`, and Hypothesis.
+- Provider/Qdrant/model packages are added in Phase 16 behind owned ports.
+
+### Platform and assurance
+
+- Docker/Compose for local integration; GitHub Actions for CI.
+- PostgreSQL with PostGIS, PgBouncer where deployed, Redis, private S3 emulator for local tests, and Qdrant only for the AI profile.
+- k6 for API/WebSocket/load suites.
+- Gitleaks for secrets, Semgrep plus language-native SAST, dependency audits, Trivy for image/IaC scans, Syft-compatible SBOM, and OWASP ZAP for staged DAST.
+- Prometheus, Grafana, Loki-compatible structured logs, OpenTelemetry Collector, and Sentry.
+
+## Detailed implementation work
+
+### 1. Record architecture and ownership
+
+1. Create ADRs for modular monolith + separate AI service, repository layout, API-first contracts, outbox, UUIDv7, local encryption, and data ownership.
+2. Create C4 context/container diagrams and one component diagram showing module dependency direction.
+3. Create a module catalog with owner, public commands/queries/events, tables, data classification, and prohibited dependencies.
+4. Define CODEOWNERS/review rules for clinical, pharmacy-financial, identity, infrastructure, and AI safety areas.
+5. Add an automated architecture check that fails on a known forbidden dependency fixture, then remove/disable only the fixture after proving the check.
+
+### 2. Bootstrap runtime projects
+
+1. Scaffold each deployment unit without feature code.
+2. Add `/live`, `/ready`, build/version metadata, structured error handling, correlation IDs, and graceful shutdown.
+3. Ensure liveness checks only process health; readiness checks critical startup state without turning every optional dependency into a core outage.
+4. Demonstrate that AI/Qdrant readiness failure does not make Laravel core unready.
+5. Configure Octane workers to avoid request-scoped mutable state leaking across requests; add a regression test using two synthetic identities.
+
+### 3. Establish contract workflow
+
+1. Create a minimal OpenAPI document with health endpoints and the common envelope/error schemas.
+2. Validate/lint it in CI and generate Dart/TypeScript test clients.
+3. Add a breaking-change detector against the main-branch contract.
+4. Define event JSON Schemas and compatibility rules: additive optional fields within a version; breaking changes require a new schema version and dual-read migration.
+5. Add provider contract-test suites that future adapters must implement.
+
+### 4. Establish persistence and migrations
+
+1. Configure PostgreSQL/PostGIS with least-privilege app and migration roles.
+2. Add framework tables only when needed; create migration conventions and transactional migration checks.
+3. Implement reference abstractions for UUIDv7, clock, transaction runner, pagination cursor, money, country/currency, and safe identifiers.
+4. Implement generic outbox and idempotency storage with cleanup/retention jobs.
+5. Add Redis namespaces/connections for cache, rate limit, queue, and realtime, even if local Compose uses one instance.
+6. Confirm a Redis flush loses no authoritative record and that the app can warm required caches.
+
+### 5. Establish data protection
+
+1. Define classification levels: public, internal, personal, sensitive personal/clinical, credential/secret.
+2. For every initial table/event/log/metric, document classification, purpose, lawful/business need, access roles, retention, encryption, and deletion/anonymization policy owner.
+3. Add a logging redaction processor and tests containing canary national IDs, phones, tokens, passwords, clinical text, and object keys.
+4. Configure TLS for all non-local hops, database/Redis/Qdrant private networking, private object storage, and encrypted volumes/backups where applicable.
+5. Create synthetic Egyptian-format data generators that do not accidentally produce known real identities.
+
+### 6. Establish CI and environments
+
+Pull-request pipeline:
+
+1. Format and lint each language.
+2. Compile/type-check and run architecture rules.
+3. Validate OpenAPI/event schemas and generated clients.
+4. Run unit/component suites, then containerized integration suites.
+5. Run secret scanning, SAST, dependency license/vulnerability audits, IaC/container scanning, and SBOM generation.
+6. Build immutable artifacts once; do not rebuild between staging and production.
+
+Post-merge pipeline:
+
+1. Push signed immutable images/artifacts to the registry.
+2. Deploy to isolated development/staging environment.
+3. Run backward-compatible migrations with timeout/lock monitoring.
+4. Execute smoke, contract, authorization-canary, and observability checks.
+5. Keep production promotion manual until Phase 23 gates pass.
+
+### 7. Establish observability
+
+1. Propagate `traceparent`, request ID, correlation ID, causation ID, actor pseudonymous ID, and service/version fields without PHI.
+2. Instrument request rate/error/latency, DB pool and query latency, Redis errors, queue depth/age/failures, outbox backlog, Reverb connections, and provider failures.
+3. Bound metric labels; never use patient, doctor, appointment, file, prescription, or free-text values as labels.
+4. Define alerts with owner, severity, threshold, sustain period, runbook, and false-positive review.
+5. Confirm traces/logs from a synthetic clinical-looking request are redacted before leaving the process.
+
+## Security and privacy work
+
+Create the initial STRIDE + privacy threat model across these trust boundaries:
+
+- public mobile/desktop/web clients to gateway;
+- admin browser session and CSRF boundary;
+- gateway to Laravel workers/Reverb;
+- Laravel to PostgreSQL/Redis/S3/providers;
+- outbox/queue producers to consumers;
+- Laravel to FastAPI and FastAPI to Qdrant/model providers;
+- developer/CI/staging/production administrative planes.
+
+At minimum, address broken object/tenant authorization, stolen device tokens, CSRF/XSS, replay, mass assignment, injection, SSRF, malicious files, event forgery, queue duplication, cache poisoning, log leakage, insecure defaults, dependency compromise, backup exposure, prompt injection, excessive AI agency, denial of service/wallet, and cross-environment data leakage.
+
+Mandatory controls in this phase:
+
+- deny-by-default network and application policies;
+- strict request/content-size limits and safe parsers;
+- no wildcard production CORS origins;
+- secure response headers for admin web;
+- secrets never available to fork/PR jobs from untrusted code;
+- non-root/read-only containers where compatible;
+- dependency/SBOM provenance and vulnerability policy;
+- audit trail for configuration/flag/secret-access changes;
+- centralized redaction tested before telemetry export;
+- documented emergency credential rotation and artifact revocation.
+
+Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API platform, OWASP API Security guidance for object/function/property authorization and abuse resistance, and OWASP MASVS/MASTG for Flutter mobile releases. Use the NIST AI Risk Management Framework and its Generative AI Profile as an AI risk/evidence taxonomy from Phase 16 onward. These are engineering assurance baselines, not declarations of statutory compliance. Egyptian privacy, healthcare, pharmacy, electronic-prescription, retention, and cross-border-processing obligations require written decisions from qualified local legal, clinical, and pharmacy-regulatory reviewers.
+
+## Test plan
+
+### Unit tests
+
+- UUIDv7, money, quantity, Cairo time conversion/DST, pagination cursor, safe error mapping, canonical request hashing, retry classifier, and redaction functions.
+- Domain/application dependency tests prove inner layers do not import framework/provider code.
+- Idempotency state logic handles same/different hashes, concurrent processing, expiry, and retryable failure.
+- Outbox retry schedule is capped, jittered, and distinguishes permanent failures.
+
+### Integration tests
+
+- Laravel with real PostgreSQL/PostGIS and Redis: transaction rollback, outbox atomicity, worker claiming, duplicate consumption, lock expiry, cache loss, and migration forward compatibility.
+- S3-compatible store: private objects, encryption metadata, signed URL expiry, and denied anonymous access.
+- Reverb private-channel authorization scaffold and disconnect behavior.
+- FastAPI stub internal authentication, deadline propagation, and unavailability isolation.
+- OpenTelemetry export proves redaction and bounded attributes.
+
+### Contract tests
+
+- OpenAPI validation plus generated Dart/TypeScript clients against a running API.
+- Common error/status/envelope/cursor/time/money schemas.
+- Event consumers accept current and previous compatible event schemas and reject unknown incompatible versions safely.
+- Every fake/provider adapter passes its owned port contract.
+
+### End-to-end tests
+
+- Each of four clients starts against the local/staging stack and shows core health/version in Arabic and English.
+- Admin browser establishes CSRF/session plumbing without storing a token in local storage.
+- Flutter test client obtains only its synthetic scoped connection and handles `401`, `409`, `422`, `429`, and safe `5xx` presentation.
+- A committed synthetic event reaches a test consumer exactly once in effect despite forced duplicate delivery.
+
+### System tests
+
+- Stop AI/Qdrant: core health and non-AI smoke flow remain available; AI readiness reports degraded.
+- Flush Redis/restart workers: authoritative data remains and queues/outbox resume without duplicate effects.
+- Kill a worker during outbox processing: another worker recovers after lease expiry.
+- Roll one backward-compatible schema change across mixed old/new app versions.
+- Validate graceful shutdown under active HTTP/WebSocket/queue load.
+
+### Security tests
+
+- SAST, dependency, image, IaC, license, SBOM, and secret scans enforce blocking severity policy.
+- DAST smoke checks TLS, headers, CORS, error leakage, method handling, and size limits.
+- Attempt direct access to database, Redis, S3, Qdrant, and internal AI ports from the public network segment; all fail.
+- Send national ID, token, password, prescription-like text, and lab-like content canaries; none appears in logs/traces/errors.
+- Fuzz common schemas/cursors/identifiers and prove bounded CPU/memory and safe rejection.
+
+## Acceptance and exit gate
+
+- Repository and module dependency rules are documented and enforced in CI.
+- All deployment units build reproducibly from locked dependencies; images/artifacts have SBOMs and no unaccepted critical findings.
+- Local and staging environments start from documented commands using synthetic data only.
+- OpenAPI/event workflows generate clients and reject a deliberate breaking change.
+- Outbox and idempotency reference flows pass concurrency/replay tests.
+- Health/readiness, structured redacted telemetry, dashboards, and runbooks operate.
+- AI/Qdrant/Redis failure-isolation system tests pass.
+- Threat model and data classification have security/privacy approval.
+- Every test category above has automated evidence; manual-only evidence has an owner and repeatable script/checklist.
+- No V1-excluded feature is functionally enabled.
+
+## Deliverables
+
+- Repository skeleton and module catalog.
+- ADR set, diagrams, contract conventions, schema registries, and package/version policy.
+- Docker/local/staging profiles and CI pipelines.
+- Minimal Laravel/FastAPI/Flutter/React health slices.
+- Outbox, idempotency, correlation, redaction, and observability foundations.
+- Test harnesses, security baseline, threat model, data inventory, and runbooks.

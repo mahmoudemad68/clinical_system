@@ -1,0 +1,35 @@
+{
+  "name": "clinic-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Clinic platform monorepo. Contracts, admin web, and shared JavaScript tooling.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10.8.0"
+  },
+  "workspaces": [
+    "apps/admin-web"
+  ],
+  "scripts": {
+    "contracts:lint": "redocly lint packages/contracts/openapi/openapi.yaml",
+    "contracts:bundle": "redocly bundle packages/contracts/openapi/openapi.yaml -o packages/contracts/openapi/generated/openapi.bundled.yaml",
+    "contracts:breaking": "node scripts/contracts/check-breaking.mjs",
+    "contracts:events": "node scripts/contracts/validate-events.mjs",
+    "contracts:generate:ts": "openapi-typescript packages/contracts/openapi/openapi.yaml -o apps/admin-web/src/api/generated/schema.d.ts",
+    "contracts:verify": "npm run contracts:lint && npm run contracts:events && npm run contracts:generate:ts",
+    "admin:dev": "npm run dev --workspace apps/admin-web",
+    "admin:build": "npm run build --workspace apps/admin-web",
+    "admin:test": "npm run test --workspace apps/admin-web",
+    "admin:lint": "npm run lint --workspace apps/admin-web",
+    "admin:typecheck": "npm run typecheck --workspace apps/admin-web"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.47.0",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.6",
+    "yaml": "2.9.0"
+  }
+}

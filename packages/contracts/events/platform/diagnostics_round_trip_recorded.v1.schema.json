@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/platform/diagnostics_round_trip_recorded.v1.schema.json",
+  "title": "platform.diagnostics_round_trip_recorded v1",
+  "description": "Emitted inside the transaction that records a Phase 00 diagnostics round trip. It exists to prove the outbox path end to end: written atomically with the state change, claimed by a worker after commit, and consumed exactly once in effect despite forced duplicate delivery. It carries no personal or clinical data and it has no production consumer.",
+  "type": "object",
+  "required": ["diagnostics_id", "label", "recorded_at"],
+  "additionalProperties": false,
+  "properties": {
+    "diagnostics_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Identifier of the synthetic diagnostics record committed in the same transaction."
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+      "description": "Machine-generated slug identifying a test run. Lowercase, starts with a letter, and contains no spaces, so it cannot carry a sentence. Enforced at the API edge, here, and by a database CHECK, which additionally rejects any run of 10 or more digits so a national ID or phone number cannot ride along inside a valid slug."
+    },
+    "echo_delay_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "Artificial delay the consumer applies before marking the event processed. Used by timing and lease-expiry tests."
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC instant the diagnostics record was written, assigned inside the transaction."
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Platform",
+    "classification": "internal",
+    "consumers": ["platform.diagnostics_consumer"],
+    "retention_days": 7,
+    "enabled_by_flag": "platform.diagnostics_slice",
+    "environments": ["local", "development"]
+  }
+}

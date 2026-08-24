@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic AI Products"
+  short_description: "Build bounded doctor, pharmacy, and patient AI workflows."
+  default_prompt: "Use $clinic-ai-products to implement one clinic AI persona workflow safely."

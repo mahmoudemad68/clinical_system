@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/envelope.schema.json",
+  "title": "Domain event envelope",
+  "description": "Every event written to the outbox and every event delivered to a consumer uses this envelope. Source: phase file 'Events and outbox'. The envelope is versioned independently of the payload it carries.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "aggregate_type",
+    "aggregate_id",
+    "occurred_at",
+    "correlation_id",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": {
+      "$ref": "#/$defs/uuidV7",
+      "description": "Unique event identifier. Consumers use this as the idempotency key, so the same event_id must never be reused for a different fact."
+    },
+    "event_type": {
+      "type": "string",
+      "description": "Namespaced, past-tense event name. The namespace is the owning module in snake_case; the name states what already happened, never what should happen next.",
+      "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 100,
+      "examples": [
+        "appointment.booked",
+        "clinical.encounter_started",
+        "stock.movement_appended",
+        "platform.diagnostics_round_trip_recorded"
+      ]
+    },
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Positive integer version of the payload schema for this event_type. Additive optional fields keep the version; anything breaking increments it and requires a dual-read migration."
+    },
+    "aggregate_type": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*$",
+      "maxLength": 64,
+      "description": "The aggregate whose state changed.",
+      "examples": ["Appointment", "Encounter", "StockBatch", "Diagnostics"]
+    },
+    "aggregate_id": {
+      "$ref": "#/$defs/uuidV7",
+      "description": "Identifier of the aggregate instance."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC instant at which the fact became true, assigned inside the originating transaction. This is not the publication time."
+    },
+    "actor_id": {
+      "oneOf": [{ "$ref": "#/$defs/uuidV7" }, { "type": "null" }],
+      "description": "Pseudonymous identifier of the actor who caused the change, or null for system-originated events. Never a name, phone number, national ID, or email."
+    },
+    "correlation_id": {
+      "$ref": "#/$defs/uuidV7",
+      "description": "Identifier shared by every event and log line originating from one external request."
+    },
+    "causation_id": {
+      "oneOf": [{ "$ref": "#/$defs/uuidV7" }, { "type": "null" }],
+      "description": "event_id of the event that directly caused this one, or null when caused by an external request rather than another event."
+    },
+    "tenant": {
+      "type": ["object", "null"],
+      "description": "Tenant scope for events belonging to a pharmacy organization or branch. Null for events with no tenant dimension.",
+      "additionalProperties": false,
+      "properties": {
+        "organization_id": { "$ref": "#/$defs/uuidV7" },
+        "branch_id": { "oneOf": [{ "$ref": "#/$defs/uuidV7" }, { "type": "null" }] }
+      },
+      "required": ["organization_id"]
+    },
+    "classification": {
+      "type": "string",
+      "enum": ["public", "internal", "personal", "sensitive"],
+      "default": "internal",
+      "description": "Highest classification present in the payload, per docs/data-classification/classification-policy.md. An event classified 'sensitive' must justify why the identifiers alone were insufficient. 'credential' is not a permitted value: credentials never travel in an event."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Minimal, classified facts. Identifiers and the few non-sensitive values a consumer genuinely needs. Never a whole patient, prescription, lab, chat, or AI payload; a consumer that needs more re-reads it from the owning module under its own authorization."
+    }
+  },
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "UUIDv7 as a lowercase string (ADR 0005)."
+    }
+  }
+}

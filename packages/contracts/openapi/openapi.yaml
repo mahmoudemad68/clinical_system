@@ -1,0 +1,851 @@
+openapi: 3.1.0
+
+info:
+  title: Clinic Platform API
+  version: 0.1.0
+  summary: Phase 00 foundation slice — health, readiness, version, and a gated diagnostics path.
+  description: |
+    This document is the source of truth for the HTTP contract (ADR 0003).
+    Server and client code both conform to it; neither generates it.
+
+    Phase 00 deliberately exposes no clinical, identity, appointment, pharmacy,
+    or AI capability. It defines the envelope, the error model, the pagination
+    model, the shared scalar types, and the health/readiness slice that proves a
+    request can travel from a client through the API, the database and Redis
+    adapters, the outbox worker, and the telemetry pipeline.
+
+    Compatibility rules (ADR 0003):
+      * Additive optional fields are compatible within a version.
+      * A removal, a type change, a narrowed enum, or a new required field is
+        breaking and requires a new version plus a dual-read migration.
+      * Removals require deprecation telemetry proving no live consumer.
+  contact:
+    name: Platform architecture
+    url: https://example.invalid/clinic/platform
+  license:
+    name: UNLICENSED
+
+servers:
+  - url: http://localhost:8080
+    description: Local Docker Compose
+  - url: https://staging.clinic.invalid
+    description: Staging (synthetic data only)
+
+tags:
+  - name: operational
+    description: |
+      Unversioned operational probes consumed by the orchestrator and the load
+      balancer. These are NOT part of the public client contract, are not
+      enveloped, and must never be exposed through the public gateway route.
+  - name: meta
+    description: Build and version metadata for client display.
+  - name: health
+    description: Coarse platform health for client display.
+  - name: diagnostics
+    description: |
+      Phase 00 foundation slice. Gated by the server-owned feature flag
+      `platform.diagnostics_slice`, which fails closed and is disabled outside
+      local and development environments.
+
+paths:
+  /live:
+    get:
+      tags: [operational]
+      operationId: getLiveness
+      summary: Liveness probe
+      description: |
+        Reports only whether this process is alive. It performs no dependency
+        check. A dependency outage must never make a healthy process restart.
+      security: []
+      responses:
+        '200':
+          description: Process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivenessResult'
+              examples:
+                alive:
+                  value:
+                    status: alive
+                    service: core-api
+                    version: 0.1.0
+
+  /ready:
+    get:
+      tags: [operational]
+      operationId: getReadiness
+      summary: Readiness probe
+      description: |
+        Reports whether this process can serve traffic. It checks critical
+        startup state and critical dependencies only.
+
+        Critical for core-api: configuration validity, PostgreSQL, and the Redis
+        connections the request path needs.
+
+        Explicitly NOT critical: the AI service, Qdrant, and any optional
+        provider. Their failure reports `degraded` in `checks` while the overall
+        status stays `ready` (ADR 0001 verification, gate G-02-04).
+      security: []
+      responses:
+        '200':
+          description: Ready to serve traffic. Optional dependencies may be degraded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResult'
+              examples:
+                readyWithDegradedAi:
+                  summary: AI down, core still ready
+                  value:
+                    status: ready
+                    service: core-api
+                    version: 0.1.0
+                    checks:
+                      - name: configuration
+                        critical: true
+                        status: pass
+                        duration_ms: 0
+                      - name: postgresql
+                        critical: true
+                        status: pass
+                        duration_ms: 3
+                      - name: redis_cache
+                        critical: true
+                        status: pass
+                        duration_ms: 1
+                      - name: ai_service
+                        critical: false
+                        status: degraded
+                        duration_ms: 250
+        '503':
+          description: Not ready. A critical dependency or configuration check failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResult'
+
+  /api/v1/meta/version:
+    get:
+      tags: [meta]
+      operationId: getVersion
+      summary: Build and version metadata
+      description: Stable build metadata for client display and support triage.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Version metadata.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/VersionInfo'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/health:
+    get:
+      tags: [health]
+      operationId: getPlatformHealth
+      summary: Coarse platform health for client display
+      description: |
+        Client-facing health summary. Returns a localized human message in the
+        language negotiated through `Accept-Language` (`ar` or `en`), satisfying
+        the Phase 00 end-to-end requirement that each of the four clients can
+        display core health and version in Arabic and English.
+
+        This endpoint reports component status at a coarse granularity only. It
+        never exposes hostnames, connection strings, versions of internal
+        dependencies, or error details.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Health summary.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PlatformHealth'
+              examples:
+                arabic:
+                  summary: Arabic negotiation with AI degraded
+                  value:
+                    data:
+                      status: degraded
+                      message: بعض الخدمات الاختيارية غير متاحة حاليًا. الخدمات الأساسية تعمل.
+                      components:
+                        core: operational
+                        realtime: operational
+                        ai: unavailable
+                      version: 0.1.0
+                      server_time: '2026-08-24T19:05:00Z'
+                    meta:
+                      locale: ar
+                    errors: []
+                    request_id: 0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a10
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/diagnostics/round-trip:
+    post:
+      tags: [diagnostics]
+      operationId: postDiagnosticsRoundTrip
+      summary: Foundation round-trip slice
+      description: |
+        Phase 00 observable outcome. One authenticated request that exercises the
+        full critical path and returns immediately:
+
+          1. correlation ID assigned and propagated;
+          2. request schema validated;
+          3. idempotency record claimed;
+          4. one bounded PostgreSQL transaction writes a synthetic diagnostics
+             record and an `outbox_events` row atomically;
+          5. commit;
+          6. the outbox worker publishes the event post-commit;
+          7. the trace and its redacted attributes reach the collector.
+
+        The request never waits for the worker. `outbox_event_id` is returned so
+        a test can assert the effect happened exactly once despite forced
+        duplicate delivery.
+
+        Carries no patient data of any kind. Gated by the server-owned feature
+        flag `platform.diagnostics_slice`, which fails closed and is disabled
+        outside local and development environments. When disabled the endpoint
+        answers `404` so its existence is not disclosed.
+      security:
+        - deviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticsRoundTripRequest'
+      responses:
+        '201':
+          description: Round trip committed. Post-commit work is queued.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DiagnosticsRoundTripResult'
+        '200':
+          description: |
+            Idempotent replay. The same key with the same canonical request hash
+            returns the original outcome without starting a second transition.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DiagnosticsRoundTripResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Feature flag disabled. Existence is not disclosed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+
+  securitySchemes:
+    deviceToken:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: |
+        Opaque device/session token issued by the platform. Phase 00 accepts only
+        synthetic tokens minted for local and development environments. Real
+        authentication, device binding, and MFA are Phase 01.
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: clinic_session
+      description: |
+        HTTP-only, Secure, SameSite session cookie for the React admin, paired
+        with a CSRF token header. The admin never stores a bearer token in local
+        storage (`plan.md` section 5).
+
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: |
+        Client-supplied correlation identifier. When absent the server assigns
+        one. Always echoed in the response body and the `X-Request-Id` header.
+      schema:
+        $ref: '#/components/schemas/Uuid'
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        Cryptographically random key generated per user intent and reused only
+        for retries of the identical request. Scoped server-side to the
+        authenticated actor/device, the operation, and the tenant where
+        applicable.
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 255
+        pattern: '^[A-Za-z0-9._~-]+$'
+
+    AcceptLanguage:
+      name: Accept-Language
+      in: header
+      required: false
+      description: Language negotiation. Supported tags are `ar` and `en`.
+      schema:
+        type: string
+        default: en
+        examples: ['ar', 'en', 'ar-EG', 'en-US']
+
+    CursorParam:
+      name: cursor
+      in: query
+      required: false
+      description: |
+        Opaque forward cursor from a previous response's `meta.pagination.next`.
+        Cursors are signed when they carry state, size-bounded, and scoped to the
+        filter, ordering, and actor that produced them. A cursor from a different
+        filter, ordering, or actor is rejected with `422 CURSOR_INVALID`.
+      schema:
+        type: string
+        maxLength: 512
+
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      description: Maximum items per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+
+  headers:
+    XRequestId:
+      description: Correlation identifier for this request.
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+    RetryAfter:
+      description: Seconds to wait before retrying.
+      schema:
+        type: integer
+        minimum: 0
+
+  schemas:
+
+    # ---------------------------------------------------------------- scalars
+
+    Uuid:
+      type: string
+      format: uuid
+      description: UUIDv7 rendered as a string. Public APIs never expose sequential identifiers (ADR 0005).
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      examples: ['0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a10']
+
+    Instant:
+      type: string
+      format: date-time
+      description: |
+        RFC 3339 / ISO-8601 instant with an explicit offset, always stored and
+        transmitted in UTC. Never an ambiguous local date-time.
+      examples: ['2026-08-24T19:05:00Z']
+
+    TimeZoneId:
+      type: string
+      description: IANA time-zone identifier for scheduling intent. Never a fixed offset, because DST changes.
+      examples: ['Africa/Cairo']
+
+    Money:
+      type: object
+      description: Exact money. Integer minor units plus a currency code; never floating point (invariant 16).
+      required: [amount_minor, currency]
+      additionalProperties: false
+      properties:
+        amount_minor:
+          type: integer
+          format: int64
+          description: Amount in the currency's smallest unit. 12345 EGP minor units is 123.45 EGP.
+        currency:
+          type: string
+          enum: [EGP]
+          description: ISO 4217 code. V1 is Egypt only, but the field exists so a second country needs no rewrite (`plan.md` section 149).
+
+    Quantity:
+      type: object
+      description: Exact quantity with an explicit unit. Never floating point.
+      required: [value, unit]
+      additionalProperties: false
+      properties:
+        value:
+          type: integer
+          format: int64
+          description: Count in the smallest tracked unit.
+        unit:
+          type: string
+          description: Identifier of the smallest tracked unit.
+          maxLength: 32
+          examples: ['tablet', 'vial', 'box']
+
+    CountryCode:
+      type: string
+      enum: [EG]
+      description: ISO 3166-1 alpha-2. Fixed to Egypt in V1.
+
+    # ---------------------------------------------------------------- envelope
+
+    Envelope:
+      type: object
+      description: |
+        Every response uses this envelope (`plan.md` section 106). `data` carries
+        the payload, `meta` carries pagination and negotiation information,
+        `errors` is empty on success, and `request_id` correlates the request
+        across logs, traces, and support conversations.
+      required: [data, meta, errors, request_id]
+      properties:
+        data:
+          description: Payload. `null` for operations with no return value.
+        meta:
+          $ref: '#/components/schemas/Meta'
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Error'
+          default: []
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+
+    ErrorEnvelope:
+      type: object
+      description: Failure envelope. `data` is null and `errors` has at least one entry.
+      required: [data, meta, errors, request_id]
+      properties:
+        data:
+          type: 'null'
+        meta:
+          $ref: '#/components/schemas/Meta'
+        errors:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Error'
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+
+    Meta:
+      type: object
+      description: Response metadata. Never carries business payload.
+      additionalProperties: true
+      properties:
+        locale:
+          type: string
+          enum: [ar, en]
+        pagination:
+          $ref: '#/components/schemas/CursorPagination'
+        deprecation:
+          $ref: '#/components/schemas/Deprecation'
+
+    CursorPagination:
+      type: object
+      description: Cursor pagination for large or mutable collections. Offset pagination is not used.
+      required: [has_more]
+      additionalProperties: false
+      properties:
+        has_more:
+          type: boolean
+        next:
+          type: [string, 'null']
+          maxLength: 512
+          description: Opaque cursor for the next page, or null when `has_more` is false.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+
+    Deprecation:
+      type: object
+      description: Present when the caller used a deprecated field or operation. Drives deprecation telemetry (ADR 0003).
+      required: [message]
+      properties:
+        message:
+          type: string
+          maxLength: 500
+        sunset_at:
+          $ref: '#/components/schemas/Instant'
+
+    Error:
+      type: object
+      description: |
+        A single failure. Errors expose a stable machine code and a safe human
+        message. They never expose a stack trace, SQL, an object key, a provider
+        payload, or the existence of a protected resource.
+      required: [code, message]
+      additionalProperties: false
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          type: string
+          maxLength: 500
+          description: Safe, localized, human-readable message. Never contains sensitive values.
+        field:
+          type: [string, 'null']
+          maxLength: 200
+          description: JSON pointer or dotted path for a field-level validation failure.
+        meta:
+          type: object
+          description: Bounded, non-sensitive detail such as an allowed range.
+          additionalProperties: true
+
+    ErrorCode:
+      type: string
+      description: |
+        Stable machine code. Clients branch on this, never on the message.
+
+        Status mapping (phase file "API contract"):
+          400 malformed protocol or input
+          401 unauthenticated
+          403 denied
+          404 hiding resource existence is safer
+          409 state, version, or idempotency conflict
+          422 field or business validation
+          429 throttled
+          5xx server or dependency failure
+      enum:
+        - MALFORMED_REQUEST
+        - UNSUPPORTED_MEDIA_TYPE
+        - REQUEST_TOO_LARGE
+        - UNAUTHENTICATED
+        - TOKEN_EXPIRED
+        - PERMISSION_DENIED
+        - NOT_FOUND
+        - STATE_CONFLICT
+        - VERSION_CONFLICT
+        - IDEMPOTENCY_KEY_REUSED
+        - IDEMPOTENCY_IN_PROGRESS
+        - VALIDATION_FAILED
+        - CURSOR_INVALID
+        - UNSUPPORTED_SCHEMA_VERSION
+        - RATE_LIMITED
+        - DEPENDENCY_UNAVAILABLE
+        - INTERNAL_ERROR
+
+    # ------------------------------------------------------------ operational
+
+    LivenessResult:
+      type: object
+      required: [status, service, version]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [alive]
+        service:
+          type: string
+          enum: [core-api, ai-service, reverb]
+        version:
+          type: string
+          maxLength: 64
+
+    ReadinessResult:
+      type: object
+      required: [status, service, version, checks]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        service:
+          type: string
+          enum: [core-api, ai-service, reverb]
+        version:
+          type: string
+          maxLength: 64
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadinessCheck'
+
+    ReadinessCheck:
+      type: object
+      required: [name, critical, status]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          maxLength: 64
+          description: Stable check name. A bounded set, safe to use as a metric label.
+        critical:
+          type: boolean
+          description: |
+            When true, a failure makes the process not ready. Optional
+            dependencies (AI service, Qdrant) are never critical for core-api.
+        status:
+          type: string
+          enum: [pass, degraded, fail]
+        duration_ms:
+          type: integer
+          minimum: 0
+
+    # ------------------------------------------------------------------- meta
+
+    VersionInfo:
+      type: object
+      required: [service, version, api_version]
+      additionalProperties: false
+      properties:
+        service:
+          type: string
+          maxLength: 64
+        version:
+          type: string
+          description: Semantic version of the running artifact.
+          maxLength: 64
+        api_version:
+          type: string
+          enum: ['v1']
+        commit:
+          type: [string, 'null']
+          description: Short commit identifier of the built artifact.
+          maxLength: 40
+        built_at:
+          $ref: '#/components/schemas/Instant'
+        environment:
+          type: string
+          enum: [local, development, staging, production]
+
+    PlatformHealth:
+      type: object
+      required: [status, message, components, version, server_time]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [operational, degraded, unavailable]
+          description: |
+            `degraded` means an optional component is unavailable while core
+            capability remains. An AI outage is never a core outage
+            (`plan.md` section 141).
+        message:
+          type: string
+          maxLength: 300
+          description: Localized human message in the negotiated language.
+        components:
+          type: object
+          required: [core, realtime, ai]
+          additionalProperties: false
+          properties:
+            core:
+              $ref: '#/components/schemas/ComponentStatus'
+            realtime:
+              $ref: '#/components/schemas/ComponentStatus'
+            ai:
+              $ref: '#/components/schemas/ComponentStatus'
+        version:
+          type: string
+          maxLength: 64
+        server_time:
+          $ref: '#/components/schemas/Instant'
+
+    ComponentStatus:
+      type: string
+      enum: [operational, degraded, unavailable]
+
+    # ------------------------------------------------------------ diagnostics
+
+    DiagnosticsRoundTripRequest:
+      type: object
+      description: |
+        Synthetic payload. Carries no personal or clinical data, and the server
+        rejects any property not listed here, which also demonstrates the
+        mass-assignment defence required by the threat model.
+      required: [label]
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z][a-z0-9_-]{0,63}$'
+          description: |
+            Machine-generated slug identifying a test run. Lowercase, starts with
+            a letter, no spaces, so it cannot carry a sentence. The server
+            additionally rejects any run of 10 or more digits, which excludes
+            Egyptian national IDs (14 digits) and mobile numbers (11 digits)
+            embedded in an otherwise valid slug.
+        echo_delay_ms:
+          type: integer
+          minimum: 0
+          maximum: 1000
+          default: 0
+          description: Requested artificial delay for the post-commit worker, used by timing tests.
+
+    DiagnosticsRoundTripResult:
+      type: object
+      required: [diagnostics_id, outbox_event_id, committed_at, idempotent_replay]
+      additionalProperties: false
+      properties:
+        diagnostics_id:
+          $ref: '#/components/schemas/Uuid'
+        outbox_event_id:
+          $ref: '#/components/schemas/Uuid'
+        committed_at:
+          $ref: '#/components/schemas/Instant'
+        idempotent_replay:
+          type: boolean
+          description: True when this response was replayed from a stored idempotency record.
+
+  responses:
+
+    BadRequest:
+      description: Malformed protocol or input.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            malformed:
+              value:
+                data: null
+                meta: { locale: en }
+                errors:
+                  - code: MALFORMED_REQUEST
+                    message: The request body could not be parsed.
+                request_id: 0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a10
+
+    Unauthenticated:
+      description: Missing or invalid credentials.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    Forbidden:
+      description: |
+        Authenticated but denied. The message is generic and identical for every
+        denial reason so it cannot be used to probe permissions.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    NotFound:
+      description: Not found, or hidden because disclosing existence is unsafe.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    Conflict:
+      description: |
+        State, version, or idempotency conflict. `IDEMPOTENCY_KEY_REUSED` means
+        the same key arrived with a different canonical request hash.
+        `IDEMPOTENCY_IN_PROGRESS` means a concurrent duplicate is still
+        processing; the caller polls rather than starting a second transition.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            keyReused:
+              value:
+                data: null
+                meta: { locale: en }
+                errors:
+                  - code: IDEMPOTENCY_KEY_REUSED
+                    message: This idempotency key was already used for a different request.
+                request_id: 0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a10
+
+    UnprocessableEntity:
+      description: Field-level or business validation failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            validation:
+              value:
+                data: null
+                meta: { locale: en }
+                errors:
+                  - code: VALIDATION_FAILED
+                    message: The label may contain only letters, digits, spaces, underscores, and hyphens.
+                    field: label
+                request_id: 0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a10
+
+    TooManyRequests:
+      description: Throttled.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+    InternalError:
+      description: |
+        Server or dependency failure. The body never contains a stack trace, SQL,
+        an object key, or a provider payload. `request_id` is the only handle
+        support needs to find the trace.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+security: []
