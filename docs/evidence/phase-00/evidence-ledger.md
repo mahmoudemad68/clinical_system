@@ -52,7 +52,7 @@ prompts, object keys, or exploit payloads.
 | --- | --- | --- | --- | --- | --- |
 | G-03-01 | Minimal OpenAPI with health endpoints and common envelope/error schemas | contracts | [openapi.yaml](../../../packages/contracts/openapi/openapi.yaml) | `PASS` | — |
 | G-03-02 | Validated and linted in CI; Dart and TypeScript test clients generated | contracts | `npx redocly lint` → "valid, 0 warnings"; `npx openapi-typescript` → 660-line `schema.d.ts` | `PARTIAL` | TypeScript generation proven. Dart client generation not yet run. Neither runs in CI yet. |
-| G-03-03 | Breaking-change detector rejects a deliberate breaking change | contracts | [check-breaking.mjs](../../../scripts/contracts/check-breaking.mjs) | `BLOCKED` | Needs a baseline commit to diff against. The repository has no commits yet (one commit at end of session, by request). Detector correctly reports "no baseline" and exits 0. |
+| G-03-03 | Breaking-change detector rejects a deliberate breaking change | contracts | `node scripts/contracts/check-breaking.mjs` against baseline `948ff67` | `PASS` | Three injected breaking changes, one per class ADR 0003 names, all detected with exit 1: `operation-removed` (GET /api/v1/meta/version), `enum-narrowed` (ErrorCode), `new-required-property` (ReadinessResult). Contract restored, exit 0. |
 | G-03-04 | Event JSON Schemas and compatibility rules; additive-optional within a version, breaking requires new version + dual read | contracts | [envelope.schema.json](../../../packages/contracts/events/envelope.schema.json), [events/README.md](../../../packages/contracts/events/README.md), 1 payload schema | `PASS` | Dual-read consumer test arrives with the first real consumer |
 | G-03-05 | Provider contract-test suites that future adapters must implement | contracts | — | `OPEN` | No provider ports exist yet in Phase 00 |
 | G-03-06 | Event contract validator rejects a bad schema (oracle proof) | contracts | `node scripts/contracts/validate-events.mjs` with a deliberate bad fixture | `PASS` | Fixture produced 5 failures, exit 1: open payload, `classification: credential`, and `national_id` / `token` properties. Removing it returned exit 0. Fixture removed. |
@@ -186,10 +186,9 @@ the database actually did. Neither would have failed a happy-path test.
 | # | Blocker | Needs |
 | --- | --- | --- |
 | 1 | CODEOWNERS teams do not exist; branch protection cannot enforce review rules | The five accountable owners named in the Phase 00 entry criteria (clinical, pharmacy, privacy/legal, security, operations) |
-| 2 | Breaking-change gate has no baseline | A commit on `main` |
-| 3 | Threat model and data classification approval | Security and privacy owners. Engineering cannot self-approve. |
-| 4 | ADR 0006 encryption spike | Five-platform compatibility results plus key rotation, recovery, backup exclusion, and migration tests |
-| 5 | No staging environment | Infrastructure decision and budget |
+| 2 | Threat model and data classification approval | Security and privacy owners. Engineering cannot self-approve. |
+| 3 | ADR 0006 encryption spike | Five-platform compatibility results plus key rotation, recovery, backup exclusion, and migration tests |
+| 4 | No staging environment | Infrastructure decision and budget |
 
 ## Honest summary
 
