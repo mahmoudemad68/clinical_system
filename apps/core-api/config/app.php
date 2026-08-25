@@ -17,6 +17,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Build identity
+    |--------------------------------------------------------------------------
+    |
+    | Injected at image build time and surfaced through /api/v1/meta/version so
+    | a support conversation can name the exact artifact a client is running.
+    | Defaults are deliberately obvious placeholders: an unbuilt process should
+    | not claim a real version.
+    |
+    */
+    'version' => env('APP_VERSION', '0.0.0-dev'),
+    'build_commit' => env('BUILD_COMMIT'),
+    'build_timestamp' => env('BUILD_TIMESTAMP'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Business time zone
+    |--------------------------------------------------------------------------
+    |
+    | Scheduling intent keeps an IANA identifier, never a fixed offset, because
+    | Egypt observes daylight saving and "+02:00" is wrong for part of the year
+    | (plan.md section 106). Persisted instants remain UTC; conversion happens
+    | at the edge.
+    |
+    */
+    'business_timezone' => env('APP_BUSINESS_TIMEZONE', 'Africa/Cairo'),
+    'country' => env('APP_COUNTRY', 'EG'),
+    'currency' => env('APP_CURRENCY', 'EGP'),
+    'supported_locales' => explode(',', (string) env('APP_SUPPORTED_LOCALES', 'ar,en')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

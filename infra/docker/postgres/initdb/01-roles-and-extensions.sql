@@ -75,7 +75,14 @@ REVOKE CREATE ON SCHEMA public FROM clinic_app, clinic_worker, clinic_reporter;
 ALTER ROLE clinic_app       CONNECTION LIMIT 40;
 ALTER ROLE clinic_worker    CONNECTION LIMIT 30;
 ALTER ROLE clinic_reporter  CONNECTION LIMIT 10;
-ALTER ROLE clinic_migrator  CONNECTION LIMIT 5;
+
+-- The migrator cap exists to stop a runaway migration job from exhausting the
+-- connection pool and taking the serving path down with it. An earlier value of
+-- 5 was too tight to be useful: a migration run legitimately holds a migration
+-- connection plus a lock-monitoring connection, and the test suite opens both
+-- the default and the migration connection per process. Production provisioning
+-- may tighten this again for a cluster where migrations run as a single job.
+ALTER ROLE clinic_migrator  CONNECTION LIMIT 25;
 
 -- Statement timeouts. A serving query that runs longer than this is a defect,
 -- and letting it run holds locks that make everything else worse.

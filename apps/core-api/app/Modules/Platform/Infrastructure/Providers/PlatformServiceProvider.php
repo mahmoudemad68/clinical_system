@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Platform\Infrastructure\Providers;
 
 use App\Modules\Platform\Application\Health\HealthProbeClient;
+use App\Modules\Platform\Application\Outbox\RetryPolicy;
+use App\Modules\Platform\Infrastructure\Console\OutboxWorkCommand;
+use App\Modules\Platform\Infrastructure\Console\PlatformPruneCommand;
+use App\Modules\Platform\Infrastructure\Outbox\DiagnosticsRoundTripConsumer;
+use App\Modules\Platform\Infrastructure\Outbox\OutboxDispatcher;
 use App\Modules\Platform\Domain\Contracts\CorrelationScope;
 use App\Modules\Platform\Domain\Contracts\DiagnosticsRepository;
 use App\Modules\Platform\Application\Health\ReadinessProbe;
@@ -14,8 +19,15 @@ use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
 use App\Modules\Platform\Domain\Contracts\OutboxRecorder;
 use App\Modules\Platform\Domain\Contracts\Redactor;
 use App\Modules\Platform\Domain\Contracts\TransactionRunner;
+use App\Modules\Platform\Http\Controllers\DiagnosticsController;
 use App\Modules\Platform\Http\Controllers\OperationalController;
 use App\Modules\Platform\Http\Controllers\PlatformHealthController;
+use App\Modules\Platform\Http\Middleware\EnforceIdempotency;
+use App\Modules\Platform\Http\Middleware\EnforceRequestBounds;
+use App\Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
+use App\Modules\Platform\Http\Middleware\ResolveLocale;
+use App\Modules\Platform\Http\Middleware\SecureResponseHeaders;
+use App\Modules\Platform\Application\Diagnostics\RecordRoundTripHandler;
 use App\Modules\Platform\Infrastructure\Health\AiServiceCheck;
 use App\Modules\Platform\Infrastructure\Health\ConfigurationCheck;
 use App\Modules\Platform\Infrastructure\Health\DatabaseCheck;
@@ -33,7 +45,9 @@ use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Psr\Log\LoggerInterface;
 
 /**
  * Wires the Platform shared kernel.
@@ -119,6 +133,75 @@ final class PlatformServiceProvider extends ServiceProvider
             (string) config('app.version', '0.0.0'),
         ));
 
+        // ---------------------------------------------------------------- outbox
+
+        $this->app->singleton(RetryPolicy::class, static fn (): RetryPolicy => new RetryPolicy(
+            (int) config('platform.outbox.base_backoff_seconds', 2),
+            (int) config('platform.outbox.max_backoff_seconds', 3600),
+            (int) config('platform.outbox.max_attempts', 8),
+        ));
+
+        $this->app->singleton(OutboxDispatcher::class, static function ($app): OutboxDispatcher {
+            $dispatcher = new OutboxDispatcher(
+                DB::connection(),
+                $app->make(Clock::class),
+                $app->make(RetryPolicy::class),
+                $app->make(LoggerInterface::class),
+                // Worker identity for the claim lease. Host plus pid is enough
+                // to tell two workers apart in an operator query.
+                workerId: substr(gethostname() . ':' . getmypid(), 0, 64),
+                batchSize: (int) config('platform.outbox.claim_batch_size', 100),
+                leaseSeconds: (int) config('platform.outbox.lease_seconds', 60),
+            );
+
+            // Consumers register here. A published event type with no
+            // registered consumer dead-letters rather than retrying forever,
+            // so a forgotten registration surfaces as an operator alert.
+            $dispatcher->register(new DiagnosticsRoundTripConsumer(
+                DB::connection(),
+                $app->make(Clock::class),
+            ));
+
+            return $dispatcher;
+        });
+
+        // ------------------------------------------------------------ middleware
+        // Each middleware receives its configuration explicitly rather than
+        // calling config() internally, so every one of them is constructible
+        // in a unit test without booting the framework.
+
+        $this->app->bind(EnforceRequestBounds::class, static fn (): EnforceRequestBounds => new EnforceRequestBounds(
+            (int) config('platform.request.max_body_bytes', 1_048_576),
+            (int) config('platform.request.max_json_depth', 32),
+        ));
+
+        $this->app->bind(ResolveLocale::class, static fn (): ResolveLocale => new ResolveLocale(
+            array_values(array_filter((array) config('app.supported_locales', ['ar', 'en']))),
+            (string) config('app.fallback_locale', 'en'),
+        ));
+
+        $this->app->bind(SecureResponseHeaders::class, static fn (): SecureResponseHeaders => new SecureResponseHeaders(
+            // HSTS only outside local, and only when the request actually
+            // arrived over TLS. Pinning localhost to https is hard to undo.
+            config('app.env') !== 'local',
+        ));
+
+        $this->app->bind(RequireDiagnosticsSlice::class, static fn (): RequireDiagnosticsSlice => new RequireDiagnosticsSlice(
+            (bool) config('platform.features.diagnostics_slice', false),
+            (string) config('app.env', 'production'),
+            (array) config('platform.diagnostics_environments', []),
+            (string) env('DIAGNOSTICS_SLICE_TOKEN', ''),
+        ));
+
+        $this->app->bind(EnforceIdempotency::class, static fn ($app): EnforceIdempotency => new EnforceIdempotency(
+            $app->make(IdempotencyStore::class),
+            $app->make(Clock::class),
+        ));
+
+        $this->app->bind(DiagnosticsController::class, static fn ($app): DiagnosticsController => new DiagnosticsController(
+            $app->make(RecordRoundTripHandler::class),
+        ));
+
         $this->app->bind(PlatformHealthController::class, static fn ($app): PlatformHealthController => new PlatformHealthController(
             $app->make(ReadinessProbe::class),
             $app->make(Clock::class),
@@ -132,5 +215,46 @@ final class PlatformServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadTranslationsFrom(base_path('lang'), '');
+
+        $this->resetRequestScopedStateBetweenOctaneRequests();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([OutboxWorkCommand::class, PlatformPruneCommand::class]);
+        }
+    }
+
+    /**
+     * Clear request-scoped state on long-lived Octane workers (gate G-02-05).
+     *
+     * Octane keeps the application container alive across requests. Any
+     * singleton holding request state therefore carries it into the next
+     * request served by the same worker. For a correlation id that means two
+     * unrelated requests appear correlated; for anything actor-scoped it would
+     * mean one patient's context bleeding into another's response, which is the
+     * failure mode this hook exists to prevent.
+     *
+     * Both events are registered: RequestReceived clears before handling, and
+     * RequestTerminated clears after, so state cannot survive either an early
+     * return or an exception mid-request.
+     *
+     * The listeners are registered only when Octane is present, so the same
+     * code runs unchanged under php-fpm and in tests.
+     */
+    private function resetRequestScopedStateBetweenOctaneRequests(): void
+    {
+        if (!class_exists(\Laravel\Octane\Events\RequestReceived::class)) {
+            return;
+        }
+
+        $reset = function (object $event): void {
+            $container = property_exists($event, 'sandbox') ? $event->sandbox : $this->app;
+
+            if ($container->resolved(CorrelationScope::class)) {
+                $container->make(CorrelationScope::class)->reset();
+            }
+        };
+
+        Event::listen(\Laravel\Octane\Events\RequestReceived::class, $reset);
+        Event::listen(\Laravel\Octane\Events\RequestTerminated::class, $reset);
     }
 }

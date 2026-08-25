@@ -250,10 +250,16 @@ paths:
               $ref: '#/components/schemas/DiagnosticsRoundTripRequest'
       responses:
         '201':
-          description: Round trip committed. Post-commit work is queued.
+          description: |
+            Round trip committed, or replayed from a prior identical request.
+
+            A first request and an idempotent replay both answer 201. Inspect
+            the `Idempotent-Replay` header to tell them apart.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
           content:
             application/json:
               schema:
@@ -263,19 +269,15 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/DiagnosticsRoundTripResult'
-        '200':
-          description: |
-            Idempotent replay. The same key with the same canonical request hash
-            returns the original outcome without starting a second transition.
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Envelope'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/DiagnosticsRoundTripResult'
+        # NOTE: an idempotent replay does NOT get its own status code. The same
+        # key with the same canonical request hash returns the ORIGINAL outcome,
+        # status code included, so a retrying client receives exactly what it
+        # would have received had the first response arrived. A replay is
+        # signalled out of band by the `Idempotent-Replay: true` header and
+        # `meta.idempotent_replay`, never by a different status.
+        #
+        # Branching on the status code to detect a replay is therefore wrong;
+        # branch on the header.
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -386,6 +388,16 @@ components:
       schema:
         type: integer
         minimum: 0
+    IdempotentReplay:
+      description: |
+        Present and `true` when this response was replayed from a stored
+        idempotency record rather than produced by a fresh transition. Absent on
+        a first request. This is the only reliable way to distinguish the two:
+        the status code is deliberately identical.
+      required: false
+      schema:
+        type: string
+        enum: ['true']
 
   schemas:
 

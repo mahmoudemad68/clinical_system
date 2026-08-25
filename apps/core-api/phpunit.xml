@@ -23,9 +23,31 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <!--
+            Feature tests run against real PostgreSQL, not SQLite.
+
+            The migrations use jsonb, partial indexes, and regex CHECK
+            constraints that SQLite cannot express, and those constraints are a
+            material part of what the tests assert. An in-memory SQLite suite
+            would pass while proving nothing about the schema that actually
+            ships.
+
+            Values are overridable so CI and the local container can point at
+            their own instance.
+        -->
+        <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_HOST" value="postgres"/>
+        <env name="DB_PORT" value="5432"/>
+        <env name="DB_DATABASE" value="clinic_test"/>
+        <env name="DB_USERNAME" value="clinic_migrator"/>
+        <env name="DB_PASSWORD" value="local_dev_only_not_a_secret"/>
         <env name="DB_URL" value=""/>
+        <env name="APP_VERSION" value="0.0.0-test"/>
+        <env name="APP_BUSINESS_TIMEZONE" value="Africa/Cairo"/>
+        <env name="APP_SUPPORTED_LOCALES" value="ar,en"/>
+        <env name="REDIS_CLIENT" value="predis"/>
+        <env name="AI_SERVICE_BASE_URL" value=""/>
+        <env name="TELEMETRY_REDACTION_STRICT" value="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

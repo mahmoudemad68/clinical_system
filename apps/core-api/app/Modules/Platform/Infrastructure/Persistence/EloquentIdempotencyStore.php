@@ -12,7 +12,6 @@ use App\Modules\Platform\Domain\ValueObjects\IdempotencyState;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\ConnectionInterface;
-use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
  * PostgreSQL-backed idempotency storage.
@@ -23,6 +22,16 @@ use Illuminate\Database\UniqueConstraintViolationException;
  * appointment. Letting the database arbitrate is the only version that is
  * actually safe under concurrency, which is why the phase file puts the final
  * concurrency defence in database constraints rather than application checks.
+ *
+ * It uses ON CONFLICT DO NOTHING rather than catching a unique-violation
+ * exception. That distinction is not stylistic. In PostgreSQL a statement that
+ * raises inside a transaction aborts the whole transaction: every subsequent
+ * statement fails with SQLSTATE 25P02 until rollback. An implementation that
+ * catches the violation and then reads the existing row therefore works only
+ * when no transaction is open, and poisons the caller's transaction when one
+ * is — which is exactly the situation an application coordinator creates
+ * (ADR 0004). ON CONFLICT never raises, so the claim is safe to call from
+ * inside or outside a transaction.
  */
 final class EloquentIdempotencyStore implements IdempotencyStore
 {
@@ -39,43 +48,66 @@ final class EloquentIdempotencyStore implements IdempotencyStore
     {
         $now = $this->clock->now();
 
-        try {
-            $this->connection->table(self::TABLE)->insert([
-                'key_hash' => $key->storageKey,
-                'operation_id' => $key->operationId,
-                'request_hash' => $requestHash,
-                'state' => IdempotencyState::Processing->value,
-                'status_code' => null,
-                'response_reference' => null,
-                'safe_error_class' => null,
-                'created_at' => $this->format($now),
-                'updated_at' => $this->format($now),
-                'expires_at' => $this->format($now->modify(sprintf('+%d hours', $this->retentionHours))),
-            ]);
+        $inserted = $this->insertIfAbsent($key, $requestHash, $now);
 
+        if ($inserted) {
             // Won the claim. Caller proceeds with the operation.
             return null;
-        } catch (UniqueConstraintViolationException) {
-            // Someone else holds this key. Return what they stored so the
-            // caller can decide between replay, conflict, and wait.
-            $existing = $this->find($key);
-
-            if ($existing === null) {
-                // The row disappeared between the insert failing and the read,
-                // which means retention purged it. Treat as claimable.
-                return null;
-            }
-
-            // An expired record is not a valid outcome to replay. Reclaim it
-            // rather than serving a stale result to a legitimate new intent.
-            if ($existing->isExpired($now)) {
-                $this->connection->table(self::TABLE)->where('key_hash', $key->storageKey)->delete();
-
-                return $this->claim($key, $requestHash);
-            }
-
-            return $existing;
         }
+
+        $existing = $this->find($key);
+
+        if ($existing === null) {
+            // The row vanished between the conflicting insert and the read,
+            // which means retention purged it. Try once more; a second miss
+            // would mean sustained contention with the purge job, and failing
+            // to claim is safer than proceeding twice.
+            return $this->insertIfAbsent($key, $requestHash, $now) ? null : $this->find($key);
+        }
+
+        // An expired record is not a valid outcome to replay. Reclaim it
+        // rather than serving a stale result to a legitimate new intent.
+        if ($existing->isExpired($now)) {
+            $this->connection->table(self::TABLE)->where('key_hash', $key->storageKey)->delete();
+
+            return $this->claim($key, $requestHash);
+        }
+
+        return $existing;
+    }
+
+    /**
+     * Atomically insert the claim row, doing nothing if the key already exists.
+     *
+     * Returns true when this caller won the claim.
+     *
+     * ON CONFLICT DO NOTHING is what keeps this safe inside a transaction: it
+     * reports the conflict through the affected-row count instead of raising,
+     * so the caller's transaction is never aborted.
+     */
+    private function insertIfAbsent(
+        IdempotencyKey $key,
+        string $requestHash,
+        DateTimeImmutable $now,
+    ): bool {
+        $affected = $this->connection->affectingStatement(
+            'INSERT INTO ' . self::TABLE . ' ('
+            . 'key_hash, operation_id, request_hash, state, status_code, '
+            . 'response_reference, safe_error_class, created_at, updated_at, expires_at'
+            . ') VALUES (?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?) '
+            . 'ON CONFLICT (key_hash) DO NOTHING',
+            [
+                $key->storageKey,
+                $key->operationId,
+                $requestHash,
+                IdempotencyState::Processing->value,
+                $this->format($now),
+                $this->format($now),
+                $this->format($now->modify(sprintf('+%d hours', $this->retentionHours))),
+            ],
+        );
+
+        return $affected === 1;
     }
 
     public function find(IdempotencyKey $key): ?IdempotencyRecord
