@@ -31,8 +31,7 @@ final class HttpHealthProbeClient implements HealthProbeClient
         private readonly string $baseUrl,
         private readonly int $timeoutMs = 2000,
         private readonly float $cacheSeconds = 5.0,
-    ) {
-    }
+    ) {}
 
     public function isLive(): bool
     {
@@ -66,7 +65,7 @@ final class HttpHealthProbeClient implements HealthProbeClient
                 // answer, and retrying inside the readiness path multiplies
                 // the time budget by the retry count.
                 ->withHeaders(['Accept' => 'application/json'])
-                ->get(rtrim($this->baseUrl, '/') . '/live');
+                ->get(rtrim($this->baseUrl, '/').'/live');
 
             return $response->successful();
         } catch (Throwable) {

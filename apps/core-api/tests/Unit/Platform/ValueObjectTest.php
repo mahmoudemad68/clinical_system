@@ -31,7 +31,7 @@ final class ValueObjectTest extends TestCase
     #[Test]
     public function it_generates_version_7_identifiers(): void
     {
-        $generator = new UuidV7Generator();
+        $generator = new UuidV7Generator;
 
         for ($i = 0; $i < 50; $i++) {
             $id = $generator->next();
@@ -45,7 +45,7 @@ final class ValueObjectTest extends TestCase
     #[Test]
     public function generated_identifiers_are_non_decreasing(): void
     {
-        $generator = new UuidV7Generator();
+        $generator = new UuidV7Generator;
 
         $previous = $generator->next()->value;
         for ($i = 0; $i < 200; $i++) {

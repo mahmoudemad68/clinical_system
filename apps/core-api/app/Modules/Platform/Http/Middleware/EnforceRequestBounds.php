@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Platform\Http\Middleware;
 
+use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use App\Modules\Platform\Http\Responses\ErrorCode;
 use App\Modules\Platform\Http\Responses\ErrorEnvelope;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,8 +30,7 @@ final class EnforceRequestBounds
     public function __construct(
         private readonly int $maxBodyBytes,
         private readonly int $maxJsonDepth,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -55,7 +54,7 @@ final class EnforceRequestBounds
         if ($this->expectsJsonBody($request)) {
             $contentType = $request->headers->get('Content-Type', '');
 
-            if (!str_contains(strtolower($contentType), 'application/json')) {
+            if (! str_contains(strtolower($contentType), 'application/json')) {
                 return ErrorEnvelope::of(ErrorCode::UnsupportedMediaType, $requestId);
             }
 

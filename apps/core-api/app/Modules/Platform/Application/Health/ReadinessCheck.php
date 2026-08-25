@@ -18,8 +18,7 @@ final readonly class ReadinessCheck
         public bool $critical,
         public CheckStatus $status,
         public int $durationMs,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{name: string, critical: bool, status: string, duration_ms: int}

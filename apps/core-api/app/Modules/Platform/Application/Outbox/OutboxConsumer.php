@@ -36,7 +36,7 @@ interface OutboxConsumer
     /**
      * Process one event.
      *
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      *
      * @throws \Throwable to signal failure; the dispatcher decides retry vs dead-letter
      */

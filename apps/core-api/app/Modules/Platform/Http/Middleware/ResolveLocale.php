@@ -25,13 +25,12 @@ final class ResolveLocale
     private const MAX_HEADER_LENGTH = 128;
 
     /**
-     * @param list<string> $supported
+     * @param  list<string>  $supported
      */
     public function __construct(
         private readonly array $supported,
         private readonly string $fallback,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -52,7 +51,7 @@ final class ResolveLocale
 
     private function negotiate(?string $header): string
     {
-        if (!is_string($header) || $header === '' || strlen($header) > self::MAX_HEADER_LENGTH) {
+        if (! is_string($header) || $header === '' || strlen($header) > self::MAX_HEADER_LENGTH) {
             return $this->fallback;
         }
 
@@ -75,7 +74,7 @@ final class ResolveLocale
             $primary = explode('-', $tag)[0];
 
             // Keep the highest quality seen for each primary subtag.
-            if (!isset($candidates[$primary]) || $candidates[$primary] < $quality) {
+            if (! isset($candidates[$primary]) || $candidates[$primary] < $quality) {
                 $candidates[$primary] = $quality;
             }
         }

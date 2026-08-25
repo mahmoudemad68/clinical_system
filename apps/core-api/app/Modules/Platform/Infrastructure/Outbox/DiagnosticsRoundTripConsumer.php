@@ -28,8 +28,7 @@ final class DiagnosticsRoundTripConsumer implements OutboxConsumer
     public function __construct(
         private readonly ConnectionInterface $connection,
         private readonly Clock $clock,
-    ) {
-    }
+    ) {}
 
     public function handles(): string
     {
@@ -45,7 +44,7 @@ final class DiagnosticsRoundTripConsumer implements OutboxConsumer
     {
         $diagnosticsId = $payload['diagnostics_id'] ?? null;
 
-        if (!is_string($diagnosticsId)) {
+        if (! is_string($diagnosticsId)) {
             // Malformed against the schema. Throwing routes it to retry and
             // eventually dead-letter rather than silently acknowledging.
             throw new \RuntimeException('diagnostics_id missing from payload');

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Log\NullLogger;
 use RuntimeException;
+use Symfony\Component\Uid\UuidV7;
 use Tests\TestCase;
 
 /**
@@ -247,8 +248,8 @@ final class OutboxDispatcherTest extends TestCase
         $dispatcher = new OutboxDispatcher(
             DB::connection(),
             app(Clock::class),
-            new RetryPolicy(),
-            new NullLogger(),
+            new RetryPolicy,
+            new NullLogger,
             $workerId,
             $batchSize,
             leaseSeconds: 60,
@@ -264,8 +265,8 @@ final class OutboxDispatcherTest extends TestCase
         $dispatcher = new OutboxDispatcher(
             DB::connection(),
             app(Clock::class),
-            $policy ?? new RetryPolicy(),
-            new NullLogger(),
+            $policy ?? new RetryPolicy,
+            new NullLogger,
             'failing-worker',
             100,
             60,
@@ -278,7 +279,8 @@ final class OutboxDispatcherTest extends TestCase
 
     private function alwaysFailingConsumer(): OutboxConsumer
     {
-        return new class implements OutboxConsumer {
+        return new class implements OutboxConsumer
+        {
             public function handles(): string
             {
                 return 'platform.diagnostics_round_trip_recorded';
@@ -298,13 +300,13 @@ final class OutboxDispatcherTest extends TestCase
 
     private function seedDiagnostics(): string
     {
-        $id = (string) \Symfony\Component\Uid\UuidV7::generate();
+        $id = (string) UuidV7::generate();
 
         DB::table('platform_diagnostics')->insert([
             'id' => $id,
             'label' => 'outbox-test',
             'echo_delay_ms' => 0,
-            'correlation_id' => (string) \Symfony\Component\Uid\UuidV7::generate(),
+            'correlation_id' => (string) UuidV7::generate(),
             'recorded_at' => now(),
             'consumed_count' => 0,
         ]);
@@ -317,7 +319,7 @@ final class OutboxDispatcherTest extends TestCase
         string $eventType = 'platform.diagnostics_round_trip_recorded',
         int $schemaVersion = 1,
     ): string {
-        $eventId = (string) \Symfony\Component\Uid\UuidV7::generate();
+        $eventId = (string) UuidV7::generate();
 
         DB::table('outbox_events')->insert([
             'event_id' => $eventId,
@@ -326,7 +328,7 @@ final class OutboxDispatcherTest extends TestCase
             'aggregate_type' => 'Diagnostics',
             'aggregate_id' => $diagnosticsId,
             'occurred_at' => now(),
-            'correlation_id' => (string) \Symfony\Component\Uid\UuidV7::generate(),
+            'correlation_id' => (string) UuidV7::generate(),
             'classification' => 'internal',
             'payload' => json_encode([
                 'diagnostics_id' => $diagnosticsId,

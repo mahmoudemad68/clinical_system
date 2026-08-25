@@ -22,8 +22,7 @@ final class RedisCheck implements DependencyCheck
         private readonly RedisFactory $redis,
         private readonly string $connectionName,
         private readonly bool $critical = true,
-    ) {
-    }
+    ) {}
 
     public function name(): string
     {

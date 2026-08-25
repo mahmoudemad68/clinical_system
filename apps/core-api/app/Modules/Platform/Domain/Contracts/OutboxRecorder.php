@@ -31,8 +31,7 @@ interface OutboxRecorder
     /**
      * Record several events, preserving order.
      *
-     * @param list<DomainEvent> $events
-     *
+     * @param  list<DomainEvent>  $events
      * @return list<Identifier>
      */
     public function recordAll(array $events, TransactionContext $context): array;

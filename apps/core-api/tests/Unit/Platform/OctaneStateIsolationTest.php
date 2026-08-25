@@ -134,6 +134,6 @@ final class OctaneStateIsolationTest extends TestCase
 
     private function scope(): CorrelationScope
     {
-        return new CorrelationIdProvider(new UuidV7Generator());
+        return new CorrelationIdProvider(new UuidV7Generator);
     }
 }

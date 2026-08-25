@@ -18,8 +18,8 @@ namespace App\Modules\Platform\Domain\ValueObjects;
 final readonly class CursorScope
 {
     /**
-     * @param array<string, scalar|array<int, scalar>> $filters
-     * @param array<int, string>                       $ordering
+     * @param  array<string, scalar|array<int, scalar>>  $filters
+     * @param  array<int, string>  $ordering
      */
     private function __construct(
         private string $operationId,
@@ -27,12 +27,11 @@ final readonly class CursorScope
         private ?string $tenantKey,
         private array $filters,
         private array $ordering,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, scalar|array<int, scalar>> $filters
-     * @param array<int, string>                       $ordering
+     * @param  array<string, scalar|array<int, scalar>>  $filters
+     * @param  array<int, string>  $ordering
      */
     public static function of(
         string $operationId,

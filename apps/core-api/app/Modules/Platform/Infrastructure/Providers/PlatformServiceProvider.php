@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace App\Modules\Platform\Infrastructure\Providers;
 
+use App\Modules\Platform\Application\Diagnostics\RecordRoundTripHandler;
 use App\Modules\Platform\Application\Health\HealthProbeClient;
+use App\Modules\Platform\Application\Health\ReadinessProbe;
 use App\Modules\Platform\Application\Outbox\RetryPolicy;
-use App\Modules\Platform\Infrastructure\Console\OutboxWorkCommand;
-use App\Modules\Platform\Infrastructure\Console\PlatformPruneCommand;
-use App\Modules\Platform\Infrastructure\Outbox\DiagnosticsRoundTripConsumer;
-use App\Modules\Platform\Infrastructure\Outbox\OutboxDispatcher;
+use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Contracts\CorrelationScope;
 use App\Modules\Platform\Domain\Contracts\DiagnosticsRepository;
-use App\Modules\Platform\Application\Health\ReadinessProbe;
-use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Contracts\IdempotencyStore;
 use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
 use App\Modules\Platform\Domain\Contracts\OutboxRecorder;
@@ -27,13 +24,16 @@ use App\Modules\Platform\Http\Middleware\EnforceRequestBounds;
 use App\Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
 use App\Modules\Platform\Http\Middleware\ResolveLocale;
 use App\Modules\Platform\Http\Middleware\SecureResponseHeaders;
-use App\Modules\Platform\Application\Diagnostics\RecordRoundTripHandler;
+use App\Modules\Platform\Infrastructure\Console\OutboxWorkCommand;
+use App\Modules\Platform\Infrastructure\Console\PlatformPruneCommand;
 use App\Modules\Platform\Infrastructure\Health\AiServiceCheck;
 use App\Modules\Platform\Infrastructure\Health\ConfigurationCheck;
 use App\Modules\Platform\Infrastructure\Health\DatabaseCheck;
 use App\Modules\Platform\Infrastructure\Health\HttpHealthProbeClient;
 use App\Modules\Platform\Infrastructure\Health\RedisCheck;
 use App\Modules\Platform\Infrastructure\Identity\UuidV7Generator;
+use App\Modules\Platform\Infrastructure\Outbox\DiagnosticsRoundTripConsumer;
+use App\Modules\Platform\Infrastructure\Outbox\OutboxDispatcher;
 use App\Modules\Platform\Infrastructure\Persistence\EloquentDiagnosticsRepository;
 use App\Modules\Platform\Infrastructure\Persistence\EloquentIdempotencyStore;
 use App\Modules\Platform\Infrastructure\Persistence\EloquentOutboxRecorder;
@@ -47,6 +47,8 @@ use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Octane\Events\RequestReceived;
+use Laravel\Octane\Events\RequestTerminated;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -149,7 +151,7 @@ final class PlatformServiceProvider extends ServiceProvider
                 $app->make(LoggerInterface::class),
                 // Worker identity for the claim lease. Host plus pid is enough
                 // to tell two workers apart in an operator query.
-                workerId: substr(gethostname() . ':' . getmypid(), 0, 64),
+                workerId: substr(gethostname().':'.getmypid(), 0, 64),
                 batchSize: (int) config('platform.outbox.claim_batch_size', 100),
                 leaseSeconds: (int) config('platform.outbox.lease_seconds', 60),
             );
@@ -242,7 +244,7 @@ final class PlatformServiceProvider extends ServiceProvider
      */
     private function resetRequestScopedStateBetweenOctaneRequests(): void
     {
-        if (!class_exists(\Laravel\Octane\Events\RequestReceived::class)) {
+        if (! class_exists(RequestReceived::class)) {
             return;
         }
 
@@ -254,7 +256,7 @@ final class PlatformServiceProvider extends ServiceProvider
             }
         };
 
-        Event::listen(\Laravel\Octane\Events\RequestReceived::class, $reset);
-        Event::listen(\Laravel\Octane\Events\RequestTerminated::class, $reset);
+        Event::listen(RequestReceived::class, $reset);
+        Event::listen(RequestTerminated::class, $reset);
     }
 }

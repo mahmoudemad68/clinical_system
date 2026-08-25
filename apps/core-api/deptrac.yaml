@@ -85,6 +85,12 @@ parameters:
 
     - name: Providers
       collectors:
+        # PSR interfaces are vendor-neutral abstractions, not provider SDKs.
+        # Depending on Psr\Log\LoggerInterface is dependency inversion working
+        # as intended: Infrastructure asks for an interface it does not own and
+        # cannot see the implementation behind it.
+        - type: classLike
+          value: ^Psr\\.*
         - type: classLike
           value: ^Sentry\\.*
         - type: classLike

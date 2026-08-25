@@ -21,8 +21,7 @@ final readonly class Quantity implements Stringable
     private function __construct(
         public int $value,
         public string $unit,
-    ) {
-    }
+    ) {}
 
     public static function of(int $value, string $unit): self
     {

@@ -140,13 +140,13 @@ final class ReadinessIsolationTest extends TestCase
 
     private static function check(string $name, bool $critical, CheckStatus $status): DependencyCheck
     {
-        return new class ($name, $critical, $status) implements DependencyCheck {
+        return new class($name, $critical, $status) implements DependencyCheck
+        {
             public function __construct(
                 private readonly string $name,
                 private readonly bool $critical,
                 private readonly CheckStatus $status,
-            ) {
-            }
+            ) {}
 
             public function name(): string
             {

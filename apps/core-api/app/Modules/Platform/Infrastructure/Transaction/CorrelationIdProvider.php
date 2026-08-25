@@ -24,9 +24,7 @@ final class CorrelationIdProvider implements CorrelationScope
 {
     private ?Identifier $current = null;
 
-    public function __construct(private readonly IdentityGenerator $identities)
-    {
-    }
+    public function __construct(private readonly IdentityGenerator $identities) {}
 
     public function current(): Identifier
     {

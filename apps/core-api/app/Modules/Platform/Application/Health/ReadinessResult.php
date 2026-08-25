@@ -15,15 +15,14 @@ namespace App\Modules\Platform\Application\Health;
 final readonly class ReadinessResult
 {
     /**
-     * @param list<ReadinessCheck> $checks
+     * @param  list<ReadinessCheck>  $checks
      */
     public function __construct(
         public bool $ready,
         public string $service,
         public string $version,
         public array $checks,
-    ) {
-    }
+    ) {}
 
     public function httpStatus(): int
     {

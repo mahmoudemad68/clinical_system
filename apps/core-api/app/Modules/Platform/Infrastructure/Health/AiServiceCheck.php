@@ -24,8 +24,7 @@ final class AiServiceCheck implements DependencyCheck
     public function __construct(
         private readonly HealthProbeClient $client,
         private readonly bool $critical = false,
-    ) {
-    }
+    ) {}
 
     public function name(): string
     {

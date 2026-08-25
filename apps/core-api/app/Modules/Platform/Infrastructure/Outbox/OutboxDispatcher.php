@@ -43,8 +43,7 @@ final class OutboxDispatcher
         private readonly string $workerId,
         private readonly int $batchSize = 100,
         private readonly int $leaseSeconds = 60,
-    ) {
-    }
+    ) {}
 
     public function register(OutboxConsumer $consumer): void
     {
@@ -81,14 +80,14 @@ final class OutboxDispatcher
 
         $rows = $this->connection->select(
             'UPDATE outbox_events AS o '
-            . "SET status = 'CLAIMED', claimed_at = ?, claimed_by = ?, lease_expires_at = ? "
-            . 'FROM ( '
-            . '  SELECT event_id FROM outbox_events '
-            . "  WHERE status IN ('PENDING', 'FAILED') AND available_at <= ? "
-            . '  ORDER BY available_at, event_id LIMIT ? FOR UPDATE SKIP LOCKED '
-            . ') AS due '
-            . 'WHERE o.event_id = due.event_id '
-            . 'RETURNING o.event_id, o.event_type, o.schema_version, o.payload, o.attempts',
+            ."SET status = 'CLAIMED', claimed_at = ?, claimed_by = ?, lease_expires_at = ? "
+            .'FROM ( '
+            .'  SELECT event_id FROM outbox_events '
+            ."  WHERE status IN ('PENDING', 'FAILED') AND available_at <= ? "
+            .'  ORDER BY available_at, event_id LIMIT ? FOR UPDATE SKIP LOCKED '
+            .') AS due '
+            .'WHERE o.event_id = due.event_id '
+            .'RETURNING o.event_id, o.event_type, o.schema_version, o.payload, o.attempts',
             [
                 $this->format($now),
                 $this->workerId,
@@ -118,7 +117,7 @@ final class OutboxDispatcher
             return;
         }
 
-        if (!in_array($version, $consumer->supportedVersions(), true)) {
+        if (! in_array($version, $consumer->supportedVersions(), true)) {
             // Reject safely rather than guess at an unknown payload shape.
             $this->deadLetter($eventId, 'unsupported_schema_version');
 
@@ -127,7 +126,7 @@ final class OutboxDispatcher
 
         $payload = json_decode((string) $row->payload, true);
 
-        if (!is_array($payload)) {
+        if (! is_array($payload)) {
             $this->deadLetter($eventId, 'malformed_payload');
 
             return;
@@ -146,7 +145,7 @@ final class OutboxDispatcher
         $attempts++;
         $errorClass = $this->safeErrorClass($e);
 
-        if (!$this->retryPolicy->shouldRetry($attempts)) {
+        if (! $this->retryPolicy->shouldRetry($attempts)) {
             $this->deadLetter($eventId, $errorClass, $attempts);
 
             // Operator-visible. An exhausted event is never silently discarded.

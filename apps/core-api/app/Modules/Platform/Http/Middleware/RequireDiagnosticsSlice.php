@@ -30,25 +30,24 @@ use Symfony\Component\HttpFoundation\Response;
 final class RequireDiagnosticsSlice
 {
     /**
-     * @param list<string> $allowedEnvironments
+     * @param  list<string>  $allowedEnvironments
      */
     public function __construct(
         private readonly bool $flagEnabled,
         private readonly string $environment,
         private readonly array $allowedEnvironments,
         private readonly string $expectedToken,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
         $requestId = $this->requestId($request);
 
-        if (!$this->flagEnabled || !in_array($this->environment, $this->allowedEnvironments, true)) {
+        if (! $this->flagEnabled || ! in_array($this->environment, $this->allowedEnvironments, true)) {
             return ErrorEnvelope::of(ErrorCode::NotFound, $requestId);
         }
 
-        if (!$this->tokenMatches($request)) {
+        if (! $this->tokenMatches($request)) {
             return ErrorEnvelope::of(ErrorCode::Unauthenticated, $requestId);
         }
 

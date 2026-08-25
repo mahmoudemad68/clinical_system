@@ -22,14 +22,15 @@ use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
 final readonly class IdempotencyKey
 {
     private const MIN_CLIENT_KEY_LENGTH = 16;
+
     private const MAX_CLIENT_KEY_LENGTH = 255;
+
     private const CLIENT_KEY_PATTERN = '/^[A-Za-z0-9._~-]+$/';
 
     private function __construct(
         public string $storageKey,
         public string $operationId,
-    ) {
-    }
+    ) {}
 
     /**
      * Build the scoped key from the client-supplied header and server-owned context.

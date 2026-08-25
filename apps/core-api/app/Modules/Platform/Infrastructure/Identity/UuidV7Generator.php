@@ -24,6 +24,6 @@ final class UuidV7Generator implements IdentityGenerator
 {
     public function next(): Identifier
     {
-        return Identifier::fromTrusted((new UuidV7())->toRfc4122());
+        return Identifier::fromTrusted((new UuidV7)->toRfc4122());
     }
 }

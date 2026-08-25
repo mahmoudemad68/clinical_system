@@ -21,9 +21,7 @@ final class BufferedTransactionContext implements TransactionContext
     /** @var list<DomainEvent> */
     private array $events = [];
 
-    public function __construct(private readonly Identifier $correlationId)
-    {
-    }
+    public function __construct(private readonly Identifier $correlationId) {}
 
     public function correlationId(): Identifier
     {

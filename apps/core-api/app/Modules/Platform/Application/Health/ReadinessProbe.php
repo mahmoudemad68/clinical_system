@@ -26,14 +26,13 @@ namespace App\Modules\Platform\Application\Health;
 final class ReadinessProbe
 {
     /**
-     * @param list<DependencyCheck> $checks
+     * @param  list<DependencyCheck>  $checks
      */
     public function __construct(
         private readonly array $checks,
         private readonly string $version,
         private readonly string $service = 'core-api',
-    ) {
-    }
+    ) {}
 
     public function evaluate(): ReadinessResult
     {

@@ -33,7 +33,7 @@ final class RedactionCanaryTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->redactor = new PatternRedactor();
+        $this->redactor = new PatternRedactor;
     }
 
     // ------------------------------------------------------------ canaries
@@ -115,7 +115,7 @@ final class RedactionCanaryTest extends TestCase
             $output,
             sprintf(
                 'Expected the "%s" rule to fire. Another rule may be masking it, which would leave "%s" '
-                . 'untested and free to regress silently.',
+                .'untested and free to regress silently.',
                 $expectedRule,
                 $expectedRule,
             ),
@@ -275,7 +275,7 @@ final class RedactionCanaryTest extends TestCase
         // Reflecting into an arbitrary object inside the logging path can
         // trigger lazy loading or a magic getter with side effects. The class
         // name is a safe, useful breadcrumb instead.
-        $output = $this->redactor->redactArray(['subject' => new \stdClass()]);
+        $output = $this->redactor->redactArray(['subject' => new \stdClass]);
 
         $this->assertSame('[object:stdClass]', $output['subject']);
     }

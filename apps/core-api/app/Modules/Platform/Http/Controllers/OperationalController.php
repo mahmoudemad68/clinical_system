@@ -21,8 +21,7 @@ final class OperationalController
     public function __construct(
         private readonly ReadinessProbe $readiness,
         private readonly string $version,
-    ) {
-    }
+    ) {}
 
     /**
      * Liveness: is this process alive?

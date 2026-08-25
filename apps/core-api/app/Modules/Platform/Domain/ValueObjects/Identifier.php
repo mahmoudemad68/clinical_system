@@ -19,9 +19,7 @@ final readonly class Identifier implements Stringable
 {
     private const PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/';
 
-    private function __construct(public string $value)
-    {
-    }
+    private function __construct(public string $value) {}
 
     /**
      * Build from an untrusted string.

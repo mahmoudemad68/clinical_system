@@ -24,8 +24,7 @@ final readonly class Money implements Stringable
     private function __construct(
         public int $amountMinor,
         public Currency $currency,
-    ) {
-    }
+    ) {}
 
     public static function of(int $amountMinor, Currency $currency): self
     {

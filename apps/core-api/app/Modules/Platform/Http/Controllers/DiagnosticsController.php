@@ -24,9 +24,7 @@ use Illuminate\Http\JsonResponse;
  */
 final class DiagnosticsController
 {
-    public function __construct(private readonly RecordRoundTripHandler $handler)
-    {
-    }
+    public function __construct(private readonly RecordRoundTripHandler $handler) {}
 
     public function roundTrip(DiagnosticsRoundTripRequest $request): JsonResponse
     {

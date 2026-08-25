@@ -64,7 +64,7 @@ final class OutboxWorkCommand extends Command
             if ($processed === 0 && $sleep > 0) {
                 sleep($sleep);
             }
-        } while (!$this->shouldStop);
+        } while (! $this->shouldStop);
 
         return self::SUCCESS;
     }
@@ -74,14 +74,14 @@ final class OutboxWorkCommand extends Command
      */
     private function registerSignalHandlers(): void
     {
-        if (!function_exists('pcntl_async_signals')) {
+        if (! function_exists('pcntl_async_signals')) {
             return;
         }
 
         pcntl_async_signals(true);
 
         foreach ([SIGTERM, SIGINT] as $signal) {
-            pcntl_signal($signal, function () : void {
+            pcntl_signal($signal, function (): void {
                 $this->shouldStop = true;
                 $this->info('Shutdown requested; finishing current batch.');
             });

@@ -34,8 +34,7 @@ final class EloquentOutboxRecorder implements OutboxRecorder
     public function __construct(
         private readonly ConnectionInterface $connection,
         private readonly IdentityGenerator $identities,
-    ) {
-    }
+    ) {}
 
     public function record(DomainEvent $event, TransactionContext $context): Identifier
     {
@@ -51,7 +50,7 @@ final class EloquentOutboxRecorder implements OutboxRecorder
         if ($this->connection->transactionLevel() < 1) {
             throw new RuntimeException(
                 'Outbox rows must be recorded inside the transaction that makes the state change. '
-                . 'Recording outside one would publish an effect for a change that may never commit.',
+                .'Recording outside one would publish an effect for a change that may never commit.',
             );
         }
 
@@ -68,7 +67,7 @@ final class EloquentOutboxRecorder implements OutboxRecorder
             if (strlen($payload) > self::MAX_PAYLOAD_BYTES) {
                 throw new RuntimeException(sprintf(
                     'Event "%s" payload is %d bytes, above the %d byte bound. Events carry identifiers and '
-                    . 'minimal facts; a consumer needing more re-reads it from the owning module.',
+                    .'minimal facts; a consumer needing more re-reads it from the owning module.',
                     $event->eventType(),
                     strlen($payload),
                     self::MAX_PAYLOAD_BYTES,

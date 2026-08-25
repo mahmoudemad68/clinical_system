@@ -14,6 +14,4 @@ use InvalidArgumentException;
  * clients. A national ID or a token quoted back in an exception message is the
  * canonical way sensitive data reaches a log file.
  */
-final class InvalidValueObject extends InvalidArgumentException
-{
-}
+final class InvalidValueObject extends InvalidArgumentException {}

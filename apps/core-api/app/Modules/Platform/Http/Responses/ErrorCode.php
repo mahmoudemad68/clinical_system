@@ -73,7 +73,7 @@ enum ErrorCode: string
      */
     public function translationKey(): string
     {
-        return 'errors.' . strtolower($this->value);
+        return 'errors.'.strtolower($this->value);
     }
 
     /**

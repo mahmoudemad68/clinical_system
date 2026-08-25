@@ -6,9 +6,7 @@ namespace App\Modules\Platform\Infrastructure\Transaction;
 
 use App\Modules\Platform\Domain\Contracts\CorrelationScope;
 use App\Modules\Platform\Domain\Contracts\OutboxRecorder;
-use App\Modules\Platform\Domain\Contracts\TransactionContext;
 use App\Modules\Platform\Domain\Contracts\TransactionRunner;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Closure;
 use Illuminate\Database\ConnectionInterface;
 use RuntimeException;
@@ -39,15 +37,14 @@ final class DatabaseTransactionRunner implements TransactionRunner
         private readonly ConnectionInterface $connection,
         private readonly OutboxRecorder $outbox,
         private readonly CorrelationScope $correlation,
-    ) {
-    }
+    ) {}
 
     public function run(Closure $work): mixed
     {
         if ($this->active) {
             throw new RuntimeException(
                 'A transaction is already active. A coordinator owns exactly one transaction boundary; '
-                . 'nesting would let an inner commit appear to succeed while the outer transaction rolls back.',
+                .'nesting would let an inner commit appear to succeed while the outer transaction rolls back.',
             );
         }
 

@@ -37,7 +37,7 @@ final class ExceptionRenderer
     public static function render(Throwable $e, Request $request): ?Response
     {
         // Non-API paths keep the framework's own handling.
-        if (!$request->is('api/*') && !$request->expectsJson()) {
+        if (! $request->is('api/*') && ! $request->expectsJson()) {
             return null;
         }
 

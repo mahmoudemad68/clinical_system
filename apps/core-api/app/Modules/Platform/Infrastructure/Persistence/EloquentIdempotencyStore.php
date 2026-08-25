@@ -41,8 +41,7 @@ final class EloquentIdempotencyStore implements IdempotencyStore
         private readonly ConnectionInterface $connection,
         private readonly Clock $clock,
         private readonly int $retentionHours = 72,
-    ) {
-    }
+    ) {}
 
     public function claim(IdempotencyKey $key, string $requestHash): ?IdempotencyRecord
     {
@@ -91,11 +90,11 @@ final class EloquentIdempotencyStore implements IdempotencyStore
         DateTimeImmutable $now,
     ): bool {
         $affected = $this->connection->affectingStatement(
-            'INSERT INTO ' . self::TABLE . ' ('
-            . 'key_hash, operation_id, request_hash, state, status_code, '
-            . 'response_reference, safe_error_class, created_at, updated_at, expires_at'
-            . ') VALUES (?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?) '
-            . 'ON CONFLICT (key_hash) DO NOTHING',
+            'INSERT INTO '.self::TABLE.' ('
+            .'key_hash, operation_id, request_hash, state, status_code, '
+            .'response_reference, safe_error_class, created_at, updated_at, expires_at'
+            .') VALUES (?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?) '
+            .'ON CONFLICT (key_hash) DO NOTHING',
             [
                 $key->storageKey,
                 $key->operationId,

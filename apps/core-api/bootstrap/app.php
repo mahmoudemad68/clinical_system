@@ -2,29 +2,29 @@
 
 declare(strict_types=1);
 
-use App\Modules\Platform\Domain\Contracts\CorrelationScope;
 use App\Modules\Platform\Http\Middleware\AssignCorrelationId;
+use App\Modules\Platform\Http\Middleware\EnforceIdempotency;
 use App\Modules\Platform\Http\Middleware\EnforceRequestBounds;
 use App\Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
 use App\Modules\Platform\Http\Middleware\ResolveLocale;
 use App\Modules\Platform\Http\Middleware\SecureResponseHeaders;
-use App\Modules\Platform\Http\Middleware\EnforceIdempotency;
 use App\Modules\Platform\Http\Support\ExceptionRenderer;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        api: __DIR__ . '/../routes/api.php',
-        commands: __DIR__ . '/../routes/console.php',
+        api: __DIR__.'/../routes/api.php',
+        commands: __DIR__.'/../routes/console.php',
         then: function (): void {
             // Operational probes are registered without the api prefix or the
             // api middleware group: an orchestrator must be able to reach them
             // even when the application middleware stack is the thing at fault.
-            Illuminate\Support\Facades\Route::middleware([])
-                ->group(__DIR__ . '/../routes/operational.php');
+            Route::middleware([])
+                ->group(__DIR__.'/../routes/operational.php');
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

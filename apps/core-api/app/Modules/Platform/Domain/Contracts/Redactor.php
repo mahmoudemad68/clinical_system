@@ -30,8 +30,7 @@ interface Redactor
      * values are replaced. Nested arrays and objects are walked to full depth,
      * with a bound so a hostile or cyclic structure cannot exhaust the process.
      *
-     * @param array<array-key, mixed> $payload
-     *
+     * @param  array<array-key, mixed>  $payload
      * @return array<array-key, mixed>
      */
     public function redactArray(array $payload): array;

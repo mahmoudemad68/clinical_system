@@ -20,8 +20,7 @@ final readonly class RoundTripResult
         public Identifier $outboxEventId,
         public DateTimeImmutable $committedAt,
         public bool $idempotentReplay,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{diagnostics_id: string, outbox_event_id: string, committed_at: string, idempotent_replay: bool}

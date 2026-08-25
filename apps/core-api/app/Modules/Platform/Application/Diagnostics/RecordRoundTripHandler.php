@@ -42,8 +42,7 @@ final class RecordRoundTripHandler
         private readonly DiagnosticsRepository $diagnostics,
         private readonly IdentityGenerator $identities,
         private readonly Clock $clock,
-    ) {
-    }
+    ) {}
 
     public function handle(RecordRoundTripCommand $command): RoundTripResult
     {

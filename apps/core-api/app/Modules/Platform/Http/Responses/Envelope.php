@@ -22,7 +22,7 @@ use Illuminate\Http\JsonResponse;
 final class Envelope
 {
     /**
-     * @param array<string, mixed> $meta
+     * @param  array<string, mixed>  $meta
      */
     public static function ok(
         mixed $data,

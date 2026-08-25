@@ -24,8 +24,7 @@ final readonly class IdempotencyRecord
         public ?string $safeErrorClass,
         public DateTimeImmutable $createdAt,
         public DateTimeImmutable $expiresAt,
-    ) {
-    }
+    ) {}
 
     /**
      * Does an incoming request match the one this record was created for?

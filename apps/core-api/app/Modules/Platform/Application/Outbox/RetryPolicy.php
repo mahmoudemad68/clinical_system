@@ -29,8 +29,7 @@ final class RetryPolicy
         private readonly int $baseSeconds = 2,
         private readonly int $maxSeconds = 3600,
         private readonly int $maxAttempts = 8,
-    ) {
-    }
+    ) {}
 
     /**
      * Should another attempt be made after this many failures?
@@ -43,7 +42,7 @@ final class RetryPolicy
     /**
      * Delay in seconds before attempt number $attempts + 1.
      *
-     * @param callable(int, int): int|null $randomizer injected for deterministic tests
+     * @param  callable(int, int): int|null  $randomizer  injected for deterministic tests
      */
     public function delayFor(int $attempts, ?callable $randomizer = null): int
     {

@@ -24,22 +24,22 @@ use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
 final readonly class PaginationCursor
 {
     public const MAX_ENCODED_LENGTH = 512;
+
     public const CURRENT_VERSION = 1;
 
     /**
-     * @param array<string, scalar> $position Keyset position, for example the last id and sort value.
+     * @param  array<string, scalar>  $position  Keyset position, for example the last id and sort value.
      */
     private function __construct(
         public string $scopeHash,
         public array $position,
         public int $version,
-    ) {
-    }
+    ) {}
 
     /**
      * Mint a cursor bound to the scope that produced it.
      *
-     * @param array<string, scalar> $position
+     * @param  array<string, scalar>  $position
      */
     public static function forScope(CursorScope $scope, array $position): self
     {
@@ -56,7 +56,7 @@ final readonly class PaginationCursor
      * The caller must have verified the signature already. This method assumes
      * integrity and checks only structure and scope.
      *
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public static function fromVerifiedPayload(array $payload, CursorScope $expectedScope): self
     {
@@ -64,7 +64,7 @@ final readonly class PaginationCursor
         $scopeHash = $payload['s'] ?? null;
         $position = $payload['k'] ?? null;
 
-        if (!is_int($version) || !is_string($scopeHash) || !is_array($position) || $position === []) {
+        if (! is_int($version) || ! is_string($scopeHash) || ! is_array($position) || $position === []) {
             throw new InvalidValueObject('Cursor payload is malformed.');
         }
 
@@ -75,7 +75,7 @@ final readonly class PaginationCursor
         }
 
         // hash_equals, not ===, so a mismatch cannot be probed by timing.
-        if (!hash_equals($expectedScope->hash(), $scopeHash)) {
+        if (! hash_equals($expectedScope->hash(), $scopeHash)) {
             throw new InvalidValueObject('Cursor does not belong to this query scope.');
         }
 

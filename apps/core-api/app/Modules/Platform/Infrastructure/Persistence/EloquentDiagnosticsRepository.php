@@ -21,9 +21,7 @@ use RuntimeException;
  */
 final class EloquentDiagnosticsRepository implements DiagnosticsRepository
 {
-    public function __construct(private readonly ConnectionInterface $connection)
-    {
-    }
+    public function __construct(private readonly ConnectionInterface $connection) {}
 
     public function record(
         Identifier $diagnosticsId,
@@ -36,7 +34,7 @@ final class EloquentDiagnosticsRepository implements DiagnosticsRepository
         if ($this->connection->transactionLevel() < 1) {
             throw new RuntimeException(
                 'The diagnostics record must be written inside the transaction that also writes its '
-                . 'outbox row. Writing it outside would break the atomicity this slice exists to prove.',
+                .'outbox row. Writing it outside would break the atomicity this slice exists to prove.',
             );
         }
 

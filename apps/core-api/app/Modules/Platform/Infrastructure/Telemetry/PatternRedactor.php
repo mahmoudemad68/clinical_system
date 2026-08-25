@@ -26,7 +26,9 @@ use App\Modules\Platform\Domain\Contracts\Redactor;
 final class PatternRedactor implements Redactor
 {
     private const REDACTED = '[redacted]';
+
     private const MAX_DEPTH = 12;
+
     private const MAX_TEXT_LENGTH = 64_000;
 
     /**
@@ -106,7 +108,7 @@ final class PatternRedactor implements Redactor
         // Bound the input. An unbounded regex pass over a huge string inside
         // the logging path is a self-inflicted outage.
         if (strlen($text) > self::MAX_TEXT_LENGTH) {
-            $text = substr($text, 0, self::MAX_TEXT_LENGTH) . '…[truncated]';
+            $text = substr($text, 0, self::MAX_TEXT_LENGTH).'…[truncated]';
         }
 
         foreach (self::VALUE_PATTERNS as $hint => $pattern) {
@@ -138,8 +140,7 @@ final class PatternRedactor implements Redactor
     }
 
     /**
-     * @param array<array-key, mixed> $node
-     *
+     * @param  array<array-key, mixed>  $node
      * @return array<array-key, mixed>
      */
     private function walk(array $node, int $depth): array
@@ -153,6 +154,7 @@ final class PatternRedactor implements Redactor
         foreach ($node as $key => $value) {
             if (is_string($key) && $this->isSensitiveKey($key)) {
                 $out[$key] = sprintf('[redacted:%s]', $this->normalizeKey($key));
+
                 continue;
             }
 

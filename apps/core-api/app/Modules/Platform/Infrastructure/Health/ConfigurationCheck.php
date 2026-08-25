@@ -17,11 +17,9 @@ use App\Modules\Platform\Application\Health\DependencyCheck;
 final class ConfigurationCheck implements DependencyCheck
 {
     /**
-     * @param list<string> $requiredKeys
+     * @param  list<string>  $requiredKeys
      */
-    public function __construct(private readonly array $requiredKeys)
-    {
-    }
+    public function __construct(private readonly array $requiredKeys) {}
 
     public function name(): string
     {

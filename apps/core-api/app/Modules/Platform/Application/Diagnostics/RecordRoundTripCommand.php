@@ -16,6 +16,5 @@ final readonly class RecordRoundTripCommand
     public function __construct(
         public string $label,
         public int $echoDelayMs = 0,
-    ) {
-    }
+    ) {}
 }

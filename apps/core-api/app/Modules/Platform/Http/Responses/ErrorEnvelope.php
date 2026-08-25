@@ -21,7 +21,7 @@ final class ErrorEnvelope
     /**
      * A single error.
      *
-     * @param array<string, mixed> $meta bounded, non-sensitive detail such as an allowed range
+     * @param  array<string, mixed>  $meta  bounded, non-sensitive detail such as an allowed range
      */
     public static function of(
         ErrorCode $code,
@@ -47,7 +47,7 @@ final class ErrorEnvelope
     /**
      * Field-level validation failures, one entry per field.
      *
-     * @param array<string, list<string>> $failures field path => messages
+     * @param  array<string, list<string>>  $failures  field path => messages
      */
     public static function validation(
         array $failures,
@@ -74,7 +74,7 @@ final class ErrorEnvelope
     }
 
     /**
-     * @param list<array<string, mixed>> $errors
+     * @param  list<array<string, mixed>>  $errors
      */
     private static function respond(
         array $errors,

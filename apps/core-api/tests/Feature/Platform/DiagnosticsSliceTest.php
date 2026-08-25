@@ -33,7 +33,7 @@ final class DiagnosticsSliceTest extends TestCase
 
         config()->set('platform.features.diagnostics_slice', true);
         config()->set('platform.diagnostics_environments', ['testing', 'local', 'development']);
-        putenv('DIAGNOSTICS_SLICE_TOKEN=' . self::TOKEN);
+        putenv('DIAGNOSTICS_SLICE_TOKEN='.self::TOKEN);
     }
 
     // -------------------------------------------------------- happy path
@@ -183,7 +183,7 @@ final class DiagnosticsSliceTest extends TestCase
     public function a_missing_idempotency_key_is_rejected(): void
     {
         $this->postJson('/api/v1/diagnostics/round-trip', ['label' => 'no-key'], [
-            'Authorization' => 'Bearer ' . self::TOKEN,
+            'Authorization' => 'Bearer '.self::TOKEN,
             'Accept' => 'application/json',
         ])->assertStatus(422);
 
@@ -312,7 +312,7 @@ final class DiagnosticsSliceTest extends TestCase
     private function headers(string $idempotencyKey): array
     {
         return [
-            'Authorization' => 'Bearer ' . self::TOKEN,
+            'Authorization' => 'Bearer '.self::TOKEN,
             'Idempotency-Key' => $idempotencyKey,
             'Accept' => 'application/json',
         ];

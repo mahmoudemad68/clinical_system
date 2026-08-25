@@ -21,9 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class SecureResponseHeaders
 {
-    public function __construct(private readonly bool $enableHsts)
-    {
-    }
+    public function __construct(private readonly bool $enableHsts) {}
 
     public function handle(Request $request, Closure $next): Response
     {

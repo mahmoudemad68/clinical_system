@@ -28,8 +28,7 @@ interface TransactionRunner
      *
      * @template TResult
      *
-     * @param Closure(TransactionContext): TResult $work
-     *
+     * @param  Closure(TransactionContext): TResult  $work
      * @return TResult
      */
     public function run(Closure $work): mixed;

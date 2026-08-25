@@ -105,7 +105,7 @@ final class PlatformPruneCommand extends Command
      * pathological loop from running forever if rows are being inserted as
      * fast as they are removed.
      *
-     * @param callable(): int $deleteOnce
+     * @param  callable(): int  $deleteOnce
      */
     private function deleteInChunks(callable $deleteOnce): int
     {

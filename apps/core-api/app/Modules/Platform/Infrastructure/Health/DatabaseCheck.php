@@ -18,9 +18,7 @@ use Throwable;
  */
 final class DatabaseCheck implements DependencyCheck
 {
-    public function __construct(private readonly ConnectionInterface $connection)
-    {
-    }
+    public function __construct(private readonly ConnectionInterface $connection) {}
 
     public function name(): string
     {

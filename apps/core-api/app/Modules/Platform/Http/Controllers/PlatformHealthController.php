@@ -33,8 +33,7 @@ final class PlatformHealthController
         private readonly string $environment,
         private readonly ?string $commit,
         private readonly ?string $builtAt,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /api/v1/meta/version

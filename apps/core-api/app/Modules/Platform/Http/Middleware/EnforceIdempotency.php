@@ -44,15 +44,14 @@ final class EnforceIdempotency
     public function __construct(
         private readonly IdempotencyStore $store,
         private readonly Clock $clock,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
         $requestId = $this->requestId($request);
         $header = $request->headers->get('Idempotency-Key');
 
-        if (!is_string($header) || trim($header) === '') {
+        if (! is_string($header) || trim($header) === '') {
             return ErrorEnvelope::of(
                 ErrorCode::ValidationFailed,
                 $requestId,
@@ -83,7 +82,7 @@ final class EnforceIdempotency
         $existing = $this->store->claim($key, $requestHash);
 
         if ($existing !== null) {
-            if (!$existing->matchesRequest($requestHash)) {
+            if (! $existing->matchesRequest($requestHash)) {
                 // Same key, different intent. This is a client bug or an
                 // attack; either way it must not replay someone else's result.
                 return ErrorEnvelope::of(ErrorCode::IdempotencyKeyReused, $requestId);
@@ -163,7 +162,7 @@ final class EnforceIdempotency
     }
 
     /**
-     * @param array<array-key, mixed> $array
+     * @param  array<array-key, mixed>  $array
      */
     private function ksortRecursive(array &$array): void
     {
@@ -206,7 +205,7 @@ final class EnforceIdempotency
     {
         $content = $response->getContent();
 
-        if (!is_string($content)) {
+        if (! is_string($content)) {
             return '';
         }
 

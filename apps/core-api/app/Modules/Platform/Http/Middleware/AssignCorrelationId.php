@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Platform\Http\Middleware;
 
+use App\Modules\Platform\Domain\Contracts\CorrelationScope;
 use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
 use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
 use App\Modules\Platform\Domain\ValueObjects\Identifier;
-use App\Modules\Platform\Domain\Contracts\CorrelationScope;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,8 +29,7 @@ final class AssignCorrelationId
     public function __construct(
         private readonly IdentityGenerator $identities,
         private readonly CorrelationScope $correlation,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -50,7 +49,7 @@ final class AssignCorrelationId
     {
         $supplied = $request->headers->get('X-Request-Id');
 
-        if (!is_string($supplied) || $supplied === '') {
+        if (! is_string($supplied) || $supplied === '') {
             return null;
         }
 

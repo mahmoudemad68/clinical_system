@@ -25,8 +25,7 @@ final readonly class DiagnosticsRoundTripRecorded implements DomainEvent
         private string $label,
         private int $echoDelayMs,
         private DateTimeImmutable $recordedAt,
-    ) {
-    }
+    ) {}
 
     public function eventType(): string
     {
