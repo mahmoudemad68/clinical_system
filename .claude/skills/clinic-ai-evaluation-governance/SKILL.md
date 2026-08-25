@@ -11,13 +11,13 @@ Produce independent, reproducible evidence for Doctor AI, Pharmacy AI, Patient A
 
 Read completely:
 
-- [Roadmap, required evidence, open decisions, and external references](../../docs/phases/README.md)
-- [Cross-cutting contracts and test/evidence policy](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
-- [AI platform and evaluation harness](../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
-- The evaluated persona: [Doctor AI](../../docs/phases/17_doctor_ai.md), [Pharmacy AI](../../docs/phases/18_pharmacy_ai.md), or [Patient AI](../../docs/phases/19_patient_ai_triage_and_booking_tools.md)
-- [AI performance/capacity targets](../../docs/phases/21_performance_scaling_observability_and_resilience.md)
-- [AI assurance and NIST mapping](../../docs/phases/22_security_privacy_and_compliance_validation.md)
-- [Production promotion and recovery gates](../../docs/phases/23_disaster_recovery_release_and_production.md)
+- [Roadmap, required evidence, open decisions, and external references](../../../docs/phases/README.md)
+- [Cross-cutting contracts and test/evidence policy](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [AI platform and evaluation harness](../../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
+- The evaluated persona: [Doctor AI](../../../docs/phases/17_doctor_ai.md), [Pharmacy AI](../../../docs/phases/18_pharmacy_ai.md), or [Patient AI](../../../docs/phases/19_patient_ai_triage_and_booking_tools.md)
+- [AI performance/capacity targets](../../../docs/phases/21_performance_scaling_observability_and_resilience.md)
+- [AI assurance and NIST mapping](../../../docs/phases/22_security_privacy_and_compliance_validation.md)
+- [Production promotion and recovery gates](../../../docs/phases/23_disaster_recovery_release_and_production.md)
 
 Inspect active dataset manifests, critical-case policy, metric definitions, previous baselines, model/prompt/retrieval/reranker/embedding/rule/tool/provider versions, evaluation code, human-review guidance, findings, and candidate artifact hashes.
 

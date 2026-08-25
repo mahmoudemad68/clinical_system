@@ -76,7 +76,7 @@ The policy does not accept `doctor_id`, `patient_id`, appointment state, or gran
 
 ### Client/local boundaries
 
-Doctor Flutter owns presentation and a local draft repository, not clinical business rules. The local repository implements a narrow `DoctorDraftStore` interface. The API repository reauthorizes every read/write and owns conflict mapping. Local outbox records commands, not arbitrary server state or authorization claims.
+The doctor Electron React renderer owns presentation and editable view state, not clinical business rules or privileged storage. Electron main owns and authorizes the narrow `DoctorDraftStore` capability, OS credential/key unwrap, authenticated transport, and outbox orchestration. Because `better-sqlite3-multiple-ciphers` is synchronous, a dedicated Electron utility process executes its blocking database adapter after the Phase 00/ADR 0010 compatibility spike proves the target OS/architecture matrix. A sandboxed preload exposes to the renderer only versioned typed draft/sync operations that terminate in main; main validates the actor, environment, encounter, operation, payload, and deadline before using a dedicated typed port to the utility process. Main spawns the utility, creates and retains the main side of its `MessageChannelMain` port, transfers only the utility side after a versioned ready handshake, and never transfers either port to a `WebContents`. The renderer never addresses or receives a port to that utility process. The API repository reauthorizes every read/write and owns conflict mapping. Local outbox records commands, not arbitrary server state or authorization claims.
 
 ### Dependency enforcement
 
@@ -93,11 +93,12 @@ Use `deptrac/deptrac` plus architecture tests to reject framework imports in Dom
 
 - Laravel/PostgreSQL transactions, policies, outbox, idempotency, UUIDv7, audit, and OpenTelemetry/Sentry redaction from Phase 00.
 - `deptrac/deptrac` for PHP module dependency enforcement.
-- Flutter Drift for local repositories.
-- **Encrypted local database:** Drift over `sqlite3` v3 native hooks configured for either SQLCipher or SQLite3MultipleCiphers after the compatibility ADR. `sqlcipher_flutter_libs` is EOL and must not be added.
-- Platform secure storage for a wrapped database key; the key is never stored in the database, preferences, logs, crash reports, or source.
-- Freezed/json serialization only at typed boundaries; clinical draft serialization has explicit schema versions and size limits.
-- Pest/PHPUnit, real PostgreSQL concurrency tests, Flutter unit/widget/integration tests, native target-OS packaging tests, and k6 clinical-read/write scenarios.
+- Electron main owns and authorizes `DoctorDraftStore`; renderer and preload cannot open or query the database, and the renderer cannot address the database utility process directly.
+- **Encrypted local database:** a reviewed, pinned `better-sqlite3-multiple-ciphers` adapter configured for the approved SQLite3MultipleCiphers/SQLCipher compatibility mode after the storage ADR. Its synchronous calls run only in a dedicated Electron utility process so they cannot block main's event loop, and the native module is rebuilt for the pinned Electron ABI through Electron Forge/`@electron/rebuild`.
+- Electron `safeStorage` in main wraps the database key. Main verifies encryption and the approved OS credential backend after readiness and fails closed when unavailable; after authorizing the user/environment/database scope, main unwraps and passes the key only over the dedicated schema-validated main-to-utility channel. The utility retains it in memory only for the authorized database lifetime and clears it on close/crash recovery. The key is never stored in the database, preferences, renderer, preload payloads, logs, crash reports, or source.
+- Zod plus explicit TypeScript codecs validate generated API, IPC, local draft, and outbox boundaries; clinical draft serialization has explicit schema versions and size limits.
+- React, TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, Vitest, React Testing Library, MSW, WebdriverIO with `@wdio/electron-service`, axe-core, and generated TypeScript API types/client. Playwright's experimental Electron launcher is optional only after the pinned Phase 00/ADR 0010 compatibility spike.
+- Pest/PHPUnit, real PostgreSQL concurrency tests, Electron main/preload/utility/renderer unit and integration tests, WebdriverIO packaged target-OS E2E, native ABI/encrypted-database tests, and k6 clinical-read/write scenarios.
 
 The encrypted SQLite choice must pass Windows, macOS, and Linux packaging/runtime tests for the actual supported doctor-desktop matrix, including key creation, reopen, wrong-key failure, migration, rotation, recovery/failure, and uninstall/backup behavior.
 
@@ -172,7 +173,7 @@ Links sensitive audit events to entity/revision, actor, encounter, action, reque
 
 `encounter_drafts` store encounter/doctor, schema version, encrypted or access-controlled bounded draft payload/section revisions, base encounter version, draft version, updated time, and expiry. Prefer normalized draft rows if patch/query behavior becomes complex; never use unbounded opaque JSON.
 
-### Doctor local database
+### Doctor Electron main-owned utility-process local database
 
 ```text
 clinical_drafts
@@ -189,6 +190,7 @@ local_outbox
 
 - Do not store full cross-doctor history, National ID, phone, address, unrelated encounters, bearer tokens, or server capability/grant data locally.
 - Local records are deleted after acknowledged sync plus approved short recovery window, on logout/revoke where feasible, and at hard expiry.
+- Database paths, keys, SQL, generic query methods, raw filesystem handles, and utility-process ports never cross the preload boundary. Renderer calls typed draft/outbox operations bound to the authenticated user, environment, encounter, and schema version. Main revalidates that binding, authorizes an allowlisted operation, and maps it to a bounded main-to-utility request. The utility accepts no renderer messages or arbitrary SQL/path operation; its entry point and dependency graph include only the encrypted-store codecs/adapters and no application network, credential-store, update, or shell adapter. OS sandbox/Node permission restrictions are additional gates only where the compatibility spike proves them, not assumptions used to authorize a request.
 
 ## Core invariants
 
@@ -312,11 +314,12 @@ Jobs:
 
 ## Client work
 
-### Doctor Flutter desktop
+### Doctor Electron desktop
 
 - Current encounter workspace with history, complaint, symptoms, examination, diagnosis, notes, allergies, chronic conditions, current medications, and follow-up sections.
-- Riverpod controller separates server projection, editable draft, local sync queue, conflict state, and authorization state.
-- Drift database opens only after authenticated OS/app session and key unwrap; wrong-key/open failure never creates a blank replacement over recoverable ciphertext.
+- TanStack Query plus a feature application controller separate server projection, editable renderer state, main-owned local sync orchestration, conflict state, and authorization state.
+- Main authorizes database open only after an authenticated OS/app session, supported secure-provider check, and key unwrap; the dedicated utility process then opens the scoped encrypted database through an allowlisted typed command. Wrong-key/open/native-module failure is returned as a safe typed failure and never creates a blank replacement over recoverable ciphertext.
+- Preload exposes narrow `loadDraft`, `saveDraftSection`, `listSyncState`, `retrySyncOperation`, and `discardExpiredDraft`-style contracts with validated sender, arguments, response, deadline, and cancellation; main reauthorizes them and alone invokes the utility port. Neither boundary exposes generic IPC, SQL, path, credential, network, shell, or utility-process primitives.
 - Lock screen/inactivity behavior clears decrypted memory and hides window previews where supported. Clipboard/export/screenshot policy is documented per OS.
 - Persistent banner shows `Saved locally`, `Syncing`, `Synced`, `Conflict`, `Access suspended`, or `Completion failed`; never imply server persistence falsely.
 
@@ -335,6 +338,7 @@ Jobs:
 - **Broken contextual authorization:** policy joins all server-owned context; deny by default; active-grant/session/appointment/encounter cross-check; audit every view/write.
 - **Stale/offline bypass:** sync reauth/re-authorize/version-check; no offline finalize/start/end; bounded local retention; revoke signal; no cached full history.
 - **Lost/compromised desktop:** platform-wrapped encryption key, app inactivity lock, session revoke, minimal local data, no backups where configurable, clear decrypted memory, OS hardening guidance.
+- **Electron renderer/IPC/utility/native-addon compromise:** packaged local renderer, restrictive CSP, context isolation, renderer sandbox, no Node integration, no remote navigation/webview, sender-validated typed preload-to-main bridge, main-owned `MessageChannelMain` port with a versioned utility handshake, no renderer-held utility port, bounded queues/payloads/deadlines, utility crash/hang containment, one authorized database/path and operation allowlist, minimal utility dependency graph with no application network/credential/update/shell adapter, secure fuses, signed artifacts, pinned Electron/native addon, and no PHI/key/token response across renderer IPC. Utility isolation reduces event-loop and renderer exposure but is not treated as an authorization boundary or protection from a compromised packaged utility.
 - **Cross-patient draft confusion:** immutable encounter/patient binding, signed/authenticated API context, one DB namespace per environment/user or securely scoped rows, prominent identity banner, mismatch hard failure.
 - **Silent overwrite/race:** aggregate/section versions, row locks, idempotency, explicit conflict workflow, append-only revisions.
 - **PHI leakage:** no PHI events/Redis/metrics/traces/crash reports; serializer allowlists; generic errors; clipboard/export controls; synthetic-only tests.
@@ -355,13 +359,14 @@ Jobs:
 - Real PostgreSQL Phase 04+05 atomic Start/End with failure injection at every write; no orphan encounter/grant/session/status/outbox.
 - Concurrent section saves/corrections/completion and audit-chain completeness.
 - Policy queries against real profile/appointment/session/grant/encounter rows; indexes/query plans at representative history volume.
-- Drift + `sqlite3` v3 encrypted backend on each target OS: create/reopen, wrong key, corrupt header, migrations, key rotation, interrupted rotation, restore/forward recovery, uninstall/backup behavior.
+- Electron main-owned utility-process encrypted `better-sqlite3-multiple-ciphers` backend on each target OS/architecture: native ABI load, create/reopen, wrong key, unsupported secure provider, corrupt header, migrations, key rotation, interrupted rotation, restore/forward recovery, installer upgrade, uninstall, and backup behavior. Inject utility crash, hang, restart, queue saturation, cancellation, late response, and malformed/spoofed message; main must time out, keep status truthful, clear key material, and reopen only the already-authorized database without creating a blank replacement.
 - Local outbox reconnect, duplicate retry, conflict, revoke, expired session, completed encounter, and network flap.
 
 ### Contract tests
 
-- OpenAPI/generated client compatibility for record, encounter, section, fact, correction, conflict, and own-history projections.
+- OpenAPI/generated Dart patient-mobile and TypeScript Electron client compatibility for record, encounter, section, fact, correction, conflict, and own-history projections.
 - `EncounterLifecyclePort`, contextual access, patient/doctor directory, audit, local draft, encryption, and clock adapters pass owned contracts.
+- Electron preload-to-main and main-to-utility contracts reject forged sender/user/environment/encounter bindings, direct renderer-to-utility access, unknown operations/fields, oversized payloads, stale schema, raw SQL/path/key/token fields, spoofed/late utility responses, and incompatible responses.
 - Event schemas reject clinical text/identity fields and remain compatible.
 
 ### End-to-end tests
@@ -383,6 +388,7 @@ Jobs:
 
 - BOLA/BFLA, National-ID search attempts, mass assignment of patient/doctor/encounter/status, stale/revoked grant, orphan grant, forged event, cursor tampering, replay, and race tests.
 - Local DB/key extraction review, wrong-user/OS-account access, backup leakage, temp-file/core-dump/crash-log inspection, clipboard/window-preview checklist.
+- Renderer XSS-to-RCE/IPC attempts, Node/global access, navigation/new-window/permission abuse, arbitrary path/SQL/shell/network/utility operations, sender spoofing, direct renderer-to-utility attempts, forged utility messages, native-addon replacement, insecure secure-storage fallback, and unsigned/tampered package tests.
 - Seed PHI canaries and search logs, traces, Sentry, Horizon, Redis, events, caches, client analytics/crash artifacts, and generated snapshots.
 - Octane alternating patients/doctors and high-volume denied scans prove no cross-request leakage or denial side channel.
 
@@ -408,7 +414,7 @@ clinical_audit_completeness_total{result}
 1. Add clinical schemas, indexes, policies, and synthetic histories; validate query plans and backup/restore before feature enablement.
 2. Deploy `EncounterLifecyclePort` disabled, run Phase 04 atomic integration tests, then enable Start/End for a controlled clinic.
 3. Enable read-only current-record view before clinical writes; monitor access/audit correctness.
-4. Enable online drafts/entries, then encrypted local drafts per target OS only after the compatibility/key-rotation ADR and native tests pass.
+4. Enable online drafts/entries, then Electron main-owned utility-process encrypted local drafts per target OS/architecture only after the compatibility/key-rotation ADR, utility-process/native-module spike, secure-provider checks, signed packaged build, native ABI tests, and both IPC-boundary security tests pass.
 5. Use expand/deploy/backfill/switch for every clinical schema change; never destructive rollback. Disable writes and forward-recover on incompatibility.
 6. Retain client schema compatibility for at least the supported offline window; server rejects unsupported stale draft versions safely.
 
@@ -418,7 +424,7 @@ clinical_audit_completeness_total{result}
 - Phase 04+05 failure-injection/concurrency tests produce exactly one coherent encounter/session/grant and atomic completion/revocation.
 - Patient read-only, doctor-own-history, admin/secretary/pharmacy denial, and cross-patient/doctor/location suites pass at API and database-query layers.
 - No seeded PHI/identity/credential canary appears in telemetry, events, Redis, client artifacts, or unauthorized projections.
-- Drift + `sqlite3` v3 SQLCipher/SQLite3MultipleCiphers compatibility, key rotation, migration, wrong-key, corruption, and recovery tests pass on every supported doctor OS; EOL `sqlcipher_flutter_libs` is absent from lockfiles/SBOM.
+- Electron main-owned utility-process `better-sqlite3-multiple-ciphers` compatibility, Electron ABI rebuild, utility crash/hang/restart/backpressure, key rotation, migration, wrong-key, unsupported secure-provider, corruption, installer upgrade, and recovery tests pass on every supported doctor OS/architecture; the signed artifact/SBOM contains only the reviewed native module and cipher build.
 - Offline sync never auto-finalizes or overwrites a conflict and rejects revoked/completed/mismatched context.
 - Clinical read p95 is at or below 250 ms and normal draft write p95 at or below 400 ms on the agreed representative dataset, or an approved measured exception exists.
 - Clinical/product/security/privacy approve completion rules, correction policy, local retention, and threat-model delta.

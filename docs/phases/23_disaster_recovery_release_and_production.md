@@ -321,7 +321,8 @@ Admin `/api/v1/admin/system-health` may expose only reviewed safe fields such as
 ### Client release work
 
 - Patient mobile artifacts are signed, store-ready, privacy metadata/permissions reviewed, version compatibility tested, and use production endpoints/certificates only.
-- Doctor/pharmacy desktop artifacts are signed/notarized where platforms require, distributed through approved channels, verify update provenance, preserve/migrate encrypted local drafts safely, and can roll back compatibility without database corruption.
+- Doctor/pharmacy Electron artifacts use the approved Forge Webpack/TypeScript pipeline, target-specific makers, native-module rebuild/auto-unpack, production fuses, ASAR integrity, SBOM/provenance checks, and signing/notarization required by the approved OS/architecture matrix. Built-in Electron updating is used only on supported platforms; Linux uses the approved signed distribution/package-manager channel. Renderer code cannot select an update URL or trigger installation.
+- Update orchestration is main-owned and verifies authenticated metadata/artifacts, version/channel policy, rollback compatibility, and a safe point: pending encrypted drafts/outbox operations are durably checkpointed or the update is deferred. Database migration, wrong-key, corrupt-store, rollback, and recovery never create a blank replacement or lose acknowledged work.
 - React admin assets use immutable hashes/CSP, safe cache invalidation, and server/API compatibility.
 - All clients show maintenance/degraded/offline/pending/update-required states honestly; AI-specific outage never masquerades as core outage.
 - Release notes and support scripts contain no sensitive architecture, credentials, patient examples, or unsafe workaround.
@@ -353,20 +354,23 @@ Admin `/api/v1/admin/system-health` may expose only reviewed safe fields such as
 - Qdrant snapshot restore and full re-ingestion rebuild with collection/payload tenant index/evaluation verification.
 - Redis flush/loss plus outbox/queue replay, Reverb reconnect, analytics rebuild, and no duplicate critical effect.
 - Secret/KMS recovery, rotation, revoked credential, signed artifact, migration-role, and deployment identity tests.
+- Forge-packaged Electron integration verifies main/preload/renderer/optional-utility startup, native SQLCipher ABI/linkage, OS keystore/`safeStorage`, production fuses, ASAR integrity, signature/notarization, updater feed validation, pending-draft deferral, and crash-safe database migration on each supported OS/architecture.
 
 ### Contract tests
 
 - Managed/self-hosted backup providers return the same recovery-point/integrity/encryption/retention/restore/error contract.
 - Backup/restore/deployment safe event schemas and admin health projection compatibility.
 - Old/new application/API/event/client versions operate during rolling expand migration.
+- Old/new Electron OpenAPI, preload/IPC, realtime event, encrypted-store, and update-metadata contracts remain backward compatible across the supported client window; renderer-supplied update URLs/channels and privileged scope are rejected.
 - Release evidence schema rejects mismatched artifact/config/schema/flag/assurance manifests and missing approvals.
 
 ### End-to-end release tests
 
-- Fresh isolated environment deploys from IaC/config/secret references, migrates, seeds synthetic controls, and passes all four client/core/AI smoke paths.
+- Fresh isolated environment deploys from IaC/config/secret references, migrates, seeds synthetic controls, and passes patient Flutter, doctor Electron, pharmacy Electron, browser admin, core, and AI smoke paths.
 - Rolling/canary deployment under representative traffic preserves sessions, private realtime resync, idempotent mutations, jobs/outbox, and local draft compatibility.
 - Disable AI/Qdrant and all three AI client entries degrade while manual/core workflows pass.
 - Roll back compatible application version and separately rehearse forward fix after data-shape adoption.
+- WebdriverIO `@wdio/electron-service` exercises each packaged Electron candidate by default; Playwright Electron is permitted only after the approved experimental-launcher compatibility spike. Installed-package tests cover first launch, update-required, defer/resume update, offline/reconnect, logout/revocation, printer/scanner/file boundaries, and preserved encrypted drafts.
 
 ### System disaster-recovery tests and drills
 
@@ -376,8 +380,9 @@ Admin `/api/v1/admin/system-health` may expose only reviewed safe fields such as
 - Redis cache/queue/realtime loss, worker death, outbox replay, reconnect storm, and analytics rebuild.
 - Backup credential compromise simulation: revoke/rotate, verify live app unaffected, isolated copies protected, and monitoring/incident flow works.
 - Restore-tool/version upgrade rehearsal before the old version becomes unavailable.
+- Windows/macOS/Linux targets in the approved matrix install, verify publisher/notarization, update through their supported signed channel, reject tampered/downgrade/wrong-channel artifacts, recover from interrupted update, preserve or explicitly roll forward the encrypted store, and uninstall according to retention policy without orphaning readable PHI.
 
-### Security, privacy, load, and operational acceptance
+### Security, privacy, load, and operational acceptance tests
 
 - Phase 22 assurance reruns production-config canaries against the exact candidate without extracting production data.
 - Restored environment has correct isolation/redaction/retention and cannot notify or expose real subjects.

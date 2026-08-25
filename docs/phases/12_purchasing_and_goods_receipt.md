@@ -84,7 +84,7 @@ Purchasing cannot insert stock_batches or stock_movements. ReceivePurchaseCoordi
 - Laravel 13, PostgreSQL, Horizon, outbox, audit, OpenTelemetry, Sentry, and UUIDv7 foundations.
 - brick/money for ordered/received unit cost as integer minor units with EGP.
 - deptrac/deptrac, Larastan/PHPStan, Pest/PHPUnit, and Eris for state/math property tests.
-- Pharmacy Flutter uses Riverpod, Dio, generated OpenAPI types, Freezed, barcode adapter, localization, and printable/exportable views with formula-safe data.
+- Pharmacy Electron desktop uses React/TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, and an OpenAPI-generated TypeScript client behind typed preload/main capabilities. Printing, export, authenticated transport, and any encrypted draft storage are main-owned privileged adapters, optionally delegating blocking work to a utility process after the OS/ABI spike, not renderer packages.
 
 Do not add a workflow/state-machine package. Explicit enum transitions and coordinator tests keep the purchasing contract visible.
 
@@ -236,12 +236,13 @@ Stable errors include PURCHASE_ACCESS_DENIED, BRANCH_MODE_READ_ONLY, PO_NOT_RECE
 
 ## Client work
 
-### Pharmacy Flutter desktop
+### Pharmacy Electron desktop (React + TypeScript)
 
 - Supplier list/form, PO draft editor, ordered/outstanding display, full/partial receipt screen, barcode lookup, batch/expiry/cost inputs, and immutable receipt detail.
 - Default received quantity visibly uses remaining quantity and requires confirmation; the client never silently posts on screen open.
-- Offline UI may retain an encrypted unsent form draft, but receipt requires online submission, idempotency, and explicit pending/unknown/succeeded states.
+- Offline UI may retain an encrypted unsent form draft in SQLCipher-backed SQLite owned outside the renderer; receipt requires online submission, idempotency, and explicit pending/unknown/succeeded states.
 - On timeout, poll the canonical result; do not offer a fresh duplicate action.
+- File export and printing use purpose-specific preload capabilities with validated bounded data; the renderer cannot choose arbitrary filesystem paths or invoke a shell/print API directly.
 - Branch mode/capability/read-only state, Arabic/English, keyboard/barcode workflows, focus order, date validation, accessible errors, and safe printing/export are required.
 
 ### Admin
@@ -264,16 +265,19 @@ No supplier/PO content is exposed through the generic admin role. Operational ag
 
 - PO state transitions, remaining/default quantity, full/partial status derivation, package conversion, integer money, over-receipt denial, line/currency rules, and authorization/mode policy.
 - Property tests generate orders/receipt sequences and assert received equals receipt sum, never exceeds ordered, status matches remainder, and replay is idempotent.
+- Electron renderer form/state tests and preload/main draft, print, export, polling, cancellation, and sender/scope validators run as isolated unit suites.
 
 ### Integration tests
 
 - Real PostgreSQL verifies full/partial receipt transactions, concurrent receivers, duplicate idempotency, source uniqueness, row-lock order, deadlock retry, and rollback when any Inventory call fails.
 - Assert one receipt item maps to one batch/movement and balances/PO totals reconcile.
 - Retired medication, changed packaging version, expired batch, suspended branch, mode switch attempt, and insufficient permissions deny with no partial rows.
+- The packaged main-owned encrypted draft adapter passes native-ABI, wrong-key/no-blank-replacement, migration, branch/logout cleanup, and optional-utility crash tests; print/export adapters accept only bounded DTOs and approved destinations.
 
 ### Contract tests
 
-- Generated Dart client covers money/quantities, omitted received quantity semantics, versions, idempotency outcome, and stable errors.
+- Generated TypeScript pharmacy client covers money/quantities, omitted received quantity semantics, versions, idempotency outcome, and stable errors.
+- Preload/IPC contract tests cover draft persistence, barcode input, print/export, canonical-result polling, sender validation, schema bounds, timeout, and cancellation.
 - PurchasingReceiptPort and InventoryCommandPort transaction-context contracts prove all-or-nothing behavior.
 - Events replay safely and omit supplier/contact/cost data.
 
@@ -283,6 +287,7 @@ No supplier/PO content is exposed through the generic admin role. Operational ag
 - Omitted quantity receives only remaining.
 - Repeating either receipt returns the original result and stock does not double.
 - Cashier/other branch/INTEGRATED branch cannot receive; Redis/notification outage does not affect committed receipt.
+- Packaged Electron E2E covers scanner/keyboard receipt, encrypted draft restart recovery, unknown-outcome polling, safe print/export, and denial of arbitrary path/SQL/generic IPC requests.
 
 ### System, performance, and security tests
 

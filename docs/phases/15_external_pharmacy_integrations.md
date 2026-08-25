@@ -102,8 +102,8 @@ If a store-side relay is required, it uses a separately reviewed, signed, least-
 
 ### Clients
 
-- Pharmacy Flutter provides owner-authorized connector status/mapping review, not credential plaintext or SQL configuration.
-- Admin React may provide a separately capability-gated support view with safe run diagnostics, never clinical/financial/raw source payloads.
+- Pharmacy Electron desktop uses React/TypeScript and the generated TypeScript client behind a typed preload/main boundary. It provides owner-authorized connector status/mapping review, never credential plaintext, raw database access, arbitrary endpoints, or SQL configuration.
+- Admin remains a browser React application and may provide a separately capability-gated support view with safe run diagnostics, never clinical/financial/raw source payloads.
 
 ## Persistent schemas, invariants, and indexes
 
@@ -284,12 +284,13 @@ Unknown fields reject unless versioned compatibility explicitly permits them. No
 
 ## Client work
 
-### Pharmacy Flutter desktop
+### Pharmacy Electron desktop (React + TypeScript)
 
 - Owner-only connector status, last successful sync/freshness, safe error, run counters, unmatched mapping review, manual sync, and pause controls.
 - No raw credentials, SQL editor, arbitrary endpoint, full payload dump, or native stock/POS controls for INTEGRATED branches.
 - Clearly distinguish fresh, stale, running, failed, and read-only mirror state.
 - Confirm mapping and pause actions; handle optimistic versions and unknown outcomes.
+- Renderer capabilities are limited to typed status, mapping-review, manual-sync, and pause requests. Main owns device-authenticated API/realtime transport; neither renderer nor preload receives connector secrets, database drivers, arbitrary URLs, or generic IPC.
 - Arabic/English, keyboard/scanner navigation, accessible tables/status, bounded exports, and formula-safe cells.
 
 ### Patient Flutter
@@ -317,18 +318,21 @@ Unknown fields reject unless versioned compatibility explicitly permits them. No
 
 - Canonical validation, absolute upsert, mapping lifecycle, freshness, full-generation completeness, cursor/checkpoint, tombstone rules, retry classification, and mode/branch policy.
 - Property tests randomize page duplication/order/failure and assert one final mirror, no additive quantity, no partial visibility, deterministic promotion, and last-success monotonicity.
+- Electron renderer status/mapping state and preload/main capability validators are unit-tested with credential/SQL/URL/scope fields denied by construction.
 
 ### Integration tests
 
 - Real PostgreSQL proves staging isolation, atomic generation promotion, duplicate pages/runs, incremental checkpoint, concurrent runs, configuration/mode changes, mapping races, and stale queries.
 - Docker vendor fixtures cover API and read-only DB adapters, schema drift, timeout, auth failure, malformed/oversized data, source restart, and cursor recovery.
 - Redis/Horizon restart/dead-letter/replay does not duplicate or partially promote.
+- Electron main/preload integration verifies authenticated status/realtime transport, branch/config revocation, subscription cleanup, bounded export, and that no connector credential or driver reaches the renderer.
 
 ### Contract tests
 
 - Every ExternalPharmacyConnector implementation passes canonical schema, deadlines, cancellation, paging, typed errors, no-secret logging, and idempotency tests.
 - IntegrationAvailabilityQuery matches Phase 14 native public/freshness/redaction contract.
-- Generated Dart/React clients and current/previous event schema replay pass.
+- Generated Dart patient and TypeScript Electron/admin clients, plus current/previous event schema replay, pass.
+- Electron preload/IPC capability schemas reject credential/SQL/URL fields, unregistered channels, invalid sender frames, oversized payloads, and stale branch/config versions.
 
 ### End-to-end tests
 
@@ -337,12 +341,14 @@ Unknown fields reject unless versioned compatibility explicitly permits them. No
 - Partial/failed sync leaves prior generation; threshold expiry removes/confirms uncertain availability.
 - Unmatched products remain in review and never appear to patient.
 - Native POS/purchasing/adjustment and connector writes to a NATIVE/other branch are denied.
+- Packaged pharmacy Electron E2E covers safe status/mapping/manual-sync/pause flows, reconnect/unknown outcomes, and direct IPC/URL/SQL/credential/scope injection denial.
 
 ### System, performance, and security tests
 
 - Production-shaped full/incremental sync meets agreed window without violating medicine-search p95; enforce backpressure and source rate limits.
 - Stress large pages/run overlap/schema changes and verify recovery/cursor/generation correctness.
 - Test SSRF, SQL injection, path traversal, malicious external strings, credential leakage, relay replay/forgery, BOLA/BFLA, cross-tenant mapping/cache, decompression/resource exhaustion, stale-data deception, and supply-chain scans.
+- Hostile connector text rendered in the signed Electron candidate cannot navigate, gain Node/Electron access, invoke unregistered preload capabilities, or expose secret/native adapter state.
 - Backup/restore followed by re-sync/reconciliation produces the same promoted public mirror.
 
 ## Observability, migration, and rollout

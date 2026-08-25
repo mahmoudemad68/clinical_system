@@ -83,8 +83,9 @@ Scheduling returns available intervals and explanations; Appointments owns the t
 - A small application-owned recurrence implementation for the limited V1 weekly rules; adopt an RFC recurrence package only after an ADR proves the need and DST behavior.
 - `brick/money` for immutable EGP price snapshots using minor units.
 - Carbon/Laravel time APIs behind an injected `Clock`; domain tests do not call system time directly.
-- Flutter generated client, Riverpod, `intl`, calendar/date controls, and secure idempotency-key persistence for an in-flight booking intent.
-- Pest/PHPUnit, PostgreSQL concurrency harness, Hypothesis/property tests where a language boundary benefits, Playwright/Flutter integration tests, and k6.
+- Flutter patient mobile uses the generated Dart client, Riverpod, `intl`, calendar/date controls, and secure idempotency-key persistence for an in-flight booking intent.
+- Electron doctor/clinic-staff desktop uses React, TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, and the generated TypeScript client. Its sandboxed renderer calls typed schedule/appointment ports through preload; main owns credentials and transport but no scheduling rule.
+- Pest/PHPUnit, PostgreSQL concurrency harness, Hypothesis/property tests where a language boundary benefits, browser-admin Playwright, Flutter patient-mobile integration tests, Electron main/preload/renderer tests plus WebdriverIO with `@wdio/electron-service` packaged-app E2E, and k6.
 
 ## Data model and migrations
 
@@ -311,17 +312,19 @@ Jobs:
 - On `409 SLOT_UNAVAILABLE`, retain selections, refresh availability, and require a new explicit choice.
 - Appointment list distinguishes booked/cancelled and later operational statuses; no medical-record access is implied.
 
-### Doctor Flutter desktop
+### Doctor Electron desktop
 
 - Weekly schedule editor, exceptions, appointment types, price/duration, impacted-appointment warning, and optimistic conflict UX.
 - Never silently overwrite a schedule changed on another device.
+- TanStack Query owns server projections; validated form/view state never becomes availability or booking authority. Main/preload exposes only generated operations and safe cancellation/error results, not arbitrary URLs or tokens.
 
-### Clinic staff Flutter/desktop surface
+### Clinic staff Electron desktop surface
 
-- Location-scoped day list and walk-in creation with exact patient find/create flow.
+- This is a capability-gated route in the doctor Electron application, not a fifth standalone client.
+- Location-scoped day list and walk-in creation use server-derived scope and the exact patient find/create flow.
 - Clinical fields and history are absent from the booking projection.
 
-### React admin
+### React browser admin
 
 - Operational support may view safe appointment identifiers/status/timestamps only through an approved projection; no clinical record or unrestricted mutation.
 
@@ -354,7 +357,7 @@ Jobs:
 
 ### Contract tests
 
-- OpenAPI/generated client compatibility for schedules, availability, booking, cancellation, reschedule, and walk-in.
+- OpenAPI/generated Dart patient-mobile and TypeScript Electron/admin client compatibility for schedules, availability, booking, cancellation, reschedule, and walk-in.
 - Time/money/slot-token/error schemas; event compatibility and sensitive-field denial.
 - Clock, cache, directory, patient-registry, membership, and outbox adapters pass owned port contracts.
 
@@ -365,6 +368,7 @@ Jobs:
 - Cancellation reopens availability; reschedule preserves original if the target loses a race.
 - Secretary creates an unlinked walk-in for the authorized location; unrelated secretary is denied.
 - Schedule emergency closure creates an operational conflict without auto-cancelling or exposing patient data.
+- Packaged doctor Electron builds on each supported OS preserve typed money/time/version semantics, keyboard/focus behavior, and safe conflict recovery without exposing credentials or permitting renderer-supplied scope.
 
 ### System tests
 
@@ -375,6 +379,7 @@ Jobs:
 ### Security tests
 
 - BOLA/BFLA/mass assignment, patient/doctor/location/type ID substitution, forged price/status, stale version, replay, slot-token mutation, and race tooling.
+- Electron tests attempt forged preload operations/senders, arbitrary endpoint/headers, token access, navigation, and renderer mutation of doctor/location/capability context; the bridge and server both deny them.
 - Fuzz date ranges, time zones, signed tokens, cursor/filter values, Unicode, huge durations, and nested JSON with bounded resources.
 - Verify appointment queries/events/logs/caches contain no National ID, phone, clinical content, or unauthorized patient names.
 - Attempt booking through inactive doctor/location/type and direct transition to checked-in/completed; all fail.

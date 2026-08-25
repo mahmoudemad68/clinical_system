@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clinic Electron Desktop Development"
+  short_description: "Build secure Electron doctor and pharmacy desktop apps."
+  default_prompt: "Use $clinic-electron-desktop-development to implement the Electron + React + TypeScript desktop work for the active clinic phase."

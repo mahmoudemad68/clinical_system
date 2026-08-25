@@ -1,5 +1,5 @@
 import createClient from 'openapi-fetch';
-import type { paths } from './generated/schema';
+import type { paths } from '@clinic/api-client/schema';
 
 /**
  * The single transport wrapper for the admin application.

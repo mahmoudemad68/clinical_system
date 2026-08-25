@@ -22,15 +22,15 @@ This skill owns:
 
 ## Required phase sources
 
-Always read [Phase 00](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md) and all pharmacy phases that participate in the requested workflow:
+Always read [Phase 00](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md) and all pharmacy phases that participate in the requested workflow:
 
-- [Phase 10 — Medication Catalog and Pharmacy Tenancy](../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md);
-- [Phase 11 — Inventory, Batches, FEFO, and Alerts](../../docs/phases/11_inventory_batches_fefo_and_alerts.md);
-- [Phase 12 — Purchasing and Goods Receipt](../../docs/phases/12_purchasing_and_goods_receipt.md);
-- [Phase 13 — POS, Invoices, Returns, and Refunds](../../docs/phases/13_pos_invoices_returns_and_refunds.md);
-- [Phase 14 — Medicine Search and Prescription Fulfillment](../../docs/phases/14_medicine_search_and_prescription_fulfillment.md).
+- [Phase 10 — Medication Catalog and Pharmacy Tenancy](../../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md);
+- [Phase 11 — Inventory, Batches, FEFO, and Alerts](../../../docs/phases/11_inventory_batches_fefo_and_alerts.md);
+- [Phase 12 — Purchasing and Goods Receipt](../../../docs/phases/12_purchasing_and_goods_receipt.md);
+- [Phase 13 — POS, Invoices, Returns, and Refunds](../../../docs/phases/13_pos_invoices_returns_and_refunds.md);
+- [Phase 14 — Medicine Search and Prescription Fulfillment](../../../docs/phases/14_medicine_search_and_prescription_fulfillment.md).
 
-For prescription exposure read [Phase 06](../../docs/phases/06_prescriptions_reminders_and_printing.md). For integrated availability read [Phase 15](../../docs/phases/15_external_pharmacy_integrations.md). For Pharmacy AI callers read [Phase 18](../../docs/phases/18_pharmacy_ai.md), but keep all Core authorization and writes in Laravel.
+For prescription exposure read [Phase 06](../../../docs/phases/06_prescriptions_reminders_and_printing.md). For integrated availability read [Phase 15](../../../docs/phases/15_external_pharmacy_integrations.md). For Pharmacy AI callers read [Phase 18](../../../docs/phases/18_pharmacy_ai.md), but keep all Core authorization and writes in Laravel.
 
 ## V1 boundaries
 

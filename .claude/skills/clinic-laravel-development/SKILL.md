@@ -24,16 +24,16 @@ Controllers handle transport input, authenticate, invoke one command/query handl
 
 ## Required phase sources
 
-Always read [Phase 00](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md) and the exact phase being implemented.
+Always read [Phase 00](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md) and the exact phase being implemented.
 
 Core Laravel feature sources are:
 
-- [Phase 01](../../docs/phases/01_auth_identity_and_access.md), [Phase 02](../../docs/phases/02_onboarding_verification_profiles_and_locations.md), and [Phase 03](../../docs/phases/03_scheduling_availability_and_booking.md);
-- [Phase 04](../../docs/phases/04_realtime_queue_and_consultation_control.md), [Phase 05](../../docs/phases/05_clinical_records_encounters_and_local_resilience.md), and [Phase 06](../../docs/phases/06_prescriptions_reminders_and_printing.md);
-- [Phase 07](../../docs/phases/07_labs_files_reports_and_referrals.md), [Phase 08](../../docs/phases/08_patient_experience_discovery_reviews_and_localization.md), and [Phase 09](../../docs/phases/09_notifications_and_post_visit_chat.md);
-- [Phase 20](../../docs/phases/20_admin_analytics_and_system_health.md).
+- [Phase 01](../../../docs/phases/01_auth_identity_and_access.md), [Phase 02](../../../docs/phases/02_onboarding_verification_profiles_and_locations.md), and [Phase 03](../../../docs/phases/03_scheduling_availability_and_booking.md);
+- [Phase 04](../../../docs/phases/04_realtime_queue_and_consultation_control.md), [Phase 05](../../../docs/phases/05_clinical_records_encounters_and_local_resilience.md), and [Phase 06](../../../docs/phases/06_prescriptions_reminders_and_printing.md);
+- [Phase 07](../../../docs/phases/07_labs_files_reports_and_referrals.md), [Phase 08](../../../docs/phases/08_patient_experience_discovery_reviews_and_localization.md), and [Phase 09](../../../docs/phases/09_notifications_and_post_visit_chat.md);
+- [Phase 20](../../../docs/phases/20_admin_analytics_and_system_health.md).
 
-For Core-side pharmacy work, use the relevant specialist source: [Phase 10](../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md), [Phase 11](../../docs/phases/11_inventory_batches_fefo_and_alerts.md), [Phase 12](../../docs/phases/12_purchasing_and_goods_receipt.md), [Phase 13](../../docs/phases/13_pos_invoices_returns_and_refunds.md), [Phase 14](../../docs/phases/14_medicine_search_and_prescription_fulfillment.md), or [Phase 15](../../docs/phases/15_external_pharmacy_integrations.md). For Core-to-AI context or tools, read [Phase 16](../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md) and the active [Doctor AI](../../docs/phases/17_doctor_ai.md), [Pharmacy AI](../../docs/phases/18_pharmacy_ai.md), or [Patient AI](../../docs/phases/19_patient_ai_triage_and_booking_tools.md) phase.
+For Core-side pharmacy work, use the relevant specialist source: [Phase 10](../../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md), [Phase 11](../../../docs/phases/11_inventory_batches_fefo_and_alerts.md), [Phase 12](../../../docs/phases/12_purchasing_and_goods_receipt.md), [Phase 13](../../../docs/phases/13_pos_invoices_returns_and_refunds.md), [Phase 14](../../../docs/phases/14_medicine_search_and_prescription_fulfillment.md), or [Phase 15](../../../docs/phases/15_external_pharmacy_integrations.md). For Core-to-AI context or tools, read [Phase 16](../../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md) and the active [Doctor AI](../../../docs/phases/17_doctor_ai.md), [Pharmacy AI](../../../docs/phases/18_pharmacy_ai.md), or [Patient AI](../../../docs/phases/19_patient_ai_triage_and_booking_tools.md) phase.
 
 ## Non-obvious implementation invariants
 

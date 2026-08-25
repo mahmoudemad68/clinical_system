@@ -30,6 +30,7 @@ Copy `0000-adr-template.md` to start. Number sequentially; do not reuse a number
 | [0007](0007-data-ownership-and-consistency.md) | Data ownership and consistency model | Accepted | 00 |
 | [0008](0008-package-and-version-policy.md) | Package selection and version policy | Accepted | 00 |
 | [0009](0009-queue-ownership-across-php-and-python.md) | Queue ownership boundary between Laravel and Python | Accepted | 00 |
+| [0010](0010-electron-react-typescript-desktop-clients.md) | Electron, React, and TypeScript for doctor/pharmacy desktops | Accepted, gated spikes | 00-23 |
 
 ## Open decisions carried by the roadmap
 
@@ -37,5 +38,6 @@ Copy `0000-adr-template.md` to start. Number sequentially; do not reuse a number
 a named gate. They are not ADRs yet because the accountable human owner has not
 recorded the decision. The conservative planning default holds until then.
 
-ADR 0006 is the one Phase 00 ADR with an open condition: the client encryption
-compatibility spike (gate G-06-01).
+ADR 0006 retains the Flutter-mobile encryption condition. ADR 0010 supersedes
+its desktop implementation and carries the Electron encrypted-storage and
+distribution spikes. Both remain release gates until their evidence closes.

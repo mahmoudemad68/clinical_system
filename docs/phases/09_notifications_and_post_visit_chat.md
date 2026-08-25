@@ -32,7 +32,7 @@ The phase makes push and realtime delivery observable and retryable without maki
 - No chat before a completed consultation and no configurable extension beyond the fixed V1 48-hour window.
 - No SMS for reminders, marketing, chat, prescriptions, labs, or delay notifications; SMS remains registration OTP only.
 - No claim of guaranteed FCM delivery. Provider acceptance is distinct from device receipt.
-- No Windows/Linux FCM dependency for doctor or pharmacy desktops; those clients use authorized realtime and in-app/local presentation.
+- No Windows/Linux FCM dependency for Electron doctor or pharmacy desktops; those clients use authorized main-process realtime and privacy-safe in-app/local presentation.
 - No clinical advice automation or AI participation in chat.
 
 ## Architecture, ownership, and SOLID boundaries
@@ -101,15 +101,21 @@ Versions are selected and locked under Phase 00 policy.
 - PostgreSQL, Laravel encryption/KMS adapter, OpenTelemetry, and Sentry with content capture disabled.
 - deptrac/deptrac, Larastan/PHPStan, and Pest/PHPUnit for boundary and behavior enforcement.
 
-### Flutter
+### Flutter patient mobile
 
 - firebase_messaging for patient Android/iOS push.
 - flutter_local_notifications for foreground/local presentation where approved.
 - The Phase 00 Reverb/Pusher-protocol adapter for private realtime chat.
 - Riverpod, Dio, Freezed/JSON serialization, secure storage, and localization packages.
-- If a minimal encrypted thread cache is approved, use Drift over sqlite3 v3 native hooks configured for an approved SQLCipher or SQLite3MultipleCiphers build; verify encryption, packaging, migrations, and key handling on every supported Android/iOS/desktop target.
+- If a minimal encrypted thread cache is approved, use Drift over sqlite3 v3 native hooks configured for an approved SQLCipher or SQLite3MultipleCiphers build; verify encryption, packaging, migrations, and key handling on every supported Android/iOS target.
 
-Do not store FCM server credentials, Reverb secrets, or SMS credentials in clients. A device token is treated as sensitive metadata and never appears in logs.
+### Electron doctor desktop
+
+- React, TypeScript, TanStack Query, Zod, MUI, i18next, the generated TypeScript client, Vitest, React Testing Library, MSW, WebdriverIO with `@wdio/electron-service` for packaged-app E2E, and axe-core.
+- Electron main owns device credentials, authenticated REST and Reverb connections, channel construction, reconnect/backoff/sequence tracking, and generic OS notification presentation. Preload exposes typed recipient-safe events, refetch signals, and bounded notification actions only.
+- If a bounded doctor thread cache is approved, it uses the Phase 05 reviewed main-owned utility-process encrypted SQLite adapter and key lifecycle in a purpose/retention-scoped store. Main authorizes its typed cache port; the renderer never receives a database or utility-process capability. No chat body, key, token, database/path primitive, or generic event channel reaches the renderer.
+
+Do not store FCM server credentials, Reverb secrets, or SMS credentials in clients. A device token is treated as sensitive metadata and never appears in logs. Electron desktop device credentials remain in main-process secure storage and never cross preload or enter renderer/Web Storage.
 
 ## Persistent schemas, invariants, and indexes
 
@@ -266,13 +272,14 @@ Stable errors include CHAT_NOT_PARTICIPANT, CHAT_READ_ONLY, CHAT_WINDOW_EXPIRED,
 - Store only a bounded encrypted cache. Clear it on logout, revocation, retention expiry, or account unlink.
 - Arabic/English strings, RTL layout, screen-reader labels, offline indicators, and keyboard-safe composition are required.
 
-### Doctor Flutter desktop
+### Doctor Electron desktop
 
 - Subscribe to authorized doctor/thread channels, but treat REST as recovery/source for message content.
 - Show read-only state and deadline; do not allow a local clock to authorize sending.
-- Do not depend on FCM for Windows/Linux. Use realtime/in-app/local presentation approved for the target OS.
+- Do not depend on FCM for Windows/Linux. Electron main uses authorized realtime and a generic privacy-approved local-notification adapter for the target OS.
+- The sandboxed React renderer cannot choose channel names/participants, read credentials, open arbitrary URLs, or invoke generic IPC. A sequence gap, renderer reload, or reconnect triggers an authoritative REST refetch.
 
-### Admin React
+### React browser admin
 
 - No chat-content viewer. Operations may see aggregate delivery health and opaque failed delivery IDs only under an audited support capability.
 
@@ -287,6 +294,7 @@ Stable errors include CHAT_NOT_PARTICIPANT, CHAT_READ_ONLY, CHAT_WINDOW_EXPIRED,
 - Audit thread open/read-only transitions, participant reads where policy requires, sends, denials, token changes, and provider failures without recording bodies or tokens.
 - Keep chat/notification content out of logs, traces, metrics, events, crash reports, analytics, and support dashboards.
 - Enforce TLS, Reverb private-channel authorization, secret-manager provider credentials, webhook signature verification if delivery receipts are used, replay windows, and provider egress allowlists.
+- Electron uses a packaged local renderer, restrictive CSP, context isolation, renderer sandbox, no Node integration, sender-validated typed IPC, navigation/new-window/permission denial, safe external-link allowlists, and no remote content/webview. Renderer compromise cannot subscribe to an arbitrary channel or reach OS notification/storage/network credentials.
 - Define chat/message/delivery retention and legal hold with privacy/legal owners before production.
 
 ## Test plan
@@ -303,10 +311,12 @@ Stable errors include CHAT_NOT_PARTICIPANT, CHAT_READ_ONLY, CHAT_WINDOW_EXPIRED,
 - Redis/Horizon tests cover retry, dead-letter, duplicate delivery, queue restart, and no lost committed intent.
 - Reverb private-channel tests prove unauthorized subscription denial and reconnect recovery.
 - FCM/SMS adapters run against fakes/sandboxes with timeout, 429, invalid token, unknown outcome, and signed receipt cases.
+- WebdriverIO with `@wdio/electron-service` packaged Electron tests cover main-process REST/Reverb recovery, renderer reload, reconnect gap, logout/revoke disconnect, generic local notifications, bounded encrypted-cache lifecycle, and preload rejection of forged sender/schema/channel operations on each supported OS.
 
 ### Contract tests
 
-- OpenAPI-generated Dart clients cover cursor pagination and stable errors.
+- OpenAPI-generated Dart patient-mobile and TypeScript Electron clients cover cursor pagination and stable errors.
+- Electron main/preload contracts reject arbitrary channels/participants/URLs/headers, forged senders, unknown event fields, oversized payloads, stale sequence, and responses containing credentials, paths, keys, or server secrets.
 - Every PushSender/SmsOtpSender adapter passes the same deadline, idempotency, typed-error, and redaction contract.
 - Event schema compatibility and replay tests prove consumers do not require chat/clinical content.
 
@@ -316,12 +326,14 @@ Stable errors include CHAT_NOT_PARTICIPANT, CHAT_READ_ONLY, CHAT_WINDOW_EXPIRED,
 - Secretary, admin, another doctor, another patient, revoked device, and unauthenticated user cannot list/read/send/subscribe.
 - Prescription correction and queue-delay events create correct generic patient notifications without clinical text.
 - FCM/Reverb outage leaves messages visible through REST and does not affect encounter completion.
+- Doctor Electron restart, renderer crash/reload, notification click, and network flap recover canonical history without duplicate sends, stale writable authorization, or cross-thread content.
 
 ### System, performance, and security tests
 
 - Soak concurrent private connections/message fan-out within Phase 21 targets; measure event latency, reconnect storms, queue age, and PostgreSQL contention.
 - Inject Redis, Reverb, FCM, SMS, and worker failure/recovery and prove no duplicate thread/message/intent.
 - Test BOLA/BFLA, forged channel names, cursor tampering, replay, message flood, oversized/Unicode payloads, stored-XSS strings, token theft/revocation, webhook forgery, and sensitive-log canaries.
+- Attempt stored-XSS-to-IPC/Node escalation, forged IPC sender/event/channel, token/cache/path extraction, unsafe navigation/external link, notification spoofing, and reconnect amplification in Electron; all fail closed.
 - Restore PostgreSQL and replay outbox/deliveries without duplicate user-visible messages.
 
 ## Observability, migration, and rollout

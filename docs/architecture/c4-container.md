@@ -2,7 +2,8 @@
 
 Scope: the deployable and runnable pieces inside the clinic platform, and the
 protocols between them. Source: `plan.md` sections 1–3, 99, 102–104, 113–114,
-135–142, 166; phase file "System boundaries" and "Repository layout".
+135–142, 166; phase file "System boundaries" and "Repository layout"; ADR 0010
+supersedes the original desktop runtime selection.
 
 ```mermaid
 C4Container
@@ -14,8 +15,8 @@ C4Container
         Container(gateway, "API gateway / load balancer", "Nginx or managed LB", "TLS termination, request-size limits, coarse abuse controls, routing")
 
         Container(patientApp, "Patient app", "Flutter, Android + iOS", "Booking, queue status, records, medicine search")
-        Container(doctorApp, "Doctor desktop", "Flutter Desktop", "Queue, consultations, clinical drafts with local outbox")
-        Container(pharmacyApp, "Pharmacy desktop", "Flutter Desktop", "Inventory, purchasing, POS")
+        Container(doctorApp, "Doctor desktop", "Electron + React + TypeScript", "Queue, consultations, clinical drafts with local outbox behind typed IPC")
+        Container(pharmacyApp, "Pharmacy desktop", "Electron + React + TypeScript", "Inventory, purchasing, POS behind typed IPC")
         Container(adminWeb, "Admin web", "React + TypeScript + Vite", "Verification, catalog, analytics, system health")
 
         Container(coreApi, "Core API", "Laravel 13 on Octane + FrankenPHP", "Authentication, authorization, all operational, clinical, and financial state")
@@ -66,6 +67,9 @@ C4Container
 
 | Container | Owns | Must never |
 | --- | --- | --- |
+| Patient app | Patient Android/iOS presentation, mobile secure storage, mobile push | Contain doctor/pharmacy workflows; treat cached state as authoritative |
+| Doctor/pharmacy Electron desktop | Sandboxed React presentation plus app-specific main/preload/native capabilities described in the [Electron component view](c4-component-electron-desktop.md) | Expose Node/raw IPC/secrets to renderer; enforce backend business rules locally |
+| Admin web | Browser administration presentation and cookie/CSRF transport | Import Electron capabilities; store bearer credentials in Web Storage |
 | Core API | Authentication, authorization, operational/clinical/financial state, tenant scoping, tool authorization | Perform unbounded work inside a request; call a model provider directly |
 | Reverb | Private channel delivery | Treat an identifier in a channel name as authorization |
 | Queue workers | Post-commit effects on Laravel lanes | Consume Python payloads; assume the state at dispatch time is still current |
@@ -79,8 +83,10 @@ C4Container
 ## Deployment-unit independence
 
 Each container builds and deploys independently from `apps/*`. They share only
-the contracts in `packages/contracts/` and, for Flutter clients, the packages in
-`packages/flutter/` (ADR 0002).
+the contracts in `packages/contracts/`, patient-mobile packages in
+`packages/flutter/`, and reviewed pure TypeScript capabilities in
+`packages/typescript/` (ADRs 0002 and 0010). Electron main/preload adapters and
+persona workflows remain app-owned and are not shared with the admin browser.
 
 Redis A and Redis B may be one instance in local Compose. The application
 addresses them through separate named connections from day one, so production

@@ -9,7 +9,7 @@ The observable outcome is that a synthetic patient, doctor, pharmacy user, secre
 ## Plan traceability
 
 - Section 3, lines 114-147: Sanctum, device/session layer, PostgreSQL, Redis, queues, OpenAPI, and observability stack.
-- Sections 4-5, lines 153-268: Flutter secure storage, server-authoritative rules, and secure HttpOnly admin sessions.
+- Sections 4-5, lines 153-268: Flutter patient-mobile secure storage, Electron desktop credential isolation, server-authoritative rules, and secure HttpOnly admin sessions.
 - Sections 6-9, lines 271-425: central user identity, optional patient account link, protected National ID, registration, OTP, and existing-patient matching.
 - Sections 12-14, lines 492-595: actor types and explicit denial of clinical data to admin and secretary.
 - Sections 105-107, lines 3029-3105: API envelopes, contracts, and idempotency.
@@ -103,8 +103,10 @@ Single-purpose provider ports separate SMS delivery, password hashing, token gen
 - A security-reviewed RFC 6238 TOTP implementation behind `TotpVerifier`; package and version require an ADR and lockfile pin.
 - Laravel encryption only behind a versioned envelope-encryption adapter backed by the approved KMS/secret manager; do not call framework encryption helpers throughout domain code.
 - `brick/math` only if constant-width numeric parsing needs arbitrary-precision support; National ID remains a string, never an integer.
-- Pest/PHPUnit, Laravel HTTP/database tests, OpenAPI contract tests, k6 abuse scenarios, and the Phase 00 SAST/SCA/secret tooling.
-- Flutter `flutter_secure_storage`; React relies on browser HttpOnly/Secure/SameSite cookies and CSRF, never local storage tokens.
+- Pest/PHPUnit, Laravel HTTP/database tests, OpenAPI contract tests, k6 abuse scenarios, the Phase 00 SAST/SCA/secret tooling, and WebdriverIO with `@wdio/electron-service` for packaged doctor/pharmacy Electron E2E.
+- Flutter patient mobile uses `flutter_secure_storage`; bearer/refresh material is never copied into Drift or analytics.
+- Electron doctor/pharmacy desktops keep bearer/refresh material in the main process and wrap persisted secrets with Electron `safeStorage`. The app fails closed when the supported OS secret provider is unavailable; credentials never cross preload into the React renderer or Web Storage.
+- React admin in the browser relies on HttpOnly/Secure/SameSite cookies and CSRF, never local-storage tokens.
 
 ## Data model and migrations
 
@@ -272,7 +274,7 @@ Failure behavior:
 2. Verify user status and password; create a short-lived pre-authentication challenge when privileged MFA is required.
 3. Verify TOTP with bounded skew and replay protection, then issue an admin cookie session or device token scoped to that user/device.
 4. Admin cookie uses Secure, HttpOnly, SameSite, CSRF, idle timeout, absolute timeout, and session rotation on privilege change.
-5. Flutter receives the token once, stores it in platform secure storage, and never copies it into Drift, logs, crash reports, or deep links.
+5. A Flutter patient client receives the token once, stores it in platform secure storage, and never copies it into Drift, logs, crash reports, or deep links. An Electron desktop receives device credentials in the main process, persists only `safeStorage`-wrapped material, and exposes neither token nor a generic authenticated HTTP primitive to preload/renderer code.
 
 ### Session refresh and revocation
 
@@ -337,7 +339,7 @@ Jobs:
 
 ## Client work
 
-### Flutter shared authentication package
+### Flutter patient-mobile authentication package
 
 - One interceptor adds the bearer token in memory, handles one coordinated refresh, and never retries a non-idempotent request without its original idempotency key.
 - Secure storage adapter is injectable and has platform-specific failure handling.
@@ -345,7 +347,16 @@ Jobs:
 - Session-management UI displays platform, label, approximate activity time, and revoke action without exposing IP precision.
 - On revoke/credential failure, clear sensitive memory, local authenticated caches, and realtime connections before returning to login.
 
-### React admin
+### Electron doctor/pharmacy desktop authentication
+
+- The main process owns device credentials, coordinated refresh, authenticated HTTP/realtime transports, expiry timers, and secure cleanup. React renderers receive typed results and safe errors only.
+- A sandboxed preload exposes versioned, narrow operations through `contextBridge`; it does not expose `ipcRenderer`, arbitrary channel names, arbitrary URLs/headers, Node.js, filesystem, shell, or secure-storage APIs.
+- Main and preload validate operation identity, sender/window, payload, response, timeout, and cancellation against generated TypeScript/Zod contracts before work or return.
+- BrowserWindow uses context isolation, renderer sandboxing, no Node integration, restrictive CSP, denied navigation/new-window creation, and allowlisted external-link handling.
+- `safeStorage` availability and the approved OS credential backend are verified after app readiness. Unsupported/fallback plaintext behavior blocks sign-in and local sensitive state rather than silently weakening protection.
+- Session-management UI shows safe device metadata and revoke actions. Revocation clears main-process credentials, desktop caches, realtime subscriptions, and renderer state before returning to login.
+
+### React browser admin
 
 - Cookie session only; CSRF token handled by the shared transport.
 - Route guards improve UX but never replace API authorization.
@@ -357,7 +368,8 @@ Jobs:
 - **Credential stuffing/brute force:** layered adaptive rate limits, breached-password policy if an approved privacy-preserving service is available, MFA for privileged actors, anomaly alerts, and no permanent IP-only blocking.
 - **Enumeration:** identical status/message shape for registration, login, OTP, recovery, and profile claim; response timing and rate-limit metadata reviewed.
 - **SIM swap/profile takeover:** identity-assurance workflow, historical-contact mismatch review, link uniqueness, security notification, dispute/revoke path, and no immediate clinical disclosure.
-- **Token theft/replay:** short lifetime, hashed storage, rotation/family reuse detection, credential versions, per-device revocation, TLS, secure storage, and CSRF protection for cookies.
+- **Token theft/replay:** short lifetime, hashed storage, rotation/family reuse detection, credential versions, per-device revocation, TLS, secure storage, Electron main-process credential isolation, and CSRF protection for cookies.
+- **Electron renderer/IPC compromise:** packaged local renderer only, context isolation and sandbox, no Node integration, narrow typed preload bridge, sender validation, navigation/window/permission denial, and no token-bearing response or generic network/filesystem/shell primitive.
 - **Insider privilege:** least-privilege capabilities, MFA/step-up, separate support/admin operations, immutable audit, and periodic access review.
 - **National ID disclosure:** purpose-separated HMAC, versioned envelope encryption, KMS access logs, masked displays, no client lookup API, and canary redaction tests.
 - **Long-lived Octane leakage:** request-scoped actor/context only, no mutable identity singletons, explicit worker reset hooks, and alternating-user regression tests.
@@ -382,7 +394,8 @@ Jobs:
 
 ### Contract tests
 
-- OpenAPI security schemes, envelopes, validation/error codes, idempotency semantics, and generated Dart/TypeScript clients.
+- OpenAPI security schemes, envelopes, validation/error codes, idempotency semantics, and generated Dart patient-mobile plus TypeScript Electron/admin clients.
+- Electron main/preload ports validate current and previous compatible payloads, reject unknown operations/fields/senders, propagate cancellation/deadlines, and never serialize credentials.
 - Every password, SMS, TOTP, encryption, HMAC, clock, and patient-registry adapter passes the owned port contract.
 - Event schemas contain no raw destination, National ID, OTP, token, or MFA material and remain backward compatible.
 
@@ -390,9 +403,10 @@ Jobs:
 
 - Patient registration through OTP, then Phase 02 new-profile creation or approved existing-profile claim.
 - Privileged login requires TOTP; rejected/replayed code never creates a session.
-- Admin browser CSRF flow; Flutter token refresh; one-device and all-device revoke.
+- Admin browser CSRF flow; Flutter patient token refresh; Electron main-process token refresh; one-device and all-device revoke across HTTP and realtime.
 - Recovery changes credential version and invalidates old HTTP and realtime access.
 - Cross-role matrix proves admin/secretary/pharmacy/patient/doctor authentication grants no unintended domain capability.
+- WebdriverIO with `@wdio/electron-service` drives packaged doctor/pharmacy Electron builds on every supported OS to prove login, restart/reopen, secure-provider failure, revoke cleanup, and absence of credentials from renderer storage, logs, crash artifacts, and IPC traces. Playwright's experimental Electron launcher remains optional only after the pinned Phase 00/ADR 0010 compatibility spike.
 
 ### System tests
 
@@ -404,6 +418,7 @@ Jobs:
 ### Security tests
 
 - Credential stuffing, password spraying, enumeration timing/content, OTP guessing/replay/flooding, CSRF, fixation, token reuse, mass assignment, BOLA/BFLA, and session-revocation bypass.
+- Electron tests attempt renderer XSS-to-IPC escalation, arbitrary operation/channel/URL/header injection, sender spoofing, navigation, unsafe external links, Node/global access, plaintext/fallback secret storage, and post-revoke reuse; all fail closed.
 - Fuzz identifiers, headers, cookies, cursors, Unicode phone/National ID inputs, and oversized JSON with bounded resource use.
 - Search logs, traces, Sentry, Horizon, events, cache, database debug output, and client crash reports for seeded secret/identity canaries.
 - Alternating identities through the same Octane worker proves no actor/capability/response leakage.
@@ -455,5 +470,5 @@ authorization_decisions_total{action_group,result,reason_code}
 - `Auth`, `Identity`, and `Access` modules and public ports.
 - Identity/session/OTP/MFA/link/grant migrations and synthetic fixtures.
 - OpenAPI/event schemas and generated client updates.
-- Flutter shared authentication and React admin session flows.
+- Flutter patient-mobile authentication, Electron doctor/pharmacy desktop authentication, and React admin browser-session flows.
 - Authorization matrix, identity assurance ADR, key-rotation plan, abuse tests, dashboards, alerts, and runbooks.

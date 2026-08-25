@@ -1,19 +1,23 @@
 # ADR 0003 — OpenAPI and event schemas are the contract source of truth
 
+> **Desktop update:** ADR 0010 supersedes the Flutter/Dart desktop-client
+> portions of this decision. Dart generation remains patient-mobile-only;
+> doctor/pharmacy Electron desktops consume generated TypeScript contracts.
+
 - **Status:** Accepted
 - **Date:** 2026-08-24
 - **Deciders:** Platform architecture, API contracts, backend, all client owners
 - **Phase:** 00
-- **Supersedes / Superseded by:** none
+- **Supersedes / Superseded by:** Desktop-client portions superseded by [ADR 0010](0010-electron-react-typescript-desktop-clients.md); contract-source decision remains
 
 ## Context
 
 `plan.md` section 105 makes the OpenAPI specification the source of truth for
 HTTP contracts and requires generated type-safe clients. Section 106 fixes the
 response envelope, cursor pagination, and ISO-8601 UTC timestamps. Four clients
-consume these contracts, and two of them (Flutter desktop) ship to machines that
-may not update promptly, so a silent breaking change is a field incident rather
-than a build failure.
+consume these contracts, and two of them (the Electron desktops, per ADR 0010)
+ship as installed applications to machines that may not update promptly, so a
+silent breaking change is a field incident rather than a build failure.
 
 ## Decision
 
@@ -25,7 +29,8 @@ Laravel-to-FastAPI contract.
 The specification is written first and reviewed as the interface change. Server
 code and client code both conform to it; neither generates it. CI validates the
 document, lints it against a shared ruleset, detects breaking changes against
-the `main` branch version, and regenerates the TypeScript and Dart clients.
+the `main` branch version, and regenerates both clients: Dart for the patient
+mobile app, and TypeScript for the admin web app and both Electron desktops.
 
 Every response uses the envelope:
 
@@ -85,8 +90,8 @@ superseded by a compatible follow-up.
 
 - OpenAPI validation and lint in CI.
 - Breaking-change detection against `main`.
-- Generated Dart and TypeScript clients compile and pass contract tests against
-  a running API.
+- The generated TypeScript client compiles and passes contract tests against a
+  running API. Dart generation for the patient app is gate G-03-02.
 - Event consumers accept previous compatible versions and reject unknown
   incompatible versions safely.
 

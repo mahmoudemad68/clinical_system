@@ -2,7 +2,8 @@
 
 Scope: the clinic platform as one system, its human actors, and the external
 systems it depends on. Source: `plan.md` sections 1–5, 94, 100–101, 151;
-`docs/phases/00_cross_cutting_architecture_and_delivery_contract.md`.
+`docs/phases/00_cross_cutting_architecture_and_delivery_contract.md`; desktop
+stack allocation is superseded by ADR 0010.
 
 ```mermaid
 C4Context
@@ -16,7 +17,7 @@ C4Context
 
     System(clinic, "Clinic platform", "Appointments, queue, clinical records, prescriptions, labs, pharmacy, and assistive AI for Egypt")
 
-    System_Ext(fcm, "Firebase Cloud Messaging", "Push delivery to patient and clinician devices")
+    System_Ext(fcm, "Firebase Cloud Messaging", "Push delivery to patient mobile devices")
     System_Ext(sms, "SMS provider", "Registration OTP only")
     System_Ext(maps, "Google Maps", "Directions to a clinic location or pharmacy branch")
     System_Ext(llm, "LLM / embedding provider", "Text generation and embeddings behind owned ports")
@@ -24,9 +25,9 @@ C4Context
     System_Ext(objectStore, "Managed object storage", "Private storage for medical files and originals")
 
     Rel(patient, clinic, "Uses", "HTTPS / JSON, Flutter mobile")
-    Rel(doctor, clinic, "Uses", "HTTPS / JSON + WebSocket, Flutter desktop")
-    Rel(secretary, clinic, "Uses", "HTTPS / JSON + WebSocket, Flutter desktop")
-    Rel(pharmacyStaff, clinic, "Uses", "HTTPS / JSON, Flutter desktop")
+    Rel(doctor, clinic, "Uses", "HTTPS / JSON + WebSocket, Electron + React + TypeScript desktop")
+    Rel(secretary, clinic, "Uses", "HTTPS / JSON + WebSocket, Electron + React + TypeScript desktop")
+    Rel(pharmacyStaff, clinic, "Uses", "HTTPS / JSON, Electron + React + TypeScript desktop")
     Rel(admin, clinic, "Uses", "HTTPS / JSON, React admin over session cookie")
 
     Rel(clinic, fcm, "Sends push notifications", "HTTPS, post-commit via outbox")
@@ -59,6 +60,7 @@ C4Context
 | Boundary | Crossing | Controls |
 | --- | --- | --- |
 | Public internet → gateway | All client traffic | TLS, request-size limits, coarse abuse controls |
+| Electron renderer → preload/main | Doctor/pharmacy desktop capabilities | Local packaged content, sandbox, context isolation, typed allowlisted IPC, no renderer Node integration |
 | Gateway → core | Authenticated requests | Session/device token, correlation ID, deny-by-default policy |
 | Core → data stores | Private network only | Per-workload credentials, no public exposure |
 | Core → AI service | Internal contract | Authenticated, versioned, deadline-bound, minimal references |

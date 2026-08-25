@@ -8,7 +8,7 @@ The observable outcome is that a patient sees the most relevant current event, c
 
 ## Plan traceability
 
-- Section 4-5, lines 153-268: Flutter/React architecture, localization package, server-authoritative rules, and admin session safety.
+- Section 4-5, lines 153-268: Flutter patient-mobile, Electron React desktop, and React browser-admin architecture; localization packages; server-authoritative rules; and admin session safety.
 - Sections 18-23, lines 728-913: doctor dashboard/public location, offering, availability, and booking inputs used by patient discovery.
 - Sections 43-46, lines 1482-1567: patient home, manual doctor search, availability/rating ranking, and completed-appointment reviews.
 - Sections 67-69, lines 2113-2193: later medicine discovery/current prescription separation; only navigation placeholders are permitted here.
@@ -92,9 +92,10 @@ Owns locale identifiers, translation-key catalogs, formatting conventions, fallb
 
 - PostgreSQL `pg_trgm`, normalized search columns, GIN/GiST as measured, and PostGIS `geography` with `ST_DWithin`/distance ordering.
 - Laravel query/application services, cursor pagination, cache for public directory summaries, outbox projection consumers, policies, and rate limiting.
-- Flutter `intl`, localization generation, Riverpod, Dio/generated client, `geolocator` (permission/current-position only), `url_launcher`, and Google Maps integration only where the approved UX needs an embedded map.
-- React `i18next`, MUI RTL support, React Testing Library, Playwright, and axe-core for the review-moderation/admin-safe surface.
-- Flutter widget/golden/integration tests for Arabic/English, RTL/LTR, text scaling, and permissions.
+- Flutter patient mobile uses `intl`, localization generation, Riverpod, Dio/generated Dart client, `geolocator` (permission/current-position only), `url_launcher`, and Google Maps integration only where the approved UX needs an embedded map.
+- Electron doctor desktop uses React, TypeScript, TanStack Query, MUI, i18next, the generated TypeScript client, React Testing Library, WebdriverIO with `@wdio/electron-service` for packaged-app E2E/screenshots, and axe-core for its public-profile preview.
+- React browser admin uses `i18next`, MUI RTL support, React Testing Library, Playwright, and axe-core for the review-moderation/admin-safe surface.
+- Flutter patient-mobile widget/golden/integration tests, WebdriverIO packaged Electron screenshot/E2E tests, and browser-admin Playwright tests cover Arabic/English, RTL/LTR, text scaling, keyboard/focus, accessibility, and relevant permissions.
 - Pest/PHPUnit, PostGIS query-plan tests, k6 doctor-search/availability scenarios, and content-security tests.
 
 ## Data model and migrations
@@ -248,7 +249,7 @@ Failure behavior:
 
 ### Localization workflow
 
-1. Every feature adds stable semantic keys, Arabic/English translations, interpolation schema, plural rules, and screenshots/golden coverage.
+1. Every feature adds stable semantic keys, Arabic/English translations, interpolation schema, plural rules, and platform-appropriate Flutter patient-mobile golden or React/Electron screenshot coverage.
 2. CI rejects missing/orphaned/duplicate keys, invalid interpolation variables, and hard-coded user-visible strings except approved technical/legal constants.
 3. API returns stable codes and structured values; clients localize. Server-generated PDF/document templates have separately approved Arabic/English versions.
 4. Layout tests cover RTL mirroring exceptions, long text, 200% text scale, screen-reader labels/order, contrast, focus/keyboard on desktop/web, and Arabic/English numeral/date/currency policy.
@@ -307,12 +308,13 @@ Jobs:
 - Review form only for eligible completed appointments; rating/comment guidance, moderation status, duplicate conflict recovery.
 - Full Arabic/English, RTL/LTR, text scaling, screen reader, dynamic color/contrast, and offline/error UX.
 
-### Doctor Flutter desktop
+### Doctor Electron desktop
 
 - Preview own public directory projection and rating/review summaries; profile edits still go through Phase 02/03 authoritative flows.
 - No patient identity from public reviews and no response/contact feature unless later approved.
+- The sandboxed React renderer receives only the generated public projection through a typed preload capability backed by main-owned TypeScript transport; it performs no authenticated HTTP directly. No credential, raw review proof, patient identifier, Node, filesystem, shell, or generic IPC capability is exposed.
 
-### React admin
+### React browser admin
 
 - Fixed review-moderation queue with pseudonymous proof, safe plain-text renderer, reasoned decision, and no clinical link.
 - Translation/system configuration view only if needed operationally; no arbitrary runtime translation HTML/script.
@@ -346,7 +348,7 @@ Jobs:
 
 ### Contract tests
 
-- OpenAPI/generated clients for home/directory/location/offerings/availability/reviews/language, including coordinate no-log classification.
+- OpenAPI/generated Dart patient-mobile and TypeScript Electron/admin clients for home/directory/location/offerings/availability/reviews/language, including coordinate no-log classification.
 - Directory/profile/scheduling/home-source/map-link/moderation ports pass owned contracts.
 - Event schemas and projection compatibility; review comments and current coordinates are forbidden from events.
 
@@ -357,6 +359,7 @@ Jobs:
 - Location denied still allows search; granted shows distance; server/telemetry store no point; directions opens approved map target.
 - Completed own appointment permits one review; cancelled/no-show/other-patient/duplicate fail; moderation updates public rating.
 - Language switch across onboarding, booking, queue, clinical read, prescription, labs/files, home/review preserves form state and correct RTL/LTR.
+- Packaged doctor Electron builds render the same approved public projection in Arabic/English/RTL, preserve keyboard/focus/accessibility behavior, and expose no patient identity, credential, or privileged preload operation.
 
 ### System tests
 
@@ -371,11 +374,12 @@ Jobs:
 - SQL/search wildcard/resource fuzz, coordinate extremes/NaN/precision/radius abuse, deep-link scheme/host injection, directory scraping/rate bypass.
 - Alternate patients through one Octane worker and inspect home/directory caches/events/telemetry for cross-user or location leakage.
 - Seed patient/clinical/location/review canaries and verify only approved public review text/doctor fields appear; no current coordinates in logs/traces/Sentry/analytics.
+- Electron tests attempt stored review XSS-to-IPC/Node/navigation escalation, forged preload sender/schema, token access, and hidden patient-proof fields; all fail closed.
 
 ### Accessibility and localization tests
 
-- CI translation completeness and hard-coded-string scan for Flutter/React/PDF templates.
-- Widget/golden screenshots in Arabic/English, RTL/LTR, smallest/largest supported viewport, 200% text, long translations, light/dark/high contrast.
+- CI translation completeness and hard-coded-string scan for Flutter patient-mobile, Electron/React TypeScript, browser React, and PDF templates.
+- Flutter patient-mobile widget/golden, WebdriverIO packaged Electron screenshots, and browser-admin Playwright screenshots cover Arabic/English, RTL/LTR, smallest/largest supported viewport or window/DPI, 200% text, long translations, light/dark/high contrast.
 - Screen-reader semantics/order, keyboard/focus, error announcement, touch target, and locale-aware plural/date/number/currency tests.
 - Human Arabic/English review of clinical/status/legal wording; machine translation alone is not acceptance evidence.
 

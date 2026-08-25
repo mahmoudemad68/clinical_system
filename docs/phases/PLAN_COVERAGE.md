@@ -6,7 +6,7 @@ This matrix proves that the phase library has a primary implementation owner for
 
 | Primary phase | Source sections | Source lines | Primary responsibility |
 | --- | --- | ---: | --- |
-| 00 | 1-5 | 1-270 | System shape, modular-monolith/AI split, stack, Flutter and React architecture |
+| 00 | 1-5 | 1-270 | System shape, modular-monolith/AI split, source stack, and ADR 0010 Flutter-mobile/Electron-desktop/React-admin architecture |
 | 00 | 102-115 | 2949-3321 | Queue lanes, Horizon, outbox, API/data contracts, idempotency, database/IDs/indexes, Redis/cache |
 | 00 | 152 | 4085-4111 | Shared client/API failure and retry contract |
 | 00 | 165-175 | 4367-4690 | Environments, Docker, CI/CD, migrations, secrets, flags, exclusions, ownership, consistency, execution order |

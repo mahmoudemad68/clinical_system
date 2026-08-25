@@ -125,10 +125,11 @@ Versions are pinned through Phase 00.
 - Pydantic discriminated unions for `KnowledgeAnswer`, `ToolProposal`, `Clarification`, and `SafeRefusal`.
 - No autonomous-agent framework, dynamic code loader, browser, SQL toolkit, or provider-hosted tool that bypasses Laravel.
 
-### Pharmacy Flutter desktop
+### Pharmacy Electron desktop (React + TypeScript)
 
-- Existing Riverpod/Dio/Freezed/localization/error handling and generated OpenAPI client.
-- Barcode input is handled by the catalog feature; the AI UI receives only the resolved server result.
+- Use React, TypeScript, TanStack Query, Zod, MUI, i18next, and the OpenAPI-generated TypeScript client. The renderer has no Node.js/Electron imports, credentials, database, filesystem, shell, updater, or provider SDK.
+- A context-isolated preload exposes narrow typed conversation/run/cancel/stream and medication-resolution capabilities; main owns device-authenticated HTTP/Reverb transport and authorizes any native adapter, preferring utility-process execution where the target-OS/ABI spike supports it.
+- Barcode input remains in the catalog capability; the AI renderer receives only the validated resolved server DTO, never a database handle, raw scanner device, or connector credential.
 
 ## Persistent schemas, invariants, and indexes
 
@@ -267,6 +268,7 @@ This endpoint is private workload-to-workload only. The tool registry resolves t
 - Never show a generated quantity until the structured server response validates against the tool result.
 - Display degraded/stale/permission-denied states without replacing the normal inventory/POS UI.
 - Provide stop/retry controls; do not persist hidden tool payloads or unrestricted conversation context locally.
+- Treat rendered AI text as hostile and sanitize/disable active Markdown, HTML, and external navigation. Every main handler validates the sender frame, typed schema, size, deadline, active session/branch, and requested capability.
 - Localized Arabic/English messages must retain medication/unit precision; quantities and packaging use domain formatting rather than model-generated conversions.
 
 ## Security and privacy controls
@@ -287,6 +289,7 @@ This endpoint is private workload-to-workload only. The tool registry resolves t
 - Registry rejects unknown tools, versions, extra arguments, writable capabilities, invalid medication IDs, excessive rows, and expired grants.
 - Medication ambiguity, package conversion, expired exclusion, freshness wording, partial-result schema, and structured-number preservation.
 - Tool budget, loop detection, cancellation, retry classifier, state machine, and redaction/property tests.
+- Electron renderer ambiguity/source/freshness/stream state and preload/main conversation, cancel, resolution, sender/session/branch/schema/size/deadline validators are unit-tested separately.
 
 ### Integration tests
 
@@ -294,10 +297,12 @@ This endpoint is private workload-to-workload only. The tool registry resolves t
 - Integrated mirror fixtures verify fresh/stale/unavailable semantics without Qdrant fallback.
 - Real Qdrant proves pharmacy-only active-version filters and isolation from doctor/patient collections.
 - Provider and internal HTTP adapters test timeout, cancellation, malformed proposal/output, duplicate delivery, and trace propagation.
+- Electron main/preload integration verifies private Reverb authorization, reconnect/subscription cleanup, membership revocation, resolved-medication DTOs, and zero renderer access to inventory databases, connector/provider credentials, or arbitrary tools.
 
 ### Contract tests
 
-- OpenAPI-generated Flutter client covers conversation/run/ambiguity/tool-source/error schemas.
+- OpenAPI-generated TypeScript desktop client covers conversation/run/ambiguity/tool-source/error schemas.
+- Preload/IPC contracts test allowlisted channels, sender validation, stream unsubscribe/reconnect/cancel behavior, schema/size limits, and denial of arbitrary URL/path/SQL/shell/provider capabilities.
 - Every inventory reader (native and integrated mirror) passes identical quantity/source/freshness contracts.
 - Capability schemas reject scope/SQL/URL/code fields and bound result size.
 - LLM/retrieval adapters pass deadline, cancellation, error taxonomy, token accounting, and no-silent-fallback requirements.
@@ -309,6 +314,7 @@ This endpoint is private workload-to-workload only. The tool registry resolves t
 - Ambiguous product asks for selection; expired stock is not reported as available; stale integrated data is not presented confidently.
 - Requests to sell, adjust, transfer, reserve, refund, substitute, or inspect patient data are denied and cause no state change.
 - AI outage leaves catalog, inventory, purchasing, POS, refunds, alerts, and patient medicine search operational.
+- Packaged pharmacy Electron E2E covers ambiguity selection, branch switch, live/stale source labels, stream/cancel/reconnect, and denial of direct IPC/path/SQL/provider/tool/scope injection.
 
 ### System, load, and security tests
 
@@ -316,6 +322,7 @@ This endpoint is private workload-to-workload only. The tool registry resolves t
 - Retrieval and first-token latency meet Phase 21 targets under the approved pharmacy scenario.
 - Prompt-injection corpora attempt cross-tenant extraction, tool override, loop amplification, fake inventory, unsafe links, and secret disclosure; deterministic controls prevent them.
 - Direct tool endpoint, forged grant, branch-ID tampering, role revocation, replay, response substitution, and Qdrant-public-access tests deny.
+- Hostile AI/knowledge text in the renderer cannot obtain Node/Electron, navigate externally without policy, access credentials/local storage, or invoke scanner/file/shell/print/update/native capabilities.
 - Pharmacy domain regression suite still proves FEFO, expired-sale prevention, cancellation reversal, partial receive, refund uniqueness, and connector idempotency.
 - Versioned evaluation measures retrieval Recall@K/MRR/relevance, groundedness, hallucination, tool selection/argument correctness, refusal, latency, and cost; pharmacy/clinical reviewers approve promotion thresholds.
 
@@ -346,4 +353,3 @@ This endpoint is private workload-to-workload only. The tool registry resolves t
 - All unit, integration, contract, E2E, system, performance, security, and pharmacy/clinical evaluation evidence is reproducible.
 - Dashboards, alerts, redaction, retention, privacy review, migration, feature-flag rollout, and rollback runbooks are approved.
 - Alternatives, reservation, transfers, supplier automation, autonomous ordering/sale/refund, and all other V1-excluded capabilities remain disabled and absent from the tool registry.
-

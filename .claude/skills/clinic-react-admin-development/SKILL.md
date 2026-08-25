@@ -1,34 +1,34 @@
 ---
 name: clinic-react-admin-development
-description: Implement or refactor this clinic project's React and TypeScript admin application. Use for verification, catalog/knowledge administration, safe analytics/health projections, forms, charts, localization, accessibility, generated API integration, and admin tests; not for clinical access, infrastructure control, or backend policy ownership.
+description: Implement or refactor this clinic project's browser-based React and TypeScript admin application. Use for verification, catalog/knowledge administration, safe analytics/health projections, forms, charts, localization, accessibility, generated API integration, and admin tests; not for Electron doctor/pharmacy desktops, clinical access, infrastructure control, or backend policy ownership.
 ---
 
 # Clinic React Admin Development
 
-Build admin features as least-privilege projections over explicit Laravel policies. “Admin” is a UI persona, not permission to view clinical data or operate infrastructure.
+Build browser admin features as least-privilege projections over explicit Laravel policies. “Admin” is a UI persona, not permission to view clinical data or operate infrastructure.
 
 ## Read the required sources
 
 Read completely:
 
-- [Roadmap, invariants, open decisions, and evidence policy](../../docs/phases/README.md)
-- [Cross-cutting React/API/security architecture](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [Roadmap, invariants, open decisions, and evidence policy](../../../docs/phases/README.md)
+- [Cross-cutting React/API/security architecture](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
 - The phase that owns the requested capability.
 
 Route additional reading by feature:
 
-- Verification/onboarding: [Phase 02](../../docs/phases/02_onboarding_verification_profiles_and_locations.md)
-- Medication catalog/tenancy: [Phase 10](../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md)
-- Shared knowledge administration: [Phase 16](../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
-- Analytics, unresolved appointments, and safe health: [Phase 20](../../docs/phases/20_admin_analytics_and_system_health.md)
-- Client and admin assurance: [Phase 22](../../docs/phases/22_security_privacy_and_compliance_validation.md)
-- Artifact/release behavior: [Phase 23](../../docs/phases/23_disaster_recovery_release_and_production.md)
+- Verification/onboarding: [Phase 02](../../../docs/phases/02_onboarding_verification_profiles_and_locations.md)
+- Medication catalog/tenancy: [Phase 10](../../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md)
+- Shared knowledge administration: [Phase 16](../../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
+- Analytics, unresolved appointments, and safe health: [Phase 20](../../../docs/phases/20_admin_analytics_and_system_health.md)
+- Client and admin assurance: [Phase 22](../../../docs/phases/22_security_privacy_and_compliance_validation.md)
+- Artifact/release behavior: [Phase 23](../../../docs/phases/23_disaster_recovery_release_and_production.md)
 
 Inspect current route/policy contracts, generated OpenAPI TypeScript types, feature folders, design-system usage, MSW fixtures, Playwright tests, and local changes before implementation.
 
 ## Ownership
 
-Own `apps/admin-web` presentation and client integration:
+Own only the browser application under `apps/admin-web` and its client integration:
 
 - routes/pages, feature components, bounded forms/schemas, TanStack queries/mutations, tables/charts, filters, error and freshness states;
 - generated API-client wrapper, server DTO mapping, CSRF/session handling, and request-ID/error presentation;
@@ -36,6 +36,8 @@ Own `apps/admin-web` presentation and client integration:
 - React unit/component/API-integration/E2E/security-regression tests.
 
 TanStack Query owns server state. Keep temporary UI/form state local. Add global client state only for a demonstrated cross-route need.
+
+Electron doctor/pharmacy renderer, preload, main-process, desktop device-token, encrypted local-data, native adapter, and packaging work belongs to `clinic-electron-desktop-development`. Do not reuse the admin browser's cookie/CSRF assumptions in desktop clients merely because both use React and TypeScript.
 
 ## Hard boundaries
 

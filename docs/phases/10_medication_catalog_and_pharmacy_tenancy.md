@@ -125,9 +125,10 @@ Use native explicit enums/value objects for medication lifecycle, packaging unit
 
 ### Clients
 
-- Pharmacy Flutter uses Riverpod, Dio, generated OpenAPI DTOs, Freezed mappings, secure storage, localization, and the shared design system.
-- Admin React uses TanStack Query, React Hook Form, Zod, MUI, generated OpenAPI types/client, i18next, Vitest, MSW, and Playwright.
-- Barcode input is an adapter abstraction so keyboard-wedge scanners and camera/native plugins do not enter catalog domain code.
+- Pharmacy desktop uses Electron, React, TypeScript, TanStack Query, React Router, React Hook Form, Zod, MUI, i18next, and an OpenAPI-generated TypeScript client.
+- Its React renderer has no Node.js, Electron, token/key, database, filesystem, shell, printing, or updater access. It calls narrow typed capabilities exposed by a context-isolated preload; validated main-process handlers own API/realtime and native-adapter authorization, optionally delegating blocking work to a utility process where the target-OS/ABI spike supports it.
+- Admin remains a browser React application using TanStack Query, React Hook Form, Zod, MUI, generated OpenAPI types/client, i18next, Vitest, MSW, and Playwright.
+- Barcode input is an adapter abstraction. Keyboard-wedge events may stay in the renderer; camera/native scanner access crosses a purpose-specific preload/main capability and never enters catalog domain code.
 
 ## Persistent schemas, invariants, and indexes
 
@@ -309,11 +310,12 @@ Stable errors include MEDICATION_NOT_ACTIVE, CATALOG_VERSION_CONFLICT, BARCODE_C
 - Packaging editor visualizes integer parent-to-child conversions and smallest tracked unit; it prevents cycles client-side while relying on server validation.
 - No clinical record or pharmacy stock content is exposed.
 
-### Pharmacy Flutter desktop
+### Pharmacy Electron desktop (React + TypeScript)
 
 - Branch selector is server-scoped; switching clears branch-specific repositories/caches and refetches capabilities.
 - UI hides unauthorized actions and visibly marks INTEGRATED branches read-only for native stock workflows, while server denial remains authoritative.
 - Barcode scanner input maps to the catalog reference API and never constructs SQL/search expressions.
+- Renderer code consumes generated TypeScript DTOs through a typed preload facade. It never receives device credentials, SQL access, arbitrary filesystem paths, raw IPC primitives, or reusable authorization material.
 - Arabic/English, keyboard/scanner workflows, screen-reader labels, large touch targets, and deterministic decimal/text display are required.
 
 ## Security and privacy controls
@@ -334,6 +336,7 @@ Stable errors include MEDICATION_NOT_ACTIVE, CATALOG_VERSION_CONFLICT, BARCODE_C
 - Medication lifecycle, distinct variation identity, publish/retire rules, provenance requirement, barcode normalization, alias normalization, and capability decisions.
 - Packaging conversion/cycle/one-smallest-unit rules, including property tests over random valid/invalid trees and overflow boundaries.
 - Branch mode strategies deny every unlisted or wrong-mode operation.
+- Electron renderer view models, branch-cache clearing, typed preload facade, and main handler validators are unit-tested without granting Node/native access.
 
 ### Integration tests
 
@@ -343,7 +346,8 @@ Stable errors include MEDICATION_NOT_ACTIVE, CATALOG_VERSION_CONFLICT, BARCODE_C
 
 ### Contract tests
 
-- Generated React/Dart clients cover lifecycle, packaging, cursor, money/reference, and stable denial/conflict shapes.
+- Generated TypeScript Electron/admin clients cover lifecycle, packaging, cursor, money/reference, and stable denial/conflict shapes.
+- Preload capability declarations and IPC request/response schemas are versioned contracts; tests reject unknown channels, fields, sender frames, oversized payloads, and incompatible responses.
 - MedicationReferenceQuery and BranchAuthorization fakes/adapters pass substitutability suites.
 - Event current/previous schema replay does not require display names or sensitive membership data.
 
@@ -353,11 +357,13 @@ Stable errors include MEDICATION_NOT_ACTIVE, CATALOG_VERSION_CONFLICT, BARCODE_C
 - Pharmacy owner sees permitted branches; a cashier cannot administer roles/catalog; one branch cannot access another organization.
 - INTEGRATED branch native stock/POS commands are denied before those later workflows execute.
 - Retired medication remains readable in historical references but is unavailable for new selection.
+- The packaged pharmacy Electron app resolves Arabic/English name/alias/barcode and changes branches through the preload facade while direct/unregistered IPC and renderer-supplied scope are denied.
 
 ### System, performance, and security tests
 
 - Medication prefix/fuzzy/Arabic-English search meets the Phase 21 p95 target on production-shaped catalog data.
 - Test BOLA/BFLA, UUID enumeration, role escalation, mass assignment, forged connector identity, cross-tenant cache keys, Unicode confusables, alias/package bombs, CSV/formula injection, and audit-log redaction.
+- Inspect the signed Electron candidate for sandbox/context-isolation/CSP/navigation/permission settings and prove injected renderer content cannot reach Node, device credentials, arbitrary paths, or native scanner capability.
 - Backup/restore preserves IDs, provenance, conversions, memberships, modes, and audit ordering.
 
 ## Observability, migration, and rollout

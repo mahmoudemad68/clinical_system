@@ -11,13 +11,13 @@ Orchestrate one evidence-gated roadmap phase at a time. Route implementation dec
 
 Before planning or changing the repository, read completely:
 
-- [Roadmap, dependencies, invariants, and evidence policy](../../docs/phases/README.md)
-- [Cross-cutting architecture and delivery contract](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [Roadmap, dependencies, invariants, and evidence policy](../../../docs/phases/README.md)
+- [Cross-cutting architecture and delivery contract](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
 - [Phase-to-skill routing](references/phase-routing.md)
 - The active phase file linked by the routing reference
 - Every dependency phase named by the active phase when its contract or completion evidence affects the requested work
 
-Use [plan coverage](../../docs/phases/PLAN_COVERAGE.md) only to resolve source-plan traceability or detect scope drift. Inspect current ADRs, diagrams, schemas, OpenAPI/event/tool contracts, evidence manifests, implementation, tests, and local changes before deciding what remains.
+Use [plan coverage](../../../docs/phases/PLAN_COVERAGE.md) only to resolve source-plan traceability or detect scope drift. Inspect current ADRs, diagrams, schemas, OpenAPI/event/tool contracts, evidence manifests, implementation, tests, and local changes before deciding what remains.
 
 ## Invocation boundary
 

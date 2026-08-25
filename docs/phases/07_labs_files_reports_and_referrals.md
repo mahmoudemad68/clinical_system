@@ -92,8 +92,9 @@ RenderClinicalDocument
 - A network or local malware scanner behind `MalwareScanner` (for example ClamAV in isolated deployment) with explicit timeout/error classes and fail-closed policy.
 - Bounded PDF/image metadata parsers selected/pinned after security review; no general-purpose conversion inside API workers.
 - The Phase 06 reviewed server-side PDF rendering port/template controls for report/sick-leave/referral artifacts.
-- Flutter secure file/image picker and generated API client. Selected local files are removed from application temp storage promptly after completion/cancel.
-- Pest/PHPUnit, S3-emulator integration tests, malicious-file corpus, Flutter/Playwright E2E, and storage-policy/DAST tests.
+- Flutter patient mobile uses a secure file/image picker and generated Dart API client. Selected local files are removed from application temp storage promptly after completion/cancel.
+- Electron doctor/clinic-staff desktop uses React, TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, the generated TypeScript API client, and main-process adapters for file selection, credentialed upload/download, safe viewing, printing, and bounded temporary files.
+- Pest/PHPUnit, S3-emulator integration tests, malicious-file corpus, Flutter patient-mobile integration tests, browser-admin Playwright, Electron main/preload/renderer tests plus WebdriverIO with `@wdio/electron-service` packaged-app E2E, and storage-policy/DAST tests.
 
 ## Data model and migrations
 
@@ -344,15 +345,20 @@ Jobs:
 - `Mark Delivered` warns that only the doctor can confirm/review.
 - Read finalized reports/sick leave/referrals through authorized ephemeral download; do not persist into Drift by default.
 
-### Doctor Flutter desktop
+### Doctor Electron desktop
 
 - Current encounter lab request editor, pending results queue, secure viewer, explicit confirm/review actions, and result-state version conflicts.
 - Medical report/sick-leave/referral structured editor, template version, finalize/correct/print flow, and patient/current-version identity banner.
 - No AI interpretation button until later feature/clinical gates.
+- The sandboxed React renderer uses opaque file/artifact/version handles. Electron main owns dialogs, authenticated transfer, type/hash verification, bounded temporary storage, OS viewer/print invocation, and cleanup; preload exposes no arbitrary path, URL, filesystem, shell, token, or generic IPC operation.
 
-### React admin and staff clients
+### React browser admin
 
 - Admin may manage non-clinical template definitions only if capability approved; preview uses synthetic placeholders. No patient document/result content.
+
+### Clinic-staff Electron surface
+
+- This capability-gated route is hosted in the doctor Electron application, not a separate desktop client.
 - Secretary may see a safe operational “pending lab” indicator only if product policy requires it, never test names/results/files.
 
 ## Security and privacy threats and controls
@@ -360,6 +366,7 @@ Jobs:
 - **Malware/parser exploit:** quarantine, magic-byte validation, type allowlist, immutable version, malware scan, sandboxed bounded workers, no API-worker parsing, fail closed.
 - **Path/object/BOLA:** random opaque handles, no user path/object key, owner-resource binding, policy on every issue/download, short token, private bucket/network.
 - **Stolen signed URL:** minimum TTL, actor/session/purpose binding or proxy stream where supported, safe headers, access audit, revoke-aware issuance, no public caching.
+- **Electron file/viewer compromise:** local packaged renderer, restrictive CSP, context isolation, sandbox/no Node, sender-validated typed IPC, opaque handles, main-process path/type/hash checks, safe external-open allowlist, no remote navigation/webview, and prompt temporary-file cleanup.
 - **File replacement/TOCTOU:** storage version/checksum binding and immutable processing source; reverify before availability.
 - **Cross-patient dedup leak:** no global dedup response or reused authorization; hash access restricted.
 - **Clinical status forgery:** server state machine, doctor-only confirm/review/finalize, expected versions, audit, idempotency.
@@ -380,10 +387,12 @@ Jobs:
 - S3 emulator private policy, versioning/encryption metadata, upload TTL/size/checksum, anonymous denial, signed download expiry, and backup reference.
 - Scanner/inspector fixtures for valid PDF/JPEG/PNG, declared/detected mismatch, truncated/polyglot/encrypted PDF, malware, oversized dimensions/pages, decompression/resource bomb, timeout/crash/retry.
 - Renderer injection/remote-resource denial, hash/version binding, and orphan cleanup.
+- Electron packaged clients on each supported OS cover file-dialog cancel, upload/download timeout, viewer/print failure, logout/revoke, renderer reload, bounded temp cleanup, and forged/stale opaque handles.
 
 ### Contract tests
 
-- OpenAPI/generated clients for lab/file/document workflows, processing states, safe errors, and download behavior.
+- OpenAPI/generated Dart patient-mobile and TypeScript Electron/admin clients for lab/file/document workflows, processing states, safe errors, and download behavior.
+- Electron main/preload contracts reject forged senders, arbitrary paths/URLs/content, wrong-purpose/stale handles, traversal/symlink swaps, oversized responses, unsupported file types, and payloads containing credentials or raw object keys.
 - Object store, inspector, scanner, hasher, encounter authorization, renderer, audit, and future AI document ports pass owned contracts.
 - Event schemas reject clinical/file content and remain compatible.
 
@@ -394,6 +403,7 @@ Jobs:
 - Malicious/invalid upload remains unavailable and retry creates a separate safe attempt.
 - Doctor creates/finalizes/prints/corrects report/sick leave/referral for own encounter; unrelated actor/admin/secretary denied.
 - Expired/stolen upload/download token, wrong patient/resource binding, and retired file all fail.
+- Packaged doctor Electron builds view/print the exact authorized hash/version and remove temporary artifacts after success, cancellation, failure, logout, and revoke.
 
 ### System tests
 
@@ -406,6 +416,7 @@ Jobs:
 
 - BOLA/BFLA/mass assignment, object-key/path traversal, URL replay, MIME spoof/polyglot, malware, archive/compression bomb, parser RCE regression corpus, SSRF/remote font/image template attempts, and stored XSS in names/text.
 - Attempt patient/admin/secretary review/finalize, doctor cross-patient access, quarantine download, callback forgery, object swap, and hash/dedup enumeration.
+- Attempt renderer XSS-to-filesystem/shell/IPC escalation, forged sender/handle, arbitrary external open, remote navigation, path traversal/symlink swap, and token/object-key extraction; Electron boundaries fail closed.
 - Seed file/report/lab/identity canaries and verify absence from telemetry, queues, Redis, events, analytics, admin/staff projections, temp files, and crash artifacts.
 - Storage-policy audit proves no public ACL/policy, encryption/versioning enabled, and service credentials least privileged.
 

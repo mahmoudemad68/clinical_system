@@ -11,11 +11,11 @@ Independently challenge whether the assembled system preserves identity, tenant,
 
 Read completely before assurance work:
 
-- [Roadmap invariants, open decisions, and required evidence](../../docs/phases/README.md)
-- [Cross-cutting architecture, threat, security, and privacy contract](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [Roadmap invariants, open decisions, and required evidence](../../../docs/phases/README.md)
+- [Cross-cutting architecture, threat, security, and privacy contract](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
 - The active phase file and the dependency contracts whose boundaries it changes
 
-For cross-system review, penetration testing, privacy/release evidence, or any Phase 22 task, read [Phase 22 — security, privacy, and compliance validation](../../docs/phases/22_security_privacy_and_compliance_validation.md) completely. For recovery or production promotion also read [Phase 23](../../docs/phases/23_disaster_recovery_release_and_production.md). Inspect current authorization/rules of engagement, C4/data flows, ADRs, schemas/contracts, SBOMs, provider inventory, processing inventory, prior findings/exceptions, tests, observability, and local changes.
+For cross-system review, penetration testing, privacy/release evidence, or any Phase 22 task, read [Phase 22 — security, privacy, and compliance validation](../../../docs/phases/22_security_privacy_and_compliance_validation.md) completely. For recovery or production promotion also read [Phase 23](../../../docs/phases/23_disaster_recovery_release_and_production.md). Inspect current authorization/rules of engagement, C4/data flows, ADRs, schemas/contracts, SBOMs, provider inventory, processing inventory, prior findings/exceptions, tests, observability, and local changes.
 
 ## Independent ownership
 
@@ -58,16 +58,17 @@ Retention / RightsCoordinator       AiCapability / Output / ProviderPrivacy
 
 Business/application layers own policy-facing interfaces; frameworks/providers implement least-privilege adapters. Substitutes preserve deny/fail-safe behavior, deadlines, cancellation, audit, and redaction. No shared administrator, database, provider, or security “god client” is acceptable.
 
-For every change, trace data and authority across all applicable edges: Flutter/React → gateway/Laravel → PostgreSQL/Redis/Reverb/S3 → FastAPI/Qdrant/model providers → pharmacy/SMS/push/telemetry/backups. Verify service identities, network reachability, and caches/search/analytics projections as well as primary API policy.
+For every change, trace data and authority across all applicable edges: Flutter patient mobile / Electron doctor-pharmacy desktop / React admin web → gateway/Laravel → PostgreSQL/Redis/Reverb/S3 → FastAPI/Qdrant/model providers → pharmacy/SMS/push/telemetry/backups. Include the Electron renderer-preload-main IPC boundary. Verify service identities, network reachability, and caches/search/analytics projections as well as primary API policy.
 
 ## Tooling boundary
 
 Use only pinned, reviewed versions/configurations from Phase 00/22, including as applicable:
 
 - `deptrac/deptrac`, Larastan/PHPStan, language analyzers/type checks, and Semgrep;
-- Composer/Dart/npm/Python dependency audits, Gitleaks, Syft-compatible SBOM, Trivy, provenance/signature and lockfile/digest checks;
+- Composer, Dart/Flutter mobile, npm/Electron/React, and Python dependency audits; Gitleaks; Syft-compatible SBOM; Trivy; provenance/signature and lockfile/digest checks;
 - OWASP ZAP, approved OpenAPI/schema fuzzing such as Schemathesis, and bounded k6 abuse/resource scenarios;
 - OWASP MASVS/MASTG-oriented mobile verification and optionally MobSF as supporting evidence;
+- Electron-specific review of context isolation, sandboxing, Node integration, CSP, navigation/windows/permissions, typed IPC sender validation, safe storage, encrypted native modules, fuses, packaged-code integrity, signing/notarization, and update provenance;
 - Pytest/Hypothesis and versioned adversarial/evaluation datasets for AI boundaries.
 
 Tools do not grant scope, decide clinical correctness, close findings, or make the release decision. Never add an unreviewed scanner SaaS or upload source, SBOM, artifacts, prompts, or findings to an external service by assumption.
@@ -116,6 +117,7 @@ Map applicable controls to implementation references, repeatable verification, e
 - **Files/realtime/jobs:** wrong-purpose upload, signature/polyglot/parser/resource abuse, scanner fail-open, signed URL replay/leak, private-channel subscription, gap/replay, duplicate/out-of-order jobs, poisoned queues.
 - **Pharmacy/financial:** cross-branch access, float/overflow, expired/FEFO bypass, ledger deletion, double receive/sale/cancel/return/refund, external-terminal trust, connector mapping/freshness/replay/SSRF.
 - **AI:** direct/indirect prompt injection, cross-scope retrieval, forged grants/filters/tools, autonomous write/prescribe/book/sale/refund, red-flag suppression, invalid output, source fabrication, tool loops, denial-of-wallet, conversation/provider leakage.
+- **Electron desktop:** renderer XSS reaching Node/native authority, raw or forged IPC, unsafe sender/frame, navigation/window/webview/external URL abuse, path/file/protocol injection, weak Linux key storage, unencrypted local data, debug/Node entry points, native-addon or update/package compromise.
 - **Admin/platform/supply chain:** PHI/raw health/log exposure, arbitrary queries/control actions, secret/metadata endpoints, public internal services, CORS/CSP/headers, CI/artifact provenance, dependency compromise, telemetry/backups/key separation.
 
 ## Verification and evidence layers
@@ -123,7 +125,7 @@ Map applicable controls to implementation references, repeatable verification, e
 - **Unit/security regression:** policy matrices, state/retention/crypto/redaction/signed-access/tool decisions, Unicode/encoded/property inputs, fail-safe adapters.
 - **Integration:** real PostgreSQL/Redis/Reverb/S3/Qdrant and service identities for constraints, races, cache loss, queue replay, tenant filters, object isolation, encryption/key/session rotation, and audit chain.
 - **Contract:** OpenAPI/events/jobs/tools/providers/connectors reject unknown privilege/scope, unsafe URL/path/SQL/code, oversized output, incompatible versions, and sensitive errors.
-- **E2E:** critical allowed/denied user journeys with direct API attempts, revocation, duplicate actions, offline/reconnect, file handling, AI confirmation, and no prohibited side effect.
+- **E2E:** critical allowed/denied user journeys with direct API attempts, revocation, duplicate actions, offline/reconnect, file handling, AI confirmation, and no prohibited side effect. Electron tests launch its process model and prove a compromised renderer cannot widen preload/main capabilities.
 - **System/manual:** authorized SAST/SCA/DAST/schema-fuzz/mobile/manual assessment, resilience/resource-abuse cases, network reachability, incident exercises, and recovery confidentiality/integrity. Full restore/RPO/RTO remains Phase 23.
 
 `clinic-test-engineering` supplies reliable automation and evidence mechanics. This skill reviews whether the adversarial oracle and assurance result are sufficient and owns finding disposition.

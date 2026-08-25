@@ -17,15 +17,15 @@ Never make an appointment, access grant, encounter, prescription, stock balance,
 
 ## Required phase sources
 
-Always read [Phase 00](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md). Then read the phase that originates and consumes the event/job.
+Always read [Phase 00](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md). Then read the phase that originates and consumes the event/job.
 
-Primary sources are [Phase 04](../../docs/phases/04_realtime_queue_and_consultation_control.md) and [Phase 09](../../docs/phases/09_notifications_and_post_visit_chat.md). Conditional sources include:
+Primary sources are [Phase 04](../../../docs/phases/04_realtime_queue_and_consultation_control.md) and [Phase 09](../../../docs/phases/09_notifications_and_post_visit_chat.md). Conditional sources include:
 
-- [Phase 03](../../docs/phases/03_scheduling_availability_and_booking.md), [Phase 06](../../docs/phases/06_prescriptions_reminders_and_printing.md), and [Phase 07](../../docs/phases/07_labs_files_reports_and_referrals.md) for reminders and user notifications;
-- [Phase 11](../../docs/phases/11_inventory_batches_fefo_and_alerts.md), [Phase 12](../../docs/phases/12_purchasing_and_goods_receipt.md), and [Phase 13](../../docs/phases/13_pos_invoices_returns_and_refunds.md) for post-commit pharmacy effects;
-- [Phase 15](../../docs/phases/15_external_pharmacy_integrations.md) for the Laravel integrations lane and freshness jobs;
-- [Phase 16](../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md) for the hard PHP/Python queue boundary;
-- [Phase 20](../../docs/phases/20_admin_analytics_and_system_health.md), [Phase 21](../../docs/phases/21_performance_scaling_observability_and_resilience.md), [Phase 22](../../docs/phases/22_security_privacy_and_compliance_validation.md), and [Phase 23](../../docs/phases/23_disaster_recovery_release_and_production.md) for projections, capacity, assurance, replay, and recovery.
+- [Phase 03](../../../docs/phases/03_scheduling_availability_and_booking.md), [Phase 06](../../../docs/phases/06_prescriptions_reminders_and_printing.md), and [Phase 07](../../../docs/phases/07_labs_files_reports_and_referrals.md) for reminders and user notifications;
+- [Phase 11](../../../docs/phases/11_inventory_batches_fefo_and_alerts.md), [Phase 12](../../../docs/phases/12_purchasing_and_goods_receipt.md), and [Phase 13](../../../docs/phases/13_pos_invoices_returns_and_refunds.md) for post-commit pharmacy effects;
+- [Phase 15](../../../docs/phases/15_external_pharmacy_integrations.md) for the Laravel integrations lane and freshness jobs;
+- [Phase 16](../../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md) for the hard PHP/Python queue boundary;
+- [Phase 20](../../../docs/phases/20_admin_analytics_and_system_health.md), [Phase 21](../../../docs/phases/21_performance_scaling_observability_and_resilience.md), [Phase 22](../../../docs/phases/22_security_privacy_and_compliance_validation.md), and [Phase 23](../../../docs/phases/23_disaster_recovery_release_and_production.md) for projections, capacity, assurance, replay, and recovery.
 
 ## Queue and event boundaries
 

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Clinic Flutter Development"
-  short_description: "Build patient, doctor, and pharmacy Flutter clients."
-  default_prompt: "Use $clinic-flutter-development to implement the Flutter client work for the active clinic phase."
+  display_name: "Clinic Flutter Mobile Development"
+  short_description: "Build the clinic patient Flutter mobile application."
+  default_prompt: "Use $clinic-flutter-development to implement the patient Flutter mobile work for the active clinic phase."

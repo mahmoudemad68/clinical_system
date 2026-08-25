@@ -4,12 +4,14 @@
 - **Date:** 2026-08-24
 - **Deciders:** Platform architecture, devops, backend, mobile, desktop, frontend
 - **Phase:** 00
-- **Supersedes / Superseded by:** none
+- **Supersedes / Superseded by:** Desktop-client portions superseded by [ADR 0010](0010-electron-react-typescript-desktop-clients.md)
 
 ## Context
 
-The system has six deployment units (`plan.md` section 1): three Flutter clients,
-one React admin, the Laravel core, and the FastAPI AI service. Every one of them
+The system has six deployment units: one Flutter mobile client, two Electron
+desktop clients, one React admin, the Laravel core, and the FastAPI AI service.
+(`plan.md` section 1 named three Flutter clients; [ADR 0010](0010-electron-react-typescript-desktop-clients.md)
+superseded the desktop pair.) Every one of them
 consumes the same HTTP and event contracts. A contract change that lands in four
 repositories at four different times produces a window in which a generated
 client disagrees with the server.
@@ -23,15 +25,25 @@ One git repository holds all deployment units and shared contracts:
 
 ```text
 apps/        core-api, ai-service, admin-web, patient-app, doctor-desktop, pharmacy-desktop
-packages/    flutter/* shared Dart packages, contracts/{openapi,events,ai_internal}
+packages/    flutter/*     shared Dart packages (patient mobile only)
+             typescript/*  shared TS packages (admin web + both Electron desktops)
+             contracts/    openapi, events, ai_internal
 infra/       docker, environments, monitoring, load-tests
 docs/        adr, architecture, data-classification, runbooks, threat-models, evidence, phases
 ```
 
 Deployment units stay independently buildable and independently deployable. No
 unit imports another unit's source. Sharing happens only through
-`packages/contracts/` (schemas and generated clients) and `packages/flutter/`
-(Dart packages consumed through the Melos workspace).
+`packages/contracts/` (schemas and generated clients), `packages/flutter/`
+(Dart packages consumed by the patient mobile app through the Melos
+workspace), and `packages/typescript/` (pure TypeScript packages consumed by
+the admin web app and both Electron desktops through npm workspaces).
+
+The TypeScript sharing is deliberately narrow. Admin authenticates with an
+HttpOnly cookie and CSRF; the desktops authenticate with a device token held in
+the Electron main process. Only pure types, design tokens, localization
+helpers, error mapping, and generated contracts cross that line — never a
+transport, a session, or a storage adapter (ADR 0010).
 
 Workspace and dependency management per language:
 
@@ -39,7 +51,7 @@ Workspace and dependency management per language:
 | --- | --- | --- |
 | PHP | Composer | `composer.lock` |
 | JavaScript / TypeScript | npm workspaces | `package-lock.json` |
-| Dart / Flutter | Melos | `pubspec.lock` per app |
+| Dart / Flutter | Melos + pub workspace | one root `pubspec.lock` |
 | Python | `pyproject.toml` + pip-tools | `requirements*.txt` (hashed) |
 
 ## Consequences
@@ -53,7 +65,8 @@ Workspace and dependency management per language:
 
 ### Negative / accepted cost
 
-- Clone size grows with all six units plus three Flutter platform folders.
+- Clone size grows with all six units, the Flutter mobile platform folders,
+  and two Electron applications.
 - CI must use path filters, or every pull request runs every suite.
 - A single repository tempts direct cross-unit imports; this needs enforcement.
 
@@ -61,7 +74,8 @@ Workspace and dependency management per language:
 
 | Risk | Mitigation |
 | --- | --- |
-| A client imports core PHP or another app's Dart source | Path-scoped lint and dependency-boundary rules; `deptrac` for PHP, `import_lint`-style rules for Dart, `eslint-plugin-boundaries` for TypeScript |
+| A client imports core PHP or another app's source | Path-scoped lint and dependency-boundary rules: `deptrac` for PHP, analyzer rules for Dart, and Semgrep boundary rules plus webpack `fallback: false` for the Electron renderer |
+| A shared TypeScript package collapses the two desktops' security contexts | Every identity namespace is per-app in `src/shared/app-config.ts`, asserted by a test in each application (Phase 00 §2.3) |
 | CI runtime grows until it is bypassed | Per-unit path filters; only changed units run their full suite, while contract validation always runs |
 | Lockfile drift between environments | Every install in CI uses the frozen/`ci` install mode; a dirty lockfile fails the build |
 

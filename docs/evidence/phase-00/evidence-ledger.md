@@ -9,11 +9,32 @@ prompts, object keys, or exploit payloads.
 
 - **Environment:** local Docker Compose, single host, 4 vCPU / 7 GB
 - **Recorded:** 2026-08-24
-- **Toolchain:** PHP 8.3.6 · Composer 2.8.12 · Laravel 13.26.1 · Node 20.20.2 ·
-  npm 10.8.2 · Python 3.12.3 · Flutter 3.47.1 · Dart 3.13.1 · Docker 29.7.2 ·
-  PostgreSQL 16 + PostGIS 3.4 · Redis 7
+- **Toolchain:** PHP 8.3.6 · Composer 2.8.12 · Laravel 13.26.1 · Node 22.23.2 ·
+  npm 10.9.8 · Python 3.12.3 · Flutter 3.47.1 · Dart 3.13.1 · Electron 44.0.0 ·
+  Electron Forge 7.11.2 · Docker 29.7.2 · PostgreSQL 16 + PostGIS 3.4 · Redis 7
 - **Status:** Phase 00 is **OPEN**. Foundation and contract gates are evidenced;
   client, CI, observability, and assurance gates are not.
+
+## ADR 0010 supersession notice — 2026-08-25
+
+[ADR 0010](../../adr/0010-electron-react-typescript-desktop-clients.md) replaced
+the target doctor/pharmacy Flutter desktop runtime with Electron, React, and
+TypeScript after this ledger was recorded. Rows below remain an immutable record
+of what the former scaffold proved; they are not evidence for the new desktop
+target. Current evaluation of the affected gates takes precedence:
+
+| Gate/evidence area | Current result | Required new evidence |
+| --- | --- | --- |
+| G-01-01 / G-01-02 architecture | `PARTIAL` | ADR 0010 and the Electron C4 view exist; render/link checks plus architecture-rule execution against the implemented desktop boundary remain |
+| G-02-01 runtime bootstrap | `OPEN` | Replace both Flutter desktop scaffolds, remove them from Melos, add separate Electron npm workspaces/app IDs/data roots, and build packaged health slices without mixed runtimes |
+| G-03-02 generated clients | `PARTIAL` | Generate Dart for patient mobile and distinct TypeScript clients/transports for doctor Electron, pharmacy Electron, and browser admin |
+| G-06-01 local encryption | `OPEN` | Keep the mobile spike and add Electron `safeStorage`, Linux fail-closed, encrypted native SQLite, utility-process, ABI, migration/rekey/recovery, and signed-package evidence |
+| G-06-02 / G-06-04 / G-06-05 CI, reproducibility, SBOM | `PARTIAL` | Update path filters/workspaces/lockfiles, build Forge artifacts for every approved OS/architecture, and include Electron/Chromium/Node/native addons in candidate SBOM/provenance |
+| Client contract/E2E/system/security rows | `OPEN` for Electron | Run main/preload/renderer/utility tests plus packaged/installed Electron journeys, IPC abuse checks, native integration, signing/update, and rollback tests required by revised Phase 00 |
+
+Application source and old evidence are intentionally not deleted by this
+documentation change. The controlled Phase 00 migration must inventory and
+preserve any user-authored code or local data before replacement.
 
 ## Legend
 
@@ -40,18 +61,22 @@ prompts, object keys, or exploit payloads.
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
-| G-02-01 | Each deployment unit scaffolded without feature code | all stacks | All six units present and building | `PASS` | core-api (Laravel 13.26.1), ai-service (FastAPI), admin-web (React 19/Vite 8), patient-app, doctor-desktop, pharmacy-desktop (Flutter 3.47.1) plus 11 shared Dart packages |
+| G-02-01 | Each deployment unit scaffolded without feature code | all stacks | All six units present and building | `PASS` | core-api (Laravel 13.26.1), ai-service (FastAPI), admin-web (React 19/Vite 8), patient-app (Flutter 3.47.1), doctor-desktop and pharmacy-desktop (Electron 44 + React + TS, per ADR 0010), plus 11 shared Dart and 5 shared TypeScript packages |
 | G-02-02 | `/live`, `/ready`, build/version metadata, structured errors, correlation IDs, graceful shutdown | backend, AI | `phpunit --filter HealthEndpointTest` | `PASS` (HTTP) | 17 feature tests through the real middleware stack: envelope shape, ar/en negotiation, correlation echo, malformed-id replacement, secure headers, and a check that `/ready` leaks no host detail. Graceful shutdown under active load remains untested (Phase 21). |
 | G-02-03 | Liveness checks only process health; readiness checks critical startup state without making every optional dependency a core outage | backend | `phpunit --filter HealthEndpointTest` | `PASS` | Asserted at the HTTP layer: `/live` is unenveloped and touches no dependency; `/ready` names its checks and marks `ai_service` non-critical |
 | G-02-04 | AI/Qdrant readiness failure does not make Laravel core unready | backend, AI | `phpunit --filter ReadinessIsolationTest` | `PASS` (unit) | 6 tests, 13 assertions. Proves ready-with-AI-degraded, ready-with-optional-hard-fail, unready-on-critical-fail, and configurable criticality. The container-level system test (actually stopping the AI service) is still outstanding. |
 | G-02-05 | Octane workers do not leak request-scoped state; regression test with two synthetic identities | backend | `phpunit --filter OctaneStateIsolationTest` | `PASS` | Reset wired to both `RequestReceived` and `RequestTerminated`, so state survives neither an early return nor an exception. 5 tests with two synthetic identities, including a negative control asserting the leak is real without the hook. |
+| G-02-06 | Desktop migration inventory recorded before replacement; no real desktop database silently deleted | desktop, architecture | [desktop-migration-inventory.md](desktop-migration-inventory.md) | `PASS` | Recorded before any file was removed. No `*.db`/`*.sqlite` existed, ADR 0006's encryption spike never closed so no build was permitted to write clinical content locally, and neither app was ever packaged. Safe to replace; no export/import plan required. |
+| G-02-07 | Dart/Melos workspace holds the patient app only; npm workspaces hold admin web and both Electron desktops | architecture, desktop | `melos bootstrap`; `npm ls --workspaces` | `PASS` | Melos bootstraps 12 packages (was 14): patient app plus 11 Dart packages, no desktop entries. npm workspaces resolve admin-web, both desktops, and 5 `packages/typescript/*`. No mixed runtime remains in either desktop app. |
+| G-02-08 | Doctor and pharmacy differ across every security-relevant namespace | desktop, security | `npm run desktop:test` | `PASS` | App ID, product/executable name, user-data directory, protocol scheme, asset scheme, encrypted-DB namespace, device-credential namespace, capability registry, and update channel all distinct, asserted per app including a check that neither config contains the sibling's identity. |
+| G-02-09 | Electron trust boundary: sandbox, context isolation, no Node in renderer, strict CSP, no generic IPC, fuses | desktop, security | `npm run desktop:test` | `PARTIAL` | 24 tests per app, source- and schema-level, proven capable of failing: disabling `contextIsolation`/`sandbox` and adding a renderer `node:fs` import produced 4 failures; restoring returned 24/24. **The packaged-window half is not done** — WebdriverIO against a real installed artifact on each OS is outstanding, and only that can prove runtime behaviour rather than configuration intent. |
 
 ## 3. Contract workflow (Phase 00 §3)
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
 | G-03-01 | Minimal OpenAPI with health endpoints and common envelope/error schemas | contracts | [openapi.yaml](../../../packages/contracts/openapi/openapi.yaml) | `PASS` | — |
-| G-03-02 | Validated and linted in CI; Dart and TypeScript test clients generated | contracts | `.github/workflows/pull-request.yaml` job `contracts` | `PARTIAL` | Lint, event validation, TS generation, and a stale-client check all run in CI. The Dart client is hand-written against the contract rather than generated; generation is deferred until the contract carries real operations (Phase 01). |
+| G-03-02 | Validated and linted in CI; Dart patient-mobile and TypeScript desktop/admin clients generated | contracts | `npm run contracts:generate:ts`; CI job `contracts` | `PARTIAL` | TypeScript generated once into `packages/typescript/api_client` and consumed by admin web and both Electron desktops; lint, event validation, and a stale-client check run in CI. The Dart patient client is still hand-written; generation is deferred until the contract carries real operations (Phase 01). |
 | G-03-03 | Breaking-change detector rejects a deliberate breaking change | contracts | `node scripts/contracts/check-breaking.mjs` against baseline `948ff67` | `PASS` | Three injected breaking changes, one per class ADR 0003 names, all detected with exit 1: `operation-removed` (GET /api/v1/meta/version), `enum-narrowed` (ErrorCode), `new-required-property` (ReadinessResult). Contract restored, exit 0. |
 | G-03-04 | Event JSON Schemas and compatibility rules; additive-optional within a version, breaking requires new version + dual read | contracts | [envelope.schema.json](../../../packages/contracts/events/envelope.schema.json), [events/README.md](../../../packages/contracts/events/README.md), 1 payload schema | `PASS` | Dual-read consumer test arrives with the first real consumer |
 | G-03-05 | Provider contract-test suites that future adapters must implement | contracts | — | `OPEN` | No provider ports exist yet in Phase 00 |
@@ -87,7 +112,7 @@ prompts, object keys, or exploit payloads.
 | G-06-02 | PR pipeline: format, lint, typecheck, architecture rules, contract validation, unit, integration, security scans, SBOM | devops | [pull-request.yaml](../../../.github/workflows/pull-request.yaml) | `PARTIAL` | 7 path-filtered jobs covering all six units plus contracts and security. Written and YAML-valid but **never executed**: there is no GitHub remote, so no run has ever proven it green. |
 | G-06-03 | Post-merge: signed immutable artifacts, signed staging deploy, migrations with lock monitoring, smoke checks | devops | [post-merge.yaml](../../../.github/workflows/post-merge.yaml) | `PARTIAL` | Build-once, keyless-sign-by-digest, attest, and scan are written. The staging job deliberately fails rather than reporting a deploy that cannot happen; production promotion is hard-disabled until Phase 23. |
 | G-06-04 | All deployment units build reproducibly from locked dependencies | devops | `composer.lock`; `package-lock.json`; `requirements.txt` with hashes (616 lines, `--require-hashes`) | `PARTIAL` | core-api image built from lock, exit 0. Flutter `pubspec.lock` files not yet generated. |
-| G-06-05 | Images/artifacts carry SBOMs with no unaccepted critical findings | security | `pull-request.yaml` and `post-merge.yaml` | `PARTIAL` | Syft SBOM generation, Trivy filesystem and image scanning, Gitleaks, and Semgrep with 7 clinic-specific rules are configured and blocking on CRITICAL/HIGH. Unexecuted, as above. |
+| G-06-05 | Images/artifacts carry SBOMs with no unaccepted critical findings | security | `npm audit`; [security-findings.md](security-findings.md) | `BLOCKED` | **SF-001 is open.** `npm audit` reports 1 critical and 25 high in the Electron build toolchain: Forge 7.11.2 pins `@electron/rebuild@3.7.2`, which depends on `tar@6`, and every advisory requires `>= 7.5.21`. An npm `overrides` entry does not reach the five nested copies. Forge 7.11.2 is the latest published version, so there is no upstream fix. Requires a security owner's decision; engineering cannot self-approve under ADR 0008. Semgrep now carries 13 rules including 6 Electron boundary rules. |
 
 ## 7. Observability (Phase 00 §7)
 
@@ -185,6 +210,12 @@ reaching the database by another route.
 | 15 | The Flutter widget tests used stub localization delegates supporting only English, so the Arabic RTL assertion failed for a fake reason and the Arabic text assertions were not testing localization at all | Widget test failure with a "locale not supported by all delegates" warning | Use the real `flutter_localizations` delegates, the same stack the apps run |
 | 16 | The synthetic national-ID generator emitted 13 digits, not 14: the date component is `YYMMDD` (6) and I wrote 5 | `SyntheticDataTest::national_ids_are_structurally_valid` | Corrected to 6, so generated values are structurally valid and still impossible |
 | 17 | `clinic_migrator` had a `CONNECTION LIMIT` of 5, too tight for a test suite that opens both the default and the migration connection per process | `too many connections for role` during the full suite | Raised to 25, with the reasoning recorded in the initdb script |
+| 18 | `@electron/fuses@2.1.3` (registry latest) is incompatible with `@electron-forge/plugin-fuses@7.11.2`, which declares peer `^1.0.0`. Install failed outright | `npm install` ERESOLVE | Pinned 1.8.0. ADR 0008 requires resolving against the registry **and** checking compatibility; taking latest is not the same thing |
+| 19 | `exactOptionalPropertyTypes` rejects `osxSign: undefined` in the Forge config. The intent — no signing identity in Phase 00 — is expressed by omitting the keys | `npm run desktop:typecheck` | Keys removed; the test now asserts their absence plus the absence of any credential-shaped environment variable |
+| 20 | The trust-boundary suite failed on its own documentation: a `toContain('--no-sandbox')` check matched the source comment warning against that flag | First run of the new suite | Added a comment-stripping reader. A security assertion a comment can satisfy is not an assertion |
+| 21 | The asset-scheme test asserted the literal appeared in `main/index.ts`, but main references it through `APP_CONFIG`, so the literal lives in `app-config.ts` | Same run | Assert the wiring in main and the literal on the config it reads |
+| 22 | jsdom refuses to run under the packaged asset scheme: `localStorage is not available for opaque origins`, because it does not know the scheme was registered standard and privileged | Desktop test run | Desktop tests default to the `node` environment, which is what source/schema inspection needs anyway; renderer component tests will opt into jsdom per file |
+| 23 | An npm `overrides` entry for `tar` does not replace nested copies — five physical `tar@6.2.1` directories survived and npm merely flagged them `invalid ... overridden`. This is the second time an override failed to win against nested resolution in this repository (the first was jsdom) | `find node_modules -path '*/tar/package.json'` | Recorded as SF-001 rather than papered over. The override is retained for root-resolving consumers but explicitly documented as not a fix |
 
 Defects 2 and 3 are worth noting as a pair: both were framework or regex
 defaults that looked correct in review and were only exposed by inspecting what
@@ -198,47 +229,58 @@ the database actually did. Neither would have failed a happy-path test.
 | 2 | Threat model and data classification approval | Security and privacy owners. Engineering cannot self-approve. |
 | 3 | ADR 0006 encryption spike | Five-platform compatibility results plus key rotation, recovery, backup exclusion, and migration tests |
 | 4 | No staging environment | Infrastructure decision and budget |
+| 5 | SF-001: critical/high advisories in the Electron build toolchain with no upstream fix | Security owner decision under ADR 0008: time-boxed exception, vendored patch, or a tooling change (which needs a compatibility ADR) |
 
 ## Honest summary
 
-Phase 00 now delivers all six deployment units, and each one builds, lints, type-checks, and tests green:
+Phase 00 delivers all six deployment units. The desktop pair was migrated from
+Flutter Desktop to Electron + React + TypeScript in one reviewed change per
+[ADR 0010](../../adr/0010-electron-react-typescript-desktop-clients.md), with an
+inventory recorded before anything was removed.
 
 | Unit | Verification |
 | --- | --- |
 | core-api | 123 tests, 4,919 assertions against real PostgreSQL; deptrac 0 violations / 0 uncovered; Pint clean |
 | ai-service | Health contract, startup config validation, isolation assertion |
 | admin-web | 5 tests, type-check clean, ESLint clean with type-aware rules, production build |
-| 3 Flutter apps + 11 packages | `melos analyze` clean with `--fatal-infos --fatal-warnings`, 20 tests, format clean |
+| doctor-desktop | 24 trust-boundary tests, type-check clean |
+| pharmacy-desktop | 24 trust-boundary tests, type-check clean |
+| patient-app + 11 Dart packages | `melos analyze` clean with `--fatal-infos --fatal-warnings`, 20 tests |
+| 5 shared TypeScript packages | type-check clean |
 
-Six oracles have been demonstrated capable of failing: the event validator, the
-database CHECK constraints, `deptrac`, the redaction canaries, the
-breaking-change detector, and the synthetic-data generator. That last group
-matters more than the passing counts. The redaction canary suite **passed a
-deliberate sabotage** before it was strengthened, and the synthetic-ID generator
-was producing 13-digit values that a weaker test would have accepted.
+Seven oracles have now been demonstrated capable of failing: the event
+validator, the database CHECK constraints, `deptrac`, the redaction canaries,
+the breaking-change detector, the synthetic-data generator, and the Electron
+trust-boundary suite. The last was worth the exercise — its first run failed on
+its own comment text, which is precisely the kind of assertion that would have
+provided false assurance for months.
 
 What is still not true:
 
-- **Nothing in CI has ever run.** Both workflows are written and YAML-valid, but
-  there is no GitHub remote, so "CI is configured" is the honest claim, not
-  "CI is green".
-- **Redaction is proven as a unit, not on the export path.** No test yet follows
-  a synthetic clinical request all the way to the collector (G-07-05).
-- **`clinic_reporter` can read every table.** Harmless now — no table holds
-  personal data — and unacceptable before Phase 01 stores a patient profile.
-- **No authorization layer exists.** Every deny-by-default statement in the
-  threat model is a design commitment, not running code, until Phase 01.
-- **Nothing has been independently reviewed.** The threat model, the data
-  classification, and the controls were all written and assessed by the same
-  party. Phase 22 exists precisely to remove that.
-- **No staging environment, no SBOM has ever been produced, no load test has
-  ever been run.**
+- **SF-001 blocks the dependency gate.** One critical and 25 high advisories in
+  the Electron build toolchain, with no upstream fix available and an npm
+  override that provably does not reach the affected copies. A security owner
+  must rule; engineering cannot self-approve under ADR 0008.
+- **The Electron trust boundary is proven at source level, not runtime.** Every
+  control is asserted against configuration and schemas. Only WebdriverIO
+  against a real installed artifact on Windows, macOS, and Linux proves the
+  packaged window actually behaves that way (G-02-09).
+- **Nothing in CI has ever run.** Eight jobs are written and YAML-valid; there
+  is no GitHub remote.
+- **Redaction is proven as a unit, not on the export path** (G-07-05).
+- **`clinic_reporter` can read every table.** Harmless now, unacceptable before
+  Phase 01 stores a patient profile.
+- **No authorization layer exists**, and **nothing has been independently
+  reviewed** — the threat model and classification were written and assessed by
+  the same party.
+- **No encrypted desktop storage.** ADR 0006's spike is open and ADR 0010
+  forbids local PHI until it and the Phase 05/22 gates pass. No desktop build
+  may write clinical content.
 
-Phase 00 must not be described as complete. Of the four blockers below, three
-need a named human owner and cannot be closed by engineering at all.
+Phase 00 must not be described as complete. Five blockers remain and four of
+them need a named human owner.
 
-**Phase 01 dependency readiness:** the foundation Phase 01 consumes — module
-boundaries, contracts, idempotency, outbox, redaction, migrations, and the test
-harness — is in place and evidenced. Before Phase 01 stores its first patient
-profile it must close G-07-05 (redaction on the export path), narrow the
-`clinic_reporter` grant, and have CI actually execute.
+**Phase 01 dependency readiness:** the foundation Phase 01 consumes is in place
+and evidenced. Before Phase 01 stores its first patient profile it must close
+G-07-05, narrow the `clinic_reporter` grant, resolve SF-001, and have CI
+actually execute.

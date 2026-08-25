@@ -66,7 +66,7 @@ CancelFutureReminderOccurrences
 
 ### `PrescriptionDocuments`
 
-Owns prescription render model, template version, render/print/export intent, private artifact reference, and exposure coordination. Rendering is behind `PrescriptionRendererPort`; OS printing remains a client adapter.
+Owns prescription render model, template version, render/print/export intent, private artifact reference, and exposure coordination. Rendering is behind `PrescriptionRendererPort`; OS printing remains a client adapter implemented in the Electron main process for the doctor desktop.
 
 ### `MedicationReferencePort`
 
@@ -100,15 +100,16 @@ Infrastructure -> PostgreSQL / S3 / outbox / PDF renderer
 Medication catalog later -> implements MedicationReferencePort
 ```
 
-The aggregate calculates state and active period; controllers, Eloquent observers, renderers, reminder workers, and Flutter widgets contain no prescription mutation rules.
+The aggregate calculates state and active period; controllers, Eloquent observers, renderers, reminder workers, Flutter patient-mobile widgets, and Electron React views contain no prescription mutation rules.
 
 ## Packages and platform capabilities
 
 - Laravel/PostgreSQL transactions, policies, idempotency, outbox, private S3, clock, and audit foundations.
 - `brick/money` only where a future print/legal fee appears; prescription instructions never use floating-point quantities.
 - A reviewed server-side PDF renderer behind `PrescriptionRendererPort` (for example a pinned `dompdf/dompdf` adapter if compatibility/security tests pass). Templates accept escaped typed fields, not arbitrary HTML.
-- Flutter generated client, Riverpod, Freezed, form validation, `intl`, and OS print adapter; the client never renders a legally authoritative prescription from untrusted local state.
-- Pest/PHPUnit, property tests for schedules/state machines, snapshot/PDF structural tests, real PostgreSQL concurrency tests, and Flutter integration tests.
+- Flutter patient mobile uses the generated Dart client, Riverpod, Freezed, form validation, and `intl` for read-only prescription/reminder views.
+- Electron doctor desktop uses React, TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, the generated TypeScript client, and a main-process print/download adapter. The client never renders a legally authoritative prescription from untrusted local state.
+- Pest/PHPUnit, property tests for schedules/state machines, snapshot/PDF structural tests, real PostgreSQL concurrency tests, Flutter patient-mobile integration tests, Electron main/preload/renderer tests, and WebdriverIO with `@wdio/electron-service` packaged-app print/E2E tests.
 
 ## Data model and migrations
 
@@ -264,7 +265,7 @@ DRAFT -> FINALIZED -> EXPOSED -> AMENDED
 3. Render in a bounded isolated process, verify PDF type/hash/page/size, store in private/quarantine object state.
 4. In a transaction, lock prescription/version, record `PRINT|EXPORT` exposure/access event, transition to `EXPOSED` if first use, mark artifact releasable, and audit.
 5. Only after commit issue a short-lived actor-bound signed download or stream. If the transaction fails, artifact remains unreachable and is cleaned up.
-6. Doctor desktop sends the verified PDF to OS print flow; cancellation after download cannot undo exposure because the document already left the controlled boundary.
+6. The renderer requests print through a narrow preload operation. Doctor Electron main then verifies the actor-bound artifact metadata, receives bytes only after the exposure commit, and invokes the OS print flow. Renderer-supplied arbitrary paths, URLs, printer options, or bytes are rejected. Cancellation after download cannot undo exposure because the document already left the controlled boundary.
 
 ### `Find My Medicines` exposure port
 
@@ -337,12 +338,13 @@ Jobs:
 
 ## Client work
 
-### Doctor Flutter desktop
+### Doctor Electron desktop
 
 - Structured multi-item editor with reference search, immutable medication snapshot display, dose/frequency/duration/dates/route/free note, reminder mode, validation, and explicit finalize confirmation.
 - Clearly show Draft, Finalized, Exposed, Amended, current/original versions, sync conflicts, and why editing is locked.
 - Correction/amendment requires reason and full review; no one-click destructive replacement.
 - Print preview uses server artifact/version/hash; no client-only authoritative PDF.
+- The sandboxed React renderer requests preview/print by opaque prescription artifact/version. Electron main owns credentialed download, bounded temporary storage, type/hash verification, print invocation, and prompt cleanup; preload never exposes filesystem, shell, token, or generic print APIs.
 
 ### Patient Flutter
 
@@ -384,7 +386,8 @@ Jobs:
 
 ### Contract tests
 
-- OpenAPI/generated clients for draft/items/reminders/finalize/amend/read/print/reference search.
+- OpenAPI/generated Dart patient-mobile and TypeScript Electron clients for draft/items/reminders/finalize/amend/read/print/reference search.
+- Electron print bridge contracts reject forged senders, arbitrary path/URL/content, stale artifact/version, unsupported options, cancellation races, and responses containing tokens or local paths.
 - `MedicationReferencePort`, encounter authorization, renderer, object store, reminder delivery, clock, audit, and outbox adapters pass owned contracts.
 - Event schemas reject prescription text/medication/dose/note/PDF identity content.
 
@@ -395,6 +398,7 @@ Jobs:
 - Correction produces patient high-priority intent and prominent latest-version UI; original remains retrievable.
 - Concurrent finalize/update/print/amend paths resolve without overwrite or version ambiguity.
 - Patient/admin/secretary/unrelated doctor/AI mutation attempts fail.
+- Packaged doctor Electron builds on every supported OS preview and print the exact server hash/version, handle cancel/failure without repeating exposure or mutation, and remove bounded temporary artifacts.
 
 ### System tests
 
@@ -408,7 +412,8 @@ Jobs:
 - BOLA/BFLA/mass assignment, state/version tampering, replay, ID substitution, forged `source_ai`, direct object-key access, signed-URL theft/expiry, and renderer injection.
 - Fuzz medication/dose/note Unicode/control characters, huge item counts, reminder arrays/intervals, dates, template inputs, and malformed PDFs.
 - Seed prescription/identity canaries and verify absence from logs, traces, Sentry, Horizon, Redis, events, analytics, crash reports, and unauthorized screens.
-- Verify `sqlcipher_flutter_libs` is absent and no prescription local draft weakens Phase 05 encrypted-storage rules.
+- Attempt renderer-to-print/filesystem/shell escalation, forged artifact/version/IPC sender, malicious PDF/path, navigation, and token extraction; Electron boundaries fail closed.
+- Verify `sqlcipher_flutter_libs` remains absent from the patient-mobile lockfile and no prescription local draft weakens Phase 05 Electron encrypted-storage rules.
 
 ## Observability and runbooks
 

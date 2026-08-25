@@ -11,18 +11,18 @@ Implement persona-specific AI as an optional, bounded product capability. Determ
 
 Always read completely:
 
-- [Roadmap, invariants, and open decisions](../../docs/phases/README.md)
-- [Cross-cutting architecture and delivery contract](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
-- [AI platform contract](../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
-- The one persona phase being implemented: [Doctor AI](../../docs/phases/17_doctor_ai.md), [Pharmacy AI](../../docs/phases/18_pharmacy_ai.md), or [Patient AI](../../docs/phases/19_patient_ai_triage_and_booking_tools.md).
+- [Roadmap, invariants, and open decisions](../../../docs/phases/README.md)
+- [Cross-cutting architecture and delivery contract](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [AI platform contract](../../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
+- The one persona phase being implemented: [Doctor AI](../../../docs/phases/17_doctor_ai.md), [Pharmacy AI](../../../docs/phases/18_pharmacy_ai.md), or [Patient AI](../../../docs/phases/19_patient_ai_triage_and_booking_tools.md).
 
 Read the upstream domain sources for that persona:
 
-- Doctor: [consultation/access](../../docs/phases/05_clinical_records_encounters_and_local_resilience.md), [prescriptions](../../docs/phases/06_prescriptions_reminders_and_printing.md), and [labs/files](../../docs/phases/07_labs_files_reports_and_referrals.md).
-- Pharmacy: [catalog/tenancy](../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md), [inventory](../../docs/phases/11_inventory_batches_fefo_and_alerts.md), [purchasing](../../docs/phases/12_purchasing_and_goods_receipt.md), [POS/refunds](../../docs/phases/13_pos_invoices_returns_and_refunds.md), [search](../../docs/phases/14_medicine_search_and_prescription_fulfillment.md), and [integrations](../../docs/phases/15_external_pharmacy_integrations.md).
-- Patient: [booking](../../docs/phases/03_scheduling_availability_and_booking.md) and [patient discovery/localization](../../docs/phases/08_patient_experience_discovery_reviews_and_localization.md).
+- Doctor: [consultation/access](../../../docs/phases/05_clinical_records_encounters_and_local_resilience.md), [prescriptions](../../../docs/phases/06_prescriptions_reminders_and_printing.md), and [labs/files](../../../docs/phases/07_labs_files_reports_and_referrals.md).
+- Pharmacy: [catalog/tenancy](../../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md), [inventory](../../../docs/phases/11_inventory_batches_fefo_and_alerts.md), [purchasing](../../../docs/phases/12_purchasing_and_goods_receipt.md), [POS/refunds](../../../docs/phases/13_pos_invoices_returns_and_refunds.md), [search](../../../docs/phases/14_medicine_search_and_prescription_fulfillment.md), and [integrations](../../../docs/phases/15_external_pharmacy_integrations.md).
+- Patient: [booking](../../../docs/phases/03_scheduling_availability_and_booking.md) and [patient discovery/localization](../../../docs/phases/08_patient_experience_discovery_reviews_and_localization.md).
 
-Also read the AI sections of [performance](../../docs/phases/21_performance_scaling_observability_and_resilience.md), [security/privacy](../../docs/phases/22_security_privacy_and_compliance_validation.md), and [release/recovery](../../docs/phases/23_disaster_recovery_release_and_production.md).
+Also read the AI sections of [performance](../../../docs/phases/21_performance_scaling_observability_and_resilience.md), [security/privacy](../../../docs/phases/22_security_privacy_and_compliance_validation.md), and [release/recovery](../../../docs/phases/23_disaster_recovery_release_and_production.md).
 
 Inspect current persona ports, public/internal OpenAPI schemas, domain policies/commands, conversation/run/tool tables, prompt/rule versions, client contract, tests, and local changes.
 
@@ -36,7 +36,7 @@ Own persona application behavior and its typed interfaces:
 - explicit human-confirmed handoff into existing domain commands;
 - persona-specific unit/integration/contract/E2E/system/security tests and evaluation fixtures supplied to the independent evaluation skill.
 
-The Flutter skill owns final client implementation. Coordinate contract changes; do not put client UI code in the AI service or AI policy in Flutter.
+Client ownership follows persona: `clinic-electron-desktop-development` owns Doctor AI and Pharmacy AI desktop surfaces, while `clinic-flutter-development` owns Patient AI mobile. Coordinate contract changes; do not put client UI code in the AI service or AI policy in any client.
 
 ## Persona boundaries
 
@@ -85,7 +85,7 @@ The Flutter skill owns final client implementation. Coordinate contract changes;
 4. Implement deterministic policy and domain handoff first; the model may propose only within the capability/output schema.
 5. Implement bounded retrieval/generation and validate output against current authorization/state before storage or delivery.
 6. Persist encrypted conversation content and safe trace/source/tool metadata. Keep sensitive bodies out of events/logs/traces/metrics.
-7. Add contract-compatible client surface and coordinate with Flutter without transferring authority to the client.
+7. Add a contract-compatible surface and coordinate with the persona's Electron or Flutter owner without transferring authority to the client.
 8. Run focused behavioral/security tests and the evaluation suite; submit the unchanged versioned bundle/results for independent promotion review.
 
 ## Verification

@@ -411,22 +411,24 @@ Response returns source/chunk IDs, bounded text, ranks/scores, version/language/
 
 ## Client work
 
-### Doctor Flutter desktop
+### Doctor Electron desktop (React + TypeScript)
 
 - Private KB upload/version/status/retry/activate UI using the quarantined file flow.
 - Scope is shown but server-derived; no shared-publish control.
 - Clear processing/ready/failed/active states, safe reason, retry-as-same-intent, and no claim that upload is searchable before activation.
+- React renderer uses generated TypeScript DTOs and a narrow typed preload facade. Main owns authenticated upload/status transport and authorizes native file work; file selection returns an opaque handle, and blocking work prefers a utility process where the target-OS/ABI spike supports it without exposing arbitrary paths, object credentials, or raw IPC to the renderer.
 
 ### Admin React
 
 - Specialty/patient-safe/pharmacy-shared document upload, provenance/version review, processing manifest summary, explicit activation, rollback to a READY prior version, and evaluation evidence.
 - Admin knowledge capability is separate from generic admin and clinical access. It cannot read patient clinical documents.
 
-### Pharmacy Flutter
+### Pharmacy Electron desktop (React + TypeScript)
 
 - No AI answer yet. Only future Phase 18 depends on pharmacy KB. Optional authorized shared-document status remains disabled unless product assigns it.
+- No provider, Qdrant, object-store, filesystem, or embedding capability is exposed through preload; any future status call is a purpose-specific validated main-process capability.
 
-All clients use Arabic/English strings, accessible progress/status/error presentation, bounded upload UX, and no local raw chunk/embedding storage.
+All clients use Arabic/English strings, accessible progress/status/error presentation, bounded upload UX, and no local raw chunk/embedding storage. Admin remains the browser React application; patient remains Flutter mobile.
 
 ## Security and privacy controls
 
@@ -448,6 +450,7 @@ All clients use Arabic/English strings, accessible progress/status/error present
 
 - Scope/collection mapping, clean-source eligibility, version/activation state, approval, callback monotonicity, idempotency, manifest validation, filter fail-closed, config pinning, retry classification, budgets/deadlines, and no-tool default.
 - Chunk structure/overlap/token limits, deterministic point IDs, payload minimization, and provider error normalization.
+- Doctor Electron renderer upload/status state, opaque file-handle flow, typed preload surface, and main sender/session/scope/schema/size/deadline validators are unit-tested without filesystem or credential access.
 
 ### Property/fuzz tests
 
@@ -462,6 +465,7 @@ All clients use Arabic/English strings, accessible progress/status/error present
 - Real dedicated Redis/Dramatiq verifies retry, worker crash, duplicate delivery, queue isolation from Horizon, cancellation, dead-letter, and recovery.
 - Real Qdrant verifies deterministic staging, dense/sparse hybrid query, payload indexes, active-version and scope filters, partial-write retry, deletion/rebuild, snapshot restore, and unavailable behavior.
 - S3/ClamAV/parser/OCR fixtures verify quarantine, signed-fetch expiry/hash, redirects, malware, unsupported formats, bombs, scanned/text paths, and no imaging diagnosis.
+- Electron main/preload/file-adapter integration proves cancellation/retry, opaque-handle expiry, session revocation, optional-utility crash cleanup, and zero renderer access to arbitrary paths/object credentials/raw chunks.
 
 ### Contract tests
 
@@ -469,6 +473,7 @@ All clients use Arabic/English strings, accessible progress/status/error present
 - Every parser/embedder/reranker/vector/provider adapter passes typed error, deadline, cancellation, determinism/version, resource-limit, and redaction contracts.
 - Current and previous compatible event schemas replay without document content.
 - Prove Python cannot consume Horizon queues and FastAPI has no Core database credential/network route.
+- Generated TypeScript desktop upload/status DTOs and versioned preload/IPC schemas reject raw paths, object credentials, arbitrary URLs, scope/publish flags, unregistered channels, and invalid sender frames.
 
 ### End-to-end tests
 
@@ -477,6 +482,7 @@ All clients use Arabic/English strings, accessible progress/status/error present
 - Failed/malicious/partial document never becomes READY/ACTIVE.
 - Repeated task/callback produces one version/manifest/point set.
 - Qdrant/embedding/broker/FastAPI outage leaves all Core endpoints and pharmacy/clinical workflows healthy.
+- Packaged doctor Electron E2E uploads an approved file through an opaque capability, observes processing/activation state, handles retry/revocation, and proves a hostile renderer cannot read the path, token, raw document, chunk, or embedding.
 
 ### System, performance, recovery, and AI evaluation tests
 

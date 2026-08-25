@@ -204,9 +204,13 @@ Stable errors include MEDICATION_NOT_ACTIVE, SEARCH_QUERY_INVALID, LOCATION_INVA
 - Clear precise location and results on logout; do not persist coordinates in analytics/crash reports.
 - Arabic/English search input, RTL, transliteration-safe display, screen-reader result summaries, accessible permission denial, and keyboard navigation are required.
 
-### Pharmacy/Admin clients
+### Pharmacy Electron desktop (React + TypeScript)
 
-No new stock mutation UI. Pharmacy may preview how its public branch projection appears, without patient identity/location. Admin cannot inspect individual patient prescription searches.
+No new stock mutation UI. Pharmacy may preview how its public branch projection appears, without patient identity/location, through a generated TypeScript API operation owned by main and exposed as a narrow typed preload capability. The renderer cannot supply patient/prescription identity, precise coordinates, branch scope overrides, raw URLs, or SQL.
+
+### Admin browser React
+
+Admin cannot inspect individual patient prescription searches. Any authorized aggregate operational projection remains a browser API contract and never reuses Electron IPC or exposes patient identity/location.
 
 ## Security and privacy controls
 
@@ -234,7 +238,8 @@ No new stock mutation UI. Pharmacy may preview how its public branch projection 
 
 ### Contract tests
 
-- Generated Dart client covers request-body point, public availability DTO, cursor, current-version conflict, and stable errors.
+- Generated Dart patient-mobile client covers request-body point, public availability DTO, cursor, current-version conflict, and stable errors.
+- Generated TypeScript pharmacy preview and typed preload/IPC contracts expose only the public branch projection and reject patient/prescription/location/scope-bearing or oversized arguments.
 - Native and integrated BranchAvailabilityQuery adapters pass identical public/freshness/redaction contracts.
 - Cache-invalidation event versions replay safely.
 

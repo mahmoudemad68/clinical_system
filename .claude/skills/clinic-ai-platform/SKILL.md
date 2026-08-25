@@ -11,12 +11,12 @@ Build the rebuildable AI substrate while preserving Laravel/PostgreSQL/S3 as the
 
 Read completely before changing platform code:
 
-- [Roadmap and invariants](../../docs/phases/README.md)
-- [Cross-cutting service, queue, contract, and data-ownership rules](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
-- [Files, extraction, and quarantine boundary](../../docs/phases/07_labs_files_reports_and_referrals.md)
-- [AI platform, ingestion, and retrieval](../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
+- [Roadmap and invariants](../../../docs/phases/README.md)
+- [Cross-cutting service, queue, contract, and data-ownership rules](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [Files, extraction, and quarantine boundary](../../../docs/phases/07_labs_files_reports_and_referrals.md)
+- [AI platform, ingestion, and retrieval](../../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
 
-For material runtime work also read the AI portions of [performance/resilience](../../docs/phases/21_performance_scaling_observability_and_resilience.md), [security/privacy validation](../../docs/phases/22_security_privacy_and_compliance_validation.md), and [rebuild/production](../../docs/phases/23_disaster_recovery_release_and_production.md).
+For material runtime work also read the AI portions of [performance/resilience](../../../docs/phases/21_performance_scaling_observability_and_resilience.md), [security/privacy validation](../../../docs/phases/22_security_privacy_and_compliance_validation.md), and [rebuild/production](../../../docs/phases/23_disaster_recovery_release_and_production.md).
 
 Inspect current internal schemas, Laravel KnowledgeBase/AI gateway ports, FastAPI feature layout, Python queue, model/config lockfiles, Qdrant collection definitions, test fixtures/evaluation harness, telemetry, ADRs, and local changes.
 

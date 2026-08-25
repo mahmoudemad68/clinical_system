@@ -14,7 +14,7 @@ apis:
     # here keeps one place that says where the TypeScript client lands, so the
     # contract and its generated consumer cannot drift apart in scripts.
     x-openapi-ts:
-      output: apps/admin-web/src/api/generated/schema.d.ts
+      output: packages/typescript/api_client/src/generated/schema.d.ts
 
 rules:
   # ---------------------------------------------------------------- enforced

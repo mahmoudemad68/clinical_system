@@ -10,7 +10,7 @@ The assurance catalogs are verification mappings:
 
 - OWASP Application Security Verification Standard (ASVS) 5.0.0 for applicable web/API/server controls.
 - OWASP API Security guidance for API-specific authorization, resource, workflow, consumption, and configuration risks.
-- OWASP MASVS and MASTG for Flutter mobile release verification, with desktop-specific controls assessed separately where mobile requirements do not apply.
+- OWASP MASVS and MASTG for the Flutter patient mobile release; Electron security guidance and applicable ASVS controls for the doctor/pharmacy desktop main, preload, renderer, utility, IPC, native-storage, navigation, packaging, signing, and update boundaries.
 - NIST AI Risk Management Framework and its Generative AI Profile for governance, mapping, measurement, and management of AI risks.
 
 Mapping or passing selected controls is **not** a claim of certification, statutory compliance, regulatory approval, or legal sufficiency.
@@ -94,8 +94,8 @@ All tool versions/configuration images are pinned in the evidence manifest. Find
 ### Source, dependency, and architecture assurance
 
 - Current `deptrac/deptrac` for PHP module-boundary enforcement, plus Larastan/PHPStan and Laravel Pint.
-- Dart analyzer/lint, TypeScript type-aware ESLint, Python type/static checks selected in Phase 00, and Semgrep rules covering all languages.
-- Composer, Dart/Flutter, JavaScript, and Python dependency audits; Gitleaks for secrets; Syft-compatible SBOM; Trivy for image/IaC/dependency findings.
+- Dart analyzer/lint for patient mobile, TypeScript type-aware ESLint for Electron desktop and browser admin, Python type/static checks selected in Phase 00, and Semgrep rules covering all languages and Electron privileged-process boundaries.
+- Composer, Dart/Flutter, Electron/JavaScript, and Python dependency audits; Gitleaks for secrets; Syft-compatible SBOM; Trivy for image/IaC/dependency findings. Electron SBOM/provenance includes bundled Chromium/Node, native modules, packager plugins, and per-platform artifacts.
 - Provenance/signature verification for release artifacts and lockfile/digest enforcement.
 
 ### Dynamic/API/web/mobile assurance
@@ -103,8 +103,10 @@ All tool versions/configuration images are pinned in the evidence manifest. Find
 - OWASP ZAP for authorized staged DAST and OpenAPI-aware scanning.
 - Schemathesis or an ADR-approved schema/property fuzzer for negative OpenAPI tests with explicit rate/target controls.
 - k6 security-abuse/load scenarios for resource limits and retry amplification.
-- Flutter release verification mapped to OWASP MASVS/MASTG; MobSF or equivalent may support static/dynamic inspection, but manual verification decides findings.
-- Drift local persistence uses `sqlite3` v3 native hooks with SQLCipher or SQLite3MultipleCiphers as approved and compatibility-tested. Do not introduce the EOL `sqlcipher_flutter_libs` package.
+- Flutter patient release verification maps to OWASP MASVS/MASTG; MobSF or equivalent may support static/dynamic inspection, but manual verification decides findings.
+- Patient Drift persistence uses `sqlite3` v3 native hooks with SQLCipher or SQLite3MultipleCiphers as approved and compatibility-tested. Do not introduce the EOL `sqlcipher_flutter_libs` package.
+- Electron desktop assurance uses WebdriverIO `@wdio/electron-service` as the default packaged-app harness, plus direct main/preload unit and integration tests. Playwright Electron is permitted only after the approved experimental-launcher compatibility spike. Verify the Electron Forge Webpack/TypeScript pipeline, target makers, auto-unpack/rebuild of native modules, code signing/notarization, ASAR integrity, and Electron fuses on the exact candidate.
+- Electron desktop persistence uses an approved Node SQLite native binding built against SQLCipher outside the renderer. Main owns and authorizes the store, preferring utility-process execution where the target-OS/ABI spike supports it; main wraps the random database key with Electron `safeStorage`. Linux `basic_text` or any unavailable OS-backed protection fails closed for PHI and long-lived secrets.
 - Browser tooling for CSP/headers/CSRF/XSS/session/accessibility interaction tests; proxy inspection uses synthetic accounts/data only.
 
 ### AI assurance
@@ -202,7 +204,7 @@ Explicitly test object-level and property-level authorization, broken authentica
 
 ### OWASP MASVS/MASTG
 
-For patient mobile and applicable Flutter artifacts verify storage, cryptography, authentication/session, network, platform interaction, code quality/update/integrity, privacy, and resilience requirements selected by the threat model. Doctor/pharmacy desktop gets an explicit platform-specific assessment rather than blindly claiming mobile controls apply. Root/jailbreak or certificate-pinning decisions require an ADR/threat/cost/operability review; absence is not silently marked pass.
+For the Flutter patient mobile artifact verify storage, cryptography, authentication/session, network, platform interaction, code quality/update/integrity, privacy, and resilience requirements selected by the threat model. Doctor/pharmacy Electron desktop receives the explicit platform assessment below rather than being counted as a Flutter/MASVS artifact. Root/jailbreak or certificate-pinning decisions require an ADR/threat/cost/operability review; absence is not silently marked pass.
 
 ### NIST AI RMF and Generative AI Profile
 
@@ -225,7 +227,7 @@ This is an AI-governance verification map, not a claim that NIST certifies the p
 
 ### 2. Architecture and data-flow review
 
-1. Walk each trust boundary from all four clients through gateway/Laravel/PostgreSQL/Redis/Reverb/S3/FastAPI/Qdrant/providers/connectors/telemetry/backups.
+1. Walk each trust boundary from the Flutter patient app, Electron doctor app, Electron pharmacy app, and browser React admin through gateway/Laravel/PostgreSQL/Redis/Reverb/S3/FastAPI/Qdrant/providers/connectors/telemetry/backups.
 2. Reconcile C4/module diagrams, deployed inventory, firewall/service identities, API/events/tools, data inventory, and SBOM. Unknown/shadow routes/services fail the gate.
 3. Update STRIDE/abuse/privacy threats for account recovery, tenant access, clinical context, financial movements, files/OCR, realtime, queues/retries, AI retrieval/tools, connectors, admin analytics, observability, CI/CD, secrets, backups, and support access.
 4. Verify each mitigation has an owner and executable evidence; document residual risk rather than relying on prose.
@@ -300,12 +302,23 @@ It never accepts passwords, tokens, National ID, phone, raw request/response, me
 
 ## Client and release-hardening work
 
-### Flutter patient/doctor/pharmacy
+### Flutter patient mobile
 
-- Verify secure token/key storage, encrypted local clinical/AI drafts, logout/revocation/expiry cleanup, backup exclusion, file permissions, clipboard/screenshot/background-preview policy where supported, and no secrets in binaries/logs/crash reports.
-- Use Drift over `sqlite3` v3 native hooks with the approved SQLCipher/SQLite3MultipleCiphers integration and compatibility tests across supported OS/architectures; do not use EOL `sqlcipher_flutter_libs`.
-- Verify TLS/hostname/certificate handling, no cleartext fallback, safe deep links/intents/file opening, update provenance, desktop IPC/file paths, notification privacy, WebSocket auth/reconnect, and safe error rendering.
+- Verify secure token/key storage, approved encrypted local drafts, logout/revocation/expiry cleanup, backup exclusion, file permissions, clipboard/screenshot/background-preview policy where supported, and no secrets in binaries/logs/crash reports.
+- Use Drift over `sqlite3` v3 native hooks with the approved SQLCipher/SQLite3MultipleCiphers integration and compatibility tests across supported mobile OS/architectures; do not use EOL `sqlcipher_flutter_libs`.
+- Verify TLS/hostname/certificate handling, no cleartext fallback, safe deep links/intents/file opening, store update provenance, notification privacy, WebSocket auth/reconnect, and safe error rendering.
 - Certificate pinning, root/jailbreak detection, anti-tamper, and obfuscation are threat-model decisions with operational/recovery tests, not checkbox claims.
+
+### Electron doctor/pharmacy desktop
+
+- Package only local renderer content behind the approved application protocol and a restrictive CSP. Every production `BrowserWindow` sets `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`, `nodeIntegrationInWorker: false`, `webviewTag: false`, and `webSecurity: true`; devtools and debug endpoints are disabled in release builds.
+- Treat the React renderer as untrusted. It has no Electron/Node imports, raw `ipcRenderer`, token/key, API/realtime credential, database, arbitrary filesystem/path, shell, printer, provider SDK, or updater access. It may call only one-purpose typed methods exposed through `contextBridge` by the context-isolated preload.
+- Main validates `event.senderFrame`/owning window, active session/device/branch/encounter, channel allowlist, Zod-or-equivalent schema, unknown fields, byte/count/depth limits, deadline, cancellation, and output shape for every request. Never expose generic `send`, `invoke`, `on`, channel names, callback event objects, renderer-provided URLs/SQL/commands, or authorization scope.
+- Main owns device credentials, OpenAPI TypeScript transport, private Reverb authorization/subscriptions, external navigation decisions, files/printing, secret access, updater control, and authorization of native storage. Native/blocking SQLite or parser work prefers a least-capability utility process where the target-OS/ABI spike supports it; renderer crashes/reloads do not transfer capability.
+- Deny unexpected navigation, `window.open`, webviews, permissions, downloads, and new windows by default. Allowlisted external HTTPS links open only after canonical URL validation and explicit user action in the OS browser; no clinic auth headers/cookies accompany them.
+- Store approved offline data only in SQLCipher-backed SQLite outside the renderer; never in renderer localStorage, IndexedDB, browser cache, or plaintext files. Main wraps a random database key with `safeStorage`, excludes the database from backups where required, and fails closed if OS-backed secret protection is unavailable. Wrong-key handling must not create or replace a blank database.
+- Verify signed/notarized packages, ASAR integrity, production Electron fuses, update-signature/provenance validation, safe update points for pending drafts/outbox items, migration/rollback compatibility, and removal of test certificates/endpoints. The renderer cannot choose an update URL or trigger installation outside a narrow policy-controlled capability.
+- Verify Arabic/English `lang`/`dir`, MUI RTL behavior, keyboard/focus order, screen-reader announcements, zoom/contrast, scanner/printer interaction, and safe bidi/error rendering in packaged Windows/macOS/Linux targets selected for release.
 
 ### React admin
 
@@ -325,19 +338,23 @@ It never accepts passwords, tokens, National ID, phone, raw request/response, me
 - National-ID normalization/HMAC uniqueness/encryption/redaction; session/MFA/OTP/rate/idempotency states; audit hash chain; signed URL; tool/proposal grant; retention decisions.
 - State machines reject skipped/stale/duplicate/backward transitions for appointment/encounter/prescription/lab/invoice/stock/return/refund/AI.
 - Parsers/validators/redactors/sanitizers/security-event schemas and metric-label allowlists use property/fuzz tests with Arabic/Unicode/encoded payloads.
+- Electron renderer tests prove UI/domain logic cannot import privileged modules; preload tests expose only named capability methods; main tests enforce sender/session/scope/schema/size/deadline/cancellation policy and safe error mapping for every handler.
 
 ### Integration tests
 
 - Real PostgreSQL/Redis/S3/Reverb/Qdrant verify transaction/race/idempotency, tenant filters, cache loss, queue replay, private channels, object quarantine/access expiry, encryption/keys, and audit chain.
 - Service identities/network policies deny direct public/internal cross-service access and broad database credentials.
 - Secret rotation/revocation, session/device revocation, migration-role isolation, provider timeout/error/redaction, and data-retention propagation.
-- Drift encrypted-database creation/open/migration/key lifecycle across supported mobile/desktop targets.
+- Patient Drift encrypted-database creation/open/migration/key lifecycle across supported mobile targets.
+- Electron SQLCipher creation/open/wrong-key/no-blank-replacement/migration/rekey/key-wrap/logout/revocation lifecycle, native ABI rebuild, and main-owned store authorization pass in Forge Webpack/TypeScript packaged artifacts on every supported OS/architecture. Prefer utility-process execution where the OS/ABI spike proves support; otherwise isolate synchronous access behind the main-owned adapter and prove renderer/event-loop safety.
+- Real Electron main/preload/renderer integration verifies context isolation/sandbox settings, private Reverb authorization/reconnect, window lifecycle, capability revocation, and utility crash/restart behavior where used.
 
 ### Contract tests
 
 - OpenAPI/event/tool/internal-service/provider/connector schemas reject unknown privilege/scope/code/URL/SQL fields, incompatible versions, oversized output, and unsafe errors.
 - Every adapter preserves typed denial/timeout/cancellation/freshness and least-privilege semantics.
 - Assurance mapping/evidence/finding schemas validate, require reviewer/provenance, and prevent false pass/closure states.
+- Generated TypeScript OpenAPI clients and versioned preload/IPC schemas cover every Electron capability. Generic channels, unknown fields, stale scope, invalid sender frames, oversized payloads, arbitrary URL/path/SQL/command fields, and privilege-bearing renderer arguments are rejected.
 
 ### End-to-end tests
 
@@ -345,13 +362,16 @@ It never accepts passwords, tokens, National ID, phone, raw request/response, me
 - Critical §158 plus Phase 06 safety tests: every finalized/patient-readable version is immutable before and after exposure; exposure is only an audit/release milestone; amendment preserves the original; correction notifies; original remains retrievable; concurrent update cannot overwrite.
 - Critical §159 pharmacy tests: FEFO, no expired sale, cancellation reversal, partial receive, receive/refund/sync idempotency.
 - File, chat, AI tool, patient triage/confirmation, admin analytics/health, session revocation, and client offline/retry journeys include denied paths.
+- Packaged Electron doctor/pharmacy journeys run with WebdriverIO `@wdio/electron-service` by default. Playwright Electron is allowed only after the approved experimental-launcher compatibility spike; tests cover install/first launch, deep-link denial, external-link allowlist, barcode/print/file capabilities, encrypted draft recovery, offline/reconnect, logout/device revocation, and update-required states.
+- XSS/hostile AI or API content in a renderer cannot obtain Node/Electron, invoke an unregistered capability, navigate to a privileged origin, read tokens/keys/SQLCipher data, or trigger shell/file/print/update behavior.
 
-### System, penetration, and resilience tests
+### System, security-penetration, and resilience tests
 
 - Authenticated manual/API/web/mobile assessment under approved scope plus automated SAST/DAST/schema fuzz/dependency/container/IaC/secret/SBOM evidence.
 - Cross-tenant/object/function/property, business-flow abuse, concurrency/replay, parser/file, SSRF, XSS/CSRF, secret exposure, network reachability, telemetry leakage, and resource-exhaustion scenarios.
 - AI/Qdrant/Redis/provider/worker/node failure and prompt/tool adversarial tests preserve core/invariants and generate safe signals.
 - Backup confidentiality/integrity/access/key-separation is tested here; complete restore/RPO/RTO/failover is Phase 23.
+- Exact signed Electron candidates are inspected for `contextIsolation`, sandbox, Node/webview disablement, CSP, permission/navigation/window denial, ASAR integrity, production fuses, signatures/notarization, native ABI linkage, secret canaries, and update provenance. Install/uninstall/update/rollback and wrong-key/locked-keychain/Linux secret-store failure are tested on each supported target.
 
 ### Clinical, pharmacy, privacy, and AI validation
 

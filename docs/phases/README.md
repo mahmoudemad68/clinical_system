@@ -2,15 +2,15 @@
 
 ## Purpose
 
-This directory converts the 4,742-line product and architecture source in [`plan.md`](../../plan.md) into an implementation-ready delivery program. The source document is authoritative for product scope. These phase files add execution detail: module ownership, SOLID boundaries, data and control flows, package choices, failure behavior, security controls, test layers, observability, migrations, and acceptance gates.
+This directory converts the 4,742-line product and architecture source in [`plan.md`](../../plan.md) into an implementation-ready delivery program. The source document is authoritative for product scope. The user-approved desktop-stack decision in [ADR 0010](../adr/0010-electron-react-typescript-desktop-clients.md) supersedes only its Flutter Desktop implementation choice. These phase files add execution detail: module ownership, SOLID boundaries, data and control flows, package choices, failure behavior, security controls, test layers, observability, migrations, and acceptance gates.
 
 [`PLAN_COVERAGE.md`](PLAN_COVERAGE.md) maps all 176 numbered source sections to a primary implementation phase and records the source line ranges used during this review.
 
 The target system has four clients and two server-side subsystems:
 
 1. Patient mobile application: Flutter for Android and iOS.
-2. Doctor desktop application: Flutter Desktop.
-3. Pharmacy desktop application: Flutter Desktop.
+2. Doctor desktop application: Electron with React and TypeScript.
+3. Pharmacy desktop application: Electron with React and TypeScript.
 4. Admin dashboard: React and TypeScript.
 5. Core platform: Laravel modular monolith backed by PostgreSQL/PostGIS, Redis, Reverb, and private S3-compatible storage.
 6. AI subsystem: isolated Python/FastAPI service backed by Qdrant and one or more LLM/embedding providers.
@@ -77,6 +77,7 @@ These constraints apply to every phase and cannot be weakened by client behavior
 17. All persisted instants use UTC; business schedules retain the `Africa/Cairo` time-zone identifier and handle daylight-saving changes. Display conversion happens at the edge.
 18. Logs and traces contain identifiers and safe metadata, never raw medical content, credentials, national IDs, prescription text, lab contents, or unrestricted prompts/responses.
 19. No production release is accepted without authorization, reconciliation, restore, failure-isolation, security, privacy/legal, load, observability, and clinical-AI evidence where applicable.
+20. An Electron renderer is always untrusted presentation code: it never receives Node/Electron primitives, device or refresh tokens, database keys, arbitrary filesystem paths, SQL, shell access, or a generic IPC/network capability. Main/preload permissions are purpose-specific, schema-validated, sender-validated, deny-by-default, and independently security-tested.
 
 ## Required evidence for every phase
 
@@ -118,10 +119,11 @@ Every numbered section in `plan.md` is mapped in at least one phase's **Plan tra
 
 ## External references to revalidate at phase start
 
-These primary references were checked on 2026-08-24. They support the architecture/tooling direction but do not replace version compatibility spikes, threat modeling, clinical review, or Egyptian legal/regulatory advice.
+These primary references were checked on 2026-08-25. They support the architecture/tooling direction but do not replace version compatibility spikes, threat modeling, clinical review, or Egyptian legal/regulatory advice.
 
 - [Laravel 13 Sanctum](https://laravel.com/framework/docs/13.x/sanctum), [Horizon](https://laravel.com/framework/docs/13.x/horizon), [Reverb](https://laravel.com/framework/docs/13.x/reverb), and [Octane](https://laravel.com/framework/docs/13.x/octane).
-- [Flutter app architecture](https://docs.flutter.dev/app-architecture/guide) and [Flutter integration testing](https://docs.flutter.dev/cookbook/testing/integration/introduction).
+- Patient-mobile [Flutter app architecture](https://docs.flutter.dev/app-architecture/guide) and [Flutter integration testing](https://docs.flutter.dev/cookbook/testing/integration/introduction).
+- Electron's [security checklist](https://www.electronjs.org/docs/latest/tutorial/security), [context isolation](https://www.electronjs.org/docs/latest/tutorial/context-isolation), [process sandboxing](https://www.electronjs.org/docs/latest/tutorial/sandbox), [IPC guidance](https://www.electronjs.org/docs/latest/tutorial/ipc), [safe storage](https://www.electronjs.org/docs/latest/api/safe-storage), [fuses](https://www.electronjs.org/docs/latest/tutorial/fuses), [automated testing](https://www.electronjs.org/docs/latest/tutorial/automated-testing), [distribution](https://www.electronjs.org/docs/latest/tutorial/distribution-overview), [code signing](https://www.electronjs.org/docs/latest/tutorial/code-signing), and [updater](https://www.electronjs.org/docs/latest/api/auto-updater/) guidance for doctor/pharmacy desktops.
 - Qdrant [hybrid queries](https://qdrant.tech/documentation/search/hybrid-queries/), [multitenancy](https://qdrant.tech/documentation/tutorials/multiple-partitions/), [security](https://qdrant.tech/documentation/security/), and [snapshots](https://qdrant.tech/documentation/operations/snapshots/).
 - OWASP [ASVS](https://owasp.org/www-project-application-security-verification-standard/), [API Security](https://owasp.org/www-project-api-security/), and [MASVS/MASTG](https://mas.owasp.org/MASVS/).
 - NIST [AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework) and the [Generative AI Profile](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf).

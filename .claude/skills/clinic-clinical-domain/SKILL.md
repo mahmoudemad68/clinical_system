@@ -1,6 +1,6 @@
 ---
 name: clinic-clinical-domain
-description: Implement or review this clinic project's clinical-care domain rules for consultation access, encounters, medical records, prescriptions, labs, reports, referrals, and clinician draft synchronization. Use for Phases 04-07 or clinical constraints consumed by later AI/pharmacy work; not for generic Laravel/Flutter tasks, pharmacy inventory/POS, file-scanner mechanics, or independent test/security assurance.
+description: Implement or review this clinic project's clinical-care domain rules for consultation access, encounters, medical records, prescriptions, labs, reports, referrals, and clinician draft synchronization. Use for Phases 04-07 or clinical constraints consumed by later AI/pharmacy work; not for generic Laravel/client tasks, pharmacy inventory/POS, file-scanner mechanics, or independent test/security assurance.
 ---
 
 # Clinic Clinical Domain
@@ -11,14 +11,14 @@ Preserve clinical meaning and patient-safety invariants across framework, databa
 
 Read completely before changing clinical behavior:
 
-- [Roadmap invariants and open decisions](../../docs/phases/README.md)
-- [Cross-cutting architecture and delivery contract](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
-- [Phase 04 — queue and consultation control](../../docs/phases/04_realtime_queue_and_consultation_control.md) for check-in, start/end, or access-grant work
-- [Phase 05 — records, encounters, and local resilience](../../docs/phases/05_clinical_records_encounters_and_local_resilience.md) for records, encounters, drafts, or sync
-- [Phase 06 — prescriptions, reminders, and printing](../../docs/phases/06_prescriptions_reminders_and_printing.md) for medication orders, versions, exposure, amendment, reminders, or print/export
-- [Phase 07 — labs, files, reports, and referrals](../../docs/phases/07_labs_files_reports_and_referrals.md) for those clinical artifacts and workflows
+- [Roadmap invariants and open decisions](../../../docs/phases/README.md)
+- [Cross-cutting architecture and delivery contract](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [Phase 04 — queue and consultation control](../../../docs/phases/04_realtime_queue_and_consultation_control.md) for check-in, start/end, or access-grant work
+- [Phase 05 — records, encounters, and local resilience](../../../docs/phases/05_clinical_records_encounters_and_local_resilience.md) for records, encounters, drafts, or sync
+- [Phase 06 — prescriptions, reminders, and printing](../../../docs/phases/06_prescriptions_reminders_and_printing.md) for medication orders, versions, exposure, amendment, reminders, or print/export
+- [Phase 07 — labs, files, reports, and referrals](../../../docs/phases/07_labs_files_reports_and_referrals.md) for those clinical artifacts and workflows
 
-Read only the additional consumer phase that applies: [Phase 10](../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md) for the production medication-reference adapter, [Phase 14](../../docs/phases/14_medicine_search_and_prescription_fulfillment.md) for fulfillment discovery, [Phase 17](../../docs/phases/17_doctor_ai.md) for doctor AI, or [Phase 19](../../docs/phases/19_patient_ai_triage_and_booking_tools.md) for patient AI. Inspect current ADRs, policy matrices, aggregate/state code, migrations, API/events, encrypted-draft design, tests, and local changes.
+Read only the additional consumer phase that applies: [Phase 10](../../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md) for the production medication-reference adapter, [Phase 14](../../../docs/phases/14_medicine_search_and_prescription_fulfillment.md) for fulfillment discovery, [Phase 17](../../../docs/phases/17_doctor_ai.md) for doctor AI, or [Phase 19](../../../docs/phases/19_patient_ai_triage_and_booking_tools.md) for patient AI. Inspect current ADRs, policy matrices, aggregate/state code, migrations, API/events, encrypted-draft design, tests, and local changes.
 
 ## Ownership
 
@@ -31,7 +31,7 @@ Own the clinical ubiquitous language and invariants for:
 - server/local draft conflict semantics and the boundary between transient clinician work and committed medical truth;
 - clinical ports, typed commands/results, authorization context requirements, and domain event meaning.
 
-The Laravel skill owns framework wiring and HTTP/application adapters. PostgreSQL consistency owns migrations, constraints, locks, indexes, and transaction proofs. Flutter owns local encryption/UI/sync presentation. Secure files owns byte quarantine and signed delivery. AI skills own recommendation/retrieval mechanics. Test and security/privacy skills independently verify the implementation. Do not absorb those responsibilities into a “clinical service” god module.
+The Laravel skill owns framework wiring and HTTP/application adapters. PostgreSQL consistency owns migrations, constraints, locks, indexes, and transaction proofs. Electron owns doctor local encryption/UI/sync presentation; Flutter owns patient mobile read surfaces. Secure files owns byte quarantine and signed delivery. AI skills own recommendation/retrieval mechanics. Test and security/privacy skills independently verify the implementation. Do not absorb those responsibilities into a “clinical service” god module.
 
 ## Non-negotiable clinical invariants
 
@@ -80,7 +80,7 @@ Cover double start/end/finalize, simultaneous clinicians, stale local drafts, re
 
 ### 4. Implement through owning adapters
 
-Keep domain code framework-independent. Route HTTP/jobs/events through Laravel application commands, persistence through PostgreSQL-owned repositories, local drafts through the Flutter encryption/sync boundary, and bytes through secure-file references. Return stable machine error codes with safe localized presentation; do not leak whether another patient's record exists.
+Keep domain code framework-independent. Route HTTP/jobs/events through Laravel application commands, persistence through PostgreSQL-owned repositories, doctor local drafts through the Electron encryption/sync boundary, patient reads through Flutter, and bytes through secure-file references. Return stable machine error codes with safe localized presentation; do not leak whether another patient's record exists.
 
 ### 5. Record clinical governance
 

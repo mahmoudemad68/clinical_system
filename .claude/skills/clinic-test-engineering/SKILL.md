@@ -11,18 +11,18 @@ Build tests that can falsify roadmap claims across all stacks and failure modes.
 
 Read completely before designing or changing tests:
 
-- [Roadmap invariants, phase map, and evidence policy](../../docs/phases/README.md)
-- [Cross-cutting architecture, packages, CI, and test contract](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [Roadmap invariants, phase map, and evidence policy](../../../docs/phases/README.md)
+- [Cross-cutting architecture, packages, CI, and test contract](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
 - The active phase file and every dependency contract exercised by the test
 
-For performance/failure testing also read [Phase 21](../../docs/phases/21_performance_scaling_observability_and_resilience.md). For security-adversarial coverage read the authorized scope in [Phase 22](../../docs/phases/22_security_privacy_and_compliance_validation.md). For restore/release drills read [Phase 23](../../docs/phases/23_disaster_recovery_release_and_production.md). Inspect current test conventions, factories, schemas, generated clients, CI jobs, prior results, known flakes, and local changes.
+For performance/failure testing also read [Phase 21](../../../docs/phases/21_performance_scaling_observability_and_resilience.md). For security-adversarial coverage read the authorized scope in [Phase 22](../../../docs/phases/22_security_privacy_and_compliance_validation.md). For restore/release drills read [Phase 23](../../../docs/phases/23_disaster_recovery_release_and_production.md). Inspect current test conventions, factories, schemas, generated clients, CI jobs, prior results, known flakes, and local changes.
 
 ## Ownership and independence
 
 Own:
 
 - requirement-to-test traceability, layer selection, deterministic oracles, fixtures/factories, test-data builders, clocks/IDs/provider stubs, and cleanup;
-- Laravel, Flutter, React, Python, OpenAPI/event/tool, cross-service, E2E, system, resilience, and k6 harness mechanics;
+- Laravel, Flutter mobile, Electron desktop, React admin web, Python, OpenAPI/event/tool, cross-service, E2E, system, resilience, and k6 harness mechanics;
 - race/idempotency/replay/failure-injection scenarios, accessibility/localization automation, sharding, reports, and evidence manifests;
 - flake diagnosis and test reliability budgets without weakening assertions;
 - proof that an important test fails when its protected invariant is deliberately violated in a safe test seam.
@@ -49,8 +49,9 @@ Do not alter production policy merely to make a test easy. Request a narrow seam
 Use the locked Phase 00 choices and existing repository convention:
 
 - Laravel: one repository-standard Pest or PHPUnit runner, Laravel HTTP/database fakes only where faithful, and Mockery at external ports rather than internal implementation details.
-- Flutter: `flutter_test`, widget/golden tests, repository tests, `integration_test`, platform secure-storage/encrypted-database compatibility, and generated-client checks.
-- React admin: Vitest, React Testing Library, MSW, Playwright, and axe-core integration.
+- Flutter patient mobile: `flutter_test`, widget/golden tests, repository tests, `integration_test`, Android/iOS secure-storage/encrypted-database compatibility, and generated Dart client checks.
+- Electron doctor/pharmacy desktop: Vitest, React Testing Library, MSW in Node mode, typed preload/IPC integration tests, WebdriverIO with `@wdio/electron-service` against packaged artifacts, axe-core, native-module/encrypted-database/utility-process compatibility, and install/update tests. Playwright Electron requires the Phase 00 experimental-launcher compatibility gate.
+- React admin web: Vitest, React Testing Library, MSW, browser Playwright, and axe-core integration.
 - Python/AI: `pytest`, `pytest-asyncio`, `respx`, Hypothesis, provider-contract fixtures, and versioned evaluation datasets; model judges never decide correctness alone.
 - Contracts/system: generated OpenAPI clients, JSON/event/tool schema checks, approved schema/property fuzzing, real PostgreSQL/PostGIS, Redis, Reverb, private S3 emulator, Qdrant for AI scope, and k6 for HTTP/WebSocket/load scenarios.
 
@@ -68,11 +69,11 @@ Prove adapter and authoritative-store behavior with real local/ephemeral depende
 
 ### Contract
 
-Prove OpenAPI-generated PHP/Dart/TypeScript/Python compatibility plus event, job, AI tool, provider, and connector schemas. Test compatible evolution, unknown/removed fields, version handling, typed denial/timeouts, idempotency, size limits, and safe errors. Consumers must not infer privilege from a new field.
+Prove OpenAPI-generated PHP, Dart patient, TypeScript Electron/admin, and Python compatibility plus event, job, IPC, AI tool, provider, and connector schemas. Test compatible evolution, unknown/removed fields, version handling, typed denial/timeouts, idempotency, size limits, and safe errors. Consumers must not infer privilege from a new field.
 
 ### End to end
 
-Exercise user-visible critical journeys across the real deployed test stack and approved stubs. Include direct unauthorized requests, duplicate taps, session expiry, cancellation, offline/reconnect, stale realtime sequence, localized/RTL rendering, accessibility, and ambiguous writes—not only UI button visibility.
+Exercise user-visible critical journeys across the real deployed test stack and approved stubs. Include direct unauthorized requests, duplicate taps, session expiry, cancellation, offline/reconnect, stale realtime sequence, localized/RTL rendering, accessibility, and ambiguous writes—not only UI button visibility. Electron journeys launch the packaged process model and verify main/preload/renderer boundaries rather than treating the renderer as an ordinary browser page.
 
 ### System and resilience
 

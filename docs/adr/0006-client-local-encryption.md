@@ -4,7 +4,7 @@
 - **Date:** 2026-08-24
 - **Deciders:** Platform architecture, mobile, desktop, security, privacy
 - **Phase:** 00
-- **Supersedes / Superseded by:** none
+- **Supersedes / Superseded by:** Desktop-client portions superseded by [ADR 0010](0010-electron-react-typescript-desktop-clients.md); Flutter-mobile decision remains
 
 ## Context
 

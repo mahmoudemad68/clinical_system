@@ -19,12 +19,12 @@ Do not turn this skill into a generic ETL engine, arbitrary SQL connector, remot
 
 Always read:
 
-- [Phase 00](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md) for ports, queues, outbox, idempotency, secrets, and module boundaries;
-- [Phase 10](../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md) for catalog identity, branch authorization, mode/version, and connector-service capability;
-- [Phase 14](../../docs/phases/14_medicine_search_and_prescription_fulfillment.md) for the public availability/freshness contract;
-- [Phase 15](../../docs/phases/15_external_pharmacy_integrations.md) for the complete adapter, mapping, sync, schema, security, and rollout specification.
+- [Phase 00](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md) for ports, queues, outbox, idempotency, secrets, and module boundaries;
+- [Phase 10](../../../docs/phases/10_medication_catalog_and_pharmacy_tenancy.md) for catalog identity, branch authorization, mode/version, and connector-service capability;
+- [Phase 14](../../../docs/phases/14_medicine_search_and_prescription_fulfillment.md) for the public availability/freshness contract;
+- [Phase 15](../../../docs/phases/15_external_pharmacy_integrations.md) for the complete adapter, mapping, sync, schema, security, and rollout specification.
 
-For production work also read [Phase 21](../../docs/phases/21_performance_scaling_observability_and_resilience.md), [Phase 22](../../docs/phases/22_security_privacy_and_compliance_validation.md), and [Phase 23](../../docs/phases/23_disaster_recovery_release_and_production.md). Read [Phase 18](../../docs/phases/18_pharmacy_ai.md) only when exposing the same safe availability port to Pharmacy AI; AI does not gain connector access.
+For production work also read [Phase 21](../../../docs/phases/21_performance_scaling_observability_and_resilience.md), [Phase 22](../../../docs/phases/22_security_privacy_and_compliance_validation.md), and [Phase 23](../../../docs/phases/23_disaster_recovery_release_and_production.md). Read [Phase 18](../../../docs/phases/18_pharmacy_ai.md) only when exposing the same safe availability port to Pharmacy AI; AI does not gain connector access.
 
 ## Hard integration boundaries
 

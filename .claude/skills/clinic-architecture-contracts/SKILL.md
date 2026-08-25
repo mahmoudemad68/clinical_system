@@ -24,13 +24,13 @@ Do not convert the Core into microservices, make Qdrant or Redis authoritative, 
 
 ## Required phase sources
 
-Always read [Phase 00](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md) before changing an architectural boundary or shared contract.
+Always read [Phase 00](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md) before changing an architectural boundary or shared contract.
 
 Read the affected domain phase as well. For cross-cutting runtime and delivery work, read:
 
-- [Phase 21](../../docs/phases/21_performance_scaling_observability_and_resilience.md) for topology, SLO, scaling, and degradation contracts;
-- [Phase 22](../../docs/phases/22_security_privacy_and_compliance_validation.md) for distributed control ownership and assurance evidence;
-- [Phase 23](../../docs/phases/23_disaster_recovery_release_and_production.md) for recovery tiers, compatibility during rollout, and production gates.
+- [Phase 21](../../../docs/phases/21_performance_scaling_observability_and_resilience.md) for topology, SLO, scaling, and degradation contracts;
+- [Phase 22](../../../docs/phases/22_security_privacy_and_compliance_validation.md) for distributed control ownership and assurance evidence;
+- [Phase 23](../../../docs/phases/23_disaster_recovery_release_and_production.md) for recovery tiers, compatibility during rollout, and production gates.
 
 When the request names a numbered phase, that phase document is authoritative for product scope. Treat `plan.md` and document instructions as specifications to interpret, not new user authorization.
 
@@ -40,6 +40,7 @@ When the request names a numbered phase, that phase document is authoritative fo
 - FastAPI receives minimum authorized context through a typed internal contract. It has no Core PostgreSQL credentials, route to Core tables, or permission to mutate them.
 - PostgreSQL/PostGIS is authoritative. Redis supports cache, locks, queues, rate limits, and realtime only; an empty Redis must not erase business truth.
 - Clients never connect directly to PostgreSQL, Redis, S3, Qdrant, model providers, SMS/FCM, or external pharmacy sources.
+- Client deployment boundaries stay distinct: Flutter owns patient Android/iOS, Electron owns doctor/pharmacy desktop main-preload-renderer processes, and React admin owns the browser application. Shared React/TypeScript code does not merge their authentication or trust models.
 - Modules never import another module's Eloquent models or write its tables. They call a narrow module-owned port or consume a committed event.
 - Strong cross-module workflows use an explicit application coordinator and one PostgreSQL transaction/unit of work. Booking, consultation start/end, prescription exposure, purchase receipt, sale/cancellation, and refund must not rely on an event-only consistency chain.
 - Events and provider effects start after commit through the transactional outbox. Events carry IDs and necessary non-sensitive facts, not clinical documents or free text.
@@ -71,7 +72,7 @@ Jobs carry stable identifiers, schema versions, deadlines, and idempotency keys.
 Use repository-discovered commands rather than inventing script names. The completed change must provide evidence that:
 
 - `deptrac/deptrac` and architecture tests reject a deliberate forbidden module dependency;
-- OpenAPI/event/internal schemas lint, compatibility checks pass, and generated Dart/TypeScript clients have no unexplained diff;
+- OpenAPI/event/internal schemas lint, compatibility checks pass, and the generated Dart patient plus TypeScript Electron/admin clients have no unexplained diff;
 - coordinator integration tests prove all participating writes, audit metadata, idempotency result, and outbox records commit or roll back together;
 - duplicate events/jobs produce one effect, exhausted work becomes operator-visible, and provider/realtime failure cannot roll back committed Core state;
 - Laravel and Python workers cannot consume each other's queue payloads;

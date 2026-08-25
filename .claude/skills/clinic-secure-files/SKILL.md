@@ -11,11 +11,11 @@ Treat every uploaded byte, filename, parser result, object reference, and signed
 
 Read completely before changing file behavior:
 
-- [Roadmap invariants and evidence policy](../../docs/phases/README.md)
-- [Cross-cutting storage, ports, security, and delivery contract](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
-- The active file-owning phase: [Phase 02 verification documents](../../docs/phases/02_onboarding_verification_profiles_and_locations.md), [Phase 07 medical/lab files](../../docs/phases/07_labs_files_reports_and_referrals.md), or [Phase 16 knowledge ingestion](../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
+- [Roadmap invariants and evidence policy](../../../docs/phases/README.md)
+- [Cross-cutting storage, ports, security, and delivery contract](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- The active file-owning phase: [Phase 02 verification documents](../../../docs/phases/02_onboarding_verification_profiles_and_locations.md), [Phase 07 medical/lab files](../../../docs/phases/07_labs_files_reports_and_referrals.md), or [Phase 16 knowledge ingestion](../../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
 
-Read [Phase 22 assurance](../../docs/phases/22_security_privacy_and_compliance_validation.md) for a security-review or release-evidence task and [Phase 23 recovery](../../docs/phases/23_disaster_recovery_release_and_production.md) for backup/restore interactions. Inspect current object-store policies, metadata schema, upload contracts, scanner/parser adapters, jobs/outbox, access policies, retention decisions, tests, and local changes.
+Read [Phase 22 assurance](../../../docs/phases/22_security_privacy_and_compliance_validation.md) for a security-review or release-evidence task and [Phase 23 recovery](../../../docs/phases/23_disaster_recovery_release_and_production.md) for backup/restore interactions. Inspect current object-store policies, metadata schema, upload contracts, scanner/parser adapters, jobs/outbox, access policies, retention decisions, tests, and local changes.
 
 ## Ownership and boundaries
 

@@ -19,10 +19,11 @@ environment:
 dev_dependencies:
   melos: ^8.3.0
 
+# Dart workspace members. Doctor and pharmacy desktops are deliberately absent:
+# ADR 0010 moved them to Electron/React/TypeScript and they now live in the npm
+# workspace. Only the patient mobile app and its shared Dart packages remain.
 workspace:
   - apps/patient-app
-  - apps/doctor-desktop
-  - apps/pharmacy-desktop
   - packages/flutter/api_client
   - packages/flutter/authentication
   - packages/flutter/common_models

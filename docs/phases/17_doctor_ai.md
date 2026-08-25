@@ -127,10 +127,11 @@ Versions are selected and locked under Phase 00 policy.
 - `pytest`, `pytest-asyncio`, `respx`, and Hypothesis for schema, adversarial, timeout, and provider-contract tests.
 - Do not introduce a general autonomous-agent framework. The workflow is a bounded, explicit state machine.
 
-### Doctor Flutter desktop
+### Doctor Electron desktop (React + TypeScript)
 
-- Existing Riverpod, Dio, Freezed/JSON serialization, secure storage, Drift, localization, and error-handling packages.
-- Server streaming uses one repository-owned SSE/HTTP implementation or the already approved realtime transport; provider SDKs never enter Flutter.
+- Use React, TypeScript, TanStack Query, Zod, MUI, i18next, and the OpenAPI-generated TypeScript client. Renderer code has no Node.js/Electron imports, token/key access, database, filesystem, shell, updater, or provider SDK.
+- A context-isolated preload exposes purpose-specific typed run, status, cancel, stream-subscription, and encrypted-draft capabilities. Main owns device tokens, SSE/HTTP/Reverb transport, and encrypted-store authorization; synchronous SQLCipher/native work prefers a utility process where the target-OS/ABI spike supports it.
+- Provider SDKs never enter any desktop process. The desktop talks only to clinic-owned Laravel/FastAPI contracts through the main-owned adapter.
 
 ## Persistent schemas, invariants, and indexes
 
@@ -296,7 +297,8 @@ Stable error codes include `DOCTOR_NOT_APPROVED`, `AI_SCOPE_DENIED`, `ENCOUNTER_
 - Show retrieval/generation/cancelled/degraded states, reconnect-safe run status, and explicit “not saved to record” language.
 - Provide stop generation and retry-as-new-intent controls; automatic write retries are prohibited.
 - Require a visible editable confirmation before copying text into notes.
-- Do not persist full AI context locally. If conversation caching is needed, store the minimum encrypted content with retention and logout/device-revocation cleanup.
+- Do not persist full AI context locally. If conversation caching is needed, store the minimum encrypted content in SQLCipher-backed SQLite outside the renderer, with a random key wrapped by Electron `safeStorage`, explicit retention, and logout/device-revocation cleanup. Fail closed when OS-backed key protection is unavailable.
+- Treat renderer content as untrusted. Sanitize/disable active Markdown and external links; validate IPC sender, schema, size, deadline, active session/encounter, and capability on every main handler before privileged work.
 - Arabic/English UI strings are translated; clinical content is not machine-translated unless that behavior has separate validation and provenance.
 - Accessibility covers keyboard navigation, focus order, streaming announcements without excessive screen-reader noise, contrast, and error recovery.
 
@@ -322,6 +324,7 @@ Stable error codes include `DOCTOR_NOT_APPROVED`, `AI_SCOPE_DENIED`, `ENCOUNTER_
 - Output validator covers malformed JSON, oversized answers, unsafe markup, fabricated source IDs, provider refusal, and partial streams.
 - Budget/deadline/retry/cancellation state machines and run transitions reject skipped, stale, and duplicate terminal changes.
 - Redaction/property tests use Arabic/English/Unicode clinical and identity canaries.
+- Electron renderer streaming/reconnect/confirmation state and preload/main run, cancel, subscription, encrypted-draft, sender/session/encounter/schema/size/deadline validators are unit-tested separately.
 
 ### Integration tests
 
@@ -330,10 +333,12 @@ Stable error codes include `DOCTOR_NOT_APPROVED`, `AI_SCOPE_DENIED`, `ENCOUNTER_
 - Redis/queue loss and duplicate event delivery do not duplicate messages or copy actions.
 - FastAPI/provider adapters exercise timeout, cancellation, rate limit, invalid output, unavailable Qdrant, and trace propagation.
 - Reverb/SSE stream terminates on encounter-completed revocation.
+- Main-owned encrypted store integration covers wrong-key/no-blank-replacement, migration/rekey, logout/device/encounter cleanup, native ABI, signed package, and optional-utility crash/recovery; tokens, keys, prompts, and SQL never enter renderer fixtures or logs.
 
 ### Contract tests
 
-- OpenAPI-generated Dart client covers run create/status/stream/cancel and every stable error.
+- OpenAPI-generated TypeScript desktop client covers run create/status/stream/cancel and every stable error.
+- Preload/IPC contracts test allowlisted channels, sender-frame validation, subscription cleanup, cancellation, reconnect, schema/size limits, and denial of arbitrary URL/path/SQL/shell/provider operations.
 - Internal Pydantic schema rejects extra privilege/scope/tool fields and incompatible versions.
 - Every LLM/retrieval adapter passes typed errors, deadline, cancellation, token-usage, and no-silent-fallback behavior.
 - Current and previous compatible event schemas replay without exposing content.
@@ -345,6 +350,7 @@ Stable error codes include `DOCTOR_NOT_APPROVED`, `AI_SCOPE_DENIED`, `ENCOUNTER_
 - Completing the encounter during generation cancels sensitive delivery and revokes later history access.
 - Doctor A cannot retrieve Doctor B private document, another specialty scope, or an arbitrary patient's clinical document.
 - AI/Qdrant/provider outage shows degraded AI while the doctor completes consultation, prescription, and lab flows normally.
+- Packaged doctor Electron E2E covers stream/reconnect/cancel, explicit edited copy-to-note, encrypted draft restart recovery, revocation during generation, and direct IPC/path/SQL/provider/scope injection denial.
 
 ### System and performance tests
 
@@ -357,6 +363,7 @@ Stable error codes include `DOCTOR_NOT_APPROVED`, `AI_SCOPE_DENIED`, `ENCOUNTER_
 
 - Direct-object, tenant-filter tampering, revoked doctor, expired snapshot, forged internal token, stream hijack, and copy-command authorization tests all deny.
 - Adversarial documents/questions test direct/indirect prompt injection, data exfiltration, secret requests, denial-of-wallet, unsafe markup, and fabricated tool/source identifiers.
+- Renderer XSS/hostile Markdown cannot gain Node/Electron, navigate externally without policy, read tokens/keys/local AI data, subscribe across scope, or trigger file/shell/update/native capabilities.
 - Versioned specialty datasets measure Recall@K, MRR, relevant-chunk rate, groundedness, hallucination, refusal correctness, latency, and cost.
 - Medical experts review sampled normal, edge, multilingual, contraindication, ambiguous, and failure cases. Promotion requires their signed thresholds; model-judge scores alone cannot approve release.
 

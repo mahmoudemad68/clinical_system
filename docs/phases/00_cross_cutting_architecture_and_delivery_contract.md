@@ -8,7 +8,7 @@ This phase delivers no clinical feature. Its observable outcome is that a minima
 
 ## Plan traceability
 
-- Sections 1-5: final system shape, modular-monolith style, stack, Flutter monorepo, React admin.
+- Sections 1-5: final system shape, modular-monolith style, source stack, Flutter mobile, and React admin. [ADR 0010](../adr/0010-electron-react-typescript-desktop-clients.md) supersedes the source's doctor/pharmacy Flutter Desktop choice with Electron, React, and TypeScript.
 - Sections 99 and 102-115: realtime shape, queues, Horizon, outbox, API rules, idempotency, PostgreSQL, IDs, indexes, partitioning, Redis, and cache strategy.
 - Sections 132-142: performance/capacity targets, horizontal topology, connection pooling, AI worker separation, availability, and health checks.
 - Sections 148-155: localization/country/location conventions and client failure/offline behavior.
@@ -34,9 +34,9 @@ This phase delivers no clinical feature. Its observable outcome is that a minima
 ### System boundaries
 
 ```text
-Flutter patient / doctor / pharmacy       React admin
-                 \                         /
-                  \ HTTPS + JSON/OpenAPI /
+Flutter patient mobile     Electron doctor/pharmacy     React admin web
+            \                    |                    /
+             \________ HTTPS + JSON/OpenAPI ________/
                    API gateway / load balancer
                               |
                  Laravel modular monolith
@@ -65,10 +65,16 @@ Use one repository initially so contracts and cross-client changes can be atomic
 apps/
   core-api/                 # Laravel 13 modular monolith
   ai-service/               # FastAPI API and workers
-  admin-web/                # React + TypeScript
+  admin-web/                # Browser React + TypeScript
   patient-app/              # Flutter Android/iOS
-  doctor-desktop/           # Flutter Desktop
-  pharmacy-desktop/         # Flutter Desktop
+  doctor-desktop/           # Electron + React + TypeScript
+    src/main/               # privileged application and OS adapters
+    src/preload/            # small contextBridge capability surface
+    src/renderer/           # sandboxed React presentation
+  pharmacy-desktop/         # Electron + React + TypeScript
+    src/main/
+    src/preload/
+    src/renderer/
 packages/
   flutter/
     api_client/
@@ -82,6 +88,12 @@ packages/
     notifications/
     realtime/
     secure_storage/
+  typescript/
+    api_client/
+    desktop_bridge_contracts/
+    design_tokens/
+    error_handling/
+    localization/
   contracts/
     openapi/
     events/
@@ -99,7 +111,7 @@ docs/
   threat-models/
 ```
 
-Flutter workspace management uses Melos. JavaScript workspaces use the repository-standard package manager with a committed lockfile. Python uses a `pyproject.toml` plus a locked resolution. PHP uses Composer with a committed `composer.lock`.
+Flutter workspace management uses Melos for the patient mobile app and its shared Dart packages. The admin web app, both Electron desktop apps, and reviewed pure TypeScript packages use repository-standard JavaScript workspaces with one committed lockfile. Python uses a `pyproject.toml` plus a locked resolution. PHP uses Composer with a committed `composer.lock`.
 
 ### Laravel module layout
 
@@ -179,19 +191,35 @@ Architecture tests must prove that only the approved coordinator uses the partic
 
 ### Client architecture
 
-Each Flutter feature uses presentation, domain, and data layers:
+The Flutter patient-mobile app uses presentation, domain, and data layers:
 
 ```text
 presentation -> application/controller -> domain port <- repository -> API/local adapters
 ```
 
-- Riverpod provides dependency wiring and observable state.
+- Riverpod provides dependency wiring and observable state in the patient app.
 - UI state is not the authority for permissions or final business state.
 - Repositories own caching, mapping, error normalization, and safe retry decisions.
 - Generated API DTOs stay at the network edge and map into client domain/view models.
-- Local databases store the minimum needed, encrypt sensitive rows/database files, and expose sync state.
+- Local mobile databases store the minimum needed, encrypt sensitive rows/database files, and expose sync state.
 
-React uses feature folders with route/page, components, schema, query/mutation hooks, and generated API types. TanStack Query owns server state. Component state remains local unless a proven cross-route need exists. Authorization in the UI affects discoverability only; Laravel remains authoritative.
+Each Electron desktop app uses an explicit privilege boundary:
+
+```text
+React renderer -> typed contextBridge capability -> preload -> main/utility adapter
+                                                        |-> HTTPS/realtime
+                                                        |-> encrypted local store
+                                                        |-> file/print/notification/update OS APIs
+```
+
+- The React renderer is an unprivileged presentation process that loads packaged local assets only. It has no Node.js integration, token/database-key access, filesystem access, or raw IPC channel.
+- Production windows use `contextIsolation: true`, renderer sandboxing, a strict Content Security Policy, and deny-by-default navigation, new-window, permission, download, and external-protocol handlers.
+- Packaged assets load from a privileged standard-scheme custom application protocol with an exact origin rather than permissive `file://`; renderer sessions and caches cannot persist clinical data.
+- Preload exposes one TypeScript method per capability through `contextBridge`. IPC request/response schemas are size-bounded and validated; never expose `ipcRenderer`, arbitrary URLs/paths/channels/SQL, Node globals, or provider SDKs.
+- Main and optional utility processes implement narrow application-owned ports for device credentials, generated OpenAPI transport, realtime, encrypted drafts, files, printing, local notifications, and signed updates. They contain no clinical/pharmacy business-rule bypass.
+- The doctor local outbox stores typed commands and explicit sync state. Pharmacy stock, POS, payment, and other authoritative mutations remain online-only.
+
+React renderers use feature folders with route/page, components, schema, query/mutation hooks, and generated API types. TanStack Query owns server state. Component state remains local unless a proven cross-route need exists. Pure components, design tokens, localization helpers, and generated contract mappings may be shared only through reviewed capability packages. Electron desktop and admin web authentication/transport adapters remain separate: desktop uses device-token capabilities outside the renderer, while admin uses HttpOnly cookies and CSRF. Authorization in every UI affects discoverability only; Laravel remains authoritative.
 
 ### Shared request flow
 
@@ -316,7 +344,7 @@ Apply to booking, check-in, consultation completion, prescription finalization/a
 
 ## Packages and tools
 
-Versions are resolved during implementation against Laravel 13 and the current supported Flutter/React/Python runtimes, then pinned in lockfiles. Do not copy unverified version ranges from this document.
+Versions are resolved during implementation against Laravel 13 and the current supported Flutter-mobile, Electron/Node/Chromium, React/TypeScript, and Python runtimes, then pinned in lockfiles. Do not copy unverified version ranges from this document.
 
 ### Laravel/PHP baseline
 
@@ -328,19 +356,35 @@ Versions are resolved during implementation against Laravel 13 and the current s
 - Larastan/PHPStan for static analysis and Laravel Pint for formatting.
 - OpenTelemetry PHP SDK/instrumentation and Sentry Laravel SDK, configured with centralized redaction.
 
-### Flutter baseline
+### Flutter mobile baseline
 
 - `melos`, `flutter_riverpod`/Riverpod code generation, `dio`, `go_router`, `freezed`, `json_serializable`, `drift`, `flutter_secure_storage`, `firebase_messaging`, `intl`, and `connectivity_plus`.
 - Drift over `sqlite3` v3 configured through native hooks for SQLCipher or SQLite3MultipleCiphers. Do not adopt the end-of-life `sqlcipher_flutter_libs` package. Adoption still requires a target-OS compatibility spike plus documented key rotation, recovery, backup exclusion, and migration tests.
 - `flutter_test`, SDK `integration_test`, `mocktail`, golden-test tooling, and Patrol only for flows needing native dialogs/notifications.
-- `very_good_analysis` or an ADR-approved lint profile, applied consistently across shared packages and apps.
+- `very_good_analysis` or an ADR-approved lint profile, applied consistently across the patient app and shared mobile packages.
 
-### React baseline
+### Shared React and TypeScript baseline
 
-- React, TypeScript, Vite, TanStack Query, React Router, React Hook Form, Zod, Hook Form resolvers, MUI, i18next, and ECharts.
-- OpenAPI-generated types/client or `openapi-typescript` + `openapi-fetch`; one transport wrapper owns credentials, CSRF, request IDs, and error mapping.
-- Vitest, React Testing Library, MSW, Playwright, and axe-core integration for tests/accessibility.
+- React, TypeScript in strict mode, TanStack Query, React Router, React Hook Form, Zod, Hook Form resolvers, MUI, and i18next. Vite is the admin-web bundler. ECharts is limited to approved admin analytics.
+- OpenAPI-generated types/client or `openapi-typescript` + `openapi-fetch`; separate desktop and admin transport adapters own their different authentication, request-ID, cancellation, and error behavior.
+- Vitest, React Testing Library, MSW, browser Playwright, and axe-core integration for tests/accessibility.
 - ESLint, type-aware rules, Prettier, and dependency-boundary linting.
+
+### Electron desktop baseline
+
+- Electron with React and strict TypeScript; Electron Forge's maintained Webpack/TypeScript pipeline is the default build, packaging, and maker workflow. Required packages are `electron`, `@electron-forge/cli`, the approved Forge Webpack/fuses/auto-unpack-natives plugins and OS makers, `@electron/fuses`, and `@electron/rebuild`. Exact versions are pinned after the target-OS spike. Using an Electron Vite plugin requires a compatibility ADR because its official Forge integration remains experimental.
+- Renderer packages are React DOM, TanStack Query, React Router, React Hook Form, Zod, Hook Form resolvers, MUI/Emotion, `i18next`, and `react-i18next`. Contract packages are `openapi-typescript` and `openapi-fetch`; `laravel-echo` and `pusher-js` are isolated behind the main-owned Reverb adapter after a Node/Electron compatibility spike.
+- Production `BrowserWindow` configuration fixes `nodeIntegration: false`, `contextIsolation: true`, and `sandbox: true`. The application loads no remote renderer content.
+- `contextBridge` exposes narrow typed capabilities backed by allowlisted `ipcMain` handlers. Zod validates IPC at both trust-boundary ends; raw Electron/Node modules never enter renderer feature code.
+- Electron `safeStorage` or an ADR-approved OS-keystore adapter wraps device credentials and database keys outside the renderer. Sensitive persistence fails closed if encryption is unavailable or Linux reports the insecure `basic_text` backend.
+- The Phase 05 encrypted database uses a pinned Node SQLite adapter built against approved SQLCipher or SQLite3MultipleCiphers only after native ABI, packaging, rotation, migration, recovery, and backup tests pass. Database access stays in main/utility infrastructure and exposes intent-named operations, not SQL.
+- Generated HTTP and Reverb clients execute behind main/utility ports using Electron networking or an approved nonpersistent session so system proxy/TLS behavior is preserved. Renderer TanStack Query functions call typed preload capabilities and never issue authenticated HTTP/WebSocket requests directly.
+- `@electron/fuses` disables unused privileged runtime features before signing. Packaged artifacts receive CSP/navigation/permission/new-window checks, dependency/SBOM scans, signing/notarization, and installed-package smoke tests.
+- WebdriverIO with `@wdio/electron-service` is the default packaged-app E2E harness. Playwright's experimental Electron launcher may be used only after a pinned compatibility spike. Native dialogs, printing, keystore, encrypted database, installers, signing, and updates require deterministic main-process and installed-package tests on each supported OS regardless of UI harness.
+
+### React admin web baseline
+
+- The admin remains browser-hosted, uses secure HttpOnly/Secure/SameSite cookies plus CSRF, and never shares Electron device-token, preload, IPC, local-database, file, update, or shell adapters.
 
 ### AI baseline (scaffold only in this phase)
 
@@ -368,16 +412,20 @@ Versions are resolved during implementation against Laravel 13 and the current s
 
 ### 2. Bootstrap runtime projects
 
-1. Scaffold each deployment unit without feature code.
-2. Add `/live`, `/ready`, build/version metadata, structured error handling, correlation IDs, and graceful shutdown.
-3. Ensure liveness checks only process health; readiness checks critical startup state without turning every optional dependency into a core outage.
-4. Demonstrate that AI/Qdrant readiness failure does not make Laravel core unready.
-5. Configure Octane workers to avoid request-scoped mutable state leaking across requests; add a regression test using two synthetic identities.
+1. Inventory the current doctor/pharmacy Flutter scaffolds, shared-package imports, CI paths, application identifiers, signing placeholders, and any user-authored or local-data migration need. Record the disposition of every item before replacement; never silently delete a real desktop database.
+2. In one reviewed Phase 00 migration, remove `apps/doctor-desktop` and `apps/pharmacy-desktop` from the Dart/Melos workspace, keep `apps/patient-app` and patient-owned Flutter packages there, scaffold two independent Electron Forge/React/TypeScript apps at the same application paths, and add them plus reviewed `packages/typescript/*` packages to the root npm workspace. Do not leave two runtimes mixed inside either desktop app.
+3. Give doctor and pharmacy different application IDs, executable/product names, user-data directories, protocol schemes, encrypted-database namespaces, device-credential namespaces, IPC capability registries, installer metadata, and update channels. A shared pure TypeScript package must not collapse those security contexts.
+4. Update path-filtered CI, CODEOWNERS, generated-client destinations, workspace scripts, lockfiles, dependency-boundary rules, local Compose launch helpers, and evidence templates in the same migration. Prove only the patient app is selected by Flutter/Melos and both desktop apps are selected by npm/Electron jobs.
+5. Scaffold every remaining deployment unit without feature code. Electron health/version screens query main-owned typed capabilities; the renderer does not connect to the API directly.
+6. Add `/live`, `/ready`, build/version metadata, structured error handling, correlation IDs, and graceful shutdown to services.
+7. Ensure liveness checks only process health; readiness checks critical startup state without turning every optional dependency into a core outage.
+8. Demonstrate that AI/Qdrant readiness failure does not make Laravel core unready.
+9. Configure Octane workers to avoid request-scoped mutable state leaking across requests; add a regression test using two synthetic identities.
 
 ### 3. Establish contract workflow
 
 1. Create a minimal OpenAPI document with health endpoints and the common envelope/error schemas.
-2. Validate/lint it in CI and generate Dart/TypeScript test clients.
+2. Validate/lint it in CI and generate a Dart patient-mobile client plus TypeScript Electron-desktop/admin clients.
 3. Add a breaking-change detector against the main-branch contract.
 4. Define event JSON Schemas and compatibility rules: additive optional fields within a version; breaking changes require a new schema version and dual-read migration.
 5. Add provider contract-test suites that future adapters must implement.
@@ -408,11 +456,11 @@ Pull-request pipeline:
 3. Validate OpenAPI/event schemas and generated clients.
 4. Run unit/component suites, then containerized integration suites.
 5. Run secret scanning, SAST, dependency license/vulnerability audits, IaC/container scanning, and SBOM generation.
-6. Build immutable artifacts once; do not rebuild between staging and production.
+6. Build immutable artifacts once; do not rebuild between staging and production. Electron lanes rebuild native addons for each approved Electron/OS/architecture tuple, inspect BrowserWindow/CSP/fuses, run packaged smoke tests, and emit unsigned verification artifacts without exposing signing credentials to untrusted pull requests.
 
 Post-merge pipeline:
 
-1. Push signed immutable images/artifacts to the registry.
+1. Sign/notarize the already-tested Electron artifacts in the protected release lane, attach immutable manifests and SBOMs, and push all signed images/artifacts to the registry without recompiling application code.
 2. Deploy to isolated development/staging environment.
 3. Run backward-compatible migrations with timeout/lock monitoring.
 4. Execute smoke, contract, authorization-canary, and observability checks.
@@ -431,6 +479,7 @@ Post-merge pipeline:
 Create the initial STRIDE + privacy threat model across these trust boundaries:
 
 - public mobile/desktop/web clients to gateway;
+- Electron renderer to preload/main/utility capabilities and OS resources;
 - admin browser session and CSRF boundary;
 - gateway to Laravel workers/Reverb;
 - Laravel to PostgreSQL/Redis/S3/providers;
@@ -446,6 +495,7 @@ Mandatory controls in this phase:
 - strict request/content-size limits and safe parsers;
 - no wildcard production CORS origins;
 - secure response headers for admin web;
+- Electron sandbox/context isolation, local-only renderer content, strict CSP, narrow validated IPC, and deny-by-default navigation/permissions;
 - secrets never available to fork/PR jobs from untrusted code;
 - non-root/read-only containers where compatible;
 - dependency/SBOM provenance and vulnerability policy;
@@ -474,7 +524,7 @@ Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API pla
 
 ### Contract tests
 
-- OpenAPI validation plus generated Dart/TypeScript clients against a running API.
+- OpenAPI validation plus generated Dart patient-mobile and TypeScript desktop/admin clients against a running API.
 - Common error/status/envelope/cursor/time/money schemas.
 - Event consumers accept current and previous compatible event schemas and reject unknown incompatible versions safely.
 - Every fake/provider adapter passes its owned port contract.
@@ -483,7 +533,8 @@ Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API pla
 
 - Each of four clients starts against the local/staging stack and shows core health/version in Arabic and English.
 - Admin browser establishes CSRF/session plumbing without storing a token in local storage.
-- Flutter test client obtains only its synthetic scoped connection and handles `401`, `409`, `422`, `429`, and safe `5xx` presentation.
+- Flutter patient test client and both Electron desktop test clients obtain only their synthetic scoped connection and handle `401`, `409`, `422`, `429`, and safe `5xx` presentation.
+- Electron packaged-window tests prove renderer sandbox/context isolation, no Node integration, strict CSP, typed IPC denial, safe navigation/window/permission behavior, and unavailable-keystore failure before any sensitive local state is enabled.
 - A committed synthetic event reaches a test consumer exactly once in effect despite forced duplicate delivery.
 
 ### System tests
@@ -493,6 +544,7 @@ Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API pla
 - Kill a worker during outbox processing: another worker recovers after lease expiry.
 - Roll one backward-compatible schema change across mixed old/new app versions.
 - Validate graceful shutdown under active HTTP/WebSocket/queue load.
+- Install and launch each doctor/pharmacy artifact on every approved OS/architecture; verify separate app IDs/user-data roots, native-addon ABI loading, safe-storage availability, CSP/fuses, uninstallation behavior, and clean failure when a strong keystore is unavailable.
 
 ### Security tests
 
@@ -501,11 +553,14 @@ Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API pla
 - Attempt direct access to database, Redis, S3, Qdrant, and internal AI ports from the public network segment; all fail.
 - Send national ID, token, password, prescription-like text, and lab-like content canaries; none appears in logs/traces/errors.
 - Fuzz common schemas/cursors/identifiers and prove bounded CPU/memory and safe rejection.
+- Inject a deliberate renderer import of Node/Electron and a generic preload IPC method; dependency/capability checks must reject both. From a renderer XSS fixture, attempts to read tokens/keys, navigate, open a window/protocol, request a permission, reach the filesystem/shell, or invoke an unregistered/oversized IPC operation all fail safely.
 
 ## Acceptance and exit gate
 
 - Repository and module dependency rules are documented and enforced in CI.
+- The Dart/Melos workspace contains the patient mobile app only; npm workspaces contain the admin web and both Electron desktops. No doctor/pharmacy Flutter runtime or mixed desktop scaffold remains after the controlled migration, and the inventory proves whether any pre-existing user data needed migration.
 - All deployment units build reproducibly from locked dependencies; images/artifacts have SBOMs and no unaccepted critical findings.
+- Signed-candidate Electron configuration fixes sandbox/context isolation/no Node, loads local content only, exposes no generic IPC, passes target-OS installed-package tests, and includes Electron/Chromium/Node/native-addon provenance in its SBOM.
 - Local and staging environments start from documented commands using synthetic data only.
 - OpenAPI/event workflows generate clients and reject a deliberate breaking change.
 - Outbox and idempotency reference flows pass concurrency/replay tests.
@@ -520,6 +575,6 @@ Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API pla
 - Repository skeleton and module catalog.
 - ADR set, diagrams, contract conventions, schema registries, and package/version policy.
 - Docker/local/staging profiles and CI pipelines.
-- Minimal Laravel/FastAPI/Flutter/React health slices.
+- Minimal Laravel/FastAPI, Flutter patient-mobile, Electron doctor/pharmacy desktop, and React admin-web health slices.
 - Outbox, idempotency, correlation, redaction, and observability foundations.
 - Test harnesses, security baseline, threat model, data inventory, and runbooks.

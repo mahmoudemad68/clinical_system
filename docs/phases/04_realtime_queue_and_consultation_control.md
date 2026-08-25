@@ -92,9 +92,10 @@ The orchestration handler uses one PostgreSQL transaction because the modular mo
 - Laravel Reverb private channels and broadcasting, Redis Pub/Sub, Horizon queue workers, PostgreSQL row locks/advisory locks where justified, outbox, and idempotency foundations.
 - Laravel authorization policies with Phase 01 typed actor/context.
 - Carbon/time APIs behind the injected `Clock`.
-- Flutter shared `realtime` package, Riverpod, Dio/generated API client, and connectivity status.
-- React/TanStack Query only for safe operational admin-health projections where approved.
-- Pest/PHPUnit with real PostgreSQL/Redis/Reverb integration harness, WebSocket client tests, k6 WebSocket/load scenarios, and controlled-clock state tests.
+- Flutter patient mobile uses the shared `realtime` package, Riverpod, Dio/generated Dart client, and connectivity status.
+- Electron doctor/clinic-staff desktop uses React, TypeScript, TanStack Query, the generated TypeScript client, and a main-process Reverb/WebSocket adapter. Main owns device credentials, channel authorization, reconnect/backoff, and sequence tracking; preload emits only typed recipient-safe events and refetch signals.
+- React/TanStack Query in the browser admin is limited to safe operational-health projections where approved.
+- Pest/PHPUnit with real PostgreSQL/Redis/Reverb integration harness, WebSocket client tests, Electron main/preload/renderer tests plus WebdriverIO with `@wdio/electron-service` packaged-app E2E, Flutter patient-mobile integration tests, k6 WebSocket/load scenarios, and controlled-clock state tests.
 
 ## Data model and migrations
 
@@ -297,12 +298,13 @@ Jobs:
 
 ## Client work
 
-### Doctor Flutter desktop
+### Doctor Electron desktop
 
 - Current Patient card, waiting/today/completed/upcoming lists, explicit Start/End actions, online-state requirement, and conflict recovery.
 - Start button remains disabled until Phase 05 encounter/access integration is deployed and server capability enables it.
 - Show authoritative sync/version state; WebSocket event triggers refetch on gap.
 - Offline mode permits no queue/start/end mutation and never claims the consultation completed.
+- The sandboxed React renderer cannot choose channel names, connection credentials, actor/doctor/patient scope, or raw event handlers. It consumes a versioned preload API and refetches authoritative REST projections after any sequence gap.
 
 ### Patient Flutter
 
@@ -312,10 +314,11 @@ Jobs:
 
 ### Clinic staff surface
 
+- This capability-gated route is hosted in the doctor Electron application; it is not a separate desktop client.
 - Check-in, operational queue, no-show, and audited reorder/correction with reason.
 - Clinical quick actions, full record, prescription, labs, allergies, and notes are absent.
 
-### React admin
+### React browser admin
 
 - Only de-identified/system-health counts and unresolved operational references approved by policy; no live patient queue content or clinical access.
 
@@ -324,6 +327,7 @@ Jobs:
 - **Premature/stale clinical access:** check-in never grants; start/end atomicity; policy joins active session, appointment, doctor, patient, location, grant; bounded suspension and revoke propagation.
 - **Cross-patient/doctor BOLA:** server-derived context, object/action policies, safe `404`, no client scope fields, and exhaustive matrix tests.
 - **Queue privacy leakage:** recipient-specific projections, private channels, minimal events, no identities in patient payloads, and generic notification contents.
+- **Electron realtime/IPC compromise:** main-owned credentials and channel construction, sender-validated typed preload methods, schema-checked events, no generic `ipcRenderer`/WebSocket primitive, restrictive navigation/CSP, and renderer-triggered refetch rather than local authority.
 - **Realtime hijack/stale subscription:** subscribe/reconnect authorization, short-lived session, revoke disconnect, projection versions, origin/TLS controls, connection/rate caps.
 - **Race/double current patient:** database locks/partial unique constraints, canonical ordering, idempotency, and repeated concurrency tests.
 - **Forged/out-of-order events:** events are hints after commit; clients refetch authoritative state, validate versions, and never execute clinical transitions from a broadcast.
@@ -344,11 +348,12 @@ Jobs:
 - Real PostgreSQL concurrent check-in/start/end/no-show/reorder; one current session and one grant only.
 - Forced failures at each start/end write prove whole-transaction rollback and no orphan encounter/grant/status/outbox.
 - Redis/Reverb private-channel auth, reconnect version gap, duplicate/out-of-order delivery, revoke disconnect, and Redis restart.
+- Electron packaged clients prove main-process reconnect/backoff, one active subscription per session, preload schema rejection, renderer reload recovery, logout/revoke disconnect, and gap-triggered authoritative refetch.
 - Outbox worker crash/retry yields exactly-once business effects and repairable projections.
 
 ### Contract tests
 
-- OpenAPI/generated clients for queue/consultation endpoints and stable errors/idempotency/version requirements.
+- OpenAPI/generated Dart patient-mobile and TypeScript Electron/admin clients for queue/consultation endpoints and stable errors/idempotency/version requirements.
 - Event schemas plus recipient projection schemas; no clinical fields in operational events.
 - Appointment, encounter, contextual-access, realtime, clock, and transaction adapters pass owned port contracts.
 
@@ -359,6 +364,7 @@ Jobs:
 - Secretary checks in/marks no-show but cannot start/end/open record.
 - Patient reconnect sees correct number ahead after missed events without seeing other patients.
 - Disconnect during consultation leaves explicit active/unresolved state; reasoned recovery completes safely.
+- Doctor Electron restart, renderer crash/reload, network flap, and sequence gap preserve explicit unresolved state and never duplicate Start/End or expose another recipient's event.
 
 ### System tests
 
@@ -370,6 +376,7 @@ Jobs:
 ### Security tests
 
 - BOLA/BFLA, channel enumeration, forged authorization request, token/session revoke, origin abuse, event injection, version rollback, mass assignment, and rate/resource exhaustion.
+- Electron tests attempt arbitrary channel subscription, forged IPC sender/event/schema, token extraction, navigation to remote content, reconnect amplification, and renderer-supplied scope; all fail closed.
 - Direct check-in-to-record attempt, stale active-grant replay, orphan grant, cross-location doctor, suspended doctor, and concurrent-start race all deny.
 - Seed clinical/identity canaries and verify none appears in queue APIs, broadcasts, metrics, logs, traces, Horizon, or patient UI.
 - Octane alternating doctor/patient/location requests prove no current-context leakage.

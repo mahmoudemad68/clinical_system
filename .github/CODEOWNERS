@@ -36,9 +36,24 @@
 /apps/ai-service/                       @clinic/ai-platform
 /apps/admin-web/                        @clinic/frontend-admin
 /apps/patient-app/                      @clinic/mobile
+/packages/flutter/                      @clinic/mobile
+
+# Electron desktops (ADR 0010). Owned by the desktop team, and every change to
+# the trust boundary additionally needs security review — see below.
 /apps/doctor-desktop/                   @clinic/desktop
 /apps/pharmacy-desktop/                 @clinic/desktop
-/packages/flutter/                      @clinic/mobile @clinic/desktop
+/packages/typescript/                   @clinic/frontend-admin @clinic/desktop
+
+# The IPC contract IS the renderer/main privilege boundary. A change here can
+# widen what a compromised renderer can reach, so it is not a routine
+# frontend edit.
+/packages/typescript/desktop_bridge_contracts/ @clinic/desktop @clinic/security
+/apps/doctor-desktop/src/preload/       @clinic/desktop @clinic/security
+/apps/pharmacy-desktop/src/preload/     @clinic/desktop @clinic/security
+/apps/doctor-desktop/src/main/          @clinic/desktop @clinic/security
+/apps/pharmacy-desktop/src/main/        @clinic/desktop @clinic/security
+/apps/doctor-desktop/forge.config.ts    @clinic/desktop @clinic/security @clinic/devops
+/apps/pharmacy-desktop/forge.config.ts  @clinic/desktop @clinic/security @clinic/devops
 
 # ---------------------------------------------------------------------------
 # Identity and authorization. Deny-by-default authorization is a system

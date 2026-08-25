@@ -83,7 +83,7 @@ The ledger is authoritative for stock changes. A balance is a rebuildable, trans
 - brick/money for batch unit cost in integer minor units/currency.
 - Laravel UUIDv7/Symfony UID and injected clock.
 - deptrac/deptrac, Larastan/PHPStan, Pest/PHPUnit, and Eris for movement/allocation property tests.
-- Pharmacy Flutter uses Riverpod, Dio, generated OpenAPI models, Freezed mappings, barcode adapter, localization, and bounded local catalog caching; stock remains online/server-authoritative.
+- Pharmacy Electron desktop uses React/TypeScript, TanStack Query, Zod, MUI, i18next, and an OpenAPI-generated TypeScript client behind a typed preload/main capability boundary. An approved encrypted catalog cache runs through a main-owned SQLite adapter, optionally executed in a utility process after the OS/ABI spike, and never in the renderer; stock remains online and server-authoritative.
 
 No event-sourcing package is required. The immutable movement table and explicit domain services implement the needed ledger without introducing a second framework.
 
@@ -239,13 +239,14 @@ Stable errors include BRANCH_MODE_READ_ONLY, INVENTORY_ACCESS_DENIED, MEDICATION
 
 ## Client work
 
-### Pharmacy Flutter desktop
+### Pharmacy Electron desktop (React + TypeScript)
 
 - Branch-scoped inventory list, batch drill-down, low/expiry alerts, and authorized adjustment form.
 - Display quantities in useful packages while submitting/storing exact smallest-unit integers and package version.
 - Display server-authoritative online/offline status; catalog cache may work offline, but inventory writes and balances require connectivity.
 - Scan/search maps to a medication ID, never a client-maintained quantity.
 - Confirm adjustments with reason and show immutable movement receipt; no edit/delete affordance.
+- Renderer requests catalog/stock operations through narrow preload methods; main owns authenticated HTTP/realtime transport and authorizes any native cache adapter, preferring utility-process execution where the target-OS/ABI spike supports it. No renderer IPC method accepts SQL, filesystem paths, URLs, or branch/actor scope overrides.
 - Arabic/English, keyboard/barcode efficiency, accessible tables, focus management, and safe error/retry messaging.
 
 ### Owner view
@@ -269,6 +270,7 @@ Aggregate branch summaries are separate scoped queries; one branch's staff canno
 
 - Movement sign/type rules, balance reducer, FEFO tie-breaking, package conversion, alert open/reset, expiry boundaries, reversal eligibility, and role/mode policy.
 - Property tests generate random movement sequences and assert nonnegative balances, sum equality, deterministic allocation, full/partial reversals, overflow rejection, and replay idempotency.
+- Electron renderer selectors/formatting/offline state and preload/main capability validators are unit-tested independently of server inventory rules.
 
 ### Integration tests
 
@@ -276,10 +278,12 @@ Aggregate branch summaries are separate scoped queries; one branch's staff canno
 - Deadlock/serialization retry, duplicate source/idempotency, rollback with a simulated POS failure, adjustment races, expiry-vs-sale race, and balance compare-and-set.
 - Horizon duplicate jobs/worker restarts produce one alert/expiry movement.
 - Reconciliation rebuilds balances from ledger and detects intentional corruption without auto-hiding it.
+- If enabled, the main-owned encrypted catalog cache passes packaged native-ABI, migration, wrong-key/no-blank-replacement, logout/branch-clear, and optional-utility crash/recovery tests without exposing SQL to the renderer.
 
 ### Contract tests
 
-- Generated Dart client covers quantities, money, cursors, versions, and stable conflicts.
+- Generated TypeScript pharmacy client covers quantities, money, cursors, versions, and stable conflicts.
+- Typed preload/IPC contracts cover stock reads, barcode resolution, branch changes, and reconnect events; validation rejects unregistered channels, stale branch context, unknown fields, and oversized payloads.
 - InventoryCommandPort contract passes for production and in-memory test adapters; the integrated-mode adapter remains read-only.
 - Event replay/version compatibility proves no consumer depends on free text.
 
@@ -289,6 +293,7 @@ Aggregate branch summaries are separate scoped queries; one branch's staff canno
 - Expired stock is never sold; adjustment and reversal preserve originals.
 - Cashier cannot adjust, inventory role cannot alter another branch, and every INTEGRATED branch native write is denied.
 - Redis/worker outage delays alerts but does not change sale correctness.
+- Packaged Electron E2E covers barcode resolution, reconnect/resync, branch switch, read-only offline cache, adjustment confirmation, and direct IPC/scope-forgery denial.
 
 ### System, performance, and security tests
 

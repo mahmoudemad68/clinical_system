@@ -148,7 +148,7 @@ For a small launch cohort, use smaller resources while preserving deployment bou
 - PostgreSQL `pg_stat_statements`, `EXPLAIN (ANALYZE, BUFFERS)` in safe staging, slow-query telemetry, and connection/pool metrics.
 - Qdrant cluster/collection metrics, Redis/Horizon/Reverb metrics, object-store/provider metrics, and container/runtime resource metrics.
 - Optional controlled network/CPU/dependency fault tooling in owned staging; no production chaos without separate approval.
-- Flutter/React performance tooling for startup, frame rendering, memory, reconnect, and user-perceived flows where server tests cannot prove behavior.
+- Flutter mobile performance tooling for patient startup/frame/memory/reconnect, Electron process/IPC/render performance tooling for doctor/pharmacy startup and main/preload/renderer/utility behavior, and browser React tooling for admin user-perceived flows where server tests cannot prove behavior.
 
 ## Data structures, indexes, cache, and capacity invariants
 
@@ -249,8 +249,8 @@ No cache is authoritative. Cache-aside reads revalidate security-sensitive state
 
 ### 6. Client offline/transient network behavior
 
-- Doctor desktop: encrypted clinical draft autosaves locally; local outbox uses stable operation ID/idempotency key, capped retries, clear pending/failed/ack state, and no claim that queue/final record updated while offline.
-- Pharmacy desktop: catalog/UI may cache, but POS and stock mutation require online authoritative confirmation. No offline sale conflict logic in V1.
+- Doctor Electron desktop: encrypted clinical draft autosaves to main-owned and authorized SQLCipher-backed SQLite outside the renderer, preferring utility-process execution where the target-OS/ABI spike supports it; the local outbox uses stable operation ID/idempotency key, capped retries, clear pending/failed/ack state, and no claim that queue/final record updated while offline.
+- Pharmacy Electron desktop: an approved main-owned encrypted catalog/UI cache may operate read-only, with optional utility-process execution after the OS/ABI spike, but POS and stock mutation require online authoritative confirmation. No renderer database access and no offline sale conflict logic in V1.
 - Patient app: safe read cache may display freshness; booking/payment/clinical mutations never appear successful before server confirmation.
 - Retry only idempotent reads and mutations with the same key; `401/422/409/429` are not generic retry candidates.
 
@@ -299,7 +299,7 @@ Workload models include cold/warm cache, typical/large tenant, slow client, reco
 ## Client work
 
 - All clients display honest offline/degraded/pending/retry states and never infer success from a timeout.
-- Dio/React transport maps `401`, `403/404`, `409`, `422`, `429`, safe `5xx`, timeout, and cancellation distinctly; retries obey method/idempotency/error classification and server `Retry-After`.
+- Flutter Dio transport and TypeScript Electron/admin transports map `401`, `403/404`, `409`, `422`, `429`, safe `5xx`, timeout, and cancellation distinctly; retries obey method/idempotency/error classification and server `Retry-After`. Electron transport executes in main/utility and exposes only typed DTO operations/events through preload.
 - Realtime repositories resubscribe with jitter, detect sequence gaps, and reload authoritative state.
 - Paginate/virtualize large lists, cancel superseded searches, debounce within product requirements, and cap parallel requests.
 - Track startup, frame/render, memory, network bytes, reconnect, and user-flow latency without collecting sensitive screen/input content.
@@ -327,6 +327,7 @@ Workload models include cold/warm cache, typical/large tenant, slow client, reco
 
 - Real PostgreSQL/Redis/PgBouncer verifies pool limits, transaction behavior, prepared statement/advisory-lock compatibility, cache loss, outbox replay, worker death, and replica-lag routing.
 - Reverb multi-node Redis Pub/Sub/private-channel/reconnect/backpressure behavior.
+- Real Electron main/preload/renderer integration measures bounded IPC latency/backpressure, stream cleanup, reconnect resync, SQLCipher/native-addon behavior, and main/utility failure recovery on every supported packaged OS/architecture.
 - Qdrant multi-node/RF behavior and AI service concurrency/load shedding without core pool starvation.
 - S3 slow/error/timeouts, provider timeouts/rate limits, and OpenTelemetry export/backpressure.
 - Index/query-plan assertions use representative dataset cardinality and fail on major scanned-row/query-count regression.
@@ -335,6 +336,7 @@ Workload models include cold/warm cache, typical/large tenant, slow client, reco
 
 - `/live`/`/ready`, safe detailed health, retry/error/idempotency, cache freshness, and realtime event sequence contracts.
 - Old/new API/event/client versions across rolling deployment.
+- Electron preload capability and IPC schemas remain bounded and compatible across rolling server/client versions; generic IPC, renderer-supplied authorization scope, and privileged URL/path/SQL fields are rejected.
 - Every infrastructure adapter exposes typed timeout/unavailable/rate-limit/cancel states and honors deadlines.
 - k6 scenario metadata/result schema and threshold evaluator are versioned and validated.
 
@@ -344,6 +346,7 @@ Workload models include cold/warm cache, typical/large tenant, slow client, reco
 - Doctor transient outage preserves draft and later syncs once; pharmacy cannot complete offline sale; patient booking timeout resolves to one known outcome.
 - AI/Qdrant down while doctor/patient/pharmacy/admin core journeys remain usable.
 - Rolling API/Reverb/worker deployment preserves compatible clients and resynchronizes connections.
+- Packaged Electron doctor/pharmacy builds preserve renderer responsiveness during reconnect/backlog, restore drafts without duplicate mutation, and cannot turn renderer compromise or reload into Node/native capability access.
 
 ### System, load, soak, stress, and chaos tests
 

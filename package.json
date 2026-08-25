@@ -9,20 +9,29 @@
     "npm": ">=10.9.0"
   },
   "workspaces": [
-    "apps/admin-web"
+    "apps/admin-web",
+    "apps/doctor-desktop",
+    "apps/pharmacy-desktop",
+    "packages/typescript/*"
   ],
   "scripts": {
     "contracts:lint": "redocly lint packages/contracts/openapi/openapi.yaml",
     "contracts:bundle": "redocly bundle packages/contracts/openapi/openapi.yaml -o packages/contracts/openapi/generated/openapi.bundled.yaml",
     "contracts:breaking": "node scripts/contracts/check-breaking.mjs",
     "contracts:events": "node scripts/contracts/validate-events.mjs",
-    "contracts:generate:ts": "openapi-typescript packages/contracts/openapi/openapi.yaml -o apps/admin-web/src/api/generated/schema.d.ts",
+    "contracts:generate:ts": "openapi-typescript packages/contracts/openapi/openapi.yaml -o packages/typescript/api_client/src/generated/schema.d.ts",
     "contracts:verify": "npm run contracts:lint && npm run contracts:events && npm run contracts:generate:ts",
     "admin:dev": "npm run dev --workspace apps/admin-web",
     "admin:build": "npm run build --workspace apps/admin-web",
     "admin:test": "npm run test --workspace apps/admin-web",
     "admin:lint": "npm run lint --workspace apps/admin-web",
-    "admin:typecheck": "npm run typecheck --workspace apps/admin-web"
+    "admin:typecheck": "npm run typecheck --workspace apps/admin-web",
+    "desktop:typecheck": "npm run typecheck --workspace apps/doctor-desktop && npm run typecheck --workspace apps/pharmacy-desktop",
+    "desktop:test": "npm run test --workspace apps/doctor-desktop && npm run test --workspace apps/pharmacy-desktop",
+    "desktop:lint": "npm run lint --workspace apps/doctor-desktop && npm run lint --workspace apps/pharmacy-desktop",
+    "desktop:package": "npm run package --workspace apps/doctor-desktop && npm run package --workspace apps/pharmacy-desktop",
+    "packages:typecheck": "npm run typecheck --workspaces --if-present",
+    "packages:test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {
     "@redocly/cli": "2.47.0",
@@ -31,5 +40,8 @@
     "openapi-typescript": "7.13.0",
     "prettier": "3.9.6",
     "yaml": "2.9.0"
+  },
+  "overrides": {
+    "tar": "^7.5.22"
   }
 }

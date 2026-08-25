@@ -92,8 +92,8 @@ Sale, inventory allocation, invoice, payment record, audit, and outbox commit in
 - brick/money for all totals, discounts, refund amounts, and currency calculations.
 - A small internal external-terminal reference validator; no payment SDK is required for V1.
 - deptrac/deptrac, Larastan/PHPStan, Pest/PHPUnit, and Eris for money/allocation/refund property tests.
-- Pharmacy Flutter uses Riverpod, Dio, generated OpenAPI models, Freezed, barcode adapter, secure storage, printing adapter, and localization.
-- If a non-authoritative encrypted cart draft is approved, use Drift over sqlite3 v3 native hooks configured for an approved SQLCipher or SQLite3MultipleCiphers build and pass encryption/key/migration tests on the selected desktop OS.
+- Pharmacy Electron desktop uses React/TypeScript, TanStack Query, Zod, MUI, i18next, and an OpenAPI-generated TypeScript client. Barcode, authenticated HTTP/realtime, printing, secure storage, and update/native integrations are exposed only as narrow typed preload capabilities implemented by validated main-process handlers.
+- If a non-authoritative encrypted cart draft is approved, keep it in main-owned and authorized SQLCipher-backed SQLite outside the renderer, preferring a utility process where the target-OS/ABI spike supports it. Main unwraps the random database key through Electron `safeStorage`; production fails closed when OS-backed protection is unavailable, including Linux `basic_text`. Pass wrong-key, no-empty-database, migration, rekey, native-addon, signed-package, and supported-OS/architecture tests.
 
 Do not add a browser card form, generic PCI field component, or terminal SDK until a separate approved integration scope exists.
 
@@ -262,7 +262,7 @@ Stable errors include POS_ACCESS_DENIED, BRANCH_MODE_READ_ONLY, PAYMENT_METHOD_D
 
 ## Client work
 
-### Pharmacy Flutter desktop
+### Pharmacy Electron desktop (React + TypeScript)
 
 - Keyboard/barcode-first cart, server price refresh, smallest-unit-safe quantity, configured discount selector, cash/card method gating, and clear online state.
 - CARD workflow instructs staff to complete the approved external terminal action, then enter/scan only its opaque reference/status. No card-entry fields exist.
@@ -270,6 +270,7 @@ Stable errors include POS_ACCESS_DENIED, BRANCH_MODE_READ_ONLY, PAYMENT_METHOD_D
 - Print canonical server invoice/return; printing failure offers reprint and never repeats the sale.
 - Cancellation/return/refund require role, confirmation, reason, version, and exact affected items.
 - Clear cached cart/financial data on branch/session change. An optional encrypted unsent cart is UI state only and cannot allocate stock offline.
+- The renderer never handles device/API tokens, raw database keys, SQL, arbitrary IPC, external commands, or printer handles. It receives only validated DTOs from the preload facade; main-owned handlers bind every capability to the active window, session, branch, size limit, and deadline, optionally delegating approved blocking work to a utility process.
 - Arabic/English, accessible scanner focus, error summaries, currency display, large controls, and safe receipt rendering are required.
 
 ### Owner view
@@ -295,16 +296,19 @@ Owner sees authorized branch aggregates/invoices, never another organization. Ex
 - Money/discount/rounding/totals, payment-method/reference rules, invoice state, cancellation eligibility, returnable/refundable remainder, restock disposition, and capability/mode.
 - Property tests across random carts/returns assert total equations, conservation of sold/returned quantities, refund bounds, and replay idempotency.
 - PAN/CVV-like field/property/fuzz corpus is rejected without being logged.
+- Electron renderer cart/reducer/format tests and preload/main sale, result-poll, print, scanner, encrypted-cart, sender, scope, and payload validators run as isolated unit suites.
 
 ### Integration tests
 
 - Real PostgreSQL concurrent FEFO sales, multi-line rollback on one shortage, duplicate idempotency, unknown outcome, concurrent returns, cancellation-versus-return race, and external-reference uniqueness.
 - Invoice/payment/movements/audit/outbox atomicity and complete rollback at each injected failure point.
 - Redis/Horizon/printer failure leaves one committed invoice and replay-safe side effects.
+- Main-owned encrypted cart and print adapters pass native-ABI, wrong-key/no-blank-replacement, migration/rekey, branch/logout cleanup, print failure, optional-utility crash, and signed-package tests without leaking keys, SQL, terminal references, or invoice content.
 
 ### Contract tests
 
-- Generated Dart client has no card-sensitive fields and covers money, versions, idempotency, and stable conflicts.
+- Generated TypeScript pharmacy client has no card-sensitive fields and covers money, versions, idempotency, and stable conflicts.
+- Preload/IPC contracts expose distinct sale, result-poll, print, encrypted-cart, and scanner capabilities; tests reject generic send/on bridges, unexpected sender frames, arbitrary paths/URLs, extra fields, and oversized receipt/cart payloads.
 - ExternalTerminalReferencePort fakes/production implementation share approved/reused/malformed semantics.
 - Events omit references/item free text and replay without duplicate notification/analytics.
 
@@ -315,12 +319,14 @@ Owner sees authorized branch aggregates/invoices, never another organization. Ex
 - Cancel creates reverse movements and immutable CANCELLED invoice.
 - Partial RESTOCKABLE and NON_RESTOCKABLE returns update quantities/refund/stock correctly; no over-return/refund.
 - Cashier/other branch/INTEGRATED branch/disabled card method are denied.
+- Packaged Electron E2E covers scanner/cart, external-terminal reference, unknown-result recovery, canonical print/reprint, restart with an encrypted non-authoritative cart, and denial of direct IPC/path/SQL/scope injection.
 
 ### System, performance, and security tests
 
 - Meet POS p95 at production-shaped cart/batch concurrency; stress until lock contention and verify controlled recovery.
 - Fault-inject database/Redis/Reverb/printer/worker restarts and restore/reconcile invoice-payment-ledger equality.
 - Test BOLA/BFLA, role escalation, mass assignment, price/discount tampering, overflow, replay, race, terminal-reference reuse, PAN/CVV leakage canaries, receipt XSS/CSV injection, and sensitive logging.
+- Renderer XSS/hostile receipt content cannot obtain Node/Electron, read encrypted cart/token material, open arbitrary navigation, or trigger shell/file/print/update capabilities.
 
 ## Observability, migration, and rollout
 

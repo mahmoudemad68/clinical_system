@@ -11,12 +11,12 @@ Turn performance and resilience claims into reproducible evidence without weaken
 
 Read completely:
 
-- [Roadmap, invariants, evidence policy, and open topology decision](../../docs/phases/README.md)
-- [Cross-cutting observability, health, outbox, API, cache, and environment contract](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
-- [Safe admin analytics and health projection](../../docs/phases/20_admin_analytics_and_system_health.md)
-- [Performance, scaling, observability, and resilience](../../docs/phases/21_performance_scaling_observability_and_resilience.md)
-- [Security/privacy observability constraints](../../docs/phases/22_security_privacy_and_compliance_validation.md)
-- The metrics and release-consumption sections of [Phase 23](../../docs/phases/23_disaster_recovery_release_and_production.md)
+- [Roadmap, invariants, evidence policy, and open topology decision](../../../docs/phases/README.md)
+- [Cross-cutting observability, health, outbox, API, cache, and environment contract](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [Safe admin analytics and health projection](../../../docs/phases/20_admin_analytics_and_system_health.md)
+- [Performance, scaling, observability, and resilience](../../../docs/phases/21_performance_scaling_observability_and_resilience.md)
+- [Security/privacy observability constraints](../../../docs/phases/22_security_privacy_and_compliance_validation.md)
+- The metrics and release-consumption sections of [Phase 23](../../../docs/phases/23_disaster_recovery_release_and_production.md)
 
 Also read the owning feature phase's observability, failure, concurrency, indexes, and acceptance sections. Inspect current instrumentation abstractions, dashboards/alerts, collector config, k6 scenarios, query plans/indexes, deployment topology, test-data generator, runbooks, and prior baselines.
 
@@ -24,7 +24,7 @@ Also read the owning feature phase's observability, failure, concurrency, indexe
 
 Own measurement and performance engineering:
 
-- OpenTelemetry context propagation and approved HTTP/DB/Redis/queue/Reverb/S3/Qdrant/AI/provider/client instrumentation;
+- OpenTelemetry context propagation and approved HTTP/DB/Redis/queue/Reverb/S3/Qdrant/AI/provider/client instrumentation, including Flutter mobile, Electron main/preload/renderer/IPC, and React admin browser boundaries;
 - bounded metric/log/trace/error schemas, central redaction, sampling, dashboards, alerts, SLI/SLO calculations, and health/readiness behavior;
 - k6 HTTP/WebSocket workload models, synthetic datasets, threshold evaluation, load/soak/stress/reconnect/fault experiments, and immutable result artifacts;
 - query/index/payload/cache/pool/backpressure analysis, capacity models, scale triggers, and before/after evidence;
@@ -57,6 +57,7 @@ Feature owners still implement business logic and local instrumentation calls. T
 - `/live` proves the process/event loop is alive without deep fan-out. `/ready` proves the workload can safely accept traffic under its declared critical dependencies/config/schema/capacity.
 - Core readiness does not require AI/Qdrant. AI readiness/degradation is reported separately.
 - Realtime delivery is measured commit/outbox-to-authorized-client; reconnect tests reload authoritative state and detect event gaps.
+- Electron client measurements distinguish startup, main-process, renderer, IPC, native adapter/database, reconnect, memory, handle, and user-flow time without recording screen/input content. Renderer and main-process telemetry share correlation but not privileged payloads.
 - Logs/traces/Sentry exclude national ID, phone, medical history, prescriptions, lab/file content, prompts/responses/chunks, tokens, credentials, object keys, and raw provider payloads.
 - Labels use a compile-time/reviewed bounded registry. Correlation/request/trace IDs may be searchable fields where policy permits, not high-cardinality metric labels.
 - Alerts name numeric threshold/sustain, owner, severity, escalation, runbook, expected action, and false-positive review. Prefer user-impact/error-budget symptoms over noisy single events.
@@ -82,7 +83,7 @@ Verify at minimum:
 - contract tests for `/live`/`/ready`, safe detailed health, realtime sequence, cache freshness, adapter timeouts, and versioned k6 result schema;
 - E2E critical journeys under load, including denied cases and ambiguous idempotent writes;
 - all Phase 21 sustained/burst/WebSocket/AI/stress/recovery thresholds with exact candidate/topology artifacts and zero domain invariant violation;
-- soak checks for memory/connection/file-descriptor/cache/queue drift and Octane cross-request state leakage;
+- soak checks for server and Electron main/renderer memory, connection, file-descriptor/handle, native-module, cache, and queue drift plus Octane cross-request state leakage;
 - load-abuse tests for body/pagination/search/geo/WebSocket/retry/queue/telemetry/AI cost amplification without uncontrolled denial of service;
 - canary sensitive values absent from metrics/logs/traces/errors/profiles/results and internal observability endpoints inaccessible publicly;
 - failure of AI/Qdrant/Redis/worker/node/network produces the documented degradation and authoritative truth remains intact.

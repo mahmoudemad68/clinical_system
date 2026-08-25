@@ -11,14 +11,14 @@ Promote only the exact tested candidate, prove authoritative recovery with measu
 
 Read completely before planning or executing production/DR work:
 
-- [Roadmap, invariants, decisions, and evidence policy](../../docs/phases/README.md)
-- [Cross-cutting environments, CI, migrations, secrets, data ownership, and release contract](../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
-- [Private S3/file truth](../../docs/phases/07_labs_files_reports_and_referrals.md)
-- [Qdrant rebuild and AI isolation](../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
-- [Safe admin health and BackupStatusProjection boundary](../../docs/phases/20_admin_analytics_and_system_health.md)
-- [Measured SLO/capacity/resilience evidence](../../docs/phases/21_performance_scaling_observability_and_resilience.md)
-- [Security/privacy/clinical/pharmacy release assurance](../../docs/phases/22_security_privacy_and_compliance_validation.md)
-- [Disaster recovery, release, and production](../../docs/phases/23_disaster_recovery_release_and_production.md)
+- [Roadmap, invariants, decisions, and evidence policy](../../../docs/phases/README.md)
+- [Cross-cutting environments, CI, migrations, secrets, data ownership, and release contract](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [Private S3/file truth](../../../docs/phases/07_labs_files_reports_and_referrals.md)
+- [Qdrant rebuild and AI isolation](../../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
+- [Safe admin health and BackupStatusProjection boundary](../../../docs/phases/20_admin_analytics_and_system_health.md)
+- [Measured SLO/capacity/resilience evidence](../../../docs/phases/21_performance_scaling_observability_and_resilience.md)
+- [Security/privacy/clinical/pharmacy release assurance](../../../docs/phases/22_security_privacy_and_compliance_validation.md)
+- [Disaster recovery, release, and production](../../../docs/phases/23_disaster_recovery_release_and_production.md)
 
 For reconciliation, read the owning phase for every affected authoritative domain, especially appointments/encounters/prescriptions, files, stock ledger/batches, invoices/payments/returns/refunds, outbox/idempotency, and AI knowledge metadata.
 
@@ -33,6 +33,7 @@ Own operational recovery and promotion mechanics:
 - Qdrant snapshot restore and from-PostgreSQL/S3 re-ingestion; Redis/cache/queue/realtime loss recovery and outbox replay;
 - primary failover/fencing/failback rehearsal, ambiguity reconciliation, and rebuilt redundancy;
 - expand/backfill/switch/contract migration orchestration, signed candidate freeze, preflight, canary/rolling deployment, feature activation, rollback/forward fix, stabilization, and handover;
+- Electron Forge candidate packaging, native-module ABI verification, reviewed fuse/ASAR integrity checks, Windows/macOS/Linux signing/notarization handoff, trusted update publication, cohort rollout, rollback compatibility, and encrypted desktop-data migration evidence;
 - release/backup/restore metadata, restricted evidence manifests, approvals, and recurring drill schedules.
 
 This skill consumes health/SLO/security/AI/clinical evidence. It does not redefine those controls or approve its own prerequisites.
@@ -47,6 +48,7 @@ This skill consumes health/SLO/security/AI/clinical evidence. It does not redefi
 - Destructive cleanup, primary promotion/failover, DNS/LB cutover, production migration, secret rotation, and production feature activation require exact-target resolution and the applicable user/change approval immediately before execution.
 - Restored environments are private, outbound notifications/providers disabled, access-controlled, time-bounded, and cleaned according to evidence/data policy.
 - Build once and promote by signed immutable digest. The artifact/config/schema/contract/flag/model/rule/evidence manifests must refer to the same candidate.
+- Electron client owners implement package/update behavior, but this skill alone controls production signing identities, notarization submission, update-feed publication, promotion cohorts, emergency withdrawal, and release approval. Never expose those credentials or controls to renderer, preload, admin web, or the application API.
 - AI availability is separate. Qdrant/model/provider loss cannot make Core unavailable or extend the Core RTO silently.
 - Do not activate online payment, emergency chat, alternatives/reservation, branch transfer, supplier automation, adherence, image diagnosis, multi-country, complex admin roles, or another V1 exclusion.
 
@@ -80,7 +82,7 @@ This skill consumes health/SLO/security/AI/clinical evidence. It does not redefi
 
 ### Release
 
-1. Freeze and verify commit, signed images/apps, SBOM/provenance, APIs/events/tools, migrations, infrastructure/config, flags, AI versions, and Phase 21/22 evidence.
+1. Freeze and verify commit, signed images/apps, Electron packages/fuses/native ABI/update manifest, SBOM/provenance, APIs/events/tools, migrations, infrastructure/config, flags, AI versions, and Phase 21/22 evidence.
 2. Confirm on-call, incident/status communication, vendor contacts, scale triggers, backup health, recent passing restore, runbooks, rollback/forward path, and go/no-go owners.
 3. Create/verify a fresh recovery point; run backward-compatible expand migrations with least-privilege identity, lock/statement limits, monitoring, and abort criteria.
 4. Deploy canary by immutable digest, wait for readiness, run security/contract/queue/outbox/reconciliation and production-safe synthetic smoke checks, then roll nodes with graceful drain.
@@ -97,7 +99,7 @@ Do not mark complete without reproducible evidence for the applicable scope:
 - PostgreSQL base+WAL restore to a selected point; S3 version/delete-marker/checksum/access recovery; key recovery/rotation; Qdrant snapshot and from-source rebuild; Redis/outbox/realtime/analytics rebuild;
 - domain reconciliation for identity uniqueness, appointments/access/encounters, prescription versions, files/labs, ledger/batches/balances, invoices/payments/returns/refunds, audit chain, outbox/idempotency, and AI metadata;
 - failover fencing, ambiguous-write resolution, rebuilt standby, and separately rehearsed failback;
-- clean-environment deployment, mixed-version compatibility, migration lock/backfill behavior, canary/rolling drain, client reconnect/local-data compatibility, safe smoke, and application rollback/forward fix;
+- clean-environment deployment, mixed-version compatibility, migration lock/backfill behavior, canary/rolling drain, client reconnect/local-data compatibility, Electron install/upgrade/downgrade/native ABI/encrypted-database migration/update-signature behavior, safe smoke, and application rollback/forward fix;
 - restored environment isolation: no public/client traffic, real notification/provider egress, broad credentials, or leaked logs/evidence;
 - final/equivalent topology still satisfies Phase 21 p95/load/WebSocket/AI/stress/recovery evidence and Phase 22 has no release blocker;
 - every Phase 23 production definition-of-done item is linked to the exact candidate and signed by its accountable engineering, QA, operations, security/privacy, legal, clinical, pharmacy, product owner.

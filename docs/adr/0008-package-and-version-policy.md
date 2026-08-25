@@ -1,9 +1,14 @@
 # ADR 0008 — Package selection and version policy
 
+> **Desktop update:** ADR 0010 adds Electron/Node/Chromium, Forge, and native
+> addon compatibility/signing requirements. This ADR's pinning and provenance
+> policy remains in force for every stack.
+
 - **Status:** Accepted
 - **Date:** 2026-08-24
 - **Deciders:** Platform architecture, devops, security, all stack owners
 - **Phase:** 00
+- **Supersedes / Superseded by:** Extended for Electron desktops by [ADR 0010](0010-electron-react-typescript-desktop-clients.md)
 
 ## Context
 

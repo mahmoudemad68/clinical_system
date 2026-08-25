@@ -46,6 +46,7 @@ jobs:
       ai_service: ${{ steps.filter.outputs.ai_service }}
       admin_web: ${{ steps.filter.outputs.admin_web }}
       flutter: ${{ steps.filter.outputs.flutter }}
+      desktop: ${{ steps.filter.outputs.desktop }}
       contracts: ${{ steps.filter.outputs.contracts }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
@@ -62,12 +63,18 @@ jobs:
               - 'packages/contracts/ai_internal/**'
             admin_web:
               - 'apps/admin-web/**'
+              - 'packages/typescript/**'
               - 'packages/contracts/openapi/**'
             flutter:
+              # Patient mobile only. Doctor and pharmacy moved to Electron
+              # (ADR 0010) and are matched by the `desktop` filter below.
               - 'apps/patient-app/**'
+              - 'packages/flutter/**'
+            desktop:
               - 'apps/doctor-desktop/**'
               - 'apps/pharmacy-desktop/**'
-              - 'packages/flutter/**'
+              - 'packages/typescript/**'
+              - 'packages/contracts/openapi/**'
             contracts:
               - 'packages/contracts/**'
               - 'scripts/contracts/**'
@@ -103,9 +110,9 @@ jobs:
 
       - name: Fail if generated client is stale
         run: |
-          if ! git diff --quiet -- apps/admin-web/src/api/generated; then
+          if ! git diff --quiet -- packages/typescript/api_client/src/generated; then
             echo "::error::The generated TypeScript client is out of date. Run 'npm run contracts:generate:ts' and commit."
-            git diff -- apps/admin-web/src/api/generated
+            git diff -- packages/typescript/api_client/src/generated
             exit 1
           fi
 
@@ -264,6 +271,41 @@ jobs:
       - run: melos bootstrap
       - run: melos run analyze
       - run: melos run test
+
+  # ----------------------------------------------------------------- desktop
+  desktop:
+    name: Electron desktops
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run contracts:generate:ts
+
+      - name: Type-check both desktops
+        run: npm run desktop:typecheck
+
+      - name: Trust-boundary and IPC contract tests
+        # These assert the renderer cannot reach Node/Electron, that no generic
+        # IPC exists, that CSP and fuses hold, and that the two applications do
+        # not share a security namespace. They run on every commit; the
+        # packaged-window equivalents need a real artifact and are gate G-02-09.
+        run: npm run desktop:test
+
+      - name: Shared TypeScript packages
+        run: npm run packages:test
+
+      # Packaging is not run here. It downloads the Electron binary per target
+      # and rebuilds native addons, which belongs in the post-merge lane where
+      # the artifact is actually retained. Phase 00 CI never receives signing
+      # credentials (Phase 23 owns those).
 
   # ---------------------------------------------------------------- security
   security:

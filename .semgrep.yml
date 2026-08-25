@@ -100,3 +100,104 @@ rules:
       - pattern: psycopg.connect(...)
       - pattern: sqlalchemy.create_engine(...)
       - pattern: asyncpg.connect(...)
+
+  # ------------------------------------------------------------------ Electron
+  # ADR 0010. These encode the renderer/main privilege boundary. Each one
+  # corresponds to a documented Electron escape route.
+
+  - id: clinic-electron-no-node-in-renderer
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include: ['apps/*-desktop/src/renderer/**']
+      exclude: ['apps/*-desktop/src/renderer/*.d.ts']
+    message: >-
+      Renderer code must not import Electron or Node. It is an unprivileged
+      presentation process; everything else goes through a typed contextBridge
+      capability (ADR 0010).
+    pattern-either:
+      - pattern: import 'electron'
+      - pattern: import $X from 'electron'
+      - pattern: import { ... } from 'electron'
+      - pattern: require('electron')
+      - pattern: import $X from 'node:$MOD'
+      - pattern: import { ... } from 'node:$MOD'
+      - pattern: require('fs')
+      - pattern: require('path')
+      - pattern: require('child_process')
+
+  - id: clinic-electron-no-generic-ipc
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include: ['apps/*-desktop/src/preload/**']
+    message: >-
+      Never expose ipcRenderer or a generic invoke(channel, payload) through
+      contextBridge. That hands a compromised renderer the entire main-process
+      surface and is the most common Electron vulnerability.
+    pattern-either:
+      - pattern: contextBridge.exposeInMainWorld($NAME, ipcRenderer)
+      - pattern: |
+          contextBridge.exposeInMainWorld($NAME, { ..., ipcRenderer, ... })
+      - pattern: |
+          contextBridge.exposeInMainWorld($NAME, { ..., invoke: (channel, ...) => ..., ... })
+      - pattern: |
+          contextBridge.exposeInMainWorld($NAME, { ..., send: (channel, ...) => ..., ... })
+
+  - id: clinic-electron-no-unsafe-webpreferences
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include: ['apps/*-desktop/**']
+    message: >-
+      nodeIntegration must stay false, contextIsolation true, sandbox true, and
+      webSecurity true. Relaxing any of them removes the renderer/main privilege
+      boundary entirely.
+    pattern-either:
+      - pattern: "nodeIntegration: true"
+      - pattern: "contextIsolation: false"
+      - pattern: "sandbox: false"
+      - pattern: "webSecurity: false"
+      - pattern: "allowRunningInsecureContent: true"
+      - pattern: "webviewTag: true"
+      - pattern: "nodeIntegrationInSubFrames: true"
+
+  - id: clinic-electron-no-remote-content
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include: ['apps/*-desktop/src/main/**']
+    message: >-
+      The desktop applications load packaged local content only. Loading a
+      remote URL into a privileged renderer gives remote code that renderer's
+      origin and capabilities.
+    pattern-either:
+      - pattern: $WIN.loadURL("http://...")
+      - pattern: $WIN.loadURL("https://...")
+
+  - id: clinic-electron-no-unrestricted-shell
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include: ['apps/*-desktop/**']
+    message: >-
+      shell.openExternal and shell.openPath with a non-literal argument let a
+      renderer-supplied string reach an OS handler. Parse, allowlist, and
+      require explicit user intent first.
+    pattern-either:
+      - pattern: shell.openExternal($URL)
+      - pattern: shell.openPath($PATH)
+
+  - id: clinic-electron-no-secrets-in-renderer-storage
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include: ['apps/*-desktop/src/renderer/**']
+    message: >-
+      Tokens, database keys, PHI, drafts, and signed URLs must never reach
+      renderer web storage. Credentials live in the main process behind
+      safeStorage (ADR 0010).
+    pattern-either:
+      - pattern: localStorage.setItem(...)
+      - pattern: sessionStorage.setItem(...)
+      - pattern: indexedDB.open(...)

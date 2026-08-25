@@ -88,9 +88,10 @@ Ports are split by action (`StoreVerificationObject`, `ReadVerificationObject`, 
 - PostGIS `geography(Point, 4326)` and GiST indexes for clinic/branch locations.
 - A maintained image/PDF metadata inspection library and malware-scanner adapter selected and pinned after a parser-risk review; document contents remain quarantined before scan completion.
 - `brick/money` is not used here except for future-compatible public DTO types; location profile data contains no prices.
-- React Hook Form + Zod + MUI for admin verification and organization/profile forms.
-- Flutter Riverpod, Dio/generated API client, Freezed, secure file picker integration, and localization packages from Phase 00.
-- Pest/PHPUnit, PostGIS integration tests, Playwright, Flutter integration tests, and OWASP ZAP authenticated authorization tests.
+- React Hook Form + Zod + MUI for the browser-admin verification and organization/profile forms.
+- Flutter patient mobile uses Riverpod, Dio/generated Dart client, Freezed, secure file picker integration, and localization packages from Phase 00.
+- Electron doctor/pharmacy desktops use React, TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, and the generated TypeScript client. Main-process adapters own file dialogs, temporary-file handles, authenticated upload, and other OS capabilities; preload exposes narrow typed operations only.
+- Pest/PHPUnit, PostGIS integration tests, browser-admin Playwright, Flutter patient-mobile integration tests, Electron main/preload/renderer tests plus WebdriverIO with `@wdio/electron-service` packaged-app E2E, and OWASP ZAP authenticated authorization tests.
 
 ## Data model and migrations
 
@@ -344,19 +345,21 @@ Jobs:
 - Clearly distinguish self-reported fields and verification-pending/manual-review states.
 - Demographic edit forms use server versions and explain conflicts; clinical fields are absent.
 
-### Doctor Flutter desktop
+### Doctor Electron desktop
 
 - Draft profile, specialty selection, secure file selection/upload progress, scan status, submission, decision, and safe resubmission UX.
-- Remove local selected verification files after confirmed upload or user cancellation; do not include them in app backups/crash bundles.
+- The sandboxed React renderer requests file selection through a versioned preload contract. The main process validates sender, purpose, type, size, and path; returns only a safe opaque handle/name; streams the authenticated upload; and never exposes arbitrary filesystem access.
+- Remove main-process temporary handles/files after confirmed upload or user cancellation; do not include them in app backups/crash bundles.
 - Pending/rejected/suspended doctor sees no clinical navigation or cached clinical content.
 
-### Pharmacy Flutter desktop
+### Pharmacy Electron desktop
 
 - Organization/branch onboarding and fixed-scope membership management.
 - Map pin/address confirmation makes the saved public location explicit.
 - No inventory/POS screen is enabled in this phase.
+- The React renderer has no Node, shell, filesystem, credential, or generic IPC capability. Generated TypeScript DTOs remain at the transport edge and map into feature view models.
 
-### React admin
+### React browser admin
 
 - Dedicated verification queue and case projection with MFA/step-up enforcement.
 - Document viewer uses a short-lived signed URL, safe content disposition/sandbox, and visible access audit indicator.
@@ -368,6 +371,7 @@ Jobs:
 - **Fraudulent professional approval:** immutable submitted snapshot, reviewer separation, privileged MFA/step-up, reason codes, document provenance, optional dual approval for configured high-risk exceptions.
 - **Malicious verification file:** quarantine, magic-byte validation, malware scan, sandboxed rendering, resource bounds, safe download headers, no inline executable formats, and fail closed.
 - **Admin clinical overreach:** separate verification query model/database permissions, field allowlist, no clinical module dependency, BOLA tests, and audited reads/downloads.
+- **Electron file/renderer compromise:** local packaged renderer, restrictive CSP, context isolation, renderer sandbox, no Node integration, sender-validated typed IPC, path/handle allowlists, no remote navigation/webview, and prompt temporary-file cleanup.
 - **Cross-tenant membership escalation:** server-derived organization/location scope, active-membership checks on every command/job, cache invalidation, unique constraints, and revoke propagation.
 - **Sensitive identifier leakage:** envelope encryption, purpose-bound HMACs, masked UI, no telemetry/provider exposure, and KMS access auditing.
 - **Location privacy:** only clinic/branch locations are persisted/public here; staff personal location is never collected. Address and coordinates require owner confirmation and change audit.
@@ -390,7 +394,8 @@ Jobs:
 
 ### Contract tests
 
-- OpenAPI/generated clients for onboarding, upload, decision, profile, location, and membership contracts.
+- OpenAPI/generated Dart patient-mobile and TypeScript Electron/admin clients for onboarding, upload, decision, profile, location, and membership contracts.
+- Electron file-dialog/upload bridge contracts reject unknown operations/fields, forged senders, stale handles, wrong purpose, traversal/symlink swaps, oversized files, cancellation races, and responses containing raw paths or credentials.
 - Every patient-registry, verification-document, scanner, applicant, geocoder/map-link, and event adapter passes owned port contracts.
 - Current and previous compatible event versions deserialize without sensitive fields.
 
@@ -401,6 +406,7 @@ Jobs:
 - Admin-created doctor follows the same evidence/audit gate.
 - Pharmacy organization + branch + owner activation; cross-organization access denied.
 - Secretary invitation/acceptance/revoke; revoked user loses API/realtime access.
+- Packaged doctor/pharmacy Electron apps complete onboarding on each supported OS; cancel/restart/revoke leaves no selected document, raw path, token, or sensitive renderer cache behind.
 
 ### System tests
 
@@ -413,6 +419,7 @@ Jobs:
 
 - BOLA/BFLA/mass-assignment across profiles, cases, memberships, locations, and upload IDs.
 - File-name/path traversal, MIME spoof/polyglot, malware, oversized/compressed-bomb, parser timeout, and stolen signed URL tests.
+- Electron tests attempt renderer XSS-to-file/IPC escalation, arbitrary path and `shell.openExternal`, forged sender/opaque handle, unsafe navigation, and upload after logout/revoke; every path fails closed without leaking a local path or credential.
 - Attempt to make pending/rejected doctor/pharmacy active through direct API/status fields, stale versions, replay, or event forgery.
 - Search all telemetry/artifacts for National ID, phone, legal registration, address, document content/object key, and reviewer-note canaries.
 - Verify admin endpoints cannot query clinical routes/tables and verification URLs are non-public and short-lived.
@@ -461,5 +468,5 @@ location_changes_total{type,result}
 
 - `Patients`, `Doctors`, `Pharmacies`, `Clinics`, `Verification`, and verification-focused `Admin` slices.
 - Profile, organization, branch, location, membership, case, document, decision, and revision migrations.
-- Quarantined verification upload pipeline and admin/Flutter workflows.
+- Quarantined verification upload pipeline plus browser-admin, Flutter patient-mobile, and Electron doctor/pharmacy workflows.
 - OpenAPI/events, authorization matrix, synthetic fixtures, dashboards, alerts, runbooks, and approval evidence.
