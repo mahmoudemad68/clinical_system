@@ -1,0 +1,309 @@
+# Pull-request pipeline (Phase 00 §6).
+#
+# Order matters: cheap checks fail fast so a formatting mistake does not wait
+# behind a container integration suite.
+#
+#   1. format and lint each language
+#   2. compile/type-check and run architecture rules
+#   3. validate OpenAPI and event schemas, regenerate clients
+#   4. unit and component suites, then containerized integration suites
+#   5. secret scanning, SAST, dependency audit, IaC/container scan, SBOM
+#   6. build immutable artifacts once
+#
+# Path filters keep the runtime honest: only changed units run their full
+# suite, while contract validation always runs because a contract change
+# affects every consumer.
+
+name: pull-request
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push supersedes an in-flight run for the same PR.
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Least privilege by default. Jobs that need more request it explicitly.
+permissions:
+  contents: read
+
+env:
+  PHP_VERSION: '8.3'
+  NODE_VERSION: '22'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+
+  # ---------------------------------------------------------------- changes
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      core_api: ${{ steps.filter.outputs.core_api }}
+      ai_service: ${{ steps.filter.outputs.ai_service }}
+      admin_web: ${{ steps.filter.outputs.admin_web }}
+      flutter: ${{ steps.filter.outputs.flutter }}
+      contracts: ${{ steps.filter.outputs.contracts }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            core_api:
+              - 'apps/core-api/**'
+              - 'packages/contracts/**'
+            ai_service:
+              - 'apps/ai-service/**'
+              - 'packages/contracts/ai_internal/**'
+            admin_web:
+              - 'apps/admin-web/**'
+              - 'packages/contracts/openapi/**'
+            flutter:
+              - 'apps/patient-app/**'
+              - 'apps/doctor-desktop/**'
+              - 'apps/pharmacy-desktop/**'
+              - 'packages/flutter/**'
+            contracts:
+              - 'packages/contracts/**'
+              - 'scripts/contracts/**'
+            infra:
+              - 'infra/**'
+              - '.github/workflows/**'
+
+  # -------------------------------------------------------------- contracts
+  contracts:
+    name: Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The breaking-change detector diffs against main, so it needs history.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint OpenAPI
+        run: npm run contracts:lint
+
+      - name: Validate event schemas
+        run: npm run contracts:events
+
+      - name: Generate TypeScript client
+        run: npm run contracts:generate:ts
+
+      - name: Fail if generated client is stale
+        run: |
+          if ! git diff --quiet -- apps/admin-web/src/api/generated; then
+            echo "::error::The generated TypeScript client is out of date. Run 'npm run contracts:generate:ts' and commit."
+            git diff -- apps/admin-web/src/api/generated
+            exit 1
+          fi
+
+      - name: Detect breaking contract changes
+        run: |
+          git fetch origin main --depth=1
+          npm run contracts:breaking
+
+      # Independent second opinion from the upstream tool. Our own checker is
+      # the rule-of-record because it encodes ADR 0003 exactly; oasdiff catches
+      # classes we may not have thought of.
+      - name: Cross-check with oasdiff
+        continue-on-error: true
+        run: |
+          git show origin/main:packages/contracts/openapi/openapi.yaml > /tmp/base.yaml || exit 0
+          docker run --rm -v /tmp:/base -v "$PWD/packages/contracts/openapi":/head \
+            tufin/oasdiff breaking /base/base.yaml /head/openapi.yaml --fail-on ERR
+
+  # ---------------------------------------------------------------- core-api
+  core-api:
+    name: Core API
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.core_api == 'true'
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: clinic_test
+          POSTGRES_USER: clinic_migrator
+          POSTGRES_PASSWORD: ci_only_not_a_secret
+        options: >-
+          --health-cmd "pg_isready -U clinic_migrator"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports: ['5432:5432']
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports: ['6379:6379']
+
+    defaults:
+      run:
+        working-directory: apps/core-api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, pgsql, intl, bcmath, zip, pcntl, redis
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies from the committed lock
+        # --no-interaction with a lock present is a frozen install: a lockfile
+        # that would change fails the build (ADR 0008).
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Fail if the lockfile drifted
+        run: git diff --exit-code -- composer.lock
+
+      - name: Format check
+        run: ./vendor/bin/pint --test
+
+      - name: Static analysis
+        run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      - name: Architecture boundaries
+        run: ./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered
+
+      - name: Migrate
+        env:
+          DB_HOST: localhost
+          DB_DATABASE: clinic_test
+          DB_USERNAME: clinic_migrator
+          DB_PASSWORD: ci_only_not_a_secret
+        run: php artisan migrate --database=pgsql_migrator --force
+
+      - name: Tests
+        env:
+          DB_HOST: localhost
+          DB_DATABASE: clinic_test
+          DB_USERNAME: clinic_migrator
+          DB_PASSWORD: ci_only_not_a_secret
+          REDIS_HOST: localhost
+        run: ./vendor/bin/phpunit
+
+  # -------------------------------------------------------------- ai-service
+  ai-service:
+    name: AI service
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.ai_service == 'true'
+    defaults:
+      run:
+        working-directory: apps/ai-service
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install from hashed requirements
+        # --require-hashes means a substituted artifact fails the build.
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r requirements.txt
+          pip install ruff==0.16.4 mypy==2.3.1 pytest==9.1.1 pytest-asyncio==1.4.0 respx==0.23.1 hypothesis==6.165.10
+
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy src
+      - run: pytest
+        env:
+          PYTHONPATH: src
+
+  # --------------------------------------------------------------- admin-web
+  admin-web:
+    name: Admin web
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.admin_web == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run contracts:generate:ts
+      - run: npm run admin:lint
+      - run: npm run admin:typecheck
+      - run: npm run admin:test
+      - run: npm run admin:build
+
+  # ----------------------------------------------------------------- flutter
+  flutter:
+    name: Flutter
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.flutter == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.1'
+          channel: stable
+      - run: dart pub global activate melos
+      - run: melos bootstrap
+      - run: melos run analyze
+      - run: melos run test
+
+  # ---------------------------------------------------------------- security
+  security:
+    name: Security scans
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Secrets must never reach a fork/PR job from untrusted code, so this
+      # workflow requests no secrets at all.
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
+
+      - name: SAST
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/default
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+
+      - name: Filesystem and dependency scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          artifact-name: clinic-platform.sbom.spdx.json

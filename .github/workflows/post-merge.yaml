@@ -1,0 +1,154 @@
+# Post-merge pipeline (Phase 00 §6).
+#
+#   1. push signed immutable images to the registry
+#   2. deploy to the isolated development/staging environment
+#   3. run backward-compatible migrations with timeout and lock monitoring
+#   4. execute smoke, contract, authorization-canary, and observability checks
+#   5. keep production promotion manual until Phase 23 gates pass
+#
+# Artifacts are built ONCE here and promoted unchanged. Staging and production
+# never rebuild from source (ADR 0008), because a rebuild is a different
+# artifact and everything verified about the first one stops applying.
+
+name: post-merge
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: post-merge-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write        # keyless signing
+  attestations: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+
+  build:
+    name: Build and sign images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - unit: core-api
+            dockerfile: infra/docker/core-api.Dockerfile
+          - unit: ai-service
+            dockerfile: infra/docker/ai-service.Dockerfile
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.unit }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            BUILD_COMMIT=${{ github.sha }}
+          provenance: true
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Keyless signing. The digest, not the tag, is what gets signed: a tag can
+      # be moved, a digest cannot.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image
+        run: cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.unit }}@${{ steps.build.outputs.digest }}
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.unit }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Scan the built image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.unit }}@${{ steps.build.outputs.digest }}
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+  deploy-staging:
+    name: Deploy to staging
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      # STATUS: no staging environment exists yet (evidence ledger blocker 4).
+      # This job is written so the gate is visible rather than absent, and
+      # fails loudly rather than reporting a green deploy that never happened.
+      - name: Deploy
+        run: |
+          echo "::error::No staging environment is provisioned yet."
+          echo "Phase 00 evidence ledger blocker: staging requires an infrastructure decision."
+          echo "This job intentionally fails rather than reporting a successful deploy that did not occur."
+          exit 1
+
+      - name: Run migrations with lock monitoring
+        if: success()
+        run: |
+          # Migrations run as clinic_migrator with a statement timeout, and a
+          # watcher reports any lock held longer than five seconds so a
+          # long-locking migration is caught in staging, not production.
+          echo "placeholder: migrate --database=pgsql_migrator --force"
+
+      - name: Smoke, contract, and authorization-canary checks
+        if: success()
+        run: |
+          echo "placeholder - smoke suite against staging"
+
+  promote-production:
+    name: Promote to production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    # Manual approval, and it stays manual until the Phase 23 gates pass.
+    environment:
+      name: production
+    if: false
+    steps:
+      - name: Blocked until Phase 23
+        run: |
+          echo "Production promotion is blocked until Phase 23 gates pass:"
+          echo "  restore/failover proof, migration rollback rehearsal,"
+          echo "  security and privacy sign-off, load evidence."
+          exit 1

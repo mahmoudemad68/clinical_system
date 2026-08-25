@@ -1,0 +1,162 @@
+# Alert rules for the Phase 00 foundation.
+#
+# Every rule carries owner, severity, threshold, sustain period, and a runbook
+# link (Phase 00 §7.4). A rule without a runbook is a page with no instructions,
+# which trains people to ignore pages.
+#
+# Sustain periods are deliberate. Alerting on an instantaneous value produces
+# noise from ordinary variance; the `for` clause is what separates "a blip" from
+# "a problem".
+
+groups:
+
+  - name: platform-availability
+    rules:
+
+      - alert: CoreApiDown
+        expr: up{job="core-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          owner: platform-architecture
+        annotations:
+          summary: Core API is not scrapeable
+          description: >-
+            No core-api instance has responded to scraping for one minute.
+            Clients cannot reach the platform.
+          runbook: docs/runbooks/core-api-unavailable.md
+
+      - alert: CoreApiNotReady
+        expr: clinic_readiness_status{service="core-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          owner: platform-architecture
+        annotations:
+          summary: Core API reports not ready
+          description: >-
+            A critical dependency check is failing. Check /ready for the
+            specific check name; the body names the check but never the host.
+          runbook: docs/runbooks/core-api-unavailable.md
+
+      # Deliberately a warning, not a page. An AI outage is not a core outage
+      # (plan.md section 141), and paging someone at 03:00 for it would be
+      # wrong. It still needs to be visible.
+      - alert: AiServiceDegraded
+        expr: clinic_dependency_status{check="ai_service"} < 1
+        for: 10m
+        labels:
+          severity: warning
+          owner: ai-platform
+        annotations:
+          summary: AI service degraded for 10 minutes
+          description: >-
+            AI-assisted features are unavailable. Core clinical, appointment,
+            pharmacy, and notification flows are unaffected by design.
+          runbook: docs/runbooks/ai-service-degraded.md
+
+  - name: platform-outbox
+    rules:
+
+      - alert: OutboxBacklogGrowing
+        expr: clinic_outbox_pending_total > 1000
+        for: 5m
+        labels:
+          severity: warning
+          owner: realtime-jobs
+        annotations:
+          summary: Outbox backlog above 1000 events
+          description: >-
+            Post-commit effects are falling behind. Notifications and realtime
+            updates will be delayed; no data is lost.
+          runbook: docs/runbooks/outbox-backlog.md
+
+      - alert: OutboxOldestEventStale
+        expr: clinic_outbox_oldest_pending_age_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+          owner: realtime-jobs
+        annotations:
+          summary: Oldest unprocessed outbox event is over five minutes old
+          description: >-
+            Backlog depth alone can look healthy while one poisoned row starves
+            behind a repeatedly failing consumer. Age catches that; depth does
+            not.
+          runbook: docs/runbooks/outbox-backlog.md
+
+      # Any dead letter is worth a human. These are effects that were promised
+      # by a committed transaction and never delivered.
+      - alert: OutboxDeadLetterPresent
+        expr: clinic_outbox_dead_letter_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          owner: realtime-jobs
+        annotations:
+          summary: Outbox events have exhausted their retries
+          description: >-
+            A committed change did not produce its side effect. Investigate
+            before pruning; dead-letter rows are the only record.
+          runbook: docs/runbooks/outbox-dead-letter.md
+
+  - name: platform-data
+    rules:
+
+      - alert: DatabaseConnectionsNearLimit
+        expr: clinic_db_connections_in_use / clinic_db_connections_limit > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          owner: postgresql
+        annotations:
+          summary: Database connection pool above 80 percent
+          description: >-
+            Connection exhaustion presents as a total outage, not a slowdown.
+            Investigate before it saturates.
+          runbook: docs/runbooks/database-connections.md
+
+      - alert: SlowQueriesRising
+        expr: histogram_quantile(0.95, rate(clinic_db_query_duration_seconds_bucket[5m])) > 0.25
+        for: 10m
+        labels:
+          severity: warning
+          owner: postgresql
+        annotations:
+          summary: p95 query latency above 250ms
+          description: >-
+            The API read SLO is p95 <= 250ms end to end (plan.md section 132).
+            Query latency at that level leaves no budget for anything else.
+          runbook: docs/runbooks/slow-queries.md
+
+  - name: platform-security
+    rules:
+
+      # This should never fire. If it does, redaction has a gap and clinical
+      # content may already be in a log.
+      - alert: RedactionCanaryDetected
+        expr: increase(clinic_redaction_canary_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          owner: security
+        annotations:
+          summary: A sensitive-value canary reached the telemetry pipeline
+          description: >-
+            The pre-export assertion detected an unredacted sensitive value.
+            Treat as a potential disclosure: stop the export pipeline, identify
+            the source, and follow the incident runbook.
+          runbook: docs/runbooks/redaction-failure.md
+
+      - alert: AuthorizationDenialSpike
+        expr: rate(clinic_http_responses_total{status="403"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          owner: security
+        annotations:
+          summary: Elevated authorization denials
+          description: >-
+            May indicate credential stuffing, a broken client, or an
+            enumeration attempt.
+          runbook: docs/runbooks/authorization-denials.md

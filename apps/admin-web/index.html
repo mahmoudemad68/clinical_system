@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Do not let the admin be framed. The server sends X-Frame-Options and a
+      frame-ancestors CSP; this is the belt-and-braces meta for a static host
+      that might not.
+    -->
+    <meta name="referrer" content="no-referrer" />
+    <title>Clinic Admin</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

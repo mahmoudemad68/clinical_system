@@ -1,0 +1,50 @@
+# Gitleaks configuration.
+#
+# Secrets never enter git (plan.md section 169). This scans history as well as
+# the working tree, because a secret committed and then removed is still a
+# secret that was published and must be rotated.
+
+title = "Clinic platform secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "clinic-database-url"
+description = "Database connection string with an inline password"
+regex = '''(?i)(postgres|postgresql|mysql)://[^:\s]+:[^@\s]+@'''
+tags = ["database", "credential"]
+
+[[rules]]
+id = "clinic-egyptian-national-id"
+description = "Possible Egyptian national ID (14 digits) committed to the repository"
+# National IDs are encrypted and HMAC-indexed and never appear in fixtures,
+# logs, or test data (docs/phases/README.md invariant 5). A 14-digit literal in
+# source is either a real identifier or a fixture that looks like one; both are
+# worth a human look.
+regex = '''(?<![0-9])[23][0-9]{13}(?![0-9])'''
+tags = ["pii", "national-id"]
+
+[allowlist]
+description = "Documented local development values and synthetic test data"
+
+paths = [
+  '''infra/environments/local\.env$''',
+  '''infra/docker/postgres/initdb/.*\.sql$''',
+  '''infra/docker/compose\.yaml$''',
+  '''package-lock\.json$''',
+  '''composer\.lock$''',
+  '''apps/ai-service/requirements\.txt$''',
+  '''docs/.*\.md$''',
+]
+
+regexes = [
+  # Every local credential in this repository uses this exact literal, which
+  # makes an accidental real secret stand out rather than blend in.
+  '''local_dev_only_not_a_secret''',
+  '''ci_only_not_a_secret''',
+  # Synthetic canaries in the redaction test suite. These are structurally
+  # valid but deliberately impossible identities (birth date 2999-99-99).
+  '''29999999999999''',
+  '''phase00-synthetic-diagnostics-token''',
+]

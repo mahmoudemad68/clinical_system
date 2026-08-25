@@ -1,0 +1,102 @@
+# Project-specific Semgrep rules.
+#
+# These encode clinic invariants that no generic ruleset knows about. The
+# community rulesets (p/security-audit, p/owasp-top-ten) run alongside them in
+# CI and cover the generic classes.
+
+rules:
+
+  - id: clinic-no-raw-uuid-v4
+    languages: [php]
+    severity: ERROR
+    message: >-
+      Use the IdentityGenerator port (UUIDv7), not Str::uuid() or
+      Uuid::v4(). Random keys fragment the index on the highest-volume
+      tables (ADR 0005).
+    pattern-either:
+      - pattern: Str::uuid()
+      - pattern: Uuid::v4()
+      - pattern: Illuminate\Support\Str::uuid()
+
+  - id: clinic-no-facades-in-domain
+    languages: [php]
+    severity: ERROR
+    paths:
+      include: ['apps/core-api/app/Modules/*/Domain/**']
+    message: >-
+      Domain code must not use a framework facade. It depends on PHP and
+      domain-owned interfaces only. deptrac enforces this too; this rule
+      catches it at review time with a clearer message.
+    pattern-either:
+      - pattern: DB::$METHOD(...)
+      - pattern: Cache::$METHOD(...)
+      - pattern: Log::$METHOD(...)
+      - pattern: Http::$METHOD(...)
+      - pattern: Queue::$METHOD(...)
+
+  - id: clinic-no-float-money
+    languages: [php]
+    severity: ERROR
+    message: >-
+      Money and quantities use integer minor units with an explicit currency
+      or unit (invariant 16). A float here silently loses precision on an
+      invoice or a stock ledger.
+    pattern-either:
+      - pattern: (float) $AMOUNT
+      - pattern: floatval($AMOUNT)
+    paths:
+      include:
+        - 'apps/core-api/app/Modules/*/Domain/**'
+        - 'apps/core-api/app/Modules/POS/**'
+        - 'apps/core-api/app/Modules/Inventory/**'
+
+  - id: clinic-no-sensitive-in-log
+    languages: [php]
+    severity: WARNING
+    message: >-
+      Do not pass a raw request or an unfiltered array to a logger. Route it
+      through the Redactor port; invariant 18 forbids clinical content,
+      credentials, and national IDs in logs and traces.
+    pattern-either:
+      - pattern: Log::$LEVEL($MSG, $REQUEST->all())
+      - pattern: Log::$LEVEL($MSG, request()->all())
+      - pattern: logger($MSG, $REQUEST->all())
+
+  - id: clinic-no-wildcard-cors
+    languages: [php]
+    severity: ERROR
+    message: >-
+      Wildcard CORS origins are forbidden (mandatory Phase 00 control).
+      Enumerate the allowed origins explicitly.
+    pattern-either:
+      - pattern: "'allowed_origins' => ['*']"
+      - pattern: "'allowed_origins' => ['*'], ..."
+
+  - id: clinic-no-unbounded-work-in-request
+    languages: [php]
+    severity: WARNING
+    paths:
+      include: ['apps/core-api/app/Modules/*/Http/**']
+    message: >-
+      No HTTP request may wait for PDF extraction, OCR, embeddings, push
+      delivery, analytics, or an external API call (plan.md section 174).
+      Dispatch it through the outbox after commit.
+    pattern-either:
+      - pattern: Http::post(...)
+      - pattern: Http::get(...)
+      - pattern: file_get_contents($URL)
+      - pattern: curl_exec(...)
+
+  - id: clinic-python-no-core-db-access
+    languages: [python]
+    severity: ERROR
+    paths:
+      include: ['apps/ai-service/**']
+    message: >-
+      The AI service must not connect to core storage. It holds no core
+      database credential and cannot write core tables (ADR 0001).
+    pattern-either:
+      - pattern: psycopg2.connect(...)
+      - pattern: psycopg.connect(...)
+      - pattern: sqlalchemy.create_engine(...)
+      - pattern: asyncpg.connect(...)

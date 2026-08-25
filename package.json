@@ -5,8 +5,8 @@
   "description": "Clinic platform monorepo. Contracts, admin web, and shared JavaScript tooling.",
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=20.19.0",
-    "npm": ">=10.8.0"
+    "node": ">=22.12.0",
+    "npm": ">=10.9.0"
   },
   "workspaces": [
     "apps/admin-web"
