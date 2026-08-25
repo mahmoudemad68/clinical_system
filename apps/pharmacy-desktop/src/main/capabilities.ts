@@ -1,4 +1,4 @@
-import { ipcMain, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
 import {
   ALL_CHANNELS,
   BRIDGE_CONTRACT_VERSION,
@@ -10,6 +10,7 @@ import {
   type ChannelName,
 } from '@clinic/desktop-bridge-contracts';
 import { APP_CONFIG } from '../shared/app-config';
+import { isTrustedFrameOrigin } from '../shared/sender-policy';
 import { platformGateway } from './platform-gateway';
 
 /**
@@ -104,30 +105,54 @@ function handle<T>(
 }
 
 /**
- * Only the application's own top-level frame may invoke a capability.
+ * Windows permitted to invoke a capability.
  *
- * Subframes are rejected: nothing in this app uses one, so a call from a frame
- * means something is embedding content that should not exist.
+ * Registered by the main process when it creates a window. Validating against
+ * this set is the check Electron's security guidance actually asks for:
+ * comparing a URL is not enough, because a URL says nothing about which
+ * WebContents sent the message.
+ */
+const trustedWebContentsIds = new Set<number>();
+
+export function trustWindow(window: BrowserWindow): void {
+  const id = window.webContents.id;
+  trustedWebContentsIds.add(id);
+  window.on('closed', () => trustedWebContentsIds.delete(id));
+}
+
+/**
+ * Only this application's own top-level window may invoke a capability.
+ *
+ * Three independent checks, because each catches something the others miss:
+ *
+ *   1. the sender is a WebContents we created and still own — a URL comparison
+ *      alone cannot establish this;
+ *   2. the sender frame is top-level — nothing here uses a subframe, so a call
+ *      from one means something is embedding content that should not exist;
+ *   3. the frame's origin is exactly the packaged origin.
+ *
+ * An earlier version compared only `url.protocol`, which admitted any host
+ * under the scheme, and allowed localhost unconditionally with a comment
+ * asserting it was "never reachable in a packaged build" — an assertion nothing
+ * enforced. The localhost branch is now gated on `!app.isPackaged`, so it
+ * cannot exist in a shipped artifact regardless of how the app is launched.
  */
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
+  // 1. Known, still-open window of ours.
+  if (!trustedWebContentsIds.has(event.sender.id)) {
+    return false;
+  }
+
   const frame = event.senderFrame;
 
+  // 2. Top-level frame only.
   if (frame === null || frame.parent !== null) {
     return false;
   }
 
-  try {
-    const url = new URL(frame.url);
-
-    return (
-      url.protocol === `${APP_CONFIG.assetProtocolScheme}:` ||
-      // Development server only; never reachable in a packaged build.
-      ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') &&
-        (url.protocol === 'http:' || url.protocol === 'https:'))
-    );
-  } catch {
-    return false;
-  }
+  // 3. Exact origin, via the shared pure policy that the behavioural tests
+  //    exercise directly with hostile inputs.
+  return isTrustedFrameOrigin(frame.url, APP_CONFIG.packagedOrigin, app.isPackaged);
 }
 
 class TimeoutError extends Error {}

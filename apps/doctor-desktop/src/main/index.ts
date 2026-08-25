@@ -2,7 +2,7 @@ import { app, BrowserWindow, session, shell, protocol, net } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { APP_CONFIG } from '../shared/app-config';
-import { registerCapabilities } from './capabilities';
+import { registerCapabilities, trustWindow } from './capabilities';
 
 /**
  * Privileged main process.
@@ -100,6 +100,10 @@ function createWindow(): void {
 
   // Paint only when ready, so the user never sees an empty frame.
   window.once('ready-to-show', () => window.show());
+
+  // Register before loading: an IPC message can arrive as soon as the
+  // preload runs, and an unregistered window would be refused.
+  trustWindow(window);
 
   applyWindowPolicies(window);
   void window.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);

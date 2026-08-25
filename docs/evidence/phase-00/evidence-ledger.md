@@ -12,38 +12,35 @@ prompts, object keys, or exploit payloads.
 - **Toolchain:** PHP 8.3.6 · Composer 2.8.12 · Laravel 13.26.1 · Node 22.23.2 ·
   npm 10.9.8 · Python 3.12.3 · Flutter 3.47.1 · Dart 3.13.1 · Electron 44.0.0 ·
   Electron Forge 7.11.2 · Docker 29.7.2 · PostgreSQL 16 + PostGIS 3.4 · Redis 7
-- **Status:** Phase 00 is **OPEN**. Foundation and contract gates are evidenced;
-  client, CI, observability, and assurance gates are not.
+- **Status:** Phase 00 is **OPEN**.
 
-## ADR 0010 supersession notice — 2026-08-25
+**Gate totals — 47 gates: 24 PASS, 15 PARTIAL, 0 BLOCKED, 8 OPEN.**
+
+Reproduce with `node scripts/evidence/count-gates.mjs`. The script matches only
+rows whose first cell is a gate id, and fails on a duplicate id or a mismatched
+`--expect`. It exists because an earlier hand-written summary counted the legend
+and the test-plan category table as gates and reported figures that did not
+match the table; a total nobody can reproduce is not evidence.
+
+## ADR 0010 supersession notice — 2026-08-25, reconciled after migration
 
 [ADR 0010](../../adr/0010-electron-react-typescript-desktop-clients.md) replaced
-the target doctor/pharmacy Flutter desktop runtime with Electron, React, and
-TypeScript after this ledger was recorded. Rows below remain an immutable record
-of what the former scaffold proved; they are not evidence for the new desktop
-target. Current evaluation of the affected gates takes precedence:
+the doctor/pharmacy Flutter Desktop runtime with Electron, React, and
+TypeScript. The migration has since been performed, so this table is the
+reconciled status rather than the original to-do list. Where a row below and a
+gate row later in this file disagree, **this table is stale by construction and
+the gate row wins** — the gate rows are re-evaluated on every verification run.
 
-| Gate/evidence area | Current result | Required new evidence |
+| Gate / area | Status after migration | What remains |
 | --- | --- | --- |
-| G-01-01 / G-01-02 architecture | `PARTIAL` | ADR 0010 and the Electron C4 view exist; render/link checks plus architecture-rule execution against the implemented desktop boundary remain |
-| G-02-01 runtime bootstrap | `OPEN` | Replace both Flutter desktop scaffolds, remove them from Melos, add separate Electron npm workspaces/app IDs/data roots, and build packaged health slices without mixed runtimes |
-| G-03-02 generated clients | `PARTIAL` | Generate Dart for patient mobile and distinct TypeScript clients/transports for doctor Electron, pharmacy Electron, and browser admin |
-| G-06-01 local encryption | `OPEN` | Keep the mobile spike and add Electron `safeStorage`, Linux fail-closed, encrypted native SQLite, utility-process, ABI, migration/rekey/recovery, and signed-package evidence |
-| G-06-02 / G-06-04 / G-06-05 CI, reproducibility, SBOM | `PARTIAL` | Update path filters/workspaces/lockfiles, build Forge artifacts for every approved OS/architecture, and include Electron/Chromium/Node/native addons in candidate SBOM/provenance |
-| Client contract/E2E/system/security rows | `OPEN` for Electron | Run main/preload/renderer/utility tests plus packaged/installed Electron journeys, IPC abuse checks, native integration, signing/update, and rollback tests required by revised Phase 00 |
-
-Application source and old evidence are intentionally not deleted by this
-documentation change. The controlled Phase 00 migration must inventory and
-preserve any user-authored code or local data before replacement.
-
-## Legend
-
-| Result | Meaning |
-| --- | --- |
-| `PASS` | Verified by a named command or artifact, with the result recorded |
-| `PARTIAL` | Implemented, not yet fully evidenced |
-| `BLOCKED` | Cannot be evidenced in this environment; blocker named |
-| `OPEN` | Not started |
+| G-01-01 / G-01-02 architecture | `PASS` | ADR 0010 accepted, Electron C4 component view present, ADRs 0002/0003 and both C4 diagrams reconciled to the Electron reality. No automated Mermaid render check. |
+| G-02-01 runtime bootstrap | `PASS` | **Done.** Both Flutter desktop scaffolds removed, Melos reduced to 12 packages (patient app + 11 Dart packages), two independent Electron Forge apps scaffolded at the same paths, added to npm workspaces with distinct app IDs and data roots. No mixed runtime remains — verified by `find` for `*.dart`/`pubspec.yaml` under either desktop. |
+| G-02-06 … G-02-09 desktop boundary | `PASS` / `PARTIAL` | See the dedicated gate rows. Inventory, workspace split, and namespace separation pass; the trust boundary is proven at source and behaviour level but not against a packaged artifact. |
+| G-02-10 packaged E2E | `OPEN` | No WebdriverIO suite, no installed artifact, no OS/architecture matrix, no binary fuse inspection. |
+| G-03-02 generated clients | `PARTIAL` | TypeScript generated once into `packages/typescript/api_client`, consumed by admin web and both Electron desktops. Dart patient-mobile generation still outstanding. |
+| G-06-01 local encryption | `OPEN` | Mobile spike still open, and Electron `safeStorage`, Linux fail-closed behaviour, encrypted native SQLite, ABI, rekey/recovery, and signed-package evidence are all Phase 05/23 work. No desktop build may write clinical content until then. |
+| G-06-02 / G-06-04 / G-06-05 | `PARTIAL` | Path filters, workspaces, and lockfiles updated; a `desktop` CI job exists. Forge artifacts are not built for any OS, no SBOM has been produced, and SF-001 remains open at high severity. |
+| Client contract / E2E / system rows | `OPEN` for Electron | Packaged and installed Electron journeys, native integration, signing/update, and rollback tests are outstanding. |
 
 ---
 
@@ -69,7 +66,8 @@ preserve any user-authored code or local data before replacement.
 | G-02-06 | Desktop migration inventory recorded before replacement; no real desktop database silently deleted | desktop, architecture | [desktop-migration-inventory.md](desktop-migration-inventory.md) | `PASS` | Recorded before any file was removed. No `*.db`/`*.sqlite` existed, ADR 0006's encryption spike never closed so no build was permitted to write clinical content locally, and neither app was ever packaged. Safe to replace; no export/import plan required. |
 | G-02-07 | Dart/Melos workspace holds the patient app only; npm workspaces hold admin web and both Electron desktops | architecture, desktop | `melos bootstrap`; `npm ls --workspaces` | `PASS` | Melos bootstraps 12 packages (was 14): patient app plus 11 Dart packages, no desktop entries. npm workspaces resolve admin-web, both desktops, and 5 `packages/typescript/*`. No mixed runtime remains in either desktop app. |
 | G-02-08 | Doctor and pharmacy differ across every security-relevant namespace | desktop, security | `npm run desktop:test` | `PASS` | App ID, product/executable name, user-data directory, protocol scheme, asset scheme, encrypted-DB namespace, device-credential namespace, capability registry, and update channel all distinct, asserted per app including a check that neither config contains the sibling's identity. |
-| G-02-09 | Electron trust boundary: sandbox, context isolation, no Node in renderer, strict CSP, no generic IPC, fuses | desktop, security | `npm run desktop:test` | `PARTIAL` | 24 tests per app, source- and schema-level, proven capable of failing: disabling `contextIsolation`/`sandbox` and adding a renderer `node:fs` import produced 4 failures; restoring returned 24/24. **The packaged-window half is not done** — WebdriverIO against a real installed artifact on each OS is outstanding, and only that can prove runtime behaviour rather than configuration intent. |
+| G-02-09 | Electron trust boundary: sandbox, context isolation, no Node in renderer, strict CSP, no generic IPC, validated sender, fuses | desktop, security | `npm run desktop:test` | `PARTIAL` | 32 tests per app. 8 are **behavioural**, exercising the extracted sender-origin policy with hostile inputs rather than grepping source; they found a real defect (a credentialed URL `scheme://user:pass@-/` satisfied the origin comparison) which is now rejected. Sender validation additionally checks WebContents identity and top-level frame, and the dev-server branch is gated on `!app.isPackaged`. `GrantFileProtocolExtraPrivileges` disabled per Electron guidance. Proven capable of failing. **The packaged-window half is not done** — WebdriverIO against a real installed artifact per OS, plus binary fuse inspection, is outstanding (G-02-10). |
+| G-02-10 | Packaged-artifact Electron E2E: WebdriverIO on the approved OS/architecture matrix, installed-package tests, and binary fuse inspection | desktop, test-engineering | — | `OPEN` | No packaged suite, no installed artifact, no OS matrix, and no verification that the fuses are actually flipped in a built binary. Configuration intent is asserted; runtime behaviour is not. Requires `wdio-electron-service` and a build per target. |
 
 ## 3. Contract workflow (Phase 00 §3)
 
@@ -111,8 +109,8 @@ preserve any user-authored code or local data before replacement.
 | G-06-01 | Client local-encryption compatibility spike across 5 target platforms | mobile, desktop, security | — | `OPEN` | Condition of ADR 0006. No client may ship local clinical storage until closed. |
 | G-06-02 | PR pipeline: format, lint, typecheck, architecture rules, contract validation, unit, integration, security scans, SBOM | devops | [pull-request.yaml](../../../.github/workflows/pull-request.yaml) | `PARTIAL` | 7 path-filtered jobs covering all six units plus contracts and security. Written and YAML-valid but **never executed**: there is no GitHub remote, so no run has ever proven it green. |
 | G-06-03 | Post-merge: signed immutable artifacts, signed staging deploy, migrations with lock monitoring, smoke checks | devops | [post-merge.yaml](../../../.github/workflows/post-merge.yaml) | `PARTIAL` | Build-once, keyless-sign-by-digest, attest, and scan are written. The staging job deliberately fails rather than reporting a deploy that cannot happen; production promotion is hard-disabled until Phase 23. |
-| G-06-04 | All deployment units build reproducibly from locked dependencies | devops | `composer.lock`; `package-lock.json`; `requirements.txt` with hashes (616 lines, `--require-hashes`) | `PARTIAL` | core-api image built from lock, exit 0. Flutter `pubspec.lock` files not yet generated. |
-| G-06-05 | Images/artifacts carry SBOMs with no unaccepted critical findings | security | `npm audit`; [security-findings.md](security-findings.md) | `BLOCKED` | **SF-001 is open.** `npm audit` reports 1 critical and 25 high in the Electron build toolchain: Forge 7.11.2 pins `@electron/rebuild@3.7.2`, which depends on `tar@6`, and every advisory requires `>= 7.5.21`. An npm `overrides` entry does not reach the five nested copies. Forge 7.11.2 is the latest published version, so there is no upstream fix. Requires a security owner's decision; engineering cannot self-approve under ADR 0008. Semgrep now carries 13 rules including 6 Electron boundary rules. |
+| G-06-04 | All deployment units build reproducibly from locked dependencies | devops | `composer.lock`; `package-lock.json`; `requirements.txt` (hashed); root `pubspec.lock` | `PARTIAL` | core-api image builds from lock, exit 0. `npm ci` from the committed lock reproduces a single copy of every overridden package on Node 22.23.2 / npm 10.9.8. The Dart pub workspace produces one root `pubspec.lock`. **Not yet reproducible:** no Electron artifact has been packaged for any OS, so the desktop half of this gate is unproven. |
+| G-06-05 | Images/artifacts carry SBOMs with no unaccepted critical findings | security | `npm ci` + `npm audit` on Node 22.23.2 / npm 10.9.8; [security-findings.md](security-findings.md) | `PARTIAL` | **Critical: 0. Moderate: 0. Low: 0.** Root overrides resolve `tar` to 7.5.22, `tmp` 0.2.7, `uuid` 11.1.1, `webpack-dev-server` 5.2.6, each a single copy from a clean `npm ci`. One true high root remains: `extract-zip` `<= 2.0.1`, whose latest published version *is* 2.0.1, so no upgrade exists. High blocks promotion; merge needs a recorded time-boxed exception (SF-001). Semgrep carries 13 rules including 6 Electron boundary rules. SBOM generation itself is configured but unexecuted. |
 
 ## 7. Observability (Phase 00 §7)
 
@@ -216,6 +214,14 @@ reaching the database by another route.
 | 21 | The asset-scheme test asserted the literal appeared in `main/index.ts`, but main references it through `APP_CONFIG`, so the literal lives in `app-config.ts` | Same run | Assert the wiring in main and the literal on the config it reads |
 | 22 | jsdom refuses to run under the packaged asset scheme: `localStorage is not available for opaque origins`, because it does not know the scheme was registered standard and privileged | Desktop test run | Desktop tests default to the `node` environment, which is what source/schema inspection needs anyway; renderer component tests will opt into jsdom per file |
 | 23 | An npm `overrides` entry for `tar` does not replace nested copies — five physical `tar@6.2.1` directories survived and npm merely flagged them `invalid ... overridden`. This is the second time an override failed to win against nested resolution in this repository (the first was jsdom) | `find node_modules -path '*/tar/package.json'` | Recorded as SF-001 rather than papered over. The override is retained for root-resolving consumers but explicitly documented as not a fix |
+| 24 | **Defect 23 was itself wrong.** The five nested `tar@6.2.1` copies were stale dependency-tree/lockfile reconciliation, not a limitation of npm overrides. A clean `rm -rf node_modules package-lock.json && npm install` on the required Node 22.23.2 / npm 10.9.8 resolves the whole tree to a single `tar@7.5.22`, and `npm ci` reproduces it | External review challenged the conclusion; clean reproduction confirmed it | Overrides retained and verified working. SF-001 rewritten with the correction kept visible rather than silently replaced |
+| 25 | SF-001 claimed "Forge 7.11.2 pins `@electron/rebuild@3.7.2`". Forge declares `^3.7.0` — a range. The lockfile selected 3.7.2 | Same review | Corrected in SF-001 |
+| 26 | SF-001 offered "security owner accepts with expiry" for a **Critical**. ADR 0008 gives Critical no exception path — it blocks merge *and* promotion; only High allows a recorded time-boxed merge exception | Same review | SF-001 rewritten; the option is only offered now that the finding is High |
+| 27 | 25 packages were reported as "high" when they were transitive paths through a handful of roots. The real picture was 4 true roots, three of which had fixes available | Same review | Audit now reported by advisory root. `tmp`, `uuid`, and `webpack-dev-server` overridden; only `extract-zip` remains, with no published fix |
+| 28 | IPC sender validation accepted **any host** under the custom scheme, allowed localhost unconditionally behind a comment claiming it was unreachable when packaged, and never checked the owning `BrowserWindow` | Same review | Exact-origin comparison, `!app.isPackaged` gate on the dev-server branch, and a registered-WebContents check |
+| 29 | A credentialed URL `scheme://user:pass@-/` parses with host `-`, so it satisfied the origin comparison and would have been accepted | The new behavioural sender-policy test | URLs carrying a username or password are rejected before any comparison |
+| 30 | `GrantFileProtocolExtraPrivileges` was left at its default while the app serves from a custom protocol, keeping an elevated `file://` path the application has no use for | Same review | Fuse disabled, per Electron guidance |
+| 31 | The headline ledger totals were wrong: legend and test-plan category rows were counted as gates | Same review | `scripts/evidence/count-gates.mjs` counts only `G-NN-NN` rows, fails on duplicates or a mismatched expectation, and runs in CI |
 
 Defects 2 and 3 are worth noting as a pair: both were framework or regex
 defaults that looked correct in review and were only exposed by inspecting what
@@ -229,58 +235,65 @@ the database actually did. Neither would have failed a happy-path test.
 | 2 | Threat model and data classification approval | Security and privacy owners. Engineering cannot self-approve. |
 | 3 | ADR 0006 encryption spike | Five-platform compatibility results plus key rotation, recovery, backup exclusion, and migration tests |
 | 4 | No staging environment | Infrastructure decision and budget |
-| 5 | SF-001: critical/high advisories in the Electron build toolchain with no upstream fix | Security owner decision under ADR 0008: time-boxed exception, vendored patch, or a tooling change (which needs a compatibility ADR) |
+| 5 | SF-001: one high advisory (`extract-zip <= 2.0.1`) in the Electron build toolchain with no published fix. Blocks promotion, not merge | Security owner decision under ADR 0008: time-boxed merge exception with an expiry, a vendored patch, or a tooling change (which needs a compatibility ADR) |
 
 ## Honest summary
 
-Phase 00 delivers all six deployment units. The desktop pair was migrated from
-Flutter Desktop to Electron + React + TypeScript in one reviewed change per
-[ADR 0010](../../adr/0010-electron-react-typescript-desktop-clients.md), with an
-inventory recorded before anything was removed.
+**47 gates: 24 PASS, 15 PARTIAL, 0 BLOCKED, 8 OPEN** (reproduce with
+`node scripts/evidence/count-gates.mjs`).
+
+All six deployment units build, lint, type-check, and test green:
 
 | Unit | Verification |
 | --- | --- |
 | core-api | 123 tests, 4,919 assertions against real PostgreSQL; deptrac 0 violations / 0 uncovered; Pint clean |
 | ai-service | Health contract, startup config validation, isolation assertion |
-| admin-web | 5 tests, type-check clean, ESLint clean with type-aware rules, production build |
-| doctor-desktop | 24 trust-boundary tests, type-check clean |
-| pharmacy-desktop | 24 trust-boundary tests, type-check clean |
+| admin-web | 5 tests, type-check and type-aware ESLint clean, production build |
+| doctor-desktop | 32 tests (24 boundary + 8 behavioural sender policy), type-check clean |
+| pharmacy-desktop | 32 tests, type-check clean |
 | patient-app + 11 Dart packages | `melos analyze` clean with `--fatal-infos --fatal-warnings`, 20 tests |
 | 5 shared TypeScript packages | type-check clean |
 
-Seven oracles have now been demonstrated capable of failing: the event
-validator, the database CHECK constraints, `deptrac`, the redaction canaries,
-the breaking-change detector, the synthetic-data generator, and the Electron
-trust-boundary suite. The last was worth the exercise — its first run failed on
-its own comment text, which is precisely the kind of assertion that would have
-provided false assurance for months.
+Eight oracles have been demonstrated capable of failing: the event validator,
+the database CHECK constraints, `deptrac`, the redaction canaries, the
+breaking-change detector, the synthetic-data generator, the Electron
+trust-boundary suite, and the gate counter.
 
-What is still not true:
+### What external review corrected
 
-- **SF-001 blocks the dependency gate.** One critical and 25 high advisories in
-  the Electron build toolchain, with no upstream fix available and an npm
-  override that provably does not reach the affected copies. A security owner
-  must rule; engineering cannot self-approve under ADR 0008.
-- **The Electron trust boundary is proven at source level, not runtime.** Every
-  control is asserted against configuration and schemas. Only WebdriverIO
-  against a real installed artifact on Windows, macOS, and Linux proves the
-  packaged window actually behaves that way (G-02-09).
-- **Nothing in CI has ever run.** Eight jobs are written and YAML-valid; there
-  is no GitHub remote.
+An external review rejected this ledger's dependency conclusion, and it was
+right. The claimed unfixable Critical was a stale-lockfile artifact: a clean
+install on the project's required Node 22 toolchain resolves to a single
+`tar@7.5.22`, and `npm ci` reproduces it. The finding also mis-stated Forge as
+pinning a version it declares as a range, grouped 25 transitive paths as if they
+were 25 findings, and proposed an exception route that ADR 0008 does not
+authorize for a Critical. Defects 24 to 31 record all of it.
+
+The same review found three real code defects in the Electron boundary — an
+origin check that accepted any host under the scheme, an unenforced
+"development only" claim, and a missing fuse — plus a missing owning-window
+check. Fixing the origin check with a *behavioural* test then surfaced a fourth
+defect the previous substring tests could never have caught: a credentialed URL
+satisfied the comparison.
+
+### What is still not true
+
+- **SF-001 remains open at high severity.** `extract-zip <= 2.0.1` has no
+  published fix; 2.0.1 *is* the latest. High blocks promotion; merge needs a
+  recorded, time-boxed exception from a security owner.
+- **The Electron trust boundary is not proven against a packaged artifact.**
+  Source and behavioural tests assert configuration and policy; only
+  WebdriverIO on a real installed build per OS, with binary fuse inspection,
+  proves runtime behaviour (G-02-10).
+- **Nothing in CI has ever run.** Nine jobs are written and YAML-valid; there is
+  no GitHub remote.
 - **Redaction is proven as a unit, not on the export path** (G-07-05).
 - **`clinic_reporter` can read every table.** Harmless now, unacceptable before
   Phase 01 stores a patient profile.
 - **No authorization layer exists**, and **nothing has been independently
-  reviewed** — the threat model and classification were written and assessed by
-  the same party.
-- **No encrypted desktop storage.** ADR 0006's spike is open and ADR 0010
-  forbids local PHI until it and the Phase 05/22 gates pass. No desktop build
-  may write clinical content.
+  reviewed** by a security or privacy owner.
+- **No encrypted desktop storage, no packaged artifact, no SBOM ever produced,
+  no load test ever run.**
 
-Phase 00 must not be described as complete. Five blockers remain and four of
-them need a named human owner.
-
-**Phase 01 dependency readiness:** the foundation Phase 01 consumes is in place
-and evidenced. Before Phase 01 stores its first patient profile it must close
-G-07-05, narrow the `clinic_reporter` grant, resolve SF-001, and have CI
-actually execute.
+Phase 00 must not be described as complete. Five blockers remain and four need a
+named human owner.

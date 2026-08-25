@@ -105,6 +105,11 @@ jobs:
       - name: Validate event schemas
         run: npm run contracts:events
 
+      - name: Evidence ledger integrity
+        # Fails on a duplicate gate id or a summary that disagrees with the
+        # table. Keeps the headline totals honest without anyone recounting.
+        run: node scripts/evidence/count-gates.mjs --expect PASS=24,PARTIAL=15,BLOCKED=0,OPEN=8
+
       - name: Generate TypeScript client
         run: npm run contracts:generate:ts
 

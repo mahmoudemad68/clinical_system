@@ -1,83 +1,135 @@
 # Phase 00 — open security findings
 
-Findings that ADR 0008's vulnerability policy blocks on and that engineering
-**cannot self-approve**. Each needs a security owner, a stated compensating
-control, and an expiry date before it can be accepted.
+Findings ADR 0008's vulnerability policy blocks on. Engineering cannot
+self-approve any of them.
+
+**Policy, quoted exactly** ([ADR 0008](../../adr/0008-package-and-version-policy.md)):
+
+| Severity | Action |
+| --- | --- |
+| Critical | Blocks merge and blocks promotion |
+| High | Blocks promotion; merge allowed only with a recorded, time-boxed exception |
+
+There is **no exception path for a Critical finding.** Accepting one would
+require a superseding ADR changing the policy itself, and Phase 22 §176 keeps
+the "no critical security findings" release rule regardless.
 
 ---
 
-## SF-001 — `tar` advisories in the Electron build toolchain
+## SF-001 — `extract-zip` symlink path traversal in the Electron build toolchain
 
-- **Severity:** critical (1) plus high (25 related Forge packages)
-- **Status:** OPEN — blocks merge under ADR 0008 until a security owner rules
-- **Discovered:** 2026-08-25, during the Electron migration
-- **Advisory ceiling:** every listed advisory requires `tar >= 7.5.21`; the
-  highest affected range is `<= 7.5.20` (GHSA-r292-9mhp-454m). The critical is
-  GHSA-23hp-3jrh-7fpw, decompression/parse denial of service via unlimited input.
+- **Severity:** high (1 true root; 20 packages flagged along transitive paths)
+- **Status:** OPEN — blocks **promotion**. Merge is permissible only with a
+  recorded, time-boxed exception under ADR 0008.
+- **Advisory:** [GHSA-…](https://github.com/advisories) *extract-zip unvalidated
+  symlink path traversal*, affected range `<= 2.0.1`
+- **Discovered:** 2026-08-25 · **Superseded diagnosis:** 2026-08-25 (see below)
 
-### What is actually installed
+### Correction to the original diagnosis
+
+**The first version of this finding was wrong and is retained here as a
+correction rather than quietly rewritten.**
+
+It claimed a Critical `tar` advisory that could not be fixed because "Forge
+7.11.2 pins `@electron/rebuild@3.7.2` internally" and because npm `overrides`
+"provably does not reach the five nested copies". Three errors:
+
+1. **Forge does not pin.** `@electron-forge/core`, `core-utils`, and
+   `shared-types` at 7.11.2 all declare `@electron/rebuild: ^3.7.0` — a range.
+   The lockfile selected 3.7.2.
+2. **The override does work.** A clean install (`rm -rf node_modules
+   package-lock.json && npm install`) under the project's required toolchain
+   resolves the entire tree to a single `tar@7.5.22`. The five nested
+   `tar@6.2.1` copies were **stale dependency-tree and lockfile
+   reconciliation**, not a Forge limitation. npm documents root `overrides` as
+   the supported mechanism for replacing a transitive dependency.
+3. **The toolchain mattered.** Some earlier installs ran on the default shell's
+   Node 20.20.2 / npm 10.8.2, below this project's `engines` requirement of
+   Node ≥ 22.12 and npm ≥ 10.9. The repair must run on the recorded
+   Node 22.23.2 / npm 10.9.8.
+
+The severity classification was also misleading: 25 packages were reported as
+"high" when they were transitive paths through a small number of roots, not
+independent findings.
+
+### Verified current state
+
+Reproduced on Node 22.23.2 / npm 10.9.8, clean `npm ci` from the committed lock:
 
 ```
-node_modules/@electron/node-gyp/node_modules/tar          6.2.1
-node_modules/@electron-forge/shared-types/node_modules/tar 6.2.1
-node_modules/@electron-forge/core-utils/node_modules/tar   6.2.1
-node_modules/@electron-forge/core/node_modules/tar         6.2.1
-node_modules/cacache/node_modules/tar                      6.2.1
+tar                 7.5.22   (single copy)
+tmp                 0.2.7    (single copy)
+uuid                11.1.1   (single copy)
+webpack-dev-server  5.2.6    (single copy)
+extract-zip         2.0.1    (single copy — no fix published)
 ```
 
-`@electron-forge/*@7.11.2` pins `@electron/rebuild@3.7.2` internally, which
-depends on `tar@^6`. Our own direct `@electron/rebuild` is already 4.2.0; the
-vulnerable copies are Forge's nested ones.
+| Severity | Before | After |
+| --- | ---: | ---: |
+| Critical | 1 | **0** |
+| High | 25 flagged / 1 root | 20 flagged / **1 root** |
+| Moderate | 3 | **0** |
+| Low | 3 | **0** |
 
-### What was tried
+Root overrides now in the root `package.json`:
 
-An npm `overrides` entry (`"tar": "^7.5.22"`) is present in the root
-`package.json`. **It does not fix these five paths.** npm installs the override
-at the top level and marks the nested copies `invalid ... overridden`, but the
-physical `tar@6.2.1` directories remain and Node resolves nested
-`node_modules` first. The override is retained because it does pin any
-root-resolving consumer, but it must not be read as a fix for this finding.
+```json
+"overrides": {
+  "tar": "^7.5.22",
+  "tmp": "^0.2.7",
+  "uuid": "^11.1.1",
+  "webpack-dev-server": "^5.2.6"
+}
+```
 
-`@electron-forge/cli@7.11.2` is the latest published version. There is no
-upstream release that resolves this today. `npm audit fix` proposes downgrading
-Forge to 7.6.1, which is a semver-major downgrade that does not fix the issue.
+`webpack-dev-server` is pinned to `^5.2.6` rather than the 6.0.0 latest
+deliberately: `@electron-forge/plugin-webpack@7.11.2` declares `^4.0.0`, and
+5.2.6 clears every advisory without forcing a two-major jump on the packaging
+toolchain.
 
-### Compensating controls that genuinely apply
+### The one remaining root
 
-These are offered as input to the security owner's decision, not as a
-self-approval:
+`extract-zip@2.0.1`, reached through `@electron/packager` → Electron Forge.
+**2.0.1 is the latest published version and the advisory covers `<= 2.0.1`.**
+There is no version to upgrade to. An override cannot fix what has no fix.
 
-1. **Build-time only.** `tar` is a `devDependency` used to extract the Electron
-   binary during packaging. It is not present in the packaged application and
-   will not appear in the runtime SBOM.
+`npm audit` proposes `@electron-forge/cli@6.4.2`, a semver-major *downgrade*
+that does not resolve it.
+
+### Compensating controls (input to the decision, not a self-approval)
+
+1. **Build-time only.** `extract-zip` unpacks the Electron binary during
+   packaging. It is a `devDependency`, is absent from the packaged application,
+   and will not appear in the runtime SBOM.
 2. **Trusted input.** The archives extracted are Electron release artifacts
-   fetched over TLS from a known CDN with checksum verification, not
-   attacker-supplied files.
-3. **Ephemeral builders.** CI runs on disposable runners; the blast radius of
-   arbitrary file write during a build is one throwaway workspace.
+   fetched over TLS from a known CDN with checksum verification — not
+   attacker-supplied zips.
+3. **Ephemeral builders.** CI runs on disposable runners, so the blast radius
+   of a symlink write during a build is one throwaway workspace.
 4. **No signing credentials in the affected lane.** Phase 00 CI produces
    unsigned artifacts and never receives certificates, so a compromised build
-   step cannot produce a signed malicious artifact.
+   step cannot emit a signed malicious artifact.
 
-None of this makes the finding go away. "It is only a dev dependency" is
-precisely the reasoning behind several real build-chain compromises, and the
-control that matters most — a fixed upstream — does not exist yet.
+"It is only a dev dependency" is how real build-chain compromises happen, so
+none of the above closes the finding. They are the facts the owner needs.
 
-### Required decision
+### Required decision (security owner)
 
-A security owner must choose one:
+High severity, so ADR 0008 permits an exception for **merge** with an owner, a
+compensating control, and an expiry that fails the build when reached.
+**Promotion remains blocked** until the finding is resolved or the policy is
+changed by a superseding ADR.
 
-- **Accept with expiry.** Record a time-boxed exception naming the compensating
-  controls above and a review date, per ADR 0008. The exception must fail the
-  build when it expires.
-- **Vendor or patch.** Apply a patch-package-style fix to the nested
-  `@electron/rebuild` dependency range.
-- **Change tooling.** Move off Electron Forge, which ADR 0010 makes a
-  compatibility-ADR decision covering native modules, CSP, packaged assets,
-  signing, and every target OS.
+Options:
 
-Until then the Electron CI lane must be treated as failing its dependency gate.
+- **Time-boxed exception for merge**, with a review date and a watch on
+  upstream `extract-zip` / `@electron/packager`.
+- **Vendor or patch** the dependency.
+- **Change packaging tooling**, which ADR 0010 makes a compatibility-ADR
+  decision covering native modules, CSP, packaged assets, signing, and every
+  target OS.
 
 ### Tracking
 
-Evidence ledger gate G-06-05. Do not mark that gate `PASS` while this is open.
+Evidence ledger gate G-06-05. It is `PARTIAL`, not `PASS`, and not `BLOCKED`:
+the Critical is resolved, one High root remains with no upstream fix.

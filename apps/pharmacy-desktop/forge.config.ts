@@ -95,6 +95,13 @@ const config: ForgeConfig = {
       // signed bundle fails.
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
       [FuseV1Options.OnlyLoadAppFromAsar]: true,
+
+      // This application serves its renderer from a privileged custom scheme
+      // and never from file://. Electron's fuse guidance is to drop the extra
+      // file:// privileges in exactly that case: leaving them granted keeps an
+      // elevated-privilege path the app has no use for, which is free attack
+      // surface if anything ever does reach a file:// URL.
+      [FuseV1Options.GrantFileProtocolExtraPrivileges]: false,
     }),
   ],
 };

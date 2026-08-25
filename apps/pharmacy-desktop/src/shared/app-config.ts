@@ -41,6 +41,16 @@ export const APP_CONFIG = {
   /** Name of this app's IPC capability registry, for diagnostics. */
   capabilityRegistry: 'pharmacyCapabilities',
 
+  /**
+   * The exact origin packaged renderer content is served from.
+   *
+   * Pinned rather than derived, because `protocol === 'scheme:'` alone accepts
+   * ANY host under that scheme. An IPC sender check that only compares the
+   * protocol would admit `scheme://anything`, which is not the window we
+   * serve. Electron's guidance is to validate the full sender origin.
+   */
+  packagedOrigin: 'clinic-pharmacy-app://-',
+
   /** Update channel. Publication is Phase 23 and owned by production/DR. */
   updateChannel: 'pharmacy-stable',
 } as const;
