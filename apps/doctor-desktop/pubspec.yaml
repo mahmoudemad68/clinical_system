@@ -1,0 +1,39 @@
+name: clinic_doctor_desktop
+description: Clinic platform Doctor client.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  clinic_api_client:
+    path: ../../packages/flutter/api_client
+  clinic_common_models:
+    path: ../../packages/flutter/common_models
+  clinic_design_system:
+    path: ../../packages/flutter/design_system
+  clinic_error_handling:
+    path: ../../packages/flutter/error_handling
+  clinic_localization:
+    path: ../../packages/flutter/localization
+  clinic_networking:
+    path: ../../packages/flutter/networking
+
+  flutter_riverpod: ^3.0.1
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
+# Part of the root pub workspace; shares the root lockfile.
+resolution: workspace

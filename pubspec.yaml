@@ -1,0 +1,55 @@
+# Dart pub workspace root for the Flutter monorepo (plan.md section 4).
+#
+# Melos 8 requires its configuration here rather than in a separate melos.yaml,
+# and uses Dart's native pub workspaces: every member declares
+# `resolution: workspace` and shares this root's lockfile. One resolution across
+# the workspace is the point — it makes a version conflict between two shared
+# packages a bootstrap failure rather than a runtime surprise in one app.
+#
+# This file is NOT a Dart package. It exists only to define the workspace.
+
+name: clinic_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+# Melos 8 discovers the workspace by finding itself as a dev dependency of the
+# root package alongside the `melos:` config section below.
+dev_dependencies:
+  melos: ^8.3.0
+
+workspace:
+  - apps/patient-app
+  - apps/doctor-desktop
+  - apps/pharmacy-desktop
+  - packages/flutter/api_client
+  - packages/flutter/authentication
+  - packages/flutter/common_models
+  - packages/flutter/design_system
+  - packages/flutter/error_handling
+  - packages/flutter/local_database
+  - packages/flutter/localization
+  - packages/flutter/networking
+  - packages/flutter/notifications
+  - packages/flutter/realtime
+  - packages/flutter/secure_storage
+
+melos:
+  scripts:
+
+    analyze:
+      description: Static analysis across every package.
+      run: melos exec -c 1 -- dart analyze --fatal-infos --fatal-warnings
+
+    format:
+      description: Format check. CI fails on unformatted code.
+      run: melos exec -c 1 -- dart format --output=none --set-exit-if-changed .
+
+    test:
+      description: Run tests in every package that has any.
+      run: melos exec -c 1 --dir-exists=test -- flutter test
+
+    outdated:
+      description: Report dependencies with newer versions available.
+      run: melos exec -c 1 -- flutter pub outdated

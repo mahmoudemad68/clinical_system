@@ -1,0 +1,28 @@
+name: clinic_design_system
+description: Shared widgets, theme, and accessibility primitives for the clinic Flutter clients.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  clinic_common_models:
+    path: ../common_models
+  clinic_localization:
+    path: ../localization
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  # The real delegates, so the Arabic tests exercise the same localization
+  # stack the apps run. A stub that only supports English silently makes an
+  # RTL assertion pass for the wrong reason, or fail for a fake one.
+  flutter_localizations:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+
+# Part of the root pub workspace; shares the root lockfile.
+resolution: workspace

@@ -117,3 +117,7 @@ zap-report.*
 *~
 .DS_Store
 Thumbs.db
+
+# Melos-generated IDE files
+.idea/
+*.iml
