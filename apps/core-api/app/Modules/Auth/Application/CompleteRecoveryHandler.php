@@ -15,6 +15,7 @@ use App\Modules\Identity\Domain\Contracts\UserDirectory;
 use App\Modules\Platform\Application\Features\PlatformFeatures;
 use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
+use App\Modules\Platform\Domain\Contracts\RecordInboxNotification;
 use App\Modules\Platform\Domain\Contracts\TransactionContext;
 use App\Modules\Platform\Domain\Contracts\TransactionRunner;
 use App\Modules\Platform\Domain\Exceptions\FeatureUnavailable;
@@ -35,9 +36,13 @@ final class CompleteRecoveryHandler
         private readonly AuthenticationRateLimiter $rates,
         private readonly AppendAuditEvent $audit,
         private readonly IdentityGenerator $ids,
+        private readonly RecordInboxNotification $inbox,
     ) {}
 
-    public function handle(string $challengeId, string $code, string $password): void
+    /**
+     * @return array{status: string}
+     */
+    public function handle(string $challengeId, string $code, string $password): array
     {
         if (! PlatformFeatures::enabled(PlatformFeatures::AUTH_RECOVERY)) {
             throw new FeatureUnavailable;
@@ -74,7 +79,7 @@ final class CompleteRecoveryHandler
             $user = $this->identities->findByPhoneHmac($hmac);
 
             if ($user === null) {
-                return ['denied' => false];
+                return ['denied' => false, 'status' => 'completed'];
             }
 
             $passwordHash = $this->hasher->hash($password);
@@ -94,8 +99,12 @@ final class CompleteRecoveryHandler
                     $now,
                 );
                 $this->audit->append($tx, 'auth.recovery_manual_review', 'user', $user->id, ['reason_code' => 'privileged_recovery'], $user->id, 'user');
+                $this->inbox->record('user', $user->id->value, 'auth.recovery_manual_review', [
+                    'recovery_request_id' => $requestId->value,
+                    'status' => 'manual_review',
+                ]);
 
-                return ['denied' => false];
+                return ['denied' => false, 'status' => 'manual_review'];
             }
 
             $until = $cooling > 0 ? $now->modify(sprintf('+%d seconds', $cooling)) : null;
@@ -115,8 +124,12 @@ final class CompleteRecoveryHandler
 
             if ($status !== 'applied') {
                 $this->audit->append($tx, 'auth.recovery_cooling_off', 'user', $user->id, ['reason_code' => 'cooling_off'], $user->id, 'user');
+                $this->inbox->record('user', $user->id->value, 'auth.recovery_cooling_off', [
+                    'recovery_request_id' => $requestId->value,
+                    'status' => 'cooling_off',
+                ]);
 
-                return ['denied' => false];
+                return ['denied' => false, 'status' => 'cooling_off'];
             }
 
             $version = $user->credentialVersion + 1;
@@ -126,11 +139,13 @@ final class CompleteRecoveryHandler
             $tx->recordEvent(new CredentialVersionChanged($user->id, $version, 'recovery', $now));
             $this->audit->append($tx, 'auth.recovery_completed', 'user', $user->id, ['reason_code' => 'recovery'], $user->id, 'user');
 
-            return ['denied' => false];
+            return ['denied' => false, 'status' => 'applied'];
         });
 
         if (($result['denied'] ?? false) === true) {
             throw new InvalidValueObject('The verification code is invalid or expired.');
         }
+
+        return ['status' => (string) ($result['status'] ?? 'completed')];
     }
 }

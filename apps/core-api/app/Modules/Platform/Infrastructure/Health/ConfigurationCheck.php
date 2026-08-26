@@ -60,6 +60,13 @@ final class ConfigurationCheck implements DependencyCheck
             if (config('identity.trusted_proxies') === []) {
                 return CheckStatus::Fail;
             }
+
+            foreach (['pgsql', 'pgsql_migrator', 'pgsql_worker', 'pgsql_reporter', 'pgsql_audit'] as $connection) {
+                $sslMode = (string) config('database.connections.'.$connection.'.sslmode');
+                if (! in_array($sslMode, ['require', 'verify-ca', 'verify-full'], true)) {
+                    return CheckStatus::Fail;
+                }
+            }
         }
 
         return CheckStatus::Pass;

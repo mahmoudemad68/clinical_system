@@ -35,6 +35,6 @@ Broadcast::channel('auth.session.{sessionId}', static function ($user, string $s
 
     return $session !== null
         && $session->revoked_at === null
-        && (string) $session->user_id === (string) $user->id
+        && (string) $session->user_id === (string) $user->getAuthIdentifier()
         && (string) $session->id === $sessionId;
 });

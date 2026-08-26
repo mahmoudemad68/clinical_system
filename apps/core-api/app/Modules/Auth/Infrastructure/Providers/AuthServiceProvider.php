@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Infrastructure\Providers;
 
+use App\Modules\Auth\Application\ApplyRecoveryHandler;
 use App\Modules\Auth\Application\AuthenticatePasswordHandler;
 use App\Modules\Auth\Application\CompleteMfaHandler;
 use App\Modules\Auth\Application\CompleteRecoveryHandler;
+use App\Modules\Auth\Application\ConfirmTotpHandler;
 use App\Modules\Auth\Application\CredentialIssuer;
+use App\Modules\Auth\Application\DisableTotpHandler;
+use App\Modules\Auth\Application\EnrollTotpHandler;
 use App\Modules\Auth\Application\IssueAuthenticatedSession;
 use App\Modules\Auth\Application\RefreshDeviceSessionHandler;
 use App\Modules\Auth\Application\RegisterAccountCoordinator;
 use App\Modules\Auth\Application\RequestOtpHandler;
+use App\Modules\Auth\Application\RotateRecoveryCodesHandler;
 use App\Modules\Auth\Application\SessionCommandHandler;
 use App\Modules\Auth\Application\VerifyOtpHandler;
 use App\Modules\Auth\Domain\Contracts\AuthDirectory;
@@ -28,6 +33,7 @@ use App\Modules\Auth\Http\Middleware\DenyPendingBusinessAccess;
 use App\Modules\Auth\Infrastructure\Adapters\DisabledDeliverOtpSms;
 use App\Modules\Auth\Infrastructure\Adapters\RecordingDeliverOtpSms;
 use App\Modules\Auth\Infrastructure\AuthRateLimiter;
+use App\Modules\Auth\Infrastructure\Console\ApplyDueRecoveriesCommand;
 use App\Modules\Auth\Infrastructure\Console\BootstrapAdminCommand;
 use App\Modules\Auth\Infrastructure\Console\PruneExpiredAuthStateCommand;
 use App\Modules\Auth\Infrastructure\Crypto\Argon2idPasswordHasher;
@@ -96,6 +102,11 @@ final class AuthServiceProvider extends ServiceProvider
         $this->app->bind(RefreshDeviceSessionHandler::class);
         $this->app->bind(SessionCommandHandler::class);
         $this->app->bind(CompleteRecoveryHandler::class);
+        $this->app->bind(ApplyRecoveryHandler::class);
+        $this->app->bind(EnrollTotpHandler::class);
+        $this->app->bind(ConfirmTotpHandler::class);
+        $this->app->bind(RotateRecoveryCodesHandler::class);
+        $this->app->bind(DisableTotpHandler::class);
         $this->app->bind(AuthController::class);
         $this->app->bind(AuthenticateDevice::class);
         $this->app->bind(AuthenticateActor::class);
@@ -108,7 +119,11 @@ final class AuthServiceProvider extends ServiceProvider
         $this->app->make(OutboxDispatcher::class)->register($this->app->make(SessionRevokedConsumer::class));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([BootstrapAdminCommand::class, PruneExpiredAuthStateCommand::class]);
+            $this->commands([
+                BootstrapAdminCommand::class,
+                PruneExpiredAuthStateCommand::class,
+                ApplyDueRecoveriesCommand::class,
+            ]);
         }
     }
 }

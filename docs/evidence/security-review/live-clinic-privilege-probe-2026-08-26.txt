@@ -1,0 +1,14 @@
+live_clinic_privilege_probe
+generated_at=2026-08-26T22:10:00Z
+database=clinic
+cluster=local Compose postgis:16-3.4-alpine
+migrations_applied=2026_08_26_210000, 2026_08_26_220000, 2026_08_26_230000
+grant_create_on_database=clinic_migrator (operator SQL + initdb)
+
+clinic_reporter SELECT users = permission denied
+clinic_reporter SELECT reporting.account_status_counts = allowed
+clinic_app INSERT audit_events = permission denied
+clinic_app EXECUTE clinic_append_audit_event = allowed
+clinic_backup SELECT users = true
+clinic_backup SELECT otp_requests = true
+clinic_backup INSERT users = false

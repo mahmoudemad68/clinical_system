@@ -84,4 +84,7 @@ export function clearDeviceTokens(): void {
   if (existsSync(target)) {
     unlinkSync(target);
   }
+  if (existsSync(target)) {
+    throw new Error('CAPABILITY_NOT_AVAILABLE');
+  }
 }

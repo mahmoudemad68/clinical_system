@@ -1,0 +1,17 @@
+k6_auth_abuse
+generated_at=2026-08-26T22:27:42Z
+base=http://127.0.0.1:8080
+image=grafana/k6:latest
+script=tests/k6/auth-abuse.js
+redis_store=ratelimit (DB index 3) via AUTH_RATE_LIMIT_DRIVER=redis
+http_reqs=485
+http_req_failed=0.00%
+unexpected_server_error=0.00% (0/485)
+checks_failed=0.00% (0/485)
+login_denied_or_limited=pass
+otp_denied_limited_or_accepted=pass
+refresh_denied_or_limited=pass
+dropped_iterations=618 (VU cap; arrival rate exceeded single artisan serve)
+exit_code=0
+note=Synthetic destinations only. No OTP codes, passwords, or National IDs printed.
+pest_redis=tests/Feature/Auth/RedisRateLimitTest.php passed against Redis

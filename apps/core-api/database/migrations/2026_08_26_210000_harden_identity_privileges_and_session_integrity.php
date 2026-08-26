@@ -17,74 +17,85 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('auth_refresh_consumptions', function (Blueprint $table): void {
-            $table->uuid('family_id');
-            $table->binary('token_hash');
-            $table->unsignedInteger('generation');
-            $table->timestampTz('consumed_at', 6);
-            $table->primary(['family_id', 'token_hash']);
-        });
+        if (! Schema::hasTable('auth_refresh_consumptions')) {
+            Schema::create('auth_refresh_consumptions', function (Blueprint $table): void {
+                $table->uuid('family_id');
+                $table->binary('token_hash');
+                $table->unsignedInteger('generation');
+                $table->timestampTz('consumed_at', 6);
+                $table->primary(['family_id', 'token_hash']);
+            });
 
-        DB::statement(<<<'SQL'
-            CREATE UNIQUE INDEX auth_refresh_consumptions_token_hash_unique
-                ON auth_refresh_consumptions (token_hash)
-        SQL);
+            DB::statement(<<<'SQL'
+                CREATE UNIQUE INDEX IF NOT EXISTS auth_refresh_consumptions_token_hash_unique
+                    ON auth_refresh_consumptions (token_hash)
+            SQL);
 
-        DB::statement(<<<'SQL'
-            CREATE INDEX auth_refresh_consumptions_family_index
-                ON auth_refresh_consumptions (family_id, consumed_at DESC)
-        SQL);
+            DB::statement(<<<'SQL'
+                CREATE INDEX IF NOT EXISTS auth_refresh_consumptions_family_index
+                    ON auth_refresh_consumptions (family_id, consumed_at DESC)
+            SQL);
+        }
 
-        Schema::table('user_devices', function (Blueprint $table): void {
-            $table->binary('refresh_replay_ciphertext')->nullable();
-            $table->binary('refresh_replay_idempotency_hmac')->nullable();
-            $table->timestampTz('refresh_replay_expires_at', 6)->nullable();
-        });
+        if (Schema::hasTable('user_devices') && ! Schema::hasColumn('user_devices', 'refresh_replay_ciphertext')) {
+            Schema::table('user_devices', function (Blueprint $table): void {
+                $table->binary('refresh_replay_ciphertext')->nullable();
+                $table->binary('refresh_replay_idempotency_hmac')->nullable();
+                $table->timestampTz('refresh_replay_expires_at', 6)->nullable();
+            });
+        }
 
-        Schema::create('recovery_requests', function (Blueprint $table): void {
-            $table->uuid('id')->primary();
-            $table->uuid('user_id');
-            $table->uuid('otp_id');
-            $table->string('status', 24);
-            $table->string('new_password_hash');
-            $table->timestampTz('cooling_off_until', 6)->nullable();
-            $table->timestampTz('applied_at', 6)->nullable();
-            $table->timestampTz('created_at', 6);
-            $table->timestampTz('updated_at', 6);
-        });
+        if (! Schema::hasTable('recovery_requests')) {
+            Schema::create('recovery_requests', function (Blueprint $table): void {
+                $table->uuid('id')->primary();
+                $table->uuid('user_id');
+                $table->uuid('otp_id');
+                $table->string('status', 24);
+                $table->string('new_password_hash');
+                $table->timestampTz('cooling_off_until', 6)->nullable();
+                $table->timestampTz('applied_at', 6)->nullable();
+                $table->timestampTz('created_at', 6);
+                $table->timestampTz('updated_at', 6);
+            });
 
-        DB::statement(<<<'SQL'
-            ALTER TABLE recovery_requests
-                ADD CONSTRAINT recovery_requests_user_fk
-                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        SQL);
+            DB::statement(<<<'SQL'
+                ALTER TABLE recovery_requests
+                    ADD CONSTRAINT recovery_requests_user_fk
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            SQL);
 
-        DB::statement(<<<'SQL'
-            ALTER TABLE recovery_requests
-                ADD CONSTRAINT recovery_requests_status_check
-                CHECK (status IN ('cooling_off', 'manual_review', 'applied', 'rejected', 'expired'))
-        SQL);
+            DB::statement(<<<'SQL'
+                ALTER TABLE recovery_requests
+                    ADD CONSTRAINT recovery_requests_status_check
+                    CHECK (status IN ('cooling_off', 'manual_review', 'applied', 'rejected', 'expired'))
+            SQL);
+        }
 
-        Schema::table('audit_events', function (Blueprint $table): void {
-            $table->unsignedBigInteger('chain_sequence')->nullable();
-        });
+        if (Schema::hasTable('audit_events') && ! Schema::hasColumn('audit_events', 'chain_sequence')) {
+            Schema::table('audit_events', function (Blueprint $table): void {
+                $table->unsignedBigInteger('chain_sequence')->nullable();
+            });
 
-        DB::statement(<<<'SQL'
-            WITH numbered AS (
-                SELECT id, row_number() OVER (ORDER BY occurred_at, id) AS seq
-                FROM audit_events
-            )
-            UPDATE audit_events AS a
-            SET chain_sequence = numbered.seq
-            FROM numbered
-            WHERE a.id = numbered.id
-        SQL);
+            DB::statement(<<<'SQL'
+                WITH numbered AS (
+                    SELECT id, row_number() OVER (ORDER BY occurred_at, id) AS seq
+                    FROM audit_events
+                )
+                UPDATE audit_events AS a
+                SET chain_sequence = numbered.seq
+                FROM numbered
+                WHERE a.id = numbered.id
+            SQL);
 
-        $next = (int) (DB::selectOne('SELECT COALESCE(MAX(chain_sequence), 0) + 1 AS n FROM audit_events')->n ?? 1);
-        DB::statement('CREATE SEQUENCE IF NOT EXISTS audit_events_chain_sequence_seq START WITH '.$next);
-        DB::statement("ALTER TABLE audit_events ALTER COLUMN chain_sequence SET DEFAULT nextval('audit_events_chain_sequence_seq')");
-        DB::statement('ALTER TABLE audit_events ALTER COLUMN chain_sequence SET NOT NULL');
-        DB::statement('CREATE UNIQUE INDEX audit_events_chain_sequence_unique ON audit_events (chain_sequence)');
+            $next = (int) (DB::selectOne('SELECT COALESCE(MAX(chain_sequence), 0) + 1 AS n FROM audit_events')->n ?? 1);
+            DB::statement('CREATE SEQUENCE IF NOT EXISTS audit_events_chain_sequence_seq START WITH '.$next);
+            DB::statement("ALTER TABLE audit_events ALTER COLUMN chain_sequence SET DEFAULT nextval('audit_events_chain_sequence_seq')");
+            DB::statement('ALTER TABLE audit_events ALTER COLUMN chain_sequence SET NOT NULL');
+        } else {
+            DB::statement('CREATE SEQUENCE IF NOT EXISTS audit_events_chain_sequence_seq');
+        }
+
+        DB::statement('CREATE UNIQUE INDEX IF NOT EXISTS audit_events_chain_sequence_unique ON audit_events (chain_sequence)');
 
         DB::statement('CREATE SCHEMA IF NOT EXISTS reporting');
 
@@ -141,40 +152,30 @@ return new class extends Migration
         DB::statement(<<<'SQL'
             DO $$
             BEGIN
-                BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'clinic_app') THEN
                     CREATE ROLE clinic_app WITH LOGIN PASSWORD 'local_dev_only_not_a_secret' CONNECTION LIMIT 40;
                     ALTER ROLE clinic_app SET timezone = 'UTC';
                     ALTER ROLE clinic_app SET statement_timeout = '10s';
-                EXCEPTION WHEN duplicate_object OR insufficient_privilege THEN
-                    NULL;
-                END;
-                BEGIN
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'clinic_worker') THEN
                     CREATE ROLE clinic_worker WITH LOGIN PASSWORD 'local_dev_only_not_a_secret' CONNECTION LIMIT 30;
                     ALTER ROLE clinic_worker SET timezone = 'UTC';
                     ALTER ROLE clinic_worker SET statement_timeout = '60s';
-                EXCEPTION WHEN duplicate_object OR insufficient_privilege THEN
-                    NULL;
-                END;
-                BEGIN
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'clinic_reporter') THEN
                     CREATE ROLE clinic_reporter WITH LOGIN PASSWORD 'local_dev_only_not_a_secret' CONNECTION LIMIT 10;
                     ALTER ROLE clinic_reporter SET timezone = 'UTC';
                     ALTER ROLE clinic_reporter SET statement_timeout = '120s';
-                EXCEPTION WHEN duplicate_object OR insufficient_privilege THEN
-                    NULL;
-                END;
-                BEGIN
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'clinic_audit_writer') THEN
                     CREATE ROLE clinic_audit_writer WITH LOGIN PASSWORD 'local_dev_only_not_a_secret' CONNECTION LIMIT 10;
                     ALTER ROLE clinic_audit_writer SET timezone = 'UTC';
                     ALTER ROLE clinic_audit_writer SET statement_timeout = '10s';
-                EXCEPTION WHEN duplicate_object OR insufficient_privilege THEN
-                    NULL;
-                END;
-                BEGIN
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'clinic_backup') THEN
                     CREATE ROLE clinic_backup WITH LOGIN PASSWORD 'local_dev_only_not_a_secret' CONNECTION LIMIT 5;
                     ALTER ROLE clinic_backup SET timezone = 'UTC';
-                EXCEPTION WHEN duplicate_object OR insufficient_privilege THEN
-                    NULL;
-                END;
+                END IF;
             END
             $$;
         SQL);
@@ -191,8 +192,6 @@ return new class extends Migration
                     EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE clinic_migrator IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO clinic_app';
                     EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE clinic_migrator IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO clinic_app';
                 END IF;
-            EXCEPTION WHEN insufficient_privilege THEN
-                NULL;
             END
             $$;
         SQL);
@@ -272,8 +271,6 @@ return new class extends Migration
                 IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'clinic_backup') THEN
                     EXECUTE 'GRANT USAGE ON SCHEMA public TO clinic_backup';
                 END IF;
-            EXCEPTION WHEN insufficient_privilege OR undefined_object THEN
-                NULL;
             END
             $$;
         SQL);
@@ -291,8 +288,6 @@ return new class extends Migration
                 IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{$role}') THEN
                     EXECUTE 'GRANT {$privileges} ON TABLE {$table} TO {$role}';
                 END IF;
-            EXCEPTION WHEN insufficient_privilege OR undefined_table THEN
-                NULL;
             END
             \$\$;
         SQL);
@@ -306,8 +301,6 @@ return new class extends Migration
                 IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{$role}') THEN
                     EXECUTE 'REVOKE {$privileges} ON TABLE {$table} FROM {$role}';
                 END IF;
-            EXCEPTION WHEN insufficient_privilege OR undefined_object THEN
-                NULL;
             END
             \$\$;
         SQL);

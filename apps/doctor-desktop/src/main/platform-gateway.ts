@@ -257,10 +257,10 @@ export const platformGateway = {
 
   async logout(locale: string): Promise<{ revoked: true }> {
     await requestJson<{ revoked: boolean }>('POST', '/api/v1/auth/logout', locale, {});
+    clearDeviceTokens();
     memoryAccess = null;
     memoryRefresh = null;
     refreshIdempotencyKey = null;
-    clearDeviceTokens();
     return { revoked: true };
   },
 

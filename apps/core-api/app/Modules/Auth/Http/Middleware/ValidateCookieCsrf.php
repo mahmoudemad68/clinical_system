@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Http\Middleware;
 
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -14,11 +14,16 @@ use Illuminate\Support\Facades\DB;
  * Device bearer requests never send a CSRF header. Exemption is never based
  * on a client-supplied client_class field (ISR-003): MFA completion reads the
  * stored challenge row, and other pre-auth browser POSTs are detected via
- * Origin / session cookies.
+ * session or XSRF cookies rather than a bare Origin header (Electron net.fetch).
  */
-final class ValidateCookieCsrf extends ValidateCsrfToken
+final class ValidateCookieCsrf extends PreventRequestForgery
 {
     protected function runningUnitTests(): bool
+    {
+        return false;
+    }
+
+    protected function hasValidOrigin($request): bool
     {
         return false;
     }
@@ -42,15 +47,13 @@ final class ValidateCookieCsrf extends ValidateCsrfToken
             return false;
         }
 
-        if ($request->headers->has('Origin') || $request->headers->has('Referer')) {
-            return false;
-        }
-
-        if ($request->cookies->has((string) config('session.cookie', 'clinic_session'))) {
-            return false;
-        }
-
-        if ($request->user('web') !== null) {
+        $sessionCookie = (string) config('session.cookie', 'clinic_session');
+        $rawCookie = (string) $request->headers->get('Cookie', '');
+        $hasSessionCookie = $request->cookies->has($sessionCookie)
+            || preg_match('/(?:^|;\\s*)'.preg_quote($sessionCookie, '/').'=/', $rawCookie) === 1;
+        $hasXsrfCookie = $request->cookies->has('XSRF-TOKEN')
+            || preg_match('/(?:^|;\\s*)XSRF-TOKEN=/', $rawCookie) === 1;
+        if ($hasSessionCookie || $hasXsrfCookie || $request->user('web') !== null) {
             return false;
         }
 

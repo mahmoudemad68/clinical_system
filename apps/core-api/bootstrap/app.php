@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Auth\Http\Middleware\AuthenticateActor;
 use App\Modules\Auth\Http\Middleware\AuthenticateDevice;
 use App\Modules\Auth\Http\Middleware\DenyPendingBusinessAccess;
+use App\Modules\Auth\Http\Middleware\ValidateAlwaysCsrf;
 use App\Modules\Auth\Http\Middleware\ValidateCookieCsrf;
 use App\Modules\Platform\Http\Middleware\AssignCorrelationId;
 use App\Modules\Platform\Http\Middleware\EnforceIdempotency;
@@ -20,6 +21,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
@@ -30,7 +32,6 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
-        channels: __DIR__.'/../routes/channels.php',
         then: function (): void {
             // Operational probes are registered without the api prefix or the
             // api middleware group: an orchestrator must be able to reach them
@@ -38,6 +39,10 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::middleware([])
                 ->group(__DIR__.'/../routes/operational.php');
         },
+    )
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['middleware' => ['identity.session', 'auth.actor']],
     )
     ->withMiddleware(function (Middleware $middleware): void {
         /*
@@ -58,6 +63,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             HandleInertiaRequests::class,
+        ]);
+
+        $middleware->web(replace: [
+            PreventRequestForgery::class => ValidateAlwaysCsrf::class,
         ]);
 
         $middleware->api(prepend: [

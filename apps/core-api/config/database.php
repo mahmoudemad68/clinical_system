@@ -96,7 +96,10 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'sslmode' => env('DB_SSLMODE', env('APP_ENV') === 'production' ? 'verify-full' : 'prefer'),
+            'sslrootcert' => env('DB_SSLROOTCERT', env('PGSSLROOTCERT')) ?: null,
+            'sslcert' => env('DB_SSLCERT') ?: null,
+            'sslkey' => env('DB_SSLKEY') ?: null,
         ],
 
         /*
@@ -124,7 +127,10 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'sslmode' => env('DB_SSLMODE', env('APP_ENV') === 'production' ? 'verify-full' : 'prefer'),
+            'sslrootcert' => env('DB_SSLROOTCERT', env('PGSSLROOTCERT')) ?: null,
+            'sslcert' => env('DB_SSLCERT') ?: null,
+            'sslkey' => env('DB_SSLKEY') ?: null,
         ],
 
         'pgsql_worker' => [
@@ -139,7 +145,10 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'sslmode' => env('DB_SSLMODE', env('APP_ENV') === 'production' ? 'verify-full' : 'prefer'),
+            'sslrootcert' => env('DB_SSLROOTCERT', env('PGSSLROOTCERT')) ?: null,
+            'sslcert' => env('DB_SSLCERT') ?: null,
+            'sslkey' => env('DB_SSLKEY') ?: null,
         ],
 
         'pgsql_reporter' => [
@@ -154,7 +163,10 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'reporting,public',
-            'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'sslmode' => env('DB_SSLMODE', env('APP_ENV') === 'production' ? 'verify-full' : 'prefer'),
+            'sslrootcert' => env('DB_SSLROOTCERT', env('PGSSLROOTCERT')) ?: null,
+            'sslcert' => env('DB_SSLCERT') ?: null,
+            'sslkey' => env('DB_SSLKEY') ?: null,
         ],
 
         'pgsql_audit' => [
@@ -169,7 +181,10 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'sslmode' => env('DB_SSLMODE', env('APP_ENV') === 'production' ? 'verify-full' : 'prefer'),
+            'sslrootcert' => env('DB_SSLROOTCERT', env('PGSSLROOTCERT')) ?: null,
+            'sslcert' => env('DB_SSLCERT') ?: null,
+            'sslkey' => env('DB_SSLKEY') ?: null,
         ],
 
         'sqlsrv' => [

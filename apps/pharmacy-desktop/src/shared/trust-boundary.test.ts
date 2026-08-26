@@ -156,6 +156,15 @@ describe('Clinic Pharmacy — window security configuration', () => {
     expect(main).toContain("on('will-download'");
   });
 
+  it('clears device credentials fail-closed before dropping in-memory tokens', () => {
+    const credentials = readCode('src/main/device-credentials.ts');
+    const gateway = readCode('src/main/platform-gateway.ts');
+
+    expect(credentials).toContain('unlinkSync(target)');
+    expect(credentials).toContain("throw new Error('CAPABILITY_NOT_AVAILABLE')");
+    expect(gateway.indexOf('clearDeviceTokens()')).toBeLessThan(gateway.indexOf('memoryAccess = null'));
+  });
+
   it('serves renderer assets from a privileged custom scheme, not file://', () => {
     // main references the scheme through APP_CONFIG rather than a literal, so
     // assert the wiring here and the value on the config it reads.

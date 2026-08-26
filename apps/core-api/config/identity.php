@@ -88,6 +88,11 @@ return [
         'cooling_off_seconds' => (int) env('IDENTITY_RECOVERY_COOLING_OFF_SECONDS', 86400),
     ],
 
+    'retention' => [
+        'otp_row_days' => (int) env('IDENTITY_OTP_ROW_DAYS', 30),
+        'revoked_session_days' => (int) env('IDENTITY_REVOKED_SESSION_DAYS', 90),
+    ],
+
     'refresh' => [
         'replay_grace_seconds' => (int) env('AUTH_REFRESH_REPLAY_GRACE_SECONDS', 60),
     ],

@@ -1,0 +1,37 @@
+# Image-scan-only Trivy ignore. Promotion filesystem scans MUST NOT pass this file.
+#
+# These IDs are unfixed in the digest-pinned *base* images, not in application
+# source. FrankenPHP gobinary CVEs live inside the vendor frankenphp binary
+# (kin-openapi / grpc). Debian python:3.12-slim-bookworm OS packages have no
+# distro fix. apk upgrade in core-api.Dockerfile already applies OpenSSL
+# 3.5.8-r0; do not ignore CVE-2026-14456 for Alpine after that upgrade.
+#
+# extract-zip (SF-001) is NOT listed here. Merge fs scans use
+# infra/security/trivy-merge.ignore. post-merge promotion-fs-scan uses neither
+# file and stays blocked on High/Critical, including SF-001.
+
+# FrankenPHP Caddy/Go stdlib (dunglas/frankenphp alpine gobinary)
+GHSA-r277-6w6q-xmqw
+CVE-2026-76905
+CVE-2026-77354
+GHSA-hrxh-6v49-42gf
+
+# python:3.12-slim-bookworm OS packages with no Debian fix on the pinned digest
+CVE-2026-53613
+CVE-2026-53615
+CVE-2026-41992
+CVE-2026-54369
+CVE-2025-69720
+CVE-2025-7458
+CVE-2026-11822
+CVE-2026-11824
+CVE-2026-14456
+CVE-2026-13221
+CVE-2026-42496
+CVE-2026-8376
+CVE-2026-42497
+CVE-2026-48962
+CVE-2026-57432
+CVE-2026-57433
+CVE-2026-9538
+CVE-2023-45853

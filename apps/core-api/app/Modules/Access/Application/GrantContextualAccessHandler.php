@@ -16,6 +16,7 @@ use App\Modules\Platform\Domain\Contracts\TransactionContext;
 use App\Modules\Platform\Domain\Contracts\TransactionRunner;
 use App\Modules\Platform\Domain\Exceptions\AuthorizationDenied;
 use App\Modules\Platform\Domain\Exceptions\DuplicateIdentity;
+use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
 use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use DateTimeImmutable;
 
@@ -52,6 +53,10 @@ final class GrantContextualAccessHandler implements GrantContextualAccess
         );
         if (! $decision->allowed) {
             throw new AuthorizationDenied;
+        }
+
+        if (! Capabilities::isGrantable($capability) || ! Capabilities::isGrantableResourceType($resourceType)) {
+            throw new InvalidValueObject('The grant is not allowed for that capability or resource.');
         }
 
         return $this->transactions->run(function (TransactionContext $tx) use (

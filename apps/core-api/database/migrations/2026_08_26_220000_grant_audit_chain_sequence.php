@@ -25,8 +25,6 @@ return new class extends Migration
                    AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'clinic_audit_writer') THEN
                     EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE audit_events_chain_sequence_seq TO clinic_audit_writer';
                 END IF;
-            EXCEPTION WHEN insufficient_privilege OR undefined_object THEN
-                NULL;
             END
             $$;
         SQL);

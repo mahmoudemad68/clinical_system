@@ -83,6 +83,21 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/auth/password/change', [AuthController::class, 'changePassword'])
             ->name('api.v1.auth.password.change');
 
+        Route::post('/auth/mfa/totp/enroll', [AuthController::class, 'enrollTotp'])
+            ->name('api.v1.auth.mfa.totp.enroll');
+
+        Route::post('/auth/mfa/totp/confirm', [AuthController::class, 'confirmTotp'])
+            ->name('api.v1.auth.mfa.totp.confirm');
+
+        Route::post('/auth/mfa/recovery-codes/rotate', [AuthController::class, 'rotateRecoveryCodes'])
+            ->name('api.v1.auth.mfa.recovery-codes.rotate');
+
+        Route::post('/auth/mfa/totp/disable', [AuthController::class, 'disableTotp'])
+            ->name('api.v1.auth.mfa.totp.disable');
+
+        Route::post('/auth/recovery/requests/{id}/apply', [AuthController::class, 'applyRecovery'])
+            ->name('api.v1.auth.recovery.apply');
+
         Route::get('/me', [AuthController::class, 'me'])
             ->name('api.v1.me.show');
 

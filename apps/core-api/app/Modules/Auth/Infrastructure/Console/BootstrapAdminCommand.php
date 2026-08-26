@@ -33,7 +33,7 @@ use Illuminate\Console\Command;
  */
 final class BootstrapAdminCommand extends Command
 {
-    protected $signature = 'identity:bootstrap-admin {phone} {password?} {--name=Bootstrap Admin} {--confirm} {--totp-code=}';
+    protected $signature = 'identity:bootstrap-admin {phone} {--name=Bootstrap Admin} {--confirm} {--totp-code=}';
 
     protected $description = 'Create the first admin identity. Requires a confirmed TOTP enrollment.';
 
@@ -73,7 +73,12 @@ final class BootstrapAdminCommand extends Command
             return self::FAILURE;
         }
 
-        $password = (string) ($this->argument('password') ?: $this->secret('Password'));
+        $password = (string) $this->secret('Password');
+        if ($password === '') {
+            $this->error('A password is required.');
+
+            return self::FAILURE;
+        }
 
         try {
             $policy->assert($password, $phone);
@@ -124,8 +129,14 @@ final class BootstrapAdminCommand extends Command
             $audit->append($tx, 'identity.bootstrap_started', 'user', $userId, ['reason_code' => 'bootstrap'], $userId, 'user');
         });
 
-        $this->line($totp->provisioningUri($secret, 'admin'));
-        $this->info('Admin created with an unverified TOTP factor. Confirm with --confirm --totp-code, then disable bootstrap.');
+        $path = storage_path('app/private/bootstrap-totp.uri');
+        $directory = dirname($path);
+        if (! is_dir($directory)) {
+            mkdir($directory, 0700, true);
+        }
+        file_put_contents($path, $totp->provisioningUri($secret, 'admin'));
+        chmod($path, 0600);
+        $this->info('Admin created with an unverified TOTP factor. The provisioning URI was written to a private file; confirm with --confirm --totp-code, then delete that file and disable bootstrap.');
 
         return self::SUCCESS;
     }

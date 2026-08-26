@@ -192,13 +192,13 @@ return [
         Watchers\NotificationWatcher::class => env('TELESCOPE_NOTIFICATION_WATCHER', true),
 
         Watchers\QueryWatcher::class => [
-            'enabled' => env('TELESCOPE_QUERY_WATCHER', true),
+            'enabled' => env('TELESCOPE_QUERY_WATCHER', false),
             'ignore_packages' => true,
             'ignore_paths' => [],
             'slow' => 100,
         ],
 
-        Watchers\RedisWatcher::class => env('TELESCOPE_REDIS_WATCHER', true),
+        Watchers\RedisWatcher::class => env('TELESCOPE_REDIS_WATCHER', false),
 
         Watchers\RequestWatcher::class => [
             'enabled' => env('TELESCOPE_REQUEST_WATCHER', true),

@@ -52,8 +52,9 @@ final class ExceptionRenderer
             $e instanceof ValidationException => ErrorEnvelope::validation($e->errors(), $requestId),
 
             $e instanceof AuthenticationException,
-            $e instanceof AuthenticationFailed,
-            $e instanceof TokenMismatchException => ErrorEnvelope::of(ErrorCode::Unauthenticated, $requestId),
+            $e instanceof AuthenticationFailed => ErrorEnvelope::of(ErrorCode::Unauthenticated, $requestId),
+
+            $e instanceof TokenMismatchException => ErrorEnvelope::of(ErrorCode::CsrfMismatch, $requestId),
 
             // Authorization denial and "not found" answer identically, so the
             // response cannot be used to probe for the existence of a record
@@ -101,7 +102,7 @@ final class ExceptionRenderer
             409 => ErrorCode::StateConflict,
             413 => ErrorCode::RequestTooLarge,
             415 => ErrorCode::UnsupportedMediaType,
-            419 => ErrorCode::Unauthenticated,
+            419 => ErrorCode::CsrfMismatch,
             422 => ErrorCode::ValidationFailed,
             429 => ErrorCode::RateLimited,
             503 => ErrorCode::DependencyUnavailable,

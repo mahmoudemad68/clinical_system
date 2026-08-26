@@ -226,6 +226,31 @@ jobs:
           REDIS_HOST: localhost
         run: ./vendor/bin/pest
 
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Browser CSRF and session cookies
+        working-directory: .
+        env:
+          DB_HOST: localhost
+          DB_DATABASE: clinic_test
+          DB_USERNAME: clinic_migrator
+          DB_PASSWORD: ci_only_not_a_secret
+          DB_MIGRATION_USERNAME: clinic_migrator
+          DB_MIGRATION_PASSWORD: ci_only_not_a_secret
+          REDIS_HOST: localhost
+          CLINIC_WEB_BASE_URL: http://127.0.0.1:8080
+        run: |
+          npm ci --prefix tests/e2e
+          npx --prefix tests/e2e playwright install --with-deps chromium
+          npm ci --prefix apps/core-api
+          npm run build --prefix apps/core-api
+          php apps/core-api/artisan serve --host=127.0.0.1 --port=8080 &
+          sleep 3
+          npx --prefix tests/e2e playwright test --config tests/e2e/playwright.config.ts
+
+
   # -------------------------------------------------------------- ai-service
   ai-service:
     name: AI service
@@ -357,6 +382,16 @@ jobs:
             p/secrets
             p/owasp-top-ten
 
+      - name: SF-001 merge exception expiry
+        run: |
+          python3 - <<'PY'
+          from datetime import datetime, timezone
+          expiry = datetime(2026, 11, 26, tzinfo=timezone.utc)
+          if datetime.now(timezone.utc) >= expiry:
+              raise SystemExit("SF-001 merge exception expired; extract-zip must be fixed or a new exception recorded")
+          print("SF-001 merge exception still in window until 2026-11-26T00:00:00Z")
+          PY
+
       - name: Filesystem and dependency scan
         uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0  # v0.29.0
         with:
@@ -364,9 +399,49 @@ jobs:
           scanners: vuln,secret,misconfig
           severity: CRITICAL,HIGH
           exit-code: '1'
+          ignorefile: infra/security/trivy-merge.ignore
 
       - name: Generate SBOM
         uses: anchore/sbom-action@df80a981bc6edbc4e220a492d3cbe9f5547a6e75  # v0.17.9
         with:
           format: spdx-json
           artifact-name: clinic-platform.sbom.spdx.json
+
+  # ----------------------------------------------------------- runtime images
+  image-scan:
+    name: Runtime image scan
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.core_api == 'true' || needs.changes.outputs.ai_service == 'true' || needs.changes.outputs.infra == 'true'
+    strategy:
+      matrix:
+        include:
+          - unit: core-api
+            dockerfile: infra/docker/core-api.Dockerfile
+          - unit: ai-service
+            dockerfile: infra/docker/ai-service.Dockerfile
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2  # v3.10.0
+      - id: build
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4  # v6.15.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: runtime
+          push: false
+          load: true
+          tags: clinic-pr/${{ matrix.unit }}:scan
+          build-args: |
+            APP_VERSION=0.0.0-pr
+            BUILD_COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan the built image
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0  # v0.29.0
+        with:
+          image-ref: clinic-pr/${{ matrix.unit }}:scan
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: 'false'
+          ignorefile: infra/security/trivy-image.ignore

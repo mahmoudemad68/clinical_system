@@ -30,6 +30,14 @@ final class Capabilities
 
     public const IDENTITY_DISABLE = 'identity.disable';
 
+    public const RECOVERY_APPLY = 'auth.recovery.apply';
+
+    /** Resource-scoped placeholder until later phases register clinical names. */
+    public const CONTEXT_DELEGATE = 'access.context.delegate';
+
+    /** @var list<string> */
+    public const GRANTABLE_RESOURCE_TYPES = ['auth_session', 'user', 'organization', 'branch'];
+
     /** @var list<string> */
     public const AUTHENTICATED_SELF = [
         self::SESSION_LIST_OWN,
@@ -46,12 +54,28 @@ final class Capabilities
         self::ACCESS_GRANT_ISSUE,
         self::ACCESS_GRANT_REVOKE,
         self::IDENTITY_DISABLE,
+        self::RECOVERY_APPLY,
+    ];
+
+    /** @var list<string> */
+    public const GRANTABLE = [
+        self::CONTEXT_DELEGATE,
     ];
 
     /** Clinical, pharmacy-stock, and catalog capabilities are absent on purpose. */
     public static function isKnown(string $capability): bool
     {
-        return in_array($capability, [...self::AUTHENTICATED_SELF, ...self::PRIVILEGED_OPERATOR], true);
+        return in_array($capability, [...self::AUTHENTICATED_SELF, ...self::PRIVILEGED_OPERATOR, ...self::GRANTABLE], true);
+    }
+
+    public static function isGrantable(string $capability): bool
+    {
+        return in_array($capability, self::GRANTABLE, true);
+    }
+
+    public static function isGrantableResourceType(string $resourceType): bool
+    {
+        return in_array($resourceType, self::GRANTABLE_RESOURCE_TYPES, true);
     }
 
     /**

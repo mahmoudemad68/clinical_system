@@ -84,6 +84,10 @@ class TokenStore {
     await _storage.delete(envelopeKey);
     await _storage.delete(accessKey);
     await _storage.delete(refreshKey);
+    final leftover = await _readEnvelope();
+    if (leftover != null) {
+      throw StateError('credential vault was not emptied');
+    }
   }
 }
 

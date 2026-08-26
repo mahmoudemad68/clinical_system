@@ -1,0 +1,12 @@
+electron_asar_inspect
+generated_at=2026-08-26T22:08:55Z
+command=node scripts/desktop/inspect-packaged-asar.mjs
+host=linux x64
+doctor=apps/doctor-desktop/out/Clinic Doctor-linux-x64/resources/app.asar
+pharmacy=apps/pharmacy-desktop/out/Clinic Pharmacy-linux-x64/resources/app.asar
+custom_origin=true
+webpack_file_string_present=true
+packaged asar origin inspection passed
+webdriverio_installed_package_e2e=NOT_RUN
+os_matrix=linux_package_only
+note=file:// still appears as a webpack string; loadURL uses clinic-*-app://. Not an installed Windows/macOS matrix.

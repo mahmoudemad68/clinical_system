@@ -5,13 +5,18 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Http\Controllers;
 
 use App\Models\User;
+use App\Modules\Auth\Application\ApplyRecoveryHandler;
 use App\Modules\Auth\Application\AuthenticatePasswordHandler;
 use App\Modules\Auth\Application\CompleteMfaHandler;
 use App\Modules\Auth\Application\CompleteRecoveryHandler;
+use App\Modules\Auth\Application\ConfirmTotpHandler;
 use App\Modules\Auth\Application\CredentialIssuer;
+use App\Modules\Auth\Application\DisableTotpHandler;
+use App\Modules\Auth\Application\EnrollTotpHandler;
 use App\Modules\Auth\Application\RefreshDeviceSessionHandler;
 use App\Modules\Auth\Application\RegisterAccountCoordinator;
 use App\Modules\Auth\Application\RequestOtpHandler;
+use App\Modules\Auth\Application\RotateRecoveryCodesHandler;
 use App\Modules\Auth\Application\SessionCommandHandler;
 use App\Modules\Auth\Application\VerifyOtpHandler;
 use App\Modules\Auth\Domain\Contracts\AuthDirectory;
@@ -203,9 +208,9 @@ final class AuthController
             'password' => ['required', 'string', 'max:128'],
         ]);
 
-        $handler->handle($data['challenge_id'], $data['code'], $data['password']);
+        $result = $handler->handle($data['challenge_id'], $data['code'], $data['password']);
 
-        return Envelope::ok(['status' => 'completed'], $this->requestId($request));
+        return Envelope::ok($result, $this->requestId($request));
     }
 
     public function me(Request $request, MeQuery $query): JsonResponse
@@ -216,6 +221,46 @@ final class AuthController
     public function capabilities(Request $request, MeQuery $query): JsonResponse
     {
         return Envelope::ok(['capabilities' => $query->capabilities($this->actor($request))], $this->requestId($request));
+    }
+
+    public function enrollTotp(Request $request, EnrollTotpHandler $handler): JsonResponse
+    {
+        return Envelope::ok($handler->handle($this->actor($request)), $this->requestId($request));
+    }
+
+    public function confirmTotp(Request $request, ConfirmTotpHandler $handler): JsonResponse
+    {
+        $data = ClosedJsonValidator::validate($request, [
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+
+        return Envelope::ok($handler->handle($this->actor($request), $data['code']), $this->requestId($request));
+    }
+
+    public function rotateRecoveryCodes(Request $request, RotateRecoveryCodesHandler $handler): JsonResponse
+    {
+        $data = ClosedJsonValidator::validate($request, [
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+
+        return Envelope::ok($handler->handle($this->actor($request), $data['code']), $this->requestId($request));
+    }
+
+    public function disableTotp(Request $request, DisableTotpHandler $handler): JsonResponse
+    {
+        $data = ClosedJsonValidator::validate($request, [
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+        $handler->handle($this->actor($request), $data['code']);
+
+        return Envelope::ok(['disabled' => true], $this->requestId($request));
+    }
+
+    public function applyRecovery(Request $request, ApplyRecoveryHandler $handler, string $id): JsonResponse
+    {
+        $status = $handler->handle($this->actor($request), Identifier::fromString($id));
+
+        return Envelope::ok(['status' => $status], $this->requestId($request));
     }
 
     /**

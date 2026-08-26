@@ -5,9 +5,16 @@
 # Multi-stage so the runtime image carries no Composer, no build toolchain, and
 # no dev dependencies. ADR 0008 requires digest-pinned bases; the digests below
 # are resolved by infra/docker/pin-base-images.sh and must not be edited by hand.
+#
+# Alpine, not Debian: the Debian frankenphp image ships unfixed High/Critical
+# perl CVEs that fail Trivy with ignore-unfixed=false. Alpine still carries
+# gobinary findings inside the frankenphp binary until upstream rebuilds.
 
 # ---------------------------------------------------------------- base stage
-FROM dunglas/frankenphp:1-php8.3 AS base
+FROM dunglas/frankenphp:1-php8.3-alpine@sha256:049b8d8356efceb93c91ed42866de890534310bcef4ad4dde902029e4a0d20c3 AS base
+
+# Apply Alpine OpenSSL fixes that exist on the 3.24 repository (CVE-2026-14456).
+RUN apk upgrade --no-cache libcrypto3 libssl3 openssl
 
 # PHP extensions the platform actually needs:
 #   pdo_pgsql  PostgreSQL, the source of truth
@@ -79,7 +86,7 @@ COPY infra/docker/php/limits.ini  /usr/local/etc/php/conf.d/zz-limits.ini
 
 # Non-root. The phase file requires non-root and read-only containers where
 # compatible. Laravel needs write access to storage and bootstrap/cache only.
-RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin clinic \
+RUN adduser -D -u 10001 -H -s /sbin/nologin clinic \
     && mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache \
     && chown -R clinic:clinic storage bootstrap/cache \
     && chmod -R u=rwX,g=rX,o= storage bootstrap/cache

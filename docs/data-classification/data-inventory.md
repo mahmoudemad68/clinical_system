@@ -11,8 +11,11 @@ Levels and rules: [`classification-policy.md`](classification-policy.md).
 Retention owner column: the accountable human who decides the retention period.
 The Phase 00 entry criterion naming that owner is met:
 [accountable-owners.md](../governance/accountable-owners.md) (Mahmoud, 2026-08-26).
-Periods in this file are still engineering defaults until a retention schedule
-is written. Lawful basis stays blank: naming a privacy owner does not invent one.
+Periods in this file are still **engineering defaults** until a retention
+schedule is written. `lawful_basis` is `OPEN_LEGAL_DECISION` wherever personal
+or sensitive data is processed: naming a privacy owner does not invent a basis.
+
+Deletion/purge procedure: [deletion-and-purge.md](deletion-and-purge.md).
 
 ---
 
@@ -186,9 +189,12 @@ ever appear, and `Classification::allowedAsMetricLabel()` encodes the rule.
 | --- | --- | --- | --- | --- | --- | --- |
 | `platform:meta:version` | platform | public | 60s | deploy / `platform:cache-warm` | 32 bytes | read APP_VERSION |
 | `platform:ready:flag` | platform | internal | 10s | readiness change / warm | 1 byte | recompute readiness |
+| Auth rate-limit keys (`auth-login-*`, `auth-otp-*`, `auth-refresh-*`, `auth-mfa-*`, `auth-recovery-*`) | auth | internal | limiter window (60s or 3600s) | TTL | small counters | miss = allow first hit |
 
-These keys hold no PHI. An empty Redis after restart degrades to a cache miss;
-PostgreSQL remains authoritative (G-04-06).
+Auth counters live in Redis database index 3 (`ratelimit` store). They are not
+identity truth and must not contain phones, codes, or tokens as key material
+(HMACs and opaque ids only). An empty Redis after restart degrades to a cache
+miss; PostgreSQL remains authoritative (G-04-06).
 
 ## Files
 
@@ -202,76 +208,149 @@ Private object storage is provisioned; no file type is defined until Phase 02.
 
 ## Phase 01 tables (identity and access)
 
-Engineering draft. Lawful basis remains blank. Synthetic data only in tests.
+Engineering draft. Synthetic data only in tests. `lawful_basis` is never a
+self-approved Egyptian legal conclusion.
 
 ### `users`
 
-| Field | Class | Purpose | Encryption | Owner |
-| --- | --- | --- | --- | --- |
-| `id` | internal | Actor identifier | at rest | Mahmoud |
-| `name` | personal | Display; never authorization input | at rest | Mahmoud |
-| `phone_e164_encrypted` | personal | Envelope AES-GCM | envelope | Mahmoud |
-| `phone_lookup_hmac` | personal | Blind lookup | HMAC | Mahmoud |
-| `password_hash` | credential | Argon2id | hash | Mahmoud |
-| `account_type`, `status`, `language`, `credential_version` | internal | Server-owned actor state | at rest | Mahmoud |
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Actor identifier | app, worker (FK only) | until account erasure (OPEN legal) | at rest | Mahmoud | n/a |
+| `name` | personal | Display; never authorization input | app | as row | at rest | Mahmoud | OPEN_LEGAL_DECISION |
+| `phone_e164_encrypted` | personal | Contact / login | app | as row; rotate via KMS path | envelope | Mahmoud | OPEN_LEGAL_DECISION |
+| `phone_lookup_hmac` | personal | Blind lookup | app | as row | HMAC | Mahmoud | OPEN_LEGAL_DECISION |
+| `password_hash` | credential | Authentication | app | as row | Argon2id | Mahmoud | n/a |
+| `account_type`, `status`, `language`, `credential_version` | internal | Server-owned actor state | app | as row | at rest | Mahmoud | n/a |
 
 ### `identity_national_ids`
 
-| Field | Class | Purpose | Encryption | Owner |
-| --- | --- | --- | --- | --- |
-| `national_id_encrypted` | sensitive | Recovery only | envelope | Mahmoud |
-| `national_id_lookup_hmac` | sensitive | Blind match | HMAC | Mahmoud |
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `user_id` | internal | FK | app | as row | at rest | Mahmoud | n/a |
+| `national_id_encrypted` | sensitive | Recovery / later verification | app (audited decrypt) | until erasure (OPEN legal) | envelope | Mahmoud | OPEN_LEGAL_DECISION |
+| `national_id_lookup_hmac` | sensitive | Blind match | app | as row | HMAC | Mahmoud | OPEN_LEGAL_DECISION |
 
-### `otp_requests` / `mfa_factors` / `user_devices` / `auth_sessions`
+### `otp_requests`
 
-OTP hashes and encrypted codes, TOTP secrets, token hashes, session hashes:
-`credential`. Destinations in events are `otp:{id}` handles, never phones.
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Challenge id | app, worker | row TTL then delete | at rest | Mahmoud | n/a |
+| `purpose` | internal | registration / recovery / … | app | as row | at rest | Mahmoud | n/a |
+| `subject_lookup_hmac` | personal | Blind phone handle | app | as row | HMAC | Mahmoud | OPEN_LEGAL_DECISION |
+| `code_hash` | credential | Verify attempt | app | until row delete | HMAC | Mahmoud | n/a |
+| `code_ciphertext` | credential | Worker send only | worker | **NULL on consume/invalidate** | envelope | Mahmoud | n/a |
+| `destination_ciphertext` | personal | Worker send only | worker | **NULL on consume/invalidate** | envelope | Mahmoud | OPEN_LEGAL_DECISION |
+| `attempts`, `max_attempts`, `expires_at`, `consumed_at`, `invalidated_at` | internal | Lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+Engineering row TTL: 30 days after consume/invalidate, then `DELETE`.
+
+### `mfa_factors`
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id`, `user_id`, `factor_type` | internal | Factor identity | app | until disabled + purge | at rest | Mahmoud | n/a |
+| `secret_ciphertext` | credential | TOTP secret | app (audited decrypt) | tombstone on disable | envelope | Mahmoud | n/a |
+| `verified_at`, `disabled_at`, `last_used_counter` | internal | Lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `mfa_recovery_codes`
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `code_hash` | credential | One-time backup | app | delete unused on rotate/disable | HMAC | Mahmoud | n/a |
+| `consumed_at` | internal | Single use | app | as row until parent delete | at rest | Mahmoud | n/a |
+
+Plaintext codes exist only in the enroll/rotate HTTP response, once.
+
+### `mfa_challenges`
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id`, `user_id`, `client_class`, `platform`, `device_label` | internal | In-flight MFA | app | 24h then delete | at rest | Mahmoud | n/a |
+| `expires_at`, `consumed_at`, `attempts` | internal | Lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `user_devices`
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id`, `user_id`, `client_class`, `platform`, `device_label` | personal | Device record | app | until revoked + TTL | at rest | Mahmoud | OPEN_LEGAL_DECISION |
+| `refresh_token_hash`, `previous_refresh_token_hash`, `access_token_hash` | credential | Token binding | app | as row until delete | HMAC | Mahmoud | n/a |
+| `refresh_replay_ciphertext` | credential | Lost-response replay | app | TTL `refresh_replay_expires_at` then NULL | envelope | Mahmoud | n/a |
+| `refresh_replay_idempotency_hmac` | internal | Replay key binding | app | as ciphertext | HMAC | Mahmoud | n/a |
+| `revoked_at`, `expires_at` | internal | Lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `auth_sessions`
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id`, `user_id`, `device_id`, `session_kind` | internal | Session row | app | revoked row TTL then delete | at rest | Mahmoud | n/a |
+| `session_hash` / access hash | credential | Cookie or bearer bind | app | as row until delete | HMAC | Mahmoud | n/a |
+| `assurance_level` | internal | AAL recorded server-side | app | as row | at rest | Mahmoud | n/a |
+| `absolute_expires_at`, `revoked_at`, `revoked_reason` | internal | Lifetime | app | as row | at rest | Mahmoud | n/a |
+
+Revoked sessions are marked first, then deleted after the engineering TTL (90 days). That is not a legal medical-record period.
 
 ### `auth_refresh_consumptions`
 
-| Field | Class | Purpose | Encryption | Owner |
-| --- | --- | --- | --- | --- |
-| `family_id`, `generation` | internal | Refresh family ledger | at rest | Mahmoud |
-| `token_hash` | credential | Consumed refresh HMAC | HMAC | Mahmoud |
-| `consumed_at` | internal | When the generation was retired | at rest | Mahmoud |
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `family_id`, `generation` | internal | Refresh family ledger | app | with family | at rest | Mahmoud | n/a |
+| `token_hash` | credential | Consumed refresh HMAC | app | with family | HMAC | Mahmoud | n/a |
+| `consumed_at` | internal | When the generation was retired | app | as row | at rest | Mahmoud | n/a |
 
 ### `recovery_requests`
 
-| Field | Class | Purpose | Encryption | Owner |
-| --- | --- | --- | --- | --- |
-| `id`, `user_id`, `otp_id`, `status` | internal | Recovery state machine | at rest | Mahmoud |
-| `new_password_hash` | credential | Argon2id of the proposed password | hash | Mahmoud |
-| `cooling_off_until`, `applied_at` | internal | Cooling-off / apply timestamps | at rest | Mahmoud |
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id`, `user_id`, `otp_id`, `status` | internal | Recovery state machine | app, operator | 90 days after terminal status | at rest | Mahmoud | OPEN_LEGAL_DECISION |
+| `new_password_hash` | credential | Proposed password | app | NULL after apply/reject | Argon2id | Mahmoud | n/a |
+| `cooling_off_until`, `applied_at` | internal | Cooling-off / apply | app | as row | at rest | Mahmoud | n/a |
 
-Privileged recoveries stay `manual_review` until an operator acts. Patient apply in tests uses `IDENTITY_RECOVERY_COOLING_OFF_SECONDS=0`.
+Privileged recoveries stay `manual_review` until an AAL2 operator applies.
+Patient cooling-off uses `IDENTITY_RECOVERY_COOLING_OFF_SECONDS` (default 86400;
+tests may set 0).
 
-### `audit_events.chain_sequence`
+### `contextual_access_grants`
 
-Monotonic hash-chain sequence. `row_hash` covers actor, object, metadata, and microsecond `occurred_at`. App role is INSERT+SELECT only.
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| capability, resource, context ids | internal | Resource-scoped grant | app | until revoked + TTL | at rest | Mahmoud | n/a |
+| `issued_by_id` | internal | Initiator, never client-supplied | app | as row | at rest | Mahmoud | n/a |
+
+### `audit_events`
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `event_name`, `object_*`, `actor_*` | internal | Append-only trail | app SELECT; insert via DEFINER function | OPEN legal (not deleted by prune) | at rest | Mahmoud | OPEN_LEGAL_DECISION |
+| `metadata` | internal | Reason codes / ids only | app | as row | at rest | Mahmoud | n/a |
+| `row_hash`, `previous_hash`, `chain_sequence` | internal | Tamper-evident chain | verifier | as row | at rest | Mahmoud | n/a |
+
+Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
 
 ### Events
 
-`auth.otp_delivery_requested` payload is `internal` and must not contain phones,
-codes, or National IDs. `access.grant_issued` / `access.grant_revoked` are
-`internal` identifiers only. `credential` classification is rejected by the outbox
-CHECK.
+| Event | Version | Class | Payload | Consumers | Retention |
+| --- | --- | --- | --- | --- | --- |
+| `auth.otp_delivery_requested` | 1 | internal | challenge id / handle only | OTP worker | 7 days |
+| `auth.session_revoked` | 1 | internal | session/user ids, reason | disconnect consumer | 7 days |
+| `access.grant_issued` / `access.grant_revoked` | 1 | internal | identifiers | later projections | 7 days |
+
+`credential` classification is rejected by the outbox CHECK.
 
 ---
 
-## Gaps
+## Gaps (explicitly OPEN)
 
-1. **No retention period here is approved as a legal schedule.** The retention
-   owner is Mahmoud ([accountable-owners.md](../governance/accountable-owners.md)).
-   The day counts in this file remain engineering defaults. Clinical and
-   financial record retention in Egypt is a legal question, not those defaults.
-2. **No lawful-basis column is filled in.** Naming a privacy/legal owner does
-   not invent a lawful basis. Stating one without a written basis would be
-   worse than leaving it blank.
-3. **Deletion and anonymization procedures do not exist.**
-   `notifications.notifiable_id` is already a personal actor reference.
-   Phase 01 stores identity (users, National ID envelopes, OTP/MFA ciphertext),
-   not a patient clinical profile. Procedures must exist before Phase 02 stores
-   a patient profile.
+1. **No retention period here is approved as a legal schedule.** Day counts are
+   engineering defaults. Clinical and financial retention in Egypt is a legal
+   question.
+2. **`lawful_basis` is `OPEN_LEGAL_DECISION` wherever personal/sensitive data
+   is processed.** Independent legal review is required. This inventory is not
+   that review.
+3. **Subject-erasure for production** is not an operator self-serve. Engineering
+   purge jobs cover expired OTP/session ciphertext only
+   ([deletion-and-purge.md](deletion-and-purge.md)).
+4. **Audit-row erasure** is not implemented (append-only). A legal order would
+   need a Phase 22/23 procedure.
 
-Tracked as G-05-02 in the evidence ledger. G-08-04 is **OPEN**: independent
-review did not approve this inventory as a legal basis.
+Tracked as G-05-02. **G-08-04 stays OPEN.** Independent review did not approve
+this inventory as a legal basis.

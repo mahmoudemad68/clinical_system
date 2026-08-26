@@ -51,6 +51,18 @@ final class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
             'x-xsrf-token',
             'authorization',
         ]);
+        Telescope::hideResponseParameters([
+            'access_token',
+            'refresh_token',
+            'code',
+            'totp_code',
+            'recovery_code',
+            'password',
+            'national_id',
+            'phone',
+            'provisioning_uri',
+            'recovery_codes',
+        ]);
     }
 
     protected function gate(): void

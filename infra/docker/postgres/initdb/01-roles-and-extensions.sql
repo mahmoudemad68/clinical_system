@@ -53,6 +53,11 @@ CREATE ROLE clinic_backup WITH LOGIN PASSWORD 'local_dev_only_not_a_secret';
 
 ALTER SCHEMA public OWNER TO clinic_migrator;
 
+-- Schema creation (reporting views) is migrator DDL. The serving database is
+-- owned by clinic_owner; without CREATE on the database, CREATE SCHEMA fails
+-- even though clinic_migrator owns public.
+GRANT CREATE ON DATABASE clinic TO clinic_migrator;
+
 -- Revoke the permissive default. PostgreSQL 15+ already removes CREATE on
 -- public from PUBLIC, but stating it makes the intent explicit and survives a
 -- restore onto an older major version.

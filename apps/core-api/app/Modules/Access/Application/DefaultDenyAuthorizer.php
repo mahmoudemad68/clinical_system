@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Access\Application;
 
 use App\Modules\Access\Domain\Contracts\Authorize;
+use App\Modules\Access\Domain\Contracts\GrantStore;
 use App\Modules\Access\Domain\ValueObjects\AuthorizationDecision;
 use App\Modules\Access\Domain\ValueObjects\Capabilities;
 use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
@@ -16,10 +17,12 @@ use App\Modules\Platform\Domain\ValueObjects\Identifier;
  *
  * Clinical, pharmacy, and catalog actions are unknown and therefore denied.
  * account_type is never read from the client; ActorContext is server-built.
+ * Contextual grants never confer operator privileges and must match resource.
  */
 final class DefaultDenyAuthorizer implements Authorize
 {
-    // Deny-by-default: unknown, pending, stale, or insufficient assurance never allow.
+    public function __construct(private readonly GrantStore $grants) {}
+
     public function decide(
         ActorContext $actor,
         string $action,
@@ -49,17 +52,27 @@ final class DefaultDenyAuthorizer implements Authorize
             return AuthorizationDecision::deny('insufficient_assurance', $group);
         }
 
+        if (Capabilities::isGrantable($action)) {
+            if ($resourceType === null || $resourceId === null || $contextType === null || $contextId === null) {
+                return AuthorizationDecision::deny('missing_context', $group);
+            }
+
+            if ($this->grants->findActive($actor->userId, $action, $resourceType, $resourceId, $contextType, $contextId) === null) {
+                return AuthorizationDecision::deny('capability_absent', $group);
+            }
+
+            return AuthorizationDecision::allow($group);
+        }
+
         if (! in_array($action, $actor->capabilities, true)) {
             return AuthorizationDecision::deny('capability_absent', $group);
         }
 
-        if ($resourceId !== null && $resourceType === 'auth_session' && ! $resourceId->equals($actor->sessionId ?? $resourceId)) {
-            // Own-session actions still need the session to belong to the actor.
-            // Resource membership is checked by the handler against storage;
-            // missing resource context here is a deny.
-            if ($actor->sessionId === null) {
-                return AuthorizationDecision::deny('missing_context', $group);
-            }
+        if (in_array($action, [Capabilities::SESSION_LIST_OWN, Capabilities::SESSION_REVOKE_OWN], true)
+            && $resourceType === 'auth_session'
+            && $resourceId !== null
+            && ($actor->sessionId === null || ! $resourceId->equals($actor->sessionId))) {
+            return AuthorizationDecision::deny('capability_absent', $group);
         }
 
         return AuthorizationDecision::allow($group);
@@ -73,12 +86,7 @@ final class DefaultDenyAuthorizer implements Authorize
 
     private function requiresPrivilege(string $action): bool
     {
-        return in_array($action, [
-            Capabilities::MFA_MANAGE_SELF,
-            Capabilities::ACCESS_GRANT_ISSUE,
-            Capabilities::ACCESS_GRANT_REVOKE,
-            Capabilities::IDENTITY_DISABLE,
-        ], true);
+        return in_array($action, Capabilities::PRIVILEGED_OPERATOR, true);
     }
 
     private function actionGroup(string $action): string

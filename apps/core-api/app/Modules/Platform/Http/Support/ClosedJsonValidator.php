@@ -21,7 +21,7 @@ final class ClosedJsonValidator
             $payload = $request->request->all();
         }
 
-        $allowed = array_keys($rules);
+        $allowed = [...array_keys($rules), '_token', '_method'];
         $unknown = array_values(array_diff(array_keys($payload), $allowed));
         if ($unknown !== []) {
             throw ValidationException::withMessages([

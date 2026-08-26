@@ -15,6 +15,7 @@ use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Exceptions\AuthenticationFailed;
 use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
 use App\Modules\Platform\Domain\ValueObjects\Identifier;
+use App\Modules\Platform\Http\Support\ClosedJsonValidator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -42,7 +43,7 @@ final class AdminSessionController
 
     public function store(Request $request, AuthenticatePasswordHandler $handler): RedirectResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'phone' => ['required', 'string', 'max:32'],
             'password' => ['required', 'string', 'max:128'],
         ]);
@@ -90,7 +91,7 @@ final class AdminSessionController
 
     public function verifyMfa(Request $request, CompleteMfaHandler $handler): RedirectResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'code' => ['required', 'string', 'size:6'],
         ]);
 

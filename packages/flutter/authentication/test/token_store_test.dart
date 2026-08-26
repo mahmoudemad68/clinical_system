@@ -18,6 +18,23 @@ class MemoryVault implements CredentialVault {
   }
 }
 
+class FailingDeleteVault implements CredentialVault {
+  FailingDeleteVault(this.seed);
+
+  final Map<String, String> seed;
+
+  @override
+  Future<void> delete(String key) async {}
+
+  @override
+  Future<String?> read(String key) async => seed[key];
+
+  @override
+  Future<void> write({required String key, required String value}) async {
+    seed[key] = value;
+  }
+}
+
 class FailingVault implements CredentialVault {
   @override
   Future<void> delete(String key) async {}
@@ -56,6 +73,15 @@ void main() {
     );
     expect(await store.readAccess(), isNull);
     expect(await store.readRefresh(), isNull);
+  });
+
+  test('clear fails closed when the vault still holds an envelope', () async {
+    final vault = FailingDeleteVault({
+      TokenStore.envelopeKey: '{"version":1,"access":"a","refresh":"r"}',
+    });
+    final store = TokenStore(vault);
+
+    await expectLater(store.clear(), throwsA(isA<StateError>()));
   });
 
   test('auth outcome strips tokens before UI consumption', () {

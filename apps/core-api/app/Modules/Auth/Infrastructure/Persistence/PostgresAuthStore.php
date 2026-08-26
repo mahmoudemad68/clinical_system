@@ -59,7 +59,11 @@ final class PostgresAuthStore implements AuthDirectory
             ->where('purpose', $purpose)
             ->whereNull('consumed_at')
             ->whereNull('invalidated_at')
-            ->update(['invalidated_at' => $now->format('Y-m-d H:i:s.uP')]);
+            ->update([
+                'invalidated_at' => $now->format('Y-m-d H:i:s.uP'),
+                'code_ciphertext' => null,
+                'destination_ciphertext' => null,
+            ]);
     }
 
     public function lockOtp(Identifier $id): ?stdClass
@@ -83,6 +87,8 @@ final class PostgresAuthStore implements AuthDirectory
     {
         $this->connection->table('otp_requests')->where('id', $id->value)->update([
             'consumed_at' => $now->format('Y-m-d H:i:s.uP'),
+            'code_ciphertext' => null,
+            'destination_ciphertext' => null,
         ]);
     }
 
@@ -513,25 +519,128 @@ final class PostgresAuthStore implements AuthDirectory
 
     public function pruneExpiredOtps(DateTimeImmutable $now): int
     {
-        return $this->connection->table('otp_requests')
+        $stamp = $now->format('Y-m-d H:i:s.uP');
+        $invalidated = $this->connection->table('otp_requests')
             ->whereNull('consumed_at')
             ->whereNull('invalidated_at')
-            ->where('expires_at', '<', $now->format('Y-m-d H:i:s.uP'))
+            ->where('expires_at', '<', $stamp)
             ->update([
-                'invalidated_at' => $now->format('Y-m-d H:i:s.uP'),
+                'invalidated_at' => $stamp,
             ]);
+
+        $this->connection->table('otp_requests')
+            ->where(function ($query): void {
+                $query->whereNotNull('consumed_at')->orWhereNotNull('invalidated_at');
+            })
+            ->whereNotNull('code_ciphertext')
+            ->update([
+                'code_ciphertext' => null,
+                'destination_ciphertext' => null,
+            ]);
+
+        $otpDays = (int) config('identity.retention.otp_row_days', 30);
+        $cutoff = $now->modify(sprintf('-%d days', $otpDays))->format('Y-m-d H:i:s.uP');
+        $this->connection->table('otp_requests')
+            ->where(function ($query) use ($cutoff): void {
+                $query->where(function ($inner) use ($cutoff): void {
+                    $inner->whereNotNull('invalidated_at')->where('invalidated_at', '<', $cutoff);
+                })->orWhere(function ($inner) use ($cutoff): void {
+                    $inner->whereNotNull('consumed_at')->where('consumed_at', '<', $cutoff);
+                });
+            })
+            ->whereNull('code_ciphertext')
+            ->delete();
+
+        return $invalidated;
     }
 
     public function pruneExpiredSessions(DateTimeImmutable $now): int
     {
-        return $this->connection->table('auth_sessions')
+        $stamp = $now->format('Y-m-d H:i:s.uP');
+        $revoked = $this->connection->table('auth_sessions')
             ->whereNull('revoked_at')
-            ->where('absolute_expires_at', '<', $now->format('Y-m-d H:i:s.uP'))
+            ->where('absolute_expires_at', '<', $stamp)
             ->update([
-                'revoked_at' => $now->format('Y-m-d H:i:s.uP'),
+                'revoked_at' => $stamp,
                 'revoked_reason' => 'expired',
-                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+                'updated_at' => $stamp,
             ]);
+
+        $sessionDays = (int) config('identity.retention.revoked_session_days', 90);
+        $cutoff = $now->modify(sprintf('-%d days', $sessionDays))->format('Y-m-d H:i:s.uP');
+        $this->connection->table('auth_sessions')
+            ->whereNotNull('revoked_at')
+            ->where('revoked_at', '<', $cutoff)
+            ->delete();
+
+        $this->connection->table('mfa_challenges')
+            ->where('expires_at', '<', $now->modify('-1 day')->format('Y-m-d H:i:s.uP'))
+            ->delete();
+
+        $this->connection->table('user_devices')
+            ->whereNotNull('refresh_replay_expires_at')
+            ->where('refresh_replay_expires_at', '<', $stamp)
+            ->update([
+                'refresh_replay_ciphertext' => null,
+                'refresh_replay_idempotency_hmac' => null,
+                'refresh_replay_expires_at' => null,
+            ]);
+
+        return $revoked;
+    }
+
+    public function lockRecoveryRequest(Identifier $id): ?stdClass
+    {
+        $row = $this->connection->selectOne(
+            'SELECT * FROM recovery_requests WHERE id = ? FOR UPDATE',
+            [$id->value],
+        );
+
+        return $row instanceof stdClass ? $row : null;
+    }
+
+    public function markRecoveryApplied(Identifier $id, DateTimeImmutable $now): void
+    {
+        $this->connection->table('recovery_requests')->where('id', $id->value)->update([
+            'status' => 'applied',
+            'applied_at' => $now->format('Y-m-d H:i:s.uP'),
+            'new_password_hash' => '',
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
+    public function dueCoolingOffRecoveryIds(DateTimeImmutable $now): array
+    {
+        return $this->connection->table('recovery_requests')
+            ->where('status', 'cooling_off')
+            ->whereNull('applied_at')
+            ->whereNotNull('cooling_off_until')
+            ->where('cooling_off_until', '<=', $now->format('Y-m-d H:i:s.uP'))
+            ->pluck('id')
+            ->all();
+    }
+
+    public function disableTotpFactor(Identifier $factorId, Identifier $disabledBy, DateTimeImmutable $now): void
+    {
+        $userId = $this->connection->table('mfa_factors')->where('id', $factorId->value)->value('user_id');
+        $tombstone = random_bytes(32);
+        $this->connection->table('mfa_factors')->where('id', $factorId->value)->update([
+            'disabled_at' => $now->format('Y-m-d H:i:s.uP'),
+            'disabled_by' => $disabledBy->value,
+            'secret_ciphertext' => BinaryColumn::bind($tombstone),
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+        if (is_string($userId) && $userId !== '') {
+            $this->deleteUnconsumedRecoveryCodes(Identifier::fromTrusted($userId));
+        }
+    }
+
+    public function deleteUnconsumedRecoveryCodes(Identifier $userId): void
+    {
+        $this->connection->table('mfa_recovery_codes')
+            ->where('user_id', $userId->value)
+            ->whereNull('consumed_at')
+            ->delete();
     }
 
     private function normalizeOtp(stdClass $row): stdClass

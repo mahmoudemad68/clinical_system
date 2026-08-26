@@ -149,6 +149,19 @@ interface AuthDirectory
         DateTimeImmutable $now,
     ): void;
 
+    public function lockRecoveryRequest(Identifier $id): ?stdClass;
+
+    public function markRecoveryApplied(Identifier $id, DateTimeImmutable $now): void;
+
+    /**
+     * @return list<string>
+     */
+    public function dueCoolingOffRecoveryIds(DateTimeImmutable $now): array;
+
+    public function disableTotpFactor(Identifier $factorId, Identifier $disabledBy, DateTimeImmutable $now): void;
+
+    public function deleteUnconsumedRecoveryCodes(Identifier $userId): void;
+
     public function pruneExpiredOtps(DateTimeImmutable $now): int;
 
     public function pruneExpiredSessions(DateTimeImmutable $now): int;

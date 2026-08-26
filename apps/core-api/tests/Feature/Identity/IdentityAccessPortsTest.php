@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use App\Modules\Access\Domain\Contracts\Authorize;
 use App\Modules\Access\Domain\Contracts\GrantContextualAccess;
 use App\Modules\Access\Domain\Contracts\ListEffectiveCapabilities;
 use App\Modules\Access\Domain\Contracts\RevokeContextualAccess;
@@ -18,6 +19,7 @@ use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
 use App\Modules\Platform\Domain\Exceptions\AuthorizationDenied;
 use App\Modules\Platform\Domain\Exceptions\FeatureUnavailable;
+use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
 use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -78,7 +80,7 @@ it('enforces one active contextual grant per lookup tuple', function () {
     $first = $grants->grant(
         $initiator,
         $userId,
-        Capabilities::IDENTITY_ME_READ,
+        Capabilities::CONTEXT_DELEGATE,
         'auth_session',
         $resource,
         'self',
@@ -89,7 +91,7 @@ it('enforces one active contextual grant per lookup tuple', function () {
     $second = $grants->grant(
         $initiator,
         $userId,
-        Capabilities::IDENTITY_ME_READ,
+        Capabilities::CONTEXT_DELEGATE,
         'auth_session',
         $resource,
         'self',
@@ -118,7 +120,7 @@ it('rejects a grant from a patient actor', function () {
     expect(fn () => app(GrantContextualAccess::class)->grant(
         syntheticActor($userId),
         $userId,
-        Capabilities::IDENTITY_ME_READ,
+        Capabilities::CONTEXT_DELEGATE,
         'auth_session',
         $ids->next(),
         'self',
@@ -139,7 +141,7 @@ it('rejects a second active grant row at the unique index', function () {
     $context = $ids->next();
     $row = [
         'actor_user_id' => $user->id,
-        'capability' => Capabilities::IDENTITY_ME_READ,
+        'capability' => Capabilities::CONTEXT_DELEGATE,
         'resource_type' => 'auth_session',
         'resource_id' => $resource->value,
         'context_type' => 'self',
@@ -197,4 +199,84 @@ it('does not disclose profile claim while the flag is off', function () {
 
     expect(fn () => app(LinkVerifiedPatientAccount::class)->handle($actor, '99999990100011'))
         ->toThrow(FeatureUnavailable::class);
+});
+
+it('rejects a grant of an operator capability and a grant from stale AAL1 admin', function () {
+    $user = User::factory()->create();
+    $admin = User::factory()->create([
+        'account_type' => AccountType::Admin->value,
+        'status' => AccountStatus::Active->value,
+    ]);
+    $ids = app(IdentityGenerator::class);
+    $now = app(Clock::class)->now();
+    $aal1 = new ActorContext(
+        Identifier::fromTrusted((string) $admin->id),
+        AccountType::Admin,
+        AccountStatus::Active,
+        LanguagePreference::English,
+        AssuranceLevel::Aal1Password,
+        1,
+        null,
+        Identifier::fromTrusted((string) $admin->id),
+        [],
+        Capabilities::forActor('admin', false),
+    );
+
+    expect(fn () => app(GrantContextualAccess::class)->grant(
+        operatorActor(Identifier::fromTrusted((string) $admin->id)),
+        Identifier::fromTrusted((string) $user->id),
+        Capabilities::ACCESS_GRANT_ISSUE,
+        'auth_session',
+        $ids->next(),
+        'self',
+        $ids->next(),
+        'test_grant',
+        $now,
+    ))->toThrow(InvalidValueObject::class);
+
+    expect(fn () => app(GrantContextualAccess::class)->grant(
+        $aal1,
+        Identifier::fromTrusted((string) $user->id),
+        Capabilities::CONTEXT_DELEGATE,
+        'auth_session',
+        $ids->next(),
+        'self',
+        $ids->next(),
+        'test_grant',
+        $now,
+    ))->toThrow(AuthorizationDenied::class);
+});
+
+it('does not allow a grant on resource A to authorize resource B', function () {
+    $user = User::factory()->create();
+    $admin = User::factory()->create([
+        'account_type' => AccountType::Admin->value,
+        'status' => AccountStatus::Active->value,
+    ]);
+    $ids = app(IdentityGenerator::class);
+    $now = app(Clock::class)->now();
+    $resourceA = $ids->next();
+    $resourceB = $ids->next();
+    $context = $ids->next();
+    $subject = Identifier::fromTrusted((string) $user->id);
+
+    app(GrantContextualAccess::class)->grant(
+        operatorActor(Identifier::fromTrusted((string) $admin->id)),
+        $subject,
+        Capabilities::CONTEXT_DELEGATE,
+        'auth_session',
+        $resourceA,
+        'self',
+        $context,
+        'test_grant',
+        $now,
+    );
+
+    $actor = syntheticActor($subject);
+    $authorizer = app(Authorize::class);
+    $allowed = $authorizer->decide($actor, Capabilities::CONTEXT_DELEGATE, 'auth_session', $resourceA, 'self', $context);
+    $denied = $authorizer->decide($actor, Capabilities::CONTEXT_DELEGATE, 'auth_session', $resourceB, 'self', $context);
+
+    expect($allowed->allowed)->toBeTrue()
+        ->and($denied->allowed)->toBeFalse();
 });

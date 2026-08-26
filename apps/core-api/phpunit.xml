@@ -65,6 +65,10 @@
         <env name="DB_DATABASE" value="clinic_test"/>
         <env name="DB_USERNAME" value="clinic_migrator"/>
         <env name="DB_PASSWORD" value="local_dev_only_not_a_secret"/>
+        <env name="DB_MIGRATION_USERNAME" value="clinic_migrator"/>
+        <env name="DB_MIGRATION_PASSWORD" value="local_dev_only_not_a_secret"/>
+        <env name="DB_AUDIT_USERNAME" value="clinic_audit_writer"/>
+        <env name="DB_AUDIT_PASSWORD" value="local_dev_only_not_a_secret"/>
         <env name="DB_URL" value=""/>
         <env name="APP_VERSION" value="0.0.0-test"/>
         <env name="APP_BUSINESS_TIMEZONE" value="Africa/Cairo"/>

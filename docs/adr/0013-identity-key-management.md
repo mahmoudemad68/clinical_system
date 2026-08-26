@@ -38,7 +38,9 @@ at readiness for any process that handles identity writes.
 during Phase 23. This ADR does **not** authorize application-level keys as the
 production end state. Until that binding exists, identity features stay off in
 production (`APP_ENV=production` keeps registration, claim, and recovery flags
-false regardless of env overrides).
+false regardless of env overrides). Database TLS and the KMS runbook live in
+[production-kms-tls.md](../operations/production-kms-tls.md): production
+readiness fails unless `DB_SSLMODE` is `require`, `verify-ca`, or `verify-full`.
 
 **Rotation.** Dual-read/new-write, resumable backfill job with cursors, metrics
 without plaintext, then retirement of the old version. Decrypt into logs or
