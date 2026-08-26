@@ -1,5 +1,5 @@
 import { app, safeStorage } from 'electron';
-import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { APP_CONFIG } from '../shared/app-config';
 import { assessLocalEncryption } from './local-encryption';
@@ -39,8 +39,13 @@ export function persistDeviceTokens(tokens: DeviceTokens): void {
   const payload = Buffer.from(JSON.stringify(tokens), 'utf8');
   const encrypted = safeStorage.encryptString(payload.toString('base64'));
   const target = credentialPath();
-  writeFileSync(target, encrypted, { flag: 'w' });
-  chmodSync(target, 0o600);
+  const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;
+  if (existsSync(tmp)) {
+    unlinkSync(tmp);
+  }
+  writeFileSync(tmp, encrypted, { flag: 'wx' });
+  chmodSync(tmp, 0o600);
+  renameSync(tmp, target);
 }
 
 export function loadDeviceTokens(): DeviceTokens | null {

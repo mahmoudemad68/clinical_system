@@ -103,6 +103,10 @@ final class EnforceIdempotency
             }
 
             if ($existing->state === IdempotencyState::Succeeded) {
+                if ($this->replaysCredentialsViaHandler($request)) {
+                    return $next($request);
+                }
+
                 return $this->replay($existing->statusCode, $existing->responseReference, $requestId);
             }
 
@@ -235,6 +239,15 @@ final class EnforceIdempotency
         };
     }
 
+    /**
+     * Refresh responses must not replay tokens from idempotency_keys. The
+     * handler reconstructs the lost response from the device envelope.
+     */
+    private function replaysCredentialsViaHandler(Request $request): bool
+    {
+        return $request->is('api/v1/auth/token/refresh');
+    }
+
     private function errorClassFor(int $status): string
     {
         // Stable, non-sensitive labels only. Never a provider message: those
@@ -255,8 +268,16 @@ final class EnforceIdempotency
         }
 
         $token = $request->bearerToken();
+        if ($token !== null && $token !== '') {
+            return hash('sha256', $token);
+        }
 
-        return $token === null ? 'anonymous' : hash('sha256', $token);
+        $phone = $request->input('phone');
+        if (is_string($phone) && $phone !== '') {
+            return 'preauth-phone:'.hash('sha256', $phone);
+        }
+
+        return 'preauth:'.$request->getPathInfo();
     }
 
     private function requestId(Request $request): Identifier

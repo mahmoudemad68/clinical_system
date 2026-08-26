@@ -35,11 +35,13 @@ final class PostgresAuditStore implements AppendAuditEvent
         $id = $this->identities->next();
         $occurred = new DateTimeImmutable('now', new DateTimeZone('UTC'));
 
+        $this->connection->selectOne("SELECT pg_advisory_xact_lock(hashtext('audit_events_chain'))");
+
         $previous = $this->connection->table('audit_events')
-            ->orderByDesc('occurred_at')
-            ->orderByDesc('id')
+            ->orderByDesc('chain_sequence')
             ->value('row_hash');
 
+        $sequence = (int) ($this->connection->selectOne("SELECT nextval('audit_events_chain_sequence_seq') AS n")->n ?? 0);
         $payload = json_encode($metadata, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         $previousBytes = $previous === null ? '' : BinaryColumn::asString($previous);
         $rowHash = hash('sha256', implode('|', [
@@ -48,8 +50,10 @@ final class PostgresAuditStore implements AppendAuditEvent
             $eventName,
             $objectType,
             $objectId->value,
+            (string) ($actorId === null ? '' : $actorId->value),
+            (string) ($actorType ?? ''),
             $payload,
-            $occurred->format(DATE_RFC3339),
+            $occurred->format('Y-m-d\TH:i:s.u\Z'),
         ]), true);
 
         $this->connection->table('audit_events')->insert([
@@ -62,6 +66,7 @@ final class PostgresAuditStore implements AppendAuditEvent
             'metadata' => $payload,
             'previous_hash' => $previous === null ? null : BinaryColumn::bind($previousBytes),
             'row_hash' => BinaryColumn::bind($rowHash),
+            'chain_sequence' => $sequence,
             'occurred_at' => $occurred->format('Y-m-d H:i:s.uP'),
         ]);
 

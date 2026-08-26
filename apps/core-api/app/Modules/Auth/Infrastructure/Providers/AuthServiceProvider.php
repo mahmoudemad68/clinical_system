@@ -69,10 +69,15 @@ final class AuthServiceProvider extends ServiceProvider
             $app->make(ConnectionInterface::class),
         ));
 
-        $this->app->singleton(AuthenticationRateLimiter::class, static fn ($app): AuthenticationRateLimiter => new AuthRateLimiter(
-            $app->make(RateLimiter::class),
-            (array) config('identity.rate_limits'),
-        ));
+        $this->app->singleton(AuthenticationRateLimiter::class, static function ($app): AuthenticationRateLimiter {
+            $store = (string) config('cache.auth_rate_limiter', 'ratelimit');
+            $cache = $app->make('cache')->store($store);
+
+            return new AuthRateLimiter(
+                new RateLimiter($cache),
+                (array) config('identity.rate_limits'),
+            );
+        });
 
         $this->app->singleton(AuthTelemetry::class, PrometheusAuthTelemetry::class);
 

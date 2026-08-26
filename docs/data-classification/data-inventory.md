@@ -227,10 +227,33 @@ Engineering draft. Lawful basis remains blank. Synthetic data only in tests.
 OTP hashes and encrypted codes, TOTP secrets, token hashes, session hashes:
 `credential`. Destinations in events are `otp:{id}` handles, never phones.
 
+### `auth_refresh_consumptions`
+
+| Field | Class | Purpose | Encryption | Owner |
+| --- | --- | --- | --- | --- |
+| `family_id`, `generation` | internal | Refresh family ledger | at rest | Mahmoud |
+| `token_hash` | credential | Consumed refresh HMAC | HMAC | Mahmoud |
+| `consumed_at` | internal | When the generation was retired | at rest | Mahmoud |
+
+### `recovery_requests`
+
+| Field | Class | Purpose | Encryption | Owner |
+| --- | --- | --- | --- | --- |
+| `id`, `user_id`, `otp_id`, `status` | internal | Recovery state machine | at rest | Mahmoud |
+| `new_password_hash` | credential | Argon2id of the proposed password | hash | Mahmoud |
+| `cooling_off_until`, `applied_at` | internal | Cooling-off / apply timestamps | at rest | Mahmoud |
+
+Privileged recoveries stay `manual_review` until an operator acts. Patient apply in tests uses `IDENTITY_RECOVERY_COOLING_OFF_SECONDS=0`.
+
+### `audit_events.chain_sequence`
+
+Monotonic hash-chain sequence. `row_hash` covers actor, object, metadata, and microsecond `occurred_at`. App role is INSERT+SELECT only.
+
 ### Events
 
 `auth.otp_delivery_requested` payload is `internal` and must not contain phones,
-codes, or National IDs. `credential` classification is rejected by the outbox
+codes, or National IDs. `access.grant_issued` / `access.grant_revoked` are
+`internal` identifiers only. `credential` classification is rejected by the outbox
 CHECK.
 
 ---
@@ -250,5 +273,5 @@ CHECK.
    not a patient clinical profile. Procedures must exist before Phase 02 stores
    a patient profile.
 
-Tracked as G-05-02 in the evidence ledger. G-08-04 records owner acceptance of
-this inventory as an engineering draft, not a completed legal basis.
+Tracked as G-05-02 in the evidence ledger. G-08-04 is **OPEN**: independent
+review did not approve this inventory as a legal basis.

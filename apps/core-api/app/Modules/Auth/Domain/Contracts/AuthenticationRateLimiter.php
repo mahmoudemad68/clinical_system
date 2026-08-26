@@ -11,4 +11,8 @@ interface AuthenticationRateLimiter
     public function hitOtp(string $subjectHmac, string $ipPrefix): void;
 
     public function hitRecovery(string $subjectHmac): void;
+
+    public function hitRefresh(string $familyId, string $ipPrefix): void;
+
+    public function hitMfa(string $challengeId, string $ipPrefix): void;
 }

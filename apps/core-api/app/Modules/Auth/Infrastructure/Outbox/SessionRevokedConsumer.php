@@ -7,6 +7,7 @@ namespace App\Modules\Auth\Infrastructure\Outbox;
 use App\Modules\Platform\Application\Outbox\OutboxConsumer;
 use App\Modules\Platform\Infrastructure\Telemetry\PlatformMetrics;
 use DateTimeImmutable;
+use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 /**
@@ -49,5 +50,15 @@ final class SessionRevokedConsumer implements OutboxConsumer
         $this->metrics->set('clinic_session_revocation_latency_seconds', $latency, [
             'client_class' => 'unknown',
         ]);
+
+        try {
+            Redis::connection('realtime')->publish('clinic.session.disconnect', json_encode([
+                'session_id' => $payload['session_id'] ?? '',
+                'user_id' => $payload['user_id'] ?? '',
+                'reason_code' => $payload['reason_code'] ?? '',
+            ], JSON_THROW_ON_ERROR));
+        } catch (Throwable) {
+            // HTTP deny remains authoritative. Publish failure is recorded as lag, not success.
+        }
     }
 }

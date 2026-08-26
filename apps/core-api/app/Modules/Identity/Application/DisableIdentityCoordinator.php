@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Application;
 
+use App\Modules\Access\Domain\Contracts\Authorize;
+use App\Modules\Access\Domain\ValueObjects\Capabilities;
 use App\Modules\Audit\Domain\Contracts\AppendAuditEvent;
 use App\Modules\Auth\Domain\Contracts\AuthDirectory;
 use App\Modules\Auth\Domain\Events\CredentialVersionChanged;
 use App\Modules\Identity\Domain\Contracts\UserDirectory;
 use App\Modules\Identity\Domain\Events\StatusChanged;
 use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
+use App\Modules\Identity\Domain\ValueObjects\ActorContext;
 use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Contracts\TransactionContext;
 use App\Modules\Platform\Domain\Contracts\TransactionRunner;
@@ -30,15 +33,21 @@ final class DisableIdentityCoordinator
         private readonly AuthDirectory $auth,
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
+        private readonly Authorize $authorizer,
     ) {}
 
-    public function handle(Identifier $userId, AccountStatus $target, string $reasonCode): void
+    public function handle(ActorContext $initiator, Identifier $userId, AccountStatus $target, string $reasonCode): void
     {
+        $decision = $this->authorizer->decide($initiator, Capabilities::IDENTITY_DISABLE, 'user', $userId);
+        if (! $decision->allowed) {
+            throw new AuthorizationDenied;
+        }
+
         if ($target === AccountStatus::PendingPhone || $target === AccountStatus::Active) {
             throw new AuthorizationDenied;
         }
 
-        $this->transactions->run(function (TransactionContext $tx) use ($userId, $target, $reasonCode): void {
+        $this->transactions->run(function (TransactionContext $tx) use ($initiator, $userId, $target, $reasonCode): void {
             $user = $this->identities->lockById($userId);
             if ($user === null) {
                 throw new AuthorizationDenied;
@@ -55,7 +64,7 @@ final class DisableIdentityCoordinator
             $this->auth->revokeAllDevices($user->id, $reasonCode, $now);
             $tx->recordEvent(new StatusChanged($user->id, $user->status->value, $target->value, $reasonCode, $now));
             $tx->recordEvent(new CredentialVersionChanged($user->id, $version, $reasonCode, $now));
-            $this->audit->append($tx, 'identity.status_changed', 'user', $user->id, ['reason_code' => $reasonCode], $user->id, 'user');
+            $this->audit->append($tx, 'identity.status_changed', 'user', $user->id, ['reason_code' => $reasonCode], $initiator->userId, 'user');
         });
     }
 }

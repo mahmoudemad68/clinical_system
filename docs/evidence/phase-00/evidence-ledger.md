@@ -14,7 +14,7 @@ prompts, object keys, or exploit payloads.
   Electron Forge 7.11.2 · Docker 29.7.2 · PostgreSQL 16 + PostGIS 3.4 · Redis 7
 - **Status:** Phase 00 is **OPEN**.
 
-**Gate totals — 47 gates: 31 PASS, 15 PARTIAL, 0 BLOCKED, 1 OPEN.**
+**Gate totals — 47 gates: 30 PASS, 15 PARTIAL, 0 BLOCKED, 2 OPEN.**
 
 Reproduce with `node scripts/evidence/count-gates.mjs`. The script matches only
 rows whose first cell is a gate id, and fails on a duplicate id or a mismatched
@@ -52,7 +52,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | G-01-02 | C4 context, container, and one component diagram showing dependency direction | architecture | [c4-context](../../architecture/c4-context.md), [c4-container](../../architecture/c4-container.md), [c4-component](../../architecture/c4-component-module-dependency.md) | `PASS` | Diagrams are Mermaid; no rendering check in CI yet |
 | G-01-03 | Module catalog: owner, public ports, events, tables, classification, prohibited dependencies | architecture | [module-catalog.md](../../architecture/module-catalog.md), 24 modules | `PASS` | Only `Platform` is implemented; the rest are declarations |
 | G-01-04 | CODEOWNERS / review rules for clinical, pharmacy-financial, identity, infrastructure, AI safety | architecture | [.github/CODEOWNERS](../../../.github/CODEOWNERS); [accountable-owners.md](../../governance/accountable-owners.md) | `PARTIAL` | Humans named 2026-08-26: Mahmoud holds clinical, pharmacy, privacy/legal, security, and operations. GitHub `@clinic/...` teams still do not exist, so branch protection cannot enforce the file. Assessor/remediator separation is lost. |
-| G-01-05 | Automated architecture check fails on a known forbidden-dependency fixture, then fixture removed | architecture | `deptrac analyse --config-file=deptrac.yaml` | `PASS` | Clean run after the Inertia/Firebase wiring: 0 violations, 530 allowed, 0 uncovered. Fixture (`Domain` class importing Eloquent + `DB` facade) produced exit 1 with 2 violations; removed, exit 0. Allowed-dependency count rose from the original 216 because Framework now includes `Inertia\\` and Providers includes `Kreait\\`. |
+| G-01-05 | Automated architecture check fails on a known forbidden-dependency fixture, then fixture removed | architecture | `deptrac analyse --config-file=deptrac.yaml --fail-on-uncovered --report-uncovered` | `PASS` | Clean run after ISR remediations: 0 violations, 0 uncovered. Fixture (`Domain` class importing Eloquent + `DB` facade) produced exit 1 with 2 violations; removed, exit 0. |
 
 ## 2. Runtime bootstrap (Phase 00 §2)
 
@@ -66,7 +66,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | G-02-06 | Desktop migration inventory recorded before replacement; no real desktop database silently deleted | desktop, architecture | [desktop-migration-inventory.md](desktop-migration-inventory.md) | `PASS` | Recorded before any file was removed. No `*.db`/`*.sqlite` existed, ADR 0006's encryption spike never closed so no build was permitted to write clinical content locally, and neither app was ever packaged. Safe to replace; no export/import plan required. |
 | G-02-07 | Dart/Melos workspace holds the patient app only; npm workspaces hold admin web and both Electron desktops | architecture, desktop | `melos bootstrap`; `npm ls --workspaces` | `PASS` | Melos bootstraps 12 packages (was 14): patient app plus 11 Dart packages, no desktop entries. npm workspaces resolve admin-web, both desktops, and 6 `packages/typescript/*`. No mixed runtime remains in either desktop app. |
 | G-02-08 | Doctor and pharmacy differ across every security-relevant namespace | desktop, security | `npm run desktop:test` | `PASS` | App ID, product/executable name, user-data directory, protocol scheme, asset scheme, encrypted-DB namespace, device-credential namespace, capability registry, and update channel all distinct, asserted per app including a check that neither config contains the sibling's identity. |
-| G-02-09 | Electron trust boundary: sandbox, context isolation, no Node in renderer, strict CSP, no generic IPC, validated sender, fuses | desktop, security | `npm run desktop:test` | `PARTIAL` | 35 tests per app. 8 are **behavioural**, exercising the extracted sender-origin policy with hostile inputs rather than grepping source; they found a real defect (a credentialed URL `scheme://user:pass@-/` satisfied the origin comparison) which is now rejected. Sender validation additionally checks WebContents identity and top-level frame, and the dev-server branch is gated on `!app.isPackaged`. `GrantFileProtocolExtraPrivileges` disabled per Electron guidance. Proven capable of failing. **The packaged-window half is not done** — WebdriverIO against a real installed artifact per OS, plus binary fuse inspection, is outstanding (G-02-10). |
+| G-02-09 | Electron trust boundary: sandbox, context isolation, no Node in renderer, strict CSP, no generic IPC, validated sender, fuses | desktop, security | `npm run desktop:test` | `PARTIAL` | 37 tests per app. 8 are **behavioural**, exercising the extracted sender-origin policy with hostile inputs rather than grepping source; they found a real defect (a credentialed URL `scheme://user:pass@-/` satisfied the origin comparison) which is now rejected. Sender validation additionally checks WebContents identity and top-level frame, and the dev-server branch is gated on `!app.isPackaged`. `GrantFileProtocolExtraPrivileges` disabled per Electron guidance. Proven capable of failing. **The packaged-window half is not done** — WebdriverIO against a real installed artifact per OS, plus binary fuse inspection, is outstanding (G-02-10). |
 | G-02-10 | Packaged-artifact Electron E2E: WebdriverIO on the approved OS/architecture matrix, installed-package tests, and binary fuse inspection | desktop, test-engineering | — | `OPEN` | No packaged suite, no installed artifact, no OS matrix, and no verification that the fuses are actually flipped in a built binary. Configuration intent is asserted; runtime behaviour is not. Requires `wdio-electron-service` and a build per target. |
 
 ## 3. Contract workflow (Phase 00 §3)
@@ -84,7 +84,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
-| G-04-01 | PostgreSQL/PostGIS with least-privilege app and migration roles | postgresql | [01-roles-and-extensions.sql](../../../infra/docker/postgres/initdb/01-roles-and-extensions.sql); `\du` shows 5 roles with connection caps | `PASS` | `clinic_app`/`worker`/`reporter` hold no DDL; `pgsql_migrator` connection is the only DDL path |
+| G-04-01 | PostgreSQL/PostGIS with least-privilege app and migration roles | postgresql | [01-roles-and-extensions.sql](../../../infra/docker/postgres/initdb/01-roles-and-extensions.sql); `PostgresPrivilegeTest`; `\du` | `PASS` | App/worker/reporter/audit-writer/backup are distinct. Reporter has no SELECT on `users`/`otp_requests` and can read `reporting.*` views. Worker cannot read `users` or update grants. App can INSERT audit rows but not UPDATE/DELETE. Production DBA review of live grants is not done. CI has not run this branch. |
 | G-04-02 | Migration conventions and transactional migration checks | postgresql | Platform + Laravel default migrations applied: `migrate:fresh` → DONE | `PARTIAL` | Expand→backfill→contract convention documented in ADR 0008/§4; no automated lock-duration check yet. `notifications` is on the production path. Telescope schema is loaded only when `APP_ENV=local` from `database/telescope/`. |
 | G-04-03 | Reference abstractions: UUIDv7, clock, transaction runner, pagination cursor, money, country/currency, safe identifiers | platform | `./vendor/bin/pest --filter ValueObjectTest`; `./vendor/bin/pest --filter CursorAndIdempotencyKeyTest`; `./vendor/bin/pest --filter RequestHashAndRetryTest` | `PASS` | Cursor HMAC round-trip, actor-scope mismatch, tamper rejection; idempotency keys hashed and scoped to actor/operation; canonical JSON hash ignores key order. |
 | G-04-04 | Generic outbox and idempotency storage with cleanup/retention jobs | platform, postgresql | `./vendor/bin/pest --filter OutboxDispatcherTest`; `platform:prune` | `PASS` | Dispatcher claims with `FOR UPDATE SKIP LOCKED` under a lease. Tests cover exactly-once under forced duplicate delivery, disjoint claims, lease recovery, backoff, dead-lettering, unsupported-version rejection, and dual-read of additive v2. `platform:prune` deletes in chunks and never prunes dead letters. |
@@ -126,10 +126,10 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
-| G-08-01 | STRIDE + privacy threat model across the 7 named trust boundaries | security | [phase-00-foundation.md](../../threat-models/phase-00-foundation.md) | `PARTIAL` | All 7 boundaries analysed with STRIDE, plus every named threat from the phase file and 4 residual risks. Named owner accepted this draft (G-08-04). **Not independently reviewed** — Phase 22 remains the independent re-review. |
+| G-08-01 | STRIDE + privacy threat model across the 7 named trust boundaries | security | [phase-00-foundation.md](../../threat-models/phase-00-foundation.md) | `PARTIAL` | All 7 boundaries analysed with STRIDE, plus named threats and residual risks. **G-08-04 remains OPEN** after the 2026-08-26 independent review. Phase 22 remains the independent re-review. |
 | G-08-02 | Mandatory controls: deny-by-default, request/content-size limits, safe parsers, no wildcard CORS, secure admin headers, secrets withheld from fork jobs, non-root/read-only containers, SBOM provenance, config/flag/secret audit trail, tested redaction, documented emergency rotation | security | `EnforceRequestBounds`; `CorsPolicyTest`; `PersonaStatusPageTest`; `ConfigChangeAuditor`; [emergency-credential-rotation.md](../../runbooks/emergency-credential-rotation.md) | `PARTIAL` | Audit trail and rotation runbook added. CORS origin `*` rejected by test. Inertia pages emit a same-origin CSP; API responses remain `default-src 'none'`. Telescope is local-only and off the production migration path. SBOM provenance still unexecuted (no GitHub remote). Secret-scanning policy exists in CI YAML only. |
 | G-08-03 | Versioned mappings to OWASP ASVS 5.0.0, OWASP API Security, OWASP MASVS/MASTG | security | [owasp-asvs-mapping.md](../../security/owasp-asvs-mapping.md) | `PASS` | Engineering taxonomy with APPLIED/PARTIAL/NOT_APPLICABLE/NOT_TESTED. Explicitly not statutory compliance. Owner acceptance of the Phase 00 draft is G-08-04; independent re-review remains Phase 22. |
-| G-08-04 | Threat model and data classification have security/privacy approval | security, privacy | [accountable-owners.md](../../governance/accountable-owners.md); [phase-00-foundation.md](../../threat-models/phase-00-foundation.md); [data-inventory.md](../../data-classification/data-inventory.md) | `PASS` | Named security and privacy owner (Mahmoud) accepted the engineering drafts on 2026-08-26 when instructing Phase 00 closure of this gate. **Assessor/remediator separation is lost.** Not statutory compliance. Independent re-review remains Phase 22. G-02-10 and G-06-01 are not waived. |
+| G-08-04 | Threat model and data classification have security/privacy approval | security, privacy | [independent-phase-00-phase-01-review-2026-08-26.md](../security-review/independent-phase-00-phase-01-review-2026-08-26.md) | `OPEN` | Independent review on 2026-08-26 recommended **DO NOT APPROVE**. Assessor/remediator separation is lost (Mahmoud holds every named owner role). This implementer cannot close G-08-04. Independent retest is required after ISR remediations. Not statutory compliance. |
 
 ## 9. Test plan (Phase 00 "Test plan")
 
@@ -244,8 +244,8 @@ the database actually did. Neither would have failed a happy-path test.
 
 ## Honest summary
 
-**47 gates: 31 PASS, 15 PARTIAL, 0 BLOCKED, 1 OPEN** (reproduce with
-`node scripts/evidence/count-gates.mjs --expect PASS=31,PARTIAL=15,BLOCKED=0,OPEN=1`).
+**47 gates: 30 PASS, 15 PARTIAL, 0 BLOCKED, 2 OPEN** (reproduce with
+`node scripts/evidence/count-gates.mjs --expect PASS=30,PARTIAL=15,BLOCKED=0,OPEN=2`).
 
 All six deployment units build, lint, type-check, and test green:
 
@@ -295,16 +295,17 @@ satisfied the comparison.
 - **Redaction is proven on the in-process export path** (G-07-05). OTLP HTTP
   export is wired behind a fail-safe exporter when `OTEL_ENABLED` is true;
   a live collector round-trip has not been proven (G-07-01).
-- **`clinic_reporter` can read every table.** Harmless now, unacceptable before
-  Phase 01 stores a patient profile.
-- **No authorization layer exists.** Independent security/privacy re-review is
-  deferred to Phase 22. The named owner accepted the Phase 00 drafts (G-08-04)
-  with assessor/remediator separation lost.
+- **`clinic_reporter` is limited to reporting views** on identity data in local
+  `clinic_test` (`PostgresPrivilegeTest`). Production grant review is still
+  outstanding.
+- **No authorization layer exists for later clinical modules.** Independent
+  security/privacy re-review is deferred to Phase 22. **G-08-04 is OPEN** after
+  the 2026-08-26 independent review (DO NOT APPROVE). Assessor/remediator
+  separation is lost.
 - **No SBOM has been produced, and no load test has ever run.** Linux
   encrypted-store tests and unsigned Electron packages exist; they do not close
   G-02-10 or five-platform G-06-01.
 
 Phase 00 must not be described as complete. Packaged Electron E2E (G-02-10)
 remains OPEN. The local-encryption spike (G-06-01) is PARTIAL: Linux passed;
-the other four OS targets have not run. Owner naming and G-08-04 acceptance
-do not waive them.
+the other four OS targets have not run. G-08-04 is OPEN and does not waive them.

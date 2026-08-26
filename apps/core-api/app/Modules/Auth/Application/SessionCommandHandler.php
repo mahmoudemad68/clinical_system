@@ -17,6 +17,7 @@ use App\Modules\Identity\Domain\ValueObjects\ActorContext;
 use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Contracts\TransactionContext;
 use App\Modules\Platform\Domain\Contracts\TransactionRunner;
+use App\Modules\Platform\Domain\Exceptions\AuthenticationFailed;
 use App\Modules\Platform\Domain\Exceptions\AuthorizationDenied;
 use App\Modules\Platform\Domain\ValueObjects\Identifier;
 
@@ -57,6 +58,40 @@ final class SessionCommandHandler
         }
 
         return $out;
+    }
+
+    public function logoutCurrent(ActorContext $actor): void
+    {
+        $this->transactions->run(function (TransactionContext $tx) use ($actor): void {
+            $now = $this->clock->now();
+            $sessionId = $actor->sessionId;
+            $deviceId = $actor->deviceId;
+
+            if ($sessionId === null && $deviceId !== null) {
+                $row = $this->auth->findActiveSessionByDevice($deviceId);
+                $sessionId = $row !== null ? Identifier::fromTrusted((string) $row->id) : null;
+            }
+
+            if ($sessionId === null && $deviceId === null) {
+                throw new AuthenticationFailed;
+            }
+
+            if ($sessionId !== null) {
+                $this->auth->revokeSession($sessionId, 'user_logout', $now);
+            }
+            if ($deviceId !== null) {
+                $this->auth->revokeDevice($deviceId, 'user_logout', $now);
+                $this->auth->revokeSessionsForDevice($deviceId, 'user_logout', $now);
+            }
+
+            $eventId = $sessionId ?? $deviceId;
+            if ($eventId === null) {
+                throw new AuthenticationFailed;
+            }
+
+            $tx->recordEvent(new SessionRevoked($actor->userId, $eventId, 'user_logout', $now));
+            $this->audit->append($tx, 'auth.session_revoked', 'auth_session', $eventId, ['reason_code' => 'user_logout'], $actor->userId, 'user');
+        });
     }
 
     public function revoke(ActorContext $actor, string $sessionId): void

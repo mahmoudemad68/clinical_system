@@ -44,9 +44,8 @@ final class DefaultDenyAuthorizer implements Authorize
             return AuthorizationDecision::deny('pending_restricted', $group);
         }
 
-        if ($actor->accountType->requiresTotpForPrivilegedSession()
-            && ! $actor->assuranceLevel->satisfiesPrivilegedSession()
-            && $this->requiresPrivilege($action)) {
+        if ($this->requiresPrivilege($action)
+            && ($actor->accountType->value !== 'admin' || ! $actor->assuranceLevel->satisfiesPrivilegedSession())) {
             return AuthorizationDecision::deny('insufficient_assurance', $group);
         }
 
@@ -74,7 +73,12 @@ final class DefaultDenyAuthorizer implements Authorize
 
     private function requiresPrivilege(string $action): bool
     {
-        return $action === Capabilities::MFA_MANAGE_SELF;
+        return in_array($action, [
+            Capabilities::MFA_MANAGE_SELF,
+            Capabilities::ACCESS_GRANT_ISSUE,
+            Capabilities::ACCESS_GRANT_REVOKE,
+            Capabilities::IDENTITY_DISABLE,
+        ], true);
     }
 
     private function actionGroup(string $action): string

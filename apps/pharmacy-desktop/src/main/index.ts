@@ -107,7 +107,9 @@ function createWindow(): void {
   trustWindow(window);
 
   applyWindowPolicies(window);
-  void window.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
+  void window.loadURL(
+    isDevelopment ? MAIN_WINDOW_WEBPACK_ENTRY : `${APP_CONFIG.packagedOrigin}/index.html`,
+  );
 }
 
 /**
@@ -178,17 +180,25 @@ function isPackagedAsset(url: string): boolean {
   }
 }
 
+function isPathInside(root: string, candidate: string): boolean {
+  const resolvedRoot = path.resolve(root);
+  const resolved = path.resolve(candidate);
+  const relative = path.relative(resolvedRoot, resolved);
+
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
 /** Serve packaged renderer assets from the privileged custom scheme. */
 function registerAssetProtocol(): void {
   protocol.handle(APP_CONFIG.assetProtocolScheme, async (request) => {
     const { pathname } = new URL(request.url);
-    const root = path.join(__dirname, 'renderer');
+    const root = path.join(__dirname, '..', 'renderer', 'main_window');
 
     // Resolve and confirm containment. Without this check a crafted
     // `../../` path reads arbitrary files with the app's privileges.
     const resolved = path.normalize(path.join(root, pathname === '/' ? 'index.html' : pathname));
 
-    if (!resolved.startsWith(root)) {
+    if (!isPathInside(root, resolved)) {
       return new Response('Forbidden', { status: 403 });
     }
 

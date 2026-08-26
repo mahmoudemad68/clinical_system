@@ -123,11 +123,13 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->singleton(FieldEncryptor::class, static fn (): FieldEncryptor => new AesGcmEnvelopeEncryptor(
             array_map(static fn (mixed $key): string => (string) $key, (array) config('identity.encryption.keys', [])),
             (int) config('identity.encryption.current_version', 1),
+            (int) config('identity.encryption.min_key_length', 32),
         ));
 
         $this->app->singleton(HmacHasher::class, static fn (): HmacHasher => new HkdfHmacHasher(
             array_map(static fn (mixed $key): string => (string) $key, (array) config('identity.hmac.keys', [])),
             (int) config('identity.hmac.current_version', 1),
+            (int) config('identity.hmac.min_key_length', 32),
         ));
 
         $this->app->singleton(TelemetryGateway::class, static function ($app): TelemetryGateway {

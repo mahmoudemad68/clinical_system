@@ -85,6 +85,20 @@ return Application::configure(basePath: dirname(__DIR__))
             ValidateCookieCsrf::class,
         ]);
 
+        $proxies = array_values(array_filter(array_map(
+            static fn (string $hop): string => trim($hop),
+            explode(',', (string) env('TRUSTED_PROXIES', '')),
+        )));
+        if ($proxies !== []) {
+            $middleware->trustProxies(
+                at: $proxies,
+                headers: Request::HEADER_X_FORWARDED_FOR
+                    | Request::HEADER_X_FORWARDED_HOST
+                    | Request::HEADER_X_FORWARDED_PORT
+                    | Request::HEADER_X_FORWARDED_PROTO,
+            );
+        }
+
         // Device-token API remains stateless. Admin cookie issuance uses the
         // identity.session group on the login/MFA/logout routes only.
         $middleware->statefulApi(false);

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:clinic_secure_storage/clinic_secure_storage.dart';
 
 abstract interface class CredentialVault {
@@ -28,25 +31,64 @@ final class SecureStorageVault implements CredentialVault {
 /// Access and refresh material in the platform key store.
 ///
 /// Keys are opaque. Values never go to Drift, analytics, or crash reports.
+/// Access and refresh are written as one versioned envelope so a crash cannot
+/// leave a split pair.
 class TokenStore {
   TokenStore(this._storage);
 
+  static const envelopeKey = 'auth.envelope.v1';
   static const accessKey = 'auth.access';
   static const refreshKey = 'auth.refresh';
 
   final CredentialVault _storage;
 
   Future<void> write({required String access, required String refresh}) async {
-    await _storage.write(key: accessKey, value: access);
-    await _storage.write(key: refreshKey, value: refresh);
-  }
-
-  Future<String?> readAccess() => _storage.read(accessKey);
-
-  Future<String?> readRefresh() => _storage.read(refreshKey);
-
-  Future<void> clear() async {
+    final envelope = jsonEncode({
+      'version': 1,
+      'access': access,
+      'refresh': refresh,
+    });
+    await _storage.write(key: envelopeKey, value: envelope);
     await _storage.delete(accessKey);
     await _storage.delete(refreshKey);
   }
+
+  Future<Map<String, String>?> _readEnvelope() async {
+    final raw = await _storage.read(envelopeKey);
+    if (raw != null && raw.isNotEmpty) {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic> &&
+          decoded['access'] is String &&
+          decoded['refresh'] is String) {
+        return {
+          'access': decoded['access'] as String,
+          'refresh': decoded['refresh'] as String,
+        };
+      }
+      return null;
+    }
+
+    final access = await _storage.read(accessKey);
+    final refresh = await _storage.read(refreshKey);
+    if (access != null && refresh != null) {
+      return {'access': access, 'refresh': refresh};
+    }
+    return null;
+  }
+
+  Future<String?> readAccess() async => (await _readEnvelope())?['access'];
+
+  Future<String?> readRefresh() async => (await _readEnvelope())?['refresh'];
+
+  Future<void> clear() async {
+    await _storage.delete(envelopeKey);
+    await _storage.delete(accessKey);
+    await _storage.delete(refreshKey);
+  }
+}
+
+String newRefreshIdempotencyKey() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 }

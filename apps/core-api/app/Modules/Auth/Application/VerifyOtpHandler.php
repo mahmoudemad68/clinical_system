@@ -6,6 +6,7 @@ namespace App\Modules\Auth\Application;
 
 use App\Modules\Audit\Domain\Contracts\AppendAuditEvent;
 use App\Modules\Auth\Domain\Contracts\AuthDirectory;
+use App\Modules\Auth\Domain\ValueObjects\ClientClass;
 use App\Modules\Auth\Domain\ValueObjects\OtpPurpose;
 use App\Modules\Identity\Domain\Contracts\UserDirectory;
 use App\Modules\Identity\Domain\Events\PhoneVerified;
@@ -74,6 +75,11 @@ final class VerifyOtpHandler
             $user = $this->identities->findByPhoneHmac((string) $row->subject_lookup_hmac);
 
             if ($user === null) {
+                return ['denied' => true];
+            }
+
+            $class = ClientClass::from($clientClass);
+            if (! $class->compatibleWith($user->accountType->value)) {
                 return ['denied' => true];
             }
 

@@ -47,6 +47,19 @@ interface AuthDirectory
 
     public function findDeviceByAccessHash(string $hash): ?stdClass;
 
+    public function recordConsumedRefresh(string $familyId, string $tokenHash, int $generation, DateTimeImmutable $now): void;
+
+    public function consumedRefreshExists(string $hash): bool;
+
+    public function storeRefreshReplay(
+        Identifier $deviceId,
+        string $idempotencyHmac,
+        string $cipher,
+        DateTimeImmutable $expiresAt,
+    ): void;
+
+    public function clearRefreshReplay(Identifier $deviceId): void;
+
     public function rotateDeviceTokens(
         Identifier $deviceId,
         string $accessHash,
@@ -73,6 +86,12 @@ interface AuthDirectory
 
     public function findSessionByHash(string $hash): ?stdClass;
 
+    public function findActiveSessionByDevice(Identifier $deviceId): ?stdClass;
+
+    public function bindCookieSessionHash(Identifier $sessionId, string $hash, DateTimeImmutable $now): void;
+
+    public function updateSessionAccessHash(Identifier $deviceId, string $accessHash, DateTimeImmutable $now): void;
+
     public function latestCookieSession(Identifier $userId): ?stdClass;
 
     /**
@@ -83,6 +102,8 @@ interface AuthDirectory
     public function countActiveSessions(DateTimeImmutable $now): int;
 
     public function revokeSession(Identifier $id, string $reason, DateTimeImmutable $now): void;
+
+    public function revokeSessionsForDevice(Identifier $deviceId, string $reason, DateTimeImmutable $now): void;
 
     public function revokeAllSessions(Identifier $userId, string $reason, DateTimeImmutable $now): void;
 
@@ -106,10 +127,27 @@ interface AuthDirectory
      */
     public function insertTotpFactor(array $row): void;
 
+    public function pendingTotp(Identifier $userId): ?stdClass;
+
+    public function markTotpVerified(Identifier $factorId, DateTimeImmutable $now): void;
+
     /**
      * @param  list<array<string, mixed>>  $rows
      */
     public function insertRecoveryCodes(array $rows): void;
+
+    public function consumeRecoveryCode(Identifier $id, DateTimeImmutable $now): void;
+
+    public function insertRecoveryRequest(
+        Identifier $id,
+        Identifier $userId,
+        Identifier $otpId,
+        string $status,
+        string $passwordHash,
+        ?DateTimeImmutable $coolingOffUntil,
+        ?DateTimeImmutable $appliedAt,
+        DateTimeImmutable $now,
+    ): void;
 
     public function pruneExpiredOtps(DateTimeImmutable $now): int;
 

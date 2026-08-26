@@ -36,6 +36,18 @@ final class AuthRateLimiter implements AuthenticationRateLimiter
         $this->hit('auth-recovery-subject:'.bin2hex($subjectHmac), (int) $this->limits['recovery_per_subject_per_hour'], 3600);
     }
 
+    public function hitRefresh(string $familyId, string $ipPrefix): void
+    {
+        $this->hit('auth-refresh-family:'.$familyId, (int) ($this->limits['refresh_per_device_per_minute'] ?? 30), 60);
+        $this->hit('auth-refresh-ip:'.$ipPrefix, (int) ($this->limits['refresh_per_ip_per_minute'] ?? 60), 60);
+    }
+
+    public function hitMfa(string $challengeId, string $ipPrefix): void
+    {
+        $this->hit('auth-mfa-challenge:'.$challengeId, (int) ($this->limits['mfa_per_challenge_per_minute'] ?? 10), 60);
+        $this->hit('auth-mfa-ip:'.$ipPrefix, (int) ($this->limits['login_per_ip_per_minute'] ?? 20), 60);
+    }
+
     private function hit(string $key, int $max, int $decay): void
     {
         if ($this->limiter->tooManyAttempts($key, $max)) {

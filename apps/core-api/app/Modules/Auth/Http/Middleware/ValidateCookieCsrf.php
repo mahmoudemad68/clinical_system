@@ -6,17 +6,15 @@ namespace App\Modules\Auth\Http\Middleware;
 
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
- * CSRF for admin cookie sessions only.
+ * CSRF for browser cookie sessions and admin login-completion.
  *
- * Device bearer requests never send a CSRF header. Enforcing CSRF on them would
- * force every Flutter/Electron client to start a cookie session, which mixes the
- * two schemes the phase forbids.
- *
- * Laravel's base class skips CSRF while `runningUnitTests()` is true. That would
- * make the cookie/CSRF suite unable to fail, so this subclass keeps verification
- * on in tests.
+ * Device bearer requests never send a CSRF header. Exemption is never based
+ * on a client-supplied client_class field (ISR-003): MFA completion reads the
+ * stored challenge row, and other pre-auth browser POSTs are detected via
+ * Origin / session cookies.
  */
 final class ValidateCookieCsrf extends ValidateCsrfToken
 {
@@ -40,10 +38,38 @@ final class ValidateCookieCsrf extends ValidateCsrfToken
             return true;
         }
 
-        if ($request->input('client_class') === 'admin_web') {
+        if ($this->isCookieClassMfaCompletion($request)) {
             return false;
         }
 
-        return $request->user('web') === null;
+        if ($request->headers->has('Origin') || $request->headers->has('Referer')) {
+            return false;
+        }
+
+        if ($request->cookies->has((string) config('session.cookie', 'clinic_session'))) {
+            return false;
+        }
+
+        if ($request->user('web') !== null) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isCookieClassMfaCompletion(Request $request): bool
+    {
+        if (! $request->is('api/v1/auth/mfa/challenges/*/verify') && ! $request->routeIs('api.v1.auth.mfa.verify')) {
+            return false;
+        }
+
+        $id = $request->route('id');
+        if (! is_string($id) || $id === '') {
+            return false;
+        }
+
+        $class = DB::table('mfa_challenges')->where('id', $id)->value('client_class');
+
+        return $class === 'admin_web';
     }
 }

@@ -84,6 +84,8 @@ parameters:
           value: ^Symfony\\Component\\HttpKernel\\.*
         - type: classLike
           value: ^Inertia\\.*
+        - type: classLike
+          value: ^App\\Models\\.*
 
     - name: Providers
       collectors:
@@ -105,6 +107,8 @@ parameters:
           value: ^Predis\\.*
         - type: classLike
           value: ^Kreait\\.*
+        - type: classLike
+          value: ^OTPHP\\.*
 
     # Value-object support libraries the Domain layer is permitted to use.
     # symfony/uid is a pure value type with no framework coupling; brick/money

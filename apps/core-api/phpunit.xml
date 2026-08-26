@@ -42,6 +42,11 @@
         <env name="REVERB_PORT" value="8081"/>
         <env name="REVERB_SCHEME" value="http"/>
         <env name="CACHE_STORE" value="array"/>
+        <env name="AUTH_RATE_LIMIT_STORE" value="ratelimit"/>
+        <env name="AUTH_RATE_LIMIT_DRIVER" value="array"/>
+        <env name="IDENTITY_RECOVERY_COOLING_OFF_SECONDS" value="0"/>
+        <env name="IDENTITY_HMAC_KEY_V2" value="test_identity_hmac_v2_not_a_secret_value!!"/>
+        <env name="IDENTITY_ENCRYPTION_KEY_V2" value="test_identity_enc_v2_not_a_secret_value!!"/>
         <!--
             Feature tests run against real PostgreSQL, not SQLite.
 

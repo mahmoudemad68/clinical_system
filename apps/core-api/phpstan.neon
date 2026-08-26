@@ -1,4 +1,5 @@
 includes:
+    - phpstan-identity-env.neon
     - vendor/larastan/larastan/extension.neon
 
 parameters:

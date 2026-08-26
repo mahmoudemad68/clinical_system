@@ -76,6 +76,20 @@ final class PostgresGrantStore implements GrantStore
         }
     }
 
+    public function find(Identifier $id): ?array
+    {
+        $row = $this->connection->table('contextual_access_grants')->where('id', $id->value)->first();
+
+        if (! $row instanceof stdClass) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $row->id,
+            'actor_user_id' => (string) $row->actor_user_id,
+        ];
+    }
+
     public function revoke(Identifier $id, DateTimeImmutable $now): void
     {
         $this->connection->table('contextual_access_grants')->where('id', $id->value)->update([

@@ -34,6 +34,11 @@ interface GrantStore
         ?DateTimeImmutable $validUntil,
     ): void;
 
+    /**
+     * @return array{id: string, actor_user_id: string}|null
+     */
+    public function find(Identifier $id): ?array;
+
     public function revoke(Identifier $id, DateTimeImmutable $now): void;
 
     /**

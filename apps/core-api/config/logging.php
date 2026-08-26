@@ -73,6 +73,7 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'max_files' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+            'tap' => [RedactingLogTap::class],
         ],
 
         'monthly' => [
@@ -81,6 +82,7 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'max_files' => 3,
             'replace_placeholders' => true,
+            'tap' => [RedactingLogTap::class],
         ],
 
         'slack' => [
@@ -90,6 +92,7 @@ return [
             'emoji' => env('LOG_SLACK_EMOJI', ':boom:'),
             'level' => env('LOG_LEVEL', 'critical'),
             'replace_placeholders' => true,
+            'tap' => [RedactingLogTap::class],
         ],
 
         'papertrail' => [
@@ -102,6 +105,7 @@ return [
                 'connectionString' => 'tls://'.env('PAPERTRAIL_URL').':'.env('PAPERTRAIL_PORT'),
             ],
             'processors' => [PsrLogMessageProcessor::class],
+            'tap' => [RedactingLogTap::class],
         ],
 
         'stderr' => [
@@ -121,12 +125,14 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'facility' => env('LOG_SYSLOG_FACILITY', LOG_USER),
             'replace_placeholders' => true,
+            'tap' => [RedactingLogTap::class],
         ],
 
         'errorlog' => [
             'driver' => 'errorlog',
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'tap' => [RedactingLogTap::class],
         ],
 
         'null' => [
@@ -135,7 +141,16 @@ return [
         ],
 
         'emergency' => [
+            'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
+            'level' => 'error',
+            'tap' => [RedactingLogTap::class],
+        ],
+
+        'sentry' => [
+            'driver' => 'sentry',
+            'level' => env('SENTRY_LOG_LEVEL', 'error'),
+            'tap' => [RedactingLogTap::class],
         ],
 
     ],

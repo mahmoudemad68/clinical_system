@@ -172,7 +172,8 @@ describe('Clinic Doctor — window security configuration', () => {
   it('contains asset path traversal', () => {
     // Without the containment check a crafted ../.. path reads arbitrary files
     // with the application's privileges.
-    expect(main).toContain('resolved.startsWith(root)');
+    expect(main).toContain('path.relative');
+    expect(main).toContain("startsWith('..')");
   });
 
   it('declares a CSP that forbids remote script and any renderer connection', () => {

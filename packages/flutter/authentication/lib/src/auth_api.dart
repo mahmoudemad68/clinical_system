@@ -11,6 +11,7 @@ class AuthApi {
 
   final ClinicHttpClient _client;
   final TokenStore _tokens;
+  String? _refreshIdempotencyKey;
 
   Future<OtpChallenge> register({
     required String name,
@@ -76,27 +77,29 @@ class AuthApi {
     if (current == null || current.isEmpty) {
       return false;
     }
+    _refreshIdempotencyKey ??= newRefreshIdempotencyKey();
     try {
       final data = await _post('/api/v1/auth/token/refresh', {
         'refresh_token': current,
-      }, idempotencyKey: 'refresh-${DateTime.now().toUtc().millisecondsSinceEpoch}');
+      }, idempotencyKey: _refreshIdempotencyKey);
       await _persistIfDevice(data);
+      _refreshIdempotencyKey = null;
       return true;
-    } on ApiFailure {
-      await _tokens.clear();
-      _client.setAuthToken(null);
+    } on ApiFailure catch (failure) {
+      if (failure.statusCode == 401) {
+        await _tokens.clear();
+        _client.setAuthToken(null);
+        _refreshIdempotencyKey = null;
+      }
       return false;
     }
   }
 
   Future<void> logout() async {
-    try {
-      await _post('/api/v1/auth/logout', {});
-    } on ApiFailure {
-      // Local clear still happens; server revoke is best-effort after 401.
-    }
+    await _post('/api/v1/auth/logout', {});
     await _tokens.clear();
     _client.setAuthToken(null);
+    _refreshIdempotencyKey = null;
   }
 
   Future<Map<String, dynamic>> me() async {

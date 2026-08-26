@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Application;
 
 use App\Modules\Access\Domain\ValueObjects\Capabilities;
+use App\Modules\Audit\Domain\Contracts\AppendAuditEvent;
 use App\Modules\Auth\Domain\Contracts\AuthDirectory;
 use App\Modules\Auth\Domain\Events\SessionRevoked;
 use App\Modules\Auth\Domain\ValueObjects\ClientClass;
@@ -14,6 +15,7 @@ use App\Modules\Identity\Domain\UserAccount;
 use App\Modules\Identity\Domain\ValueObjects\AssuranceLevel;
 use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
 use App\Modules\Platform\Domain\Contracts\TransactionContext;
+use App\Modules\Platform\Domain\Exceptions\AuthenticationFailed;
 use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use DateTimeImmutable;
 
@@ -24,6 +26,7 @@ final class IssueAuthenticatedSession
         private readonly UserDirectory $identities,
         private readonly CredentialIssuer $credentials,
         private readonly IdentityGenerator $ids,
+        private readonly AppendAuditEvent $audit,
     ) {}
 
     /**
@@ -42,6 +45,10 @@ final class IssueAuthenticatedSession
         $devicePlatform = DevicePlatform::from($platform);
         $needsTotp = $user->accountType->requiresTotpForPrivilegedSession();
         $assurance ??= AssuranceLevel::Aal1Password;
+
+        if (! $class->compatibleWith($user->accountType->value)) {
+            throw new AuthenticationFailed;
+        }
 
         if ($needsTotp && ! $assurance->satisfiesPrivilegedSession()) {
             $challengeId = $this->ids->next();
@@ -92,13 +99,18 @@ final class IssueAuthenticatedSession
                 'updated_at' => $now->format('Y-m-d H:i:s.uP'),
             ]);
 
+            $this->audit->append($tx, 'auth.session_issued', 'auth_session', $sessionId, [
+                'reason_code' => 'issued',
+                'session_kind' => 'admin_cookie',
+            ], $user->id, 'user');
+
             return [
                 'mfa_required' => false,
                 'session_kind' => 'admin_cookie',
                 'session_id' => $sessionId->value,
                 'user_id' => $user->id->value,
                 'status' => $user->status->value,
-                'capabilities' => Capabilities::AUTHENTICATED_SELF,
+                'capabilities' => Capabilities::forActor($user->accountType->value, $issuedAssurance->satisfiesPrivilegedSession()),
                 'assurance_level' => $issuedAssurance->value,
             ];
         }
@@ -149,6 +161,11 @@ final class IssueAuthenticatedSession
             'updated_at' => $now->format('Y-m-d H:i:s.uP'),
         ]);
 
+        $this->audit->append($tx, 'auth.session_issued', 'auth_session', $sessionId, [
+            'reason_code' => 'issued',
+            'session_kind' => 'device',
+        ], $user->id, 'user');
+
         return [
             'mfa_required' => false,
             'session_kind' => 'device',
@@ -159,7 +176,7 @@ final class IssueAuthenticatedSession
             'access_token' => $access,
             'refresh_token' => $refresh,
             'expires_in' => $accessTtl,
-            'capabilities' => Capabilities::AUTHENTICATED_SELF,
+            'capabilities' => Capabilities::forActor($user->accountType->value, $issuedAssurance->satisfiesPrivilegedSession()),
             'assurance_level' => $issuedAssurance->value,
         ];
     }
@@ -167,6 +184,7 @@ final class IssueAuthenticatedSession
     public function revokeFamily(TransactionContext $tx, string $familyId, Identifier $userId, Identifier $sessionId, string $reason, DateTimeImmutable $now): void
     {
         $this->auth->revokeDeviceFamily($familyId, $reason, $now);
+        $this->auth->revokeSession($sessionId, $reason, $now);
         $tx->recordEvent(new SessionRevoked($userId, $sessionId, $reason, $now));
     }
 }

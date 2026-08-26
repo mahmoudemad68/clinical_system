@@ -36,7 +36,10 @@ final class AuthenticateActor
         $user = Auth::guard('web')->user();
 
         if ($user instanceof User) {
-            $actor = $this->resolver->fromCookieUser(Identifier::fromTrusted((string) $user->getAuthIdentifier()));
+            $actor = $this->resolver->fromCookieUser(
+                Identifier::fromTrusted((string) $user->getAuthIdentifier()),
+                (string) $request->session()->getId(),
+            );
             $this->attach($request, $actor);
 
             return $next($request);

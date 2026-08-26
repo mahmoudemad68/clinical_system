@@ -41,6 +41,27 @@ final class ConfigurationCheck implements DependencyCheck
             }
         }
 
+        $min = (int) config('identity.hmac.min_key_length', 32);
+        foreach (['identity.hmac.keys.1', 'identity.encryption.keys.1'] as $key) {
+            if (strlen((string) config($key)) < $min) {
+                return CheckStatus::Fail;
+            }
+        }
+
+        if ((string) config('app.env') === 'production') {
+            if (! (bool) config('session.secure')) {
+                return CheckStatus::Fail;
+            }
+
+            if (! str_starts_with((string) config('app.url'), 'https://')) {
+                return CheckStatus::Fail;
+            }
+
+            if (config('identity.trusted_proxies') === []) {
+                return CheckStatus::Fail;
+            }
+        }
+
         return CheckStatus::Pass;
     }
 }

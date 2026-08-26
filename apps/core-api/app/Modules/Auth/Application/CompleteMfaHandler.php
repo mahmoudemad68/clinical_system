@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Application;
 
+use App\Modules\Audit\Domain\Contracts\AppendAuditEvent;
 use App\Modules\Auth\Domain\Contracts\AuthDirectory;
+use App\Modules\Auth\Domain\Contracts\AuthenticationRateLimiter;
 use App\Modules\Auth\Domain\Contracts\AuthTelemetry;
 use App\Modules\Auth\Domain\Contracts\TotpVerifier;
 use App\Modules\Identity\Domain\Contracts\UserDirectory;
@@ -28,14 +30,17 @@ final class CompleteMfaHandler
         private readonly IssueAuthenticatedSession $sessions,
         private readonly Clock $clock,
         private readonly AuthTelemetry $telemetry,
+        private readonly AuthenticationRateLimiter $rates,
+        private readonly AppendAuditEvent $audit,
     ) {}
 
     /**
      * @return array<string, mixed>
      */
-    public function handle(string $challengeId, string $code): array
+    public function handle(string $challengeId, string $code, string $ipPrefix = '0.0.0.0'): array
     {
         $id = Identifier::fromString($challengeId);
+        $this->rates->hitMfa($id->value, $ipPrefix);
 
         $result = $this->transactions->run(function (TransactionContext $tx) use ($id, $code): array {
             $challenge = $this->auth->lockMfaChallenge($id);
@@ -60,6 +65,10 @@ final class CompleteMfaHandler
             }
 
             $secret = $this->protector->decryptSecret('mfa_secret', (string) $factor->secret_ciphertext);
+            $this->audit->append($tx, 'auth.sensitive_decrypt', 'mfa_factor', Identifier::fromTrusted((string) $factor->id), [
+                'reason_code' => 'totp_verify',
+                'purpose' => 'mfa_secret',
+            ], $user->id, 'user');
             $totp = $this->totp->verify(
                 $secret,
                 $code,

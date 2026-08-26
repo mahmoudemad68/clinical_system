@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Modules\Auth\Domain\Contracts\AuthDirectory;
+use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Illuminate\Support\Facades\Broadcast;
 
 /*
@@ -13,11 +15,26 @@ use Illuminate\Support\Facades\Broadcast;
 | to subscribe until Phase 04 supplies actor-scoped queue channels. A
 | channel name is not authorization (invariant 13).
 |
-| Phase 01 logout/revoke is authoritative on HTTP (hashed tokens and session
-| rows). When Phase 04 adds subscriptions, channel authorization must deny a
-| revoked session before any event is delivered. Measured socket-close SLO
-| remains G-01-16 OPEN.
+| Session disconnect is bound to the exact auth_sessions row. Measured
+| socket-close SLO remains G-01-16 OPEN.
 |
 */
 
 Broadcast::channel('platform.health', static fn (): bool => false);
+
+Broadcast::channel('auth.session.{sessionId}', static function ($user, string $sessionId): bool {
+    if ($user === null || $sessionId === '') {
+        return false;
+    }
+
+    try {
+        $session = app(AuthDirectory::class)->findSession(Identifier::fromString($sessionId));
+    } catch (Throwable) {
+        return false;
+    }
+
+    return $session !== null
+        && $session->revoked_at === null
+        && (string) $session->user_id === (string) $user->id
+        && (string) $session->id === $sessionId;
+});

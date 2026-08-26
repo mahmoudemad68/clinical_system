@@ -7,8 +7,14 @@ namespace App\Modules\Auth\Http\Controllers;
 use App\Models\User;
 use App\Modules\Auth\Application\AuthenticatePasswordHandler;
 use App\Modules\Auth\Application\CompleteMfaHandler;
+use App\Modules\Auth\Application\CredentialIssuer;
+use App\Modules\Auth\Application\SessionCommandHandler;
+use App\Modules\Auth\Domain\Contracts\AuthDirectory;
+use App\Modules\Identity\Application\ResolveActorContext;
+use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Exceptions\AuthenticationFailed;
 use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
+use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -94,7 +100,7 @@ final class AdminSessionController
         }
 
         try {
-            $payload = $handler->handle($challengeId, $data['code']);
+            $payload = $handler->handle($challengeId, $data['code'], $this->ipPrefix($request));
         } catch (InvalidValueObject) {
             return back()->withErrors(['code' => __('auth.mfa_failed')]);
         }
@@ -105,8 +111,24 @@ final class AdminSessionController
         return redirect('/');
     }
 
-    public function destroy(Request $request): RedirectResponse
-    {
+    public function destroy(
+        Request $request,
+        SessionCommandHandler $handler,
+        ResolveActorContext $resolver,
+    ): RedirectResponse {
+        $user = Auth::guard('web')->user();
+        if ($user instanceof User) {
+            try {
+                $actor = $resolver->fromCookieUser(
+                    Identifier::fromTrusted((string) $user->getAuthIdentifier()),
+                    (string) $request->session()->getId(),
+                );
+                $handler->logoutCurrent($actor);
+            } catch (AuthenticationFailed) {
+                // Laravel session still invalidated below.
+            }
+        }
+
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -127,6 +149,14 @@ final class AdminSessionController
         if ($user instanceof User) {
             Auth::guard('web')->login($user);
             $request->session()->regenerate();
+            $sessionId = $payload['session_id'] ?? null;
+            if (is_string($sessionId) && $sessionId !== '') {
+                app(AuthDirectory::class)->bindCookieSessionHash(
+                    Identifier::fromTrusted($sessionId),
+                    app(CredentialIssuer::class)->hashToken('cookie:'.$request->session()->getId()),
+                    app(Clock::class)->now(),
+                );
+            }
         }
     }
 

@@ -118,6 +118,7 @@ return [
         'pulse*',
         '_boost*',
         '.well-known*',
+        'api/v1/auth*',
     ],
 
     'ignore_commands' => [

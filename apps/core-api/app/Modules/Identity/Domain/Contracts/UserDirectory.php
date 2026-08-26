@@ -6,6 +6,7 @@ namespace App\Modules\Identity\Domain\Contracts;
 
 use App\Modules\Identity\Domain\UserAccount;
 use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
+use App\Modules\Identity\Domain\ValueObjects\AccountType;
 use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use DateTimeImmutable;
 
@@ -28,4 +29,6 @@ interface UserDirectory
     public function touchAuthenticated(Identifier $userId, DateTimeImmutable $now): void;
 
     public function updateStatus(Identifier $userId, AccountStatus $status, int $credentialVersion, DateTimeImmutable $now): void;
+
+    public function countByAccountType(AccountType $type): int;
 }

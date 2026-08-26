@@ -18,6 +18,12 @@ return [
     'default' => env('CACHE_STORE', 'database'),
 
     /*
+    | Auth abuse counters always use this named store, never the default cache
+    | (ISR-006). Production points it at Redis database index 3.
+    */
+    'auth_rate_limiter' => env('AUTH_RATE_LIMIT_STORE', 'ratelimit'),
+
+    /*
     |--------------------------------------------------------------------------
     | Cache Stores
     |--------------------------------------------------------------------------
@@ -82,6 +88,12 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_CACHE_CONNECTION', 'cache'),
             'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION', 'cache'),
+        ],
+
+        'ratelimit' => [
+            'driver' => env('AUTH_RATE_LIMIT_DRIVER', 'redis'),
+            'connection' => 'ratelimit',
+            'lock_connection' => 'ratelimit',
         ],
 
         'dynamodb' => [

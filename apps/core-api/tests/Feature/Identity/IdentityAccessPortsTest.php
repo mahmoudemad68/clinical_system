@@ -16,6 +16,7 @@ use App\Modules\Identity\Domain\ValueObjects\AssuranceLevel;
 use App\Modules\Identity\Domain\ValueObjects\LanguagePreference;
 use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
+use App\Modules\Platform\Domain\Exceptions\AuthorizationDenied;
 use App\Modules\Platform\Domain\Exceptions\FeatureUnavailable;
 use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -41,12 +42,33 @@ function syntheticActor(Identifier $userId): ActorContext
     );
 }
 
+function operatorActor(Identifier $userId): ActorContext
+{
+    return new ActorContext(
+        $userId,
+        AccountType::Admin,
+        AccountStatus::Active,
+        LanguagePreference::English,
+        AssuranceLevel::Aal2Totp,
+        1,
+        null,
+        $userId,
+        [],
+        Capabilities::forActor('admin', true),
+    );
+}
+
 it('enforces one active contextual grant per lookup tuple', function () {
     $user = User::factory()->create([
         'status' => AccountStatus::PendingPhone->value,
         'phone_verified_at' => null,
     ]);
+    $admin = User::factory()->create([
+        'account_type' => AccountType::Admin->value,
+        'status' => AccountStatus::Active->value,
+    ]);
     $userId = Identifier::fromTrusted((string) $user->id);
+    $initiator = operatorActor(Identifier::fromTrusted((string) $admin->id));
     $ids = app(IdentityGenerator::class);
     $now = app(Clock::class)->now();
     $resource = $ids->next();
@@ -54,6 +76,7 @@ it('enforces one active contextual grant per lookup tuple', function () {
     $grants = app(GrantContextualAccess::class);
 
     $first = $grants->grant(
+        $initiator,
         $userId,
         Capabilities::IDENTITY_ME_READ,
         'auth_session',
@@ -61,11 +84,10 @@ it('enforces one active contextual grant per lookup tuple', function () {
         'self',
         $context,
         'test_grant',
-        'system',
-        $userId,
         $now,
     );
     $second = $grants->grant(
+        $initiator,
         $userId,
         Capabilities::IDENTITY_ME_READ,
         'auth_session',
@@ -73,19 +95,37 @@ it('enforces one active contextual grant per lookup tuple', function () {
         'self',
         $context,
         'test_grant',
-        'system',
-        $userId,
         $now,
     );
 
     expect($first->value)->toBe($second->value)
-        ->and(DB::table('contextual_access_grants')->count())->toBe(1);
+        ->and(DB::table('contextual_access_grants')->count())->toBe(1)
+        ->and(DB::table('contextual_access_grants')->value('issued_by_id'))->toBe($admin->id);
 
-    app(RevokeContextualAccess::class)->revoke($first, $now);
+    app(RevokeContextualAccess::class)->revoke($initiator, $first, $now);
     expect(DB::table('contextual_access_grants')->whereNull('revoked_at')->count())->toBe(0);
 
     $listed = app(ListEffectiveCapabilities::class)->forActor(syntheticActor($userId), $now);
     expect($listed)->not->toContain('clinical.record.read');
+});
+
+it('rejects a grant from a patient actor', function () {
+    $user = User::factory()->create();
+    $userId = Identifier::fromTrusted((string) $user->id);
+    $ids = app(IdentityGenerator::class);
+    $now = app(Clock::class)->now();
+
+    expect(fn () => app(GrantContextualAccess::class)->grant(
+        syntheticActor($userId),
+        $userId,
+        Capabilities::IDENTITY_ME_READ,
+        'auth_session',
+        $ids->next(),
+        'self',
+        $ids->next(),
+        'test_grant',
+        $now,
+    ))->toThrow(AuthorizationDenied::class);
 });
 
 it('rejects a second active grant row at the unique index', function () {
@@ -124,8 +164,13 @@ it('disables an identity and increments credential version', function () {
     $user = User::factory()->create([
         'status' => AccountStatus::Active->value,
     ]);
+    $admin = User::factory()->create([
+        'account_type' => AccountType::Admin->value,
+        'status' => AccountStatus::Active->value,
+    ]);
 
     app(DisableIdentityCoordinator::class)->handle(
+        operatorActor(Identifier::fromTrusted((string) $admin->id)),
         Identifier::fromTrusted((string) $user->id),
         AccountStatus::Locked,
         'security_lock',
@@ -134,6 +179,17 @@ it('disables an identity and increments credential version', function () {
     $row = DB::table('users')->where('id', $user->id)->first();
     expect($row->status)->toBe('locked')
         ->and((int) $row->credential_version)->toBe(2);
+});
+
+it('rejects identity disable from a patient actor', function () {
+    $user = User::factory()->create();
+
+    expect(fn () => app(DisableIdentityCoordinator::class)->handle(
+        syntheticActor(Identifier::fromTrusted((string) $user->id)),
+        Identifier::fromTrusted((string) $user->id),
+        AccountStatus::Locked,
+        'security_lock',
+    ))->toThrow(AuthorizationDenied::class);
 });
 
 it('does not disclose profile claim while the flag is off', function () {
