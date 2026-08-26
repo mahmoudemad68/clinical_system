@@ -108,7 +108,7 @@ jobs:
       - name: Evidence ledger integrity
         # Fails on a duplicate gate id or a summary that disagrees with the
         # table. Keeps the headline totals honest without anyone recounting.
-        run: node scripts/evidence/count-gates.mjs --expect PASS=30,PARTIAL=14,BLOCKED=0,OPEN=3
+        run: node scripts/evidence/count-gates.mjs --expect PASS=31,PARTIAL=15,BLOCKED=0,OPEN=1
 
       - name: Generate TypeScript client
         run: npm run contracts:generate:ts

@@ -8,10 +8,9 @@ dependencies forbidden to it.
 them directly. Access happens through a public application port or a published
 event (ADR 0001, ADR 0004).
 
-**Status.** Only `Platform` is implemented in Phase 00. Every other module is
-declared here with its boundary fixed in advance, and is built in the phase
-named below. Declaring the boundary early is the point: the phase that builds
-the module inherits the constraint rather than inventing it.
+**Status.** `Platform` was implemented in Phase 00. Phase 01 implements `Auth`,
+`Identity` (except patient registry), `Access` (self-service capabilities), and
+`Audit` append. Every other module remains a declared boundary.
 
 **Classification levels** are defined in
 [`docs/data-classification/classification-policy.md`](../data-classification/classification-policy.md):
@@ -95,28 +94,48 @@ concept only makes sense for one module, it does not belong here.
 ## `Auth` — authentication and devices
 
 **Built in:** 01. **Owner:** backend + security (CODEOWNERS).
-**Public ports:** `AuthenticateSession`, `IssueDeviceToken`, `RevokeDeviceToken`,
-`VerifyOtp`, `StartMfaChallenge`.
-**Events:** `auth.session_established`, `auth.device_revoked`,
-`auth.mfa_enrolled`.
-**Tables:** `users`, `user_devices`, `otp_requests`.
+**Public ports:** `RegisterAccount`, `RequestOtp`, `VerifyOtp`, `AuthenticatePassword`,
+`CompleteMfaChallenge`, `RefreshDeviceSession`, `ListOwnSessions`, `RevokeOwnSession`,
+`RevokeAllSessions`, `ChangePassword`, `BeginAccountRecovery`, `CompleteAccountRecovery`.
+**Events:** `auth.otp_delivery_requested`, `auth.session_revoked`,
+`auth.credential_version_changed`.
+**Tables:** `user_devices`, `otp_requests`, `mfa_factors`, `mfa_recovery_codes`,
+`mfa_challenges`, `auth_sessions`.
 **Classification:** credential.
-**Prohibited:** deciding authorization. Auth proves identity; `Policies` across
-modules decide access (`docs/phases/README.md` invariant 6). Auth never reads a
-clinical table.
+**Prohibited:** deciding authorization. Auth proves identity; Access decides
+capabilities. Auth never reads a clinical table. OTP codes never appear in
+events or logs.
+**Status (Phase 01):** implemented behind Sanctum-style device tokens and admin
+cookies. TOTP enrolment HTTP is not exposed; bootstrap inserts a verified factor.
 
-## `Identity` — profile matching and linkage
+## `Identity` — central user and National ID protection
 
 **Built in:** 01–02. **Owner:** backend + security.
-**Public ports:** `MatchPatientByNationalId`, `AttachAccountToProfile`,
-`ResolveActorContext`.
-**Events:** `identity.profile_linked`, `identity.linkage_disputed`.
-**Tables:** national-ID HMAC index and linkage audit tables.
+**Public ports:** `ResolveActorContext`, `NationalIdProtector`,
+`PatientIdentityRegistry` (unavailable stub until Phase 02), `LinkVerifiedPatientAccount`
+(not enabled), `DisableIdentity`.
+**Events:** `identity.account_registered`, `identity.phone_verified`,
+`identity.profile_linked`, `identity.status_changed`.
+**Tables:** `users`, `identity_national_ids`, `identity_profile_links`.
 **Classification:** sensitive. National IDs are encrypted for recovery and stored
 as keyed HMACs for exact matching; raw values never appear anywhere else
 (`docs/phases/README.md` invariant 5).
 **Prohibited:** creating a second medical record for the same normalized national
 ID (invariant 4); exposing a match result that enables enumeration.
+**Status (Phase 01):** identity + HMAC/envelope protection live. Profile claim
+flag-gated off (ADR 0011).
+
+## `Access` — deny-by-default capabilities
+
+**Built in:** 01. **Owner:** backend + security.
+**Public ports:** `Authorize`, `ListEffectiveCapabilities`, `GrantContextualAccess`,
+`RevokeContextualAccess`. Consultation grants are Phase 04/05; the write ports
+persist rows and stay unused by HTTP in Phase 01.
+**Events:** none.
+**Tables:** `contextual_access_grants`.
+**Classification:** internal.
+**Prohibited:** inferring permission from a client-supplied `account_type`;
+importing another module's persistence models. Unknown actions deny.
 
 ## `Patients` — patient profiles
 

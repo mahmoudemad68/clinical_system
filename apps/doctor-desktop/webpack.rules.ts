@@ -2,7 +2,8 @@ import type { ModuleOptions } from 'webpack';
 
 export const rules: Required<ModuleOptions>['rules'] = [
   {
-    // Native modules, when Phase 05 introduces the encrypted database binding.
+    // Native modules. Encrypted SQLite (SQLite3MultipleCiphers) must sit
+    // outside the asar; AutoUnpackNativesPlugin unpacks this output.
     test: /native_modules[/\\].+\.node$/,
     use: 'node-loader',
   },

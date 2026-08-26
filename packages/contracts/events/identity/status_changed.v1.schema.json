@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/identity/status_changed.v1.schema.json",
+  "title": "identity.status_changed v1",
+  "description": "Account status transition. Reason code only.",
+  "type": "object",
+  "required": ["user_id", "old_status", "new_status", "reason_code"],
+  "additionalProperties": false,
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "old_status": {
+      "type": "string",
+      "enum": ["pending_phone", "active", "suspended", "locked", "closed"]
+    },
+    "new_status": {
+      "type": "string",
+      "enum": ["pending_phone", "active", "suspended", "locked", "closed"]
+    },
+    "reason_code": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Identity",
+    "classification": "personal",
+    "consumers": ["audit.identity"],
+    "retention_days": 365
+  }
+}

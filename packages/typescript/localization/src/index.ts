@@ -50,7 +50,7 @@ export const sharedStrings = {
       components: { core: 'Core', realtime: 'Realtime', ai: 'AI' },
       status: { operational: 'Operational', degraded: 'Degraded', unavailable: 'Unavailable' },
     },
-    common: { language: 'Language', offline: 'Offline', retry: 'Retry' },
+    common: { language: 'Language', offline: 'Offline', retry: 'Retry', signIn: 'Sign in', password: 'Password', phone: 'Mobile number', mfaCode: 'Authenticator code', signOut: 'Sign out', sessions: 'Sessions', revoke: 'Revoke' },
   },
   ar: {
     health: {
@@ -64,7 +64,7 @@ export const sharedStrings = {
       components: { core: 'الأساسي', realtime: 'الزمن الفعلي', ai: 'الذكاء الاصطناعي' },
       status: { operational: 'تعمل', degraded: 'مُتدهورة', unavailable: 'غير متاحة' },
     },
-    common: { language: 'اللغة', offline: 'غير متصل', retry: 'إعادة المحاولة' },
+    common: { language: 'اللغة', offline: 'غير متصل', retry: 'إعادة المحاولة', signIn: 'دخول', password: 'كلمة المرور', phone: 'رقم الجوال', mfaCode: 'رمز التحقق', signOut: 'خروج', sessions: 'الجلسات', revoke: 'إلغاء' },
   },
 } as const;
 

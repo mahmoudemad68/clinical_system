@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Platform\Http\Support;
 
+use App\Modules\Platform\Domain\Exceptions\AuthenticationFailed;
+use App\Modules\Platform\Domain\Exceptions\AuthorizationDenied;
+use App\Modules\Platform\Domain\Exceptions\FeatureUnavailable;
 use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
+use App\Modules\Platform\Domain\Exceptions\RateLimited;
 use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use App\Modules\Platform\Http\Responses\ErrorCode;
 use App\Modules\Platform\Http\Responses\ErrorEnvelope;
@@ -12,6 +16,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -46,14 +51,24 @@ final class ExceptionRenderer
         return match (true) {
             $e instanceof ValidationException => ErrorEnvelope::validation($e->errors(), $requestId),
 
-            $e instanceof AuthenticationException => ErrorEnvelope::of(ErrorCode::Unauthenticated, $requestId),
+            $e instanceof AuthenticationException,
+            $e instanceof AuthenticationFailed,
+            $e instanceof TokenMismatchException => ErrorEnvelope::of(ErrorCode::Unauthenticated, $requestId),
 
             // Authorization denial and "not found" answer identically, so the
             // response cannot be used to probe for the existence of a record
             // the caller may not see.
             $e instanceof AuthorizationException,
+            $e instanceof AuthorizationDenied,
+            $e instanceof FeatureUnavailable,
             $e instanceof ModelNotFoundException,
             $e instanceof NotFoundHttpException => ErrorEnvelope::of(ErrorCode::NotFound, $requestId),
+
+            $e instanceof RateLimited => ErrorEnvelope::of(
+                ErrorCode::RateLimited,
+                $requestId,
+                headers: ['Retry-After' => (string) $e->retryAfterSeconds],
+            ),
 
             $e instanceof TooManyRequestsHttpException => ErrorEnvelope::of(
                 ErrorCode::RateLimited,
@@ -86,6 +101,7 @@ final class ExceptionRenderer
             409 => ErrorCode::StateConflict,
             413 => ErrorCode::RequestTooLarge,
             415 => ErrorCode::UnsupportedMediaType,
+            419 => ErrorCode::Unauthenticated,
             422 => ErrorCode::ValidationFailed,
             429 => ErrorCode::RateLimited,
             503 => ErrorCode::DependencyUnavailable,

@@ -108,6 +108,13 @@ export const CHANNELS = {
   appMetadata: 'clinic:app.metadata',
   localeGet: 'clinic:locale.get',
   localeSet: 'clinic:locale.set',
+  authSecureStatus: 'clinic:auth.secureStatus',
+  authLogin: 'clinic:auth.login',
+  authVerifyMfa: 'clinic:auth.verifyMfa',
+  authLogout: 'clinic:auth.logout',
+  authMe: 'clinic:auth.me',
+  authSessions: 'clinic:auth.sessions',
+  authRevokeSession: 'clinic:auth.revokeSession',
 } as const;
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];
@@ -161,6 +168,80 @@ export type AppMetadata = z.infer<typeof appMetadataResponseSchema>;
 export const localeSetRequestSchema = z.object({ locale: localeSchema }).strict();
 export const localeResponseSchema = z.object({ locale: localeSchema });
 
+export const authSecureStatusResponseSchema = z
+  .object({
+    available: z.boolean(),
+    backend: z.string().max(64),
+  })
+  .strict();
+
+export type AuthSecureStatus = z.infer<typeof authSecureStatusResponseSchema>;
+
+export const authLoginRequestSchema = z
+  .object({
+    phone: z.string().min(8).max(32),
+    password: z.string().min(1).max(128),
+    deviceLabel: z.string().min(1).max(120),
+  })
+  .strict();
+
+export const authSessionViewSchema = z
+  .object({
+    status: z.string().max(32),
+    mfaRequired: z.boolean(),
+    challengeId: z.string().uuid().optional(),
+    sessionKind: z.enum(['device', 'admin_cookie']).optional(),
+    userId: z.string().uuid().optional(),
+    accountType: z.string().max(16).optional(),
+  })
+  .strict();
+
+export type AuthSessionView = z.infer<typeof authSessionViewSchema>;
+
+export const authVerifyMfaRequestSchema = z
+  .object({
+    challengeId: z.string().uuid(),
+    code: z.string().regex(/^\d{6}$/),
+  })
+  .strict();
+
+export const authLogoutResponseSchema = z.object({ revoked: z.literal(true) }).strict();
+
+export const authMeResponseSchema = z
+  .object({
+    userId: z.string().uuid(),
+    accountType: z.string().max(16),
+    status: z.string().max(32),
+    language: localeSchema,
+    assuranceLevel: z.string().max(32),
+    capabilities: z.array(z.string().max(120)).max(32),
+  })
+  .strict();
+
+export type AuthMe = z.infer<typeof authMeResponseSchema>;
+
+export const authSessionSummarySchema = z
+  .object({
+    sessionId: z.string().uuid(),
+    sessionKind: z.enum(['device', 'admin_cookie']),
+    assuranceLevel: z.string().max(32),
+    lastSeenAt: z.string().max(64).optional(),
+    createdAt: z.string().max(64).optional(),
+  })
+  .strict();
+
+export const authSessionsResponseSchema = z
+  .object({
+    sessions: z.array(authSessionSummarySchema).max(50),
+  })
+  .strict();
+
+export const authRevokeSessionRequestSchema = z
+  .object({
+    sessionId: z.string().uuid(),
+  })
+  .strict();
+
 /**
  * The registry the main process iterates to register handlers.
  *
@@ -194,6 +275,41 @@ export const CAPABILITY_REGISTRY = {
     response: localeResponseSchema,
     timeoutMs: 1_000,
   },
+  [CHANNELS.authSecureStatus]: {
+    request: emptyRequestSchema,
+    response: authSecureStatusResponseSchema,
+    timeoutMs: 1_000,
+  },
+  [CHANNELS.authLogin]: {
+    request: authLoginRequestSchema,
+    response: authSessionViewSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [CHANNELS.authVerifyMfa]: {
+    request: authVerifyMfaRequestSchema,
+    response: authSessionViewSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [CHANNELS.authLogout]: {
+    request: emptyRequestSchema,
+    response: authLogoutResponseSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [CHANNELS.authMe]: {
+    request: emptyRequestSchema,
+    response: authMeResponseSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [CHANNELS.authSessions]: {
+    request: emptyRequestSchema,
+    response: authSessionsResponseSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [CHANNELS.authRevokeSession]: {
+    request: authRevokeSessionRequestSchema,
+    response: authLogoutResponseSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
 } as const satisfies Record<
   ChannelName,
   { request: z.ZodTypeAny; response: z.ZodTypeAny; timeoutMs: number }
@@ -218,6 +334,19 @@ export interface ClinicBridge {
   readonly locale: {
     get(): Promise<BridgeResult<{ locale: 'ar' | 'en' }>>;
     set(locale: 'ar' | 'en'): Promise<BridgeResult<{ locale: 'ar' | 'en' }>>;
+  };
+  readonly auth: {
+    secureStatus(): Promise<BridgeResult<AuthSecureStatus>>;
+    login(input: {
+      phone: string;
+      password: string;
+      deviceLabel: string;
+    }): Promise<BridgeResult<AuthSessionView>>;
+    verifyMfa(input: { challengeId: string; code: string }): Promise<BridgeResult<AuthSessionView>>;
+    logout(): Promise<BridgeResult<{ revoked: true }>>;
+    me(): Promise<BridgeResult<AuthMe>>;
+    sessions(): Promise<BridgeResult<{ sessions: Array<z.infer<typeof authSessionSummarySchema>> }>>;
+    revokeSession(sessionId: string): Promise<BridgeResult<{ revoked: true }>>;
   };
 }
 

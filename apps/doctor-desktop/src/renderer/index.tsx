@@ -10,8 +10,6 @@ import {
 import { palette, spacing, typography } from '@clinic/design-tokens';
 import type { PlatformHealth } from '@clinic/desktop-bridge-contracts';
 
-import './clinic-bridge';
-
 /**
  * Unprivileged renderer for the Doctor desktop.
  *
@@ -127,15 +125,160 @@ function HealthPanel({ locale }: { locale: Locale }) {
   );
 }
 
+function LoginPanel({
+  locale,
+  onAuthenticated,
+}: {
+  locale: Locale;
+  onAuthenticated: () => void;
+}) {
+  const t = sharedStrings[locale].common;
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [secure, setSecure] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void window.clinic.auth.secureStatus().then((result) => {
+      setSecure(result.ok ? result.value.available : false);
+    });
+  }, []);
+
+  if (secure === false) {
+    return <p role="alert">{t.offline}</p>;
+  }
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void (async () => {
+          setMessage(null);
+          if (challengeId !== null) {
+            const verified = await window.clinic.auth.verifyMfa({ challengeId, code });
+            if (!verified.ok) {
+              setMessage(verified.error.message);
+              return;
+            }
+            onAuthenticated();
+            return;
+          }
+
+          const result = await window.clinic.auth.login({ phone, password, deviceLabel: 'desktop' });
+          if (!result.ok) {
+            setMessage(result.error.message);
+            return;
+          }
+          if (result.value.mfaRequired && result.value.challengeId) {
+            setChallengeId(result.value.challengeId);
+            return;
+          }
+          onAuthenticated();
+        })();
+      }}
+      style={{ display: 'grid', gap: spacing.sm, marginBottom: spacing.lg }}
+    >
+      <label>
+        {t.phone}
+        <input
+          name="phone"
+          type="tel"
+          autoComplete="username"
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+        />
+      </label>
+      <label>
+        {t.password}
+        <input
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+      </label>
+      {challengeId !== null ? (
+        <label>
+          {t.mfaCode}
+          <input
+            name="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+          />
+        </label>
+      ) : null}
+      {message ? <p role="alert">{message}</p> : null}
+      <button type="submit">{t.signIn}</button>
+    </form>
+  );
+}
+
+function SessionPanel({ locale, onSignedOut }: { locale: Locale; onSignedOut: () => void }) {
+  const t = sharedStrings[locale].common;
+  const { data } = useQuery({
+    queryKey: ['auth', 'sessions', locale],
+    queryFn: async () => {
+      const result = await window.clinic.auth.sessions();
+      if (!result.ok) {
+        throw new Error(result.error.code);
+      }
+      return result.value.sessions;
+    },
+  });
+
+  return (
+    <section>
+      <h2 style={{ fontSize: typography.size.title }}>{t.sessions}</h2>
+      <ul>
+        {(data ?? []).map((session) => (
+          <li key={session.sessionId}>
+            {session.sessionKind}
+            <button
+              type="button"
+              onClick={() => {
+                void window.clinic.auth.revokeSession(session.sessionId).then((result) => {
+                  if (result.ok) {
+                    onSignedOut();
+                  }
+                });
+              }}
+            >
+              {t.revoke}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={() => {
+          void window.clinic.auth.logout().then(() => onSignedOut());
+        }}
+      >
+        {t.signOut}
+      </button>
+    </section>
+  );
+}
+
 function App() {
   const [locale, setLocale] = useLocale();
   const [productName, setProductName] = useState('Clinic Doctor');
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     void window.clinic.app.metadata().then((result) => {
       if (result.ok) {
         setProductName(result.value.productName);
       }
+    });
+    void window.clinic.auth.me().then((result) => {
+      setSignedIn(result.ok);
     });
   }, []);
 
@@ -156,6 +299,12 @@ function App() {
           </select>
         </label>
       </header>
+
+      {signedIn ? (
+        <SessionPanel locale={locale} onSignedOut={() => setSignedIn(false)} />
+      ) : (
+        <LoginPanel locale={locale} onAuthenticated={() => setSignedIn(true)} />
+      )}
 
       <h2 style={{ fontSize: typography.size.title }}>{sharedStrings[locale].health.title}</h2>
       <HealthPanel locale={locale} />

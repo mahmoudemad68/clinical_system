@@ -36,7 +36,9 @@ const config: ForgeConfig = {
     // signing credentials, least of all on a fork pull request.
   },
 
-  rebuildConfig: {},
+  rebuildConfig: {
+    extraModules: ['better-sqlite3-multiple-ciphers'],
+  },
 
   makers: [
     new MakerSquirrel({ name: 'clinic-doctor' }),
@@ -45,8 +47,8 @@ const config: ForgeConfig = {
   ],
 
   plugins: [
-    // Native modules (the Phase 05 encrypted SQLite binding) must sit outside
-    // the asar to be loadable.
+    // Native modules (SQLite3MultipleCiphers) must sit outside the asar to be
+    // loadable. Rebuild is configured above so packaging targets Electron's ABI.
     new AutoUnpackNativesPlugin({}),
 
     new WebpackPlugin({

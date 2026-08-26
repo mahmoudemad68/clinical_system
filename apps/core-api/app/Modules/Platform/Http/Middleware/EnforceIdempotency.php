@@ -143,9 +143,12 @@ final class EnforceIdempotency
         // The store holds a reference, not a body, so a replay re-reads the
         // outcome rather than serving a cached copy of clinical or financial
         // content from a table with different retention rules.
+        $decoded = $reference === null ? null : json_decode($reference, true);
+        $data = is_array($decoded) ? $this->expandReplayData($decoded) : $decoded;
+
         return response()->json(
             [
-                'data' => $reference === null ? null : json_decode($reference, true),
+                'data' => $data,
                 'meta' => (object) ['locale' => app()->getLocale(), 'idempotent_replay' => true],
                 'errors' => [],
                 'request_id' => $requestId->value,
@@ -157,29 +160,79 @@ final class EnforceIdempotency
     }
 
     /**
-     * A pointer to the outcome, bounded in size.
+     * A pointer to the outcome, bounded to the varchar(255) column.
      *
-     * For the Phase 00 slice the result is small, synthetic, and contains no
-     * personal data, so the payload itself is the reference. A later operation
-     * whose result carries clinical or financial content must store an
-     * identifier here and re-read the record instead.
+     * Credentials never belong here: access and refresh tokens are hashed in
+     * Auth tables, not copied into idempotency_keys. Phase 00 diagnostics
+     * payloads are small and synthetic, so they may be stored inline. Token-
+     * issuing Auth responses store a session or challenge identifier and a
+     * replay reconstructs metadata without repeating secrets.
      */
     private function responseReference(Response $response): string
     {
         $content = $response->getContent();
 
         if (! is_string($content)) {
-            return '';
+            return '{"ref":"empty"}';
         }
 
         $decoded = json_decode($content, true);
         $data = is_array($decoded) && array_key_exists('data', $decoded) ? $decoded['data'] : null;
 
+        if (! is_array($data)) {
+            return '{"ref":"empty"}';
+        }
+
+        unset($data['access_token'], $data['refresh_token']);
+
         $encoded = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // Hard bound. A large body here would turn the idempotency table into
-        // a second, unmanaged copy of the response.
-        return is_string($encoded) && strlen($encoded) <= 4096 ? $encoded : '';
+        if (is_string($encoded) && strlen($encoded) <= 255) {
+            return $encoded;
+        }
+
+        $pointer = match (true) {
+            isset($data['session_id']) => [
+                'ref' => 'auth_session',
+                'id' => $data['session_id'],
+            ],
+            isset($data['challenge_id']) => [
+                'ref' => 'auth_challenge',
+                'id' => $data['challenge_id'],
+                'status' => $data['status'] ?? 'otp_required',
+            ],
+            isset($data['diagnostics_id']) => [
+                'ref' => 'diagnostics',
+                'id' => $data['diagnostics_id'],
+            ],
+            default => ['ref' => 'truncated'],
+        };
+
+        $compact = json_encode($pointer, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return is_string($compact) && strlen($compact) <= 255 ? $compact : '{"ref":"truncated"}';
+    }
+
+    /**
+     * @param  array<string, mixed>  $decoded
+     * @return array<string, mixed>
+     */
+    private function expandReplayData(array $decoded): array
+    {
+        return match ($decoded['ref'] ?? null) {
+            'auth_session' => [
+                'session_id' => $decoded['id'] ?? null,
+                'tokens_replayed' => false,
+            ],
+            'auth_challenge' => [
+                'challenge_id' => $decoded['id'] ?? null,
+                'status' => $decoded['status'] ?? 'otp_required',
+            ],
+            'diagnostics' => [
+                'diagnostics_id' => $decoded['id'] ?? null,
+            ],
+            default => $decoded,
+        };
     }
 
     private function errorClassFor(int $status): string
@@ -196,6 +249,11 @@ final class EnforceIdempotency
 
     private function actorKey(Request $request): string
     {
+        $actor = $request->attributes->get('actor_id');
+        if ($actor instanceof Identifier) {
+            return $actor->value;
+        }
+
         $token = $request->bearerToken();
 
         return $token === null ? 'anonymous' : hash('sha256', $token);

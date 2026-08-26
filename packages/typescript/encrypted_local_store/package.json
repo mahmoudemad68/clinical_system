@@ -1,0 +1,22 @@
+{
+  "name": "@clinic/encrypted-local-store",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Main-process encrypted SQLite (SQLite3MultipleCiphers) and OS-keystore fail-closed policy. Never imported by a renderer.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "better-sqlite3-multiple-ciphers": "13.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.11",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

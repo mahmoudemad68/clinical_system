@@ -1,5 +1,5 @@
 name: clinic_local_database
-description: Encrypted Drift/SQLite local persistence and the local outbox.
+description: Encrypted SQLite local persistence using sqlite3 v3 SQLite3MultipleCiphers hooks.
 version: 0.1.0
 publish_to: none
 
@@ -9,11 +9,19 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  sqlite3: 3.5.2
 
 dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
+
+# SQLite3MultipleCiphers, not the EOL sqlcipher_flutter_libs package.
+# See ADR 0006 and sqlite3 3.x hook options.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
 
 # Part of the root pub workspace; shares the root lockfile.
 resolution: workspace

@@ -11,7 +11,7 @@ import {
 } from '@clinic/desktop-bridge-contracts';
 import { APP_CONFIG } from '../shared/app-config';
 import { isTrustedFrameOrigin } from '../shared/sender-policy';
-import { platformGateway } from './platform-gateway';
+import { platformGateway, SecureStorageUnavailableError } from './platform-gateway';
 
 /**
  * The privileged side of the IPC boundary.
@@ -43,6 +43,20 @@ export function registerCapabilities(): void {
     localeState = payload.locale;
     return { locale: localeState };
   });
+
+  handle(CHANNELS.authSecureStatus, async () => platformGateway.secureStatus());
+  handle(CHANNELS.authLogin, async (payload: { phone: string; password: string; deviceLabel: string }) =>
+    platformGateway.login(localeState, payload),
+  );
+  handle(CHANNELS.authVerifyMfa, async (payload: { challengeId: string; code: string }) =>
+    platformGateway.verifyMfa(localeState, payload),
+  );
+  handle(CHANNELS.authLogout, async () => platformGateway.logout(localeState));
+  handle(CHANNELS.authMe, async () => platformGateway.me(localeState));
+  handle(CHANNELS.authSessions, async () => platformGateway.sessions(localeState));
+  handle(CHANNELS.authRevokeSession, async (payload: { sessionId: string }) =>
+    platformGateway.revokeSession(localeState, payload.sessionId),
+  );
 }
 
 /**
@@ -95,6 +109,14 @@ function handle<T>(
     } catch (error) {
       if (error instanceof TimeoutError) {
         return fail('TIMEOUT', 'The operation took too long.');
+      }
+
+      if (error instanceof SecureStorageUnavailableError) {
+        return fail('CAPABILITY_NOT_AVAILABLE', error.message);
+      }
+
+      if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+        return fail('UNAUTHENTICATED', 'The session is no longer valid.');
       }
 
       // Never serialize the thrown error: main-process stacks name filesystem

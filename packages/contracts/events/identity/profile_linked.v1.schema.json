@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/identity/profile_linked.v1.schema.json",
+  "title": "identity.profile_linked v1",
+  "description": "An account was linked to a profile. No clinical payload.",
+  "type": "object",
+  "required": ["user_id", "profile_type", "profile_id", "assurance_level"],
+  "additionalProperties": false,
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "profile_type": {
+      "type": "string",
+      "enum": ["patient", "doctor", "clinic_staff", "pharmacy_membership"]
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "assurance_level": {
+      "type": "string",
+      "maxLength": 32
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Identity",
+    "classification": "personal",
+    "consumers": ["audit.identity"],
+    "retention_days": 365
+  }
+}

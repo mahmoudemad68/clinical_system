@@ -22,6 +22,7 @@ final class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'locale' => (string) $request->attributes->get('locale', 'en'),
+            'authenticated' => $request->user() !== null,
         ];
     }
 }

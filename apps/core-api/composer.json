@@ -23,6 +23,7 @@
         "php-http/guzzle7-adapter": "^1.1",
         "predis/predis": "^3.6",
         "sentry/sentry-laravel": "^4.27",
+        "spomky-labs/otphp": "^11.3",
         "symfony/uid": "^7.4"
     },
     "require-dev": {

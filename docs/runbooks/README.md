@@ -18,6 +18,14 @@ opens with "restart the service" teaches people to restart before understanding.
 | [redaction-failure](redaction-failure.md) | `RedactionCanaryDetected` | critical |
 | [authorization-denials](authorization-denials.md) | `AuthorizationDenialSpike` | warning |
 | [emergency-credential-rotation](emergency-credential-rotation.md) | Manual / security incident | critical |
+| [sms-outage](sms-outage.md) | `OtpQueueSpike`, `OtpDeliveryAgeHigh` | warning |
+| [account-takeover](account-takeover.md) | `PrivilegedMfaBypassAttempt` | critical |
+| [lost-device](lost-device.md) | Manual | warning |
+| [mfa-recovery](mfa-recovery.md) | Manual | warning |
+| [mass-revocation](mass-revocation.md) | Incident | critical |
+| [identity-key-rotation](identity-key-rotation.md) | Configuration / `/ready` | critical |
+| [disputed-profile-link](disputed-profile-link.md) | Manual; claim flag off | warning |
+| [refresh-reuse](refresh-reuse.md) | `RefreshTokenReuse` | critical |
 
 ## Standing rules
 

@@ -21,4 +21,13 @@ export const ar = {
       unavailable: 'غير متاحة',
     },
   },
+  auth: {
+    title: 'دخول المسؤول',
+    phone: 'رقم الجوال',
+    password: 'كلمة المرور',
+    mfaCode: 'رمز التحقق',
+    signIn: 'دخول',
+    signOut: 'خروج',
+    failed: 'تعذر إكمال تسجيل الدخول.',
+  },
 } as const;

@@ -86,6 +86,15 @@ const bridge: ClinicBridge = {
     get: () => call(CHANNELS.localeGet),
     set: (locale) => call(CHANNELS.localeSet, { locale }),
   },
+  auth: {
+    secureStatus: () => call(CHANNELS.authSecureStatus),
+    login: (input) => call(CHANNELS.authLogin, input),
+    verifyMfa: (input) => call(CHANNELS.authVerifyMfa, input),
+    logout: () => call(CHANNELS.authLogout),
+    me: () => call(CHANNELS.authMe),
+    sessions: () => call(CHANNELS.authSessions),
+    revokeSession: (sessionId) => call(CHANNELS.authRevokeSession, { sessionId }),
+  },
 };
 
 // contextBridge, not window assignment: the object is deep-frozen and copied

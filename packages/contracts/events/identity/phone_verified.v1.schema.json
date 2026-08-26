@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/identity/phone_verified.v1.schema.json",
+  "title": "identity.phone_verified v1",
+  "description": "The account phone was marked verified. The destination is not in the payload.",
+  "type": "object",
+  "required": ["user_id", "verified_at"],
+  "additionalProperties": false,
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Identity",
+    "classification": "personal",
+    "consumers": ["audit.identity"],
+    "retention_days": 365
+  }
+}

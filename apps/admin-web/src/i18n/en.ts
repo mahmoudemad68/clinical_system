@@ -21,4 +21,13 @@ export const en = {
       unavailable: 'Unavailable',
     },
   },
+  auth: {
+    title: 'Admin sign in',
+    phone: 'Mobile number',
+    password: 'Password',
+    mfaCode: 'Authenticator code',
+    signIn: 'Sign in',
+    signOut: 'Sign out',
+    failed: 'Sign-in could not be completed.',
+  },
 } as const;

@@ -14,6 +14,14 @@ publish_to: none
 environment:
   sdk: ^3.13.0
 
+# G-06-01: SQLite3MultipleCiphers for clinic_local_database. Workspace-level
+# user-defines are what the sqlite3 build hook actually reads when tests run
+# from a member package.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
+
 # Melos 8 discovers the workspace by finding itself as a dev dependency of the
 # root package alongside the `melos:` config section below.
 dev_dependencies:

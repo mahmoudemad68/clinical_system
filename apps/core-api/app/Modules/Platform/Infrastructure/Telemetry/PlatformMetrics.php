@@ -19,6 +19,8 @@ final class PlatformMetrics
     private const ALLOWED_LABELS = [
         'service', 'version', 'method', 'route', 'status', 'status_class',
         'check', 'queue', 'error_class', 'connection', 'rule', 'le',
+        'result', 'actor_class', 'purpose', 'client_class', 'action_group',
+        'reason_code', 'assurance_level',
     ];
 
     /** @var list<string> */
@@ -119,6 +121,51 @@ final class PlatformMetrics
         $this->families['clinic_db_query_duration_seconds_count'] = [
             'help' => 'Count of observed database queries',
             'type' => 'counter',
+            'samples' => [],
+        ];
+        $this->families['clinic_auth_attempts_total'] = [
+            'help' => 'Authentication attempts by result, method, and actor class',
+            'type' => 'counter',
+            'samples' => [],
+        ];
+        $this->families['clinic_otp_requests_total'] = [
+            'help' => 'OTP requests by purpose and result',
+            'type' => 'counter',
+            'samples' => [],
+        ];
+        $this->families['clinic_mfa_challenges_total'] = [
+            'help' => 'MFA challenges by result',
+            'type' => 'counter',
+            'samples' => [],
+        ];
+        $this->families['clinic_authorization_decisions_total'] = [
+            'help' => 'Authorization decisions by action group, result, and reason',
+            'type' => 'counter',
+            'samples' => [],
+        ];
+        $this->families['clinic_profile_claims_total'] = [
+            'help' => 'Profile-claim outcomes by result and assurance level',
+            'type' => 'counter',
+            'samples' => [],
+        ];
+        $this->families['clinic_otp_delivery_age_seconds'] = [
+            'help' => 'Age in seconds of an OTP at delivery time',
+            'type' => 'gauge',
+            'samples' => [],
+        ];
+        $this->families['clinic_session_revocation_latency_seconds'] = [
+            'help' => 'Seconds between session revoke commit and consumer fan-out',
+            'type' => 'gauge',
+            'samples' => [],
+        ];
+        $this->families['clinic_active_sessions'] = [
+            'help' => 'Active sessions by client class',
+            'type' => 'gauge',
+            'samples' => [],
+        ];
+        $this->families['clinic_auth_latency_seconds'] = [
+            'help' => 'Authentication method latency in seconds',
+            'type' => 'gauge',
             'samples' => [],
         ];
 

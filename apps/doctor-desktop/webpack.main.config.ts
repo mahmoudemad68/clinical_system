@@ -14,4 +14,9 @@ export const mainConfig: Configuration = {
   resolve: {
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.css', '.json'],
   },
+  // Native SQLite3MultipleCiphers must stay a Node addon, not a webpack graph
+  // that a renderer could resolve. The renderer config does not list this.
+  externals: {
+    'better-sqlite3-multiple-ciphers': 'commonjs better-sqlite3-multiple-ciphers',
+  },
 };

@@ -32,11 +32,14 @@ export const APP_CONFIG = {
    */
   assetProtocolScheme: 'clinic-pharmacy-app',
 
-  /** Phase 05 encrypted-database namespace. No database exists in Phase 00. */
+  /** Phase 05 encrypted-database namespace. Spike-only synthetic data until G-06-01 closes. */
   encryptedDatabaseNamespace: 'pharmacy.encrypted.v1',
 
   /** OS keystore account namespace for the device token. */
   deviceCredentialNamespace: 'eg.clinic.pharmacy.device',
+
+  /** Phase 01 Auth `client_class` sent from the main process only. */
+  apiClientClass: 'pharmacy_desktop',
 
   /** Name of this app's IPC capability registry, for diagnostics. */
   capabilityRegistry: 'pharmacyCapabilities',

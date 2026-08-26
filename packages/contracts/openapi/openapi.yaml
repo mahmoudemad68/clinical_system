@@ -8,11 +8,8 @@ info:
     This document is the source of truth for the HTTP contract (ADR 0003).
     Server and client code both conform to it; neither generates it.
 
-    Phase 00 deliberately exposes no clinical, identity, appointment, pharmacy,
-    or AI capability. It defines the envelope, the error model, the pagination
-    model, the shared scalar types, and the health/readiness slice that proves a
-    request can travel from a client through the API, the database and Redis
-    adapters, the outbox worker, and the telemetry pipeline.
+    Phase 01 adds authentication, identity projection, and deny-by-default
+    capabilities. Clinical, pharmacy, and AI capabilities remain absent.
 
     Compatibility rules (ADR 0003):
       * Additive optional fields are compatible within a version.
@@ -46,6 +43,14 @@ tags:
       Phase 00 foundation slice. Gated by the server-owned feature flag
       `platform.diagnostics_slice`, which fails closed and is disabled outside
       local and development environments.
+  - name: auth
+    description: |
+      Phase 01 authentication. Device clients use bearer tokens issued once to
+      the trusted process. Admin browsers use HttpOnly cookies plus CSRF.
+      Endpoints do not silently accept the wrong scheme for a given session kind.
+  - name: identity
+    description: |
+      Phase 01 identity projection. `/me` returns handles and status only.
 
 paths:
   /live:
@@ -297,6 +302,459 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/v1/auth/csrf:
+    get:
+      tags: [auth]
+      operationId: createAuthCsrfCookie
+      summary: Establish CSRF cookie for admin browser sessions
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: CSRF cookie issued. Admin login must send X-XSRF-TOKEN.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CsrfResult'
+
+  /api/v1/auth/registrations:
+    post:
+      tags: [auth]
+      operationId: registerAccount
+      summary: Start patient registration
+      description: |
+        Always returns a generic OTP challenge. Does not disclose whether the
+        phone or National ID already exists. Profile claim is a later phase and
+        is flag-gated off.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+      responses:
+        '201':
+          description: OTP required. Challenge id only; no tokens.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OtpChallengeResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/auth/otp-requests:
+    post:
+      tags: [auth]
+      operationId: requestOtp
+      summary: Request an OTP for a declared purpose
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpRequest'
+      responses:
+        '200':
+          description: Generic OTP required envelope.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OtpChallengeResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/auth/otp-verifications:
+    post:
+      tags: [auth]
+      operationId: verifyOtp
+      summary: Consume a one-time code
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerificationRequest'
+      responses:
+        '200':
+          description: Restricted session, recovery continuation, or generic OTP envelope.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuthSessionResult'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      operationId: loginWithPassword
+      summary: Password login
+      description: |
+        Enumeration-safe. Privileged actors receive an MFA challenge instead of
+        a session. Admin cookie sessions use the adminSession scheme after MFA;
+        device clients receive bearer material once.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordLoginRequest'
+      responses:
+        '200':
+          description: Session, MFA challenge, or both according to actor class.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuthSessionResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/auth/mfa/challenges/{id}/verify:
+    post:
+      tags: [auth]
+      operationId: verifyMfaChallenge
+      summary: Complete a TOTP challenge
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+      responses:
+        '200':
+          description: Privileged session issued.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuthSessionResult'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/auth/token/refresh:
+    post:
+      tags: [auth]
+      operationId: refreshDeviceToken
+      summary: Rotate a device refresh token
+      description: Reuse of a rotated refresh token revokes the family.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: New access and refresh material. Device clients only.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RefreshResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logoutCurrentSession
+      summary: Revoke the current session
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthAck'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /api/v1/auth/sessions:
+    get:
+      tags: [auth]
+      operationId: listOwnSessions
+      summary: List the caller's sessions
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Safe session metadata only.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SessionSummary'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /api/v1/auth/sessions/{session_id}:
+    delete:
+      tags: [auth]
+      operationId: revokeOwnSession
+      summary: Revoke one of the caller's sessions
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthAck'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/auth/sessions/revoke-all:
+    post:
+      tags: [auth]
+      operationId: revokeAllOwnSessions
+      summary: Revoke every session for the caller
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthAck'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /api/v1/auth/password/change:
+    post:
+      tags: [auth]
+      operationId: changeOwnPassword
+      summary: Change password and rotate credential version
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthAck'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/auth/recovery/start:
+    post:
+      tags: [auth]
+      operationId: startAccountRecovery
+      summary: Start recovery OTP
+      description: Generic envelope even when no account exists. Flag-gated.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryStartRequest'
+      responses:
+        '200':
+          description: Generic OTP required envelope.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/OtpChallengeResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /api/v1/auth/recovery/complete:
+    post:
+      tags: [auth]
+      operationId: completeAccountRecovery
+      summary: Complete recovery with OTP and a new password
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryCompleteRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthAck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/me:
+    get:
+      tags: [identity]
+      operationId: getMe
+      summary: Current identity projection
+      description: Never returns National ID, phone, password metadata, MFA secrets, or clinical content.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Identity handles and status only.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MeResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /api/v1/me/capabilities:
+    get:
+      tags: [identity]
+      operationId: getMyCapabilities
+      summary: Server-derived capabilities for the current actor
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Capability names derived from ActorContext.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CapabilitiesResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
 components:
 
   securitySchemes:
@@ -305,9 +763,9 @@ components:
       scheme: bearer
       bearerFormat: opaque
       description: |
-        Opaque device/session token issued by the platform. Phase 00 accepts only
-        synthetic tokens minted for local and development environments. Real
-        authentication, device binding, and MFA are Phase 01.
+        Opaque device access token issued after OTP or password+MFA for
+        patient_mobile, doctor_desktop, and pharmacy_desktop. Stored hashed
+        server-side. Never used by the admin browser.
     adminSession:
       type: apiKey
       in: cookie
@@ -315,7 +773,7 @@ components:
       description: |
         HTTP-only, Secure, SameSite session cookie for the React admin, paired
         with a CSRF token header. The admin never stores a bearer token in local
-        storage (`plan.md` section 5).
+        storage. Device clients must not send this cookie as their credential.
 
   parameters:
     RequestId:
@@ -762,6 +1220,303 @@ components:
           type: boolean
           description: True when this response was replayed from a stored idempotency record.
 
+    CsrfResult:
+      type: object
+      required: [csrf]
+      additionalProperties: false
+      properties:
+        csrf:
+          type: boolean
+
+    RegistrationRequest:
+      type: object
+      required: [name, phone, national_id, password, language]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        phone:
+          type: string
+          maxLength: 32
+        national_id:
+          type: string
+          maxLength: 32
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+        language:
+          type: string
+          enum: [ar, en]
+
+    OtpRequest:
+      type: object
+      required: [phone, purpose]
+      additionalProperties: false
+      properties:
+        phone:
+          type: string
+          maxLength: 32
+        purpose:
+          type: string
+          enum: [registration, phone_change, recovery, profile_claim]
+        language:
+          type: string
+          enum: [ar, en]
+
+    OtpVerificationRequest:
+      type: object
+      required: [challenge_id, code, client_class, platform, device_label]
+      additionalProperties: false
+      properties:
+        challenge_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+        client_class:
+          $ref: '#/components/schemas/ClientClass'
+        platform:
+          $ref: '#/components/schemas/DevicePlatform'
+        device_label:
+          type: string
+          maxLength: 120
+
+    PasswordLoginRequest:
+      type: object
+      required: [phone, password, client_class, platform, device_label]
+      additionalProperties: false
+      properties:
+        phone:
+          type: string
+          maxLength: 32
+        password:
+          type: string
+          maxLength: 128
+        client_class:
+          $ref: '#/components/schemas/ClientClass'
+        platform:
+          $ref: '#/components/schemas/DevicePlatform'
+        device_label:
+          type: string
+          maxLength: 120
+
+    MfaVerifyRequest:
+      type: object
+      required: [code]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      additionalProperties: false
+      properties:
+        refresh_token:
+          type: string
+          maxLength: 256
+
+    PasswordChangeRequest:
+      type: object
+      required: [current_password, new_password]
+      additionalProperties: false
+      properties:
+        current_password:
+          type: string
+          maxLength: 128
+        new_password:
+          type: string
+          minLength: 12
+          maxLength: 128
+
+    RecoveryStartRequest:
+      type: object
+      required: [phone]
+      additionalProperties: false
+      properties:
+        phone:
+          type: string
+          maxLength: 32
+        language:
+          type: string
+          enum: [ar, en]
+
+    RecoveryCompleteRequest:
+      type: object
+      required: [challenge_id, code, password]
+      additionalProperties: false
+      properties:
+        challenge_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+
+    ClientClass:
+      type: string
+      enum: [patient_mobile, doctor_desktop, pharmacy_desktop, admin_web]
+
+    DevicePlatform:
+      type: string
+      enum: [android, ios, windows, macos, linux, web]
+
+    OtpChallengeResult:
+      type: object
+      required: [challenge_id, status]
+      additionalProperties: false
+      properties:
+        challenge_id:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          type: string
+          enum: [otp_required, recovery_verified]
+
+    AuthSessionResult:
+      type: object
+      additionalProperties: false
+      properties:
+        mfa_required:
+          type: boolean
+        challenge_id:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          type: string
+          maxLength: 32
+        session_kind:
+          type: string
+          enum: [device, admin_cookie]
+        session_id:
+          $ref: '#/components/schemas/Uuid'
+        device_id:
+          $ref: '#/components/schemas/Uuid'
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        access_token:
+          type: string
+          maxLength: 256
+          description: Present once for device sessions. Never logged.
+        refresh_token:
+          type: string
+          maxLength: 256
+        expires_in:
+          type: integer
+          minimum: 1
+        capabilities:
+          type: array
+          items:
+            type: string
+            maxLength: 120
+        assurance_level:
+          type: string
+          maxLength: 32
+
+    RefreshResult:
+      type: object
+      required: [access_token, refresh_token, expires_in, session_kind]
+      additionalProperties: false
+      properties:
+        access_token:
+          type: string
+          maxLength: 256
+        refresh_token:
+          type: string
+          maxLength: 256
+        expires_in:
+          type: integer
+          minimum: 1
+        session_kind:
+          type: string
+          enum: [device]
+        device_id:
+          type: string
+
+    SessionSummary:
+      type: object
+      required: [session_id, session_kind, assurance_level]
+      additionalProperties: false
+      properties:
+        session_id:
+          $ref: '#/components/schemas/Uuid'
+        session_kind:
+          type: string
+          enum: [device, admin_cookie]
+        assurance_level:
+          type: string
+          maxLength: 32
+        last_seen_at:
+          $ref: '#/components/schemas/Instant'
+        created_at:
+          $ref: '#/components/schemas/Instant'
+        platform:
+          anyOf:
+            - type: string
+              enum: [android, ios, windows, macos, linux, web]
+            - type: 'null'
+        device_label:
+          anyOf:
+            - type: string
+              maxLength: 120
+            - type: 'null'
+
+    MeResult:
+      type: object
+      required: [user_id, account_type, status, language, assurance_level, profile_links]
+      additionalProperties: false
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        account_type:
+          type: string
+          enum: [patient, doctor, pharmacy, secretary, admin]
+        status:
+          type: string
+          enum: [pending_phone, active, suspended, locked, closed]
+        language:
+          type: string
+          enum: [ar, en]
+        assurance_level:
+          type: string
+          maxLength: 32
+        profile_links:
+          type: array
+          items:
+            type: string
+            maxLength: 64
+
+    CapabilitiesResult:
+      type: object
+      required: [capabilities]
+      additionalProperties: false
+      properties:
+        capabilities:
+          type: array
+          items:
+            type: string
+            maxLength: 120
+
+    AuthAck:
+      type: object
+      additionalProperties: false
+      properties:
+        revoked:
+          type: boolean
+        credential_rotated:
+          type: boolean
+        status:
+          type: string
+          maxLength: 32
+        csrf:
+          type: boolean
+
   responses:
 
     BadRequest:
@@ -859,5 +1614,17 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+
+    AuthAck:
+      description: Bounded acknowledgement with no secrets.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Envelope'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthAck'
 
 security: []

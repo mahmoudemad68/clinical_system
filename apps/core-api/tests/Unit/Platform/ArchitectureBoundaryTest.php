@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
+use App\Modules\Auth\Application\RegisterAccountCoordinator;
+use App\Modules\Identity\Application\DisableIdentityCoordinator;
 use App\Modules\Platform\Application\Coordinators\ApprovedCoordinators;
 use App\Modules\Platform\Application\Outbox\OutboxConsumer;
 use PHPUnit\Framework\Attributes\Test;
@@ -20,9 +22,16 @@ use SplFileInfo;
 final class ArchitectureBoundaryTest extends TestCase
 {
     #[Test]
-    public function phase_00_has_no_approved_cross_module_coordinators(): void
+    public function phase_01_lists_the_registration_and_disable_coordinators(): void
     {
-        $this->assertSame([], ApprovedCoordinators::classes());
+        $this->assertContains(
+            RegisterAccountCoordinator::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            DisableIdentityCoordinator::class,
+            ApprovedCoordinators::classes(),
+        );
     }
 
     #[Test]
@@ -58,7 +67,11 @@ final class ArchitectureBoundaryTest extends TestCase
     #[Test]
     public function domain_sources_do_not_import_the_framework(): void
     {
-        foreach ($this->phpFiles($this->modulesRoot().'/Platform/Domain') as $file) {
+        foreach ($this->phpFiles($this->modulesRoot()) as $file) {
+            if (! str_contains($file, DIRECTORY_SEPARATOR.'Domain'.DIRECTORY_SEPARATOR)) {
+                continue;
+            }
+
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(

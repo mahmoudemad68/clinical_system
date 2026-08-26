@@ -130,6 +130,10 @@ return [
         // local/development by the middleware regardless of this value.
         'diagnostics_slice' => (bool) env('FEATURE_PLATFORM_DIAGNOSTICS_SLICE', false),
 
+        'auth_registration' => (bool) env('FEATURE_AUTH_REGISTRATION', false),
+        'identity_profile_claim' => (bool) env('FEATURE_IDENTITY_PROFILE_CLAIM', false),
+        'auth_recovery' => (bool) env('FEATURE_AUTH_RECOVERY', false),
+
         // V1 exclusions. Do not enable without the owning phase and an ADR.
         'online_payments' => (bool) env('FEATURE_ONLINE_PAYMENTS', false),
         'emergency_chat' => (bool) env('FEATURE_EMERGENCY_CHAT', false),

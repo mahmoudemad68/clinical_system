@@ -1,0 +1,64 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Auth\Application;
+
+use App\Modules\Auth\Domain\Contracts\AuthenticationRateLimiter;
+use App\Modules\Auth\Domain\Contracts\AuthTelemetry;
+use App\Modules\Auth\Domain\Contracts\PasswordHasher;
+use App\Modules\Identity\Domain\Contracts\UserDirectory;
+use App\Modules\Identity\Domain\NationalIdProtector;
+use App\Modules\Platform\Domain\Contracts\Clock;
+use App\Modules\Platform\Domain\Contracts\TransactionContext;
+use App\Modules\Platform\Domain\Contracts\TransactionRunner;
+use App\Modules\Platform\Domain\Exceptions\AuthenticationFailed;
+
+final class AuthenticatePasswordHandler
+{
+    public function __construct(
+        private readonly TransactionRunner $transactions,
+        private readonly NationalIdProtector $protector,
+        private readonly UserDirectory $identities,
+        private readonly PasswordHasher $hasher,
+        private readonly AuthenticationRateLimiter $rates,
+        private readonly IssueAuthenticatedSession $sessions,
+        private readonly Clock $clock,
+        private readonly AuthTelemetry $telemetry,
+    ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function handle(string $phone, string $password, string $clientClass, string $platform, string $deviceLabel, ?string $ipPrefix): array
+    {
+        $parsed = $this->protector->phone($phone);
+        $hmac = $this->protector->phoneHmac($parsed);
+        $this->rates->hitLogin($hmac, $ipPrefix ?? '0.0.0.0');
+
+        $user = $this->identities->findByPhoneHmac($hmac);
+
+        if ($user === null) {
+            $this->hasher->dummyVerify($password);
+            $this->telemetry->authAttempt(['result' => 'unknown', 'method' => 'password', 'actor_class' => 'unknown']);
+            throw new AuthenticationFailed;
+        }
+
+        if (! $this->hasher->verify($password, $user->passwordHash) || ! $user->status->canReceiveDeviceSession()) {
+            $this->telemetry->authAttempt(['result' => 'denied', 'method' => 'password', 'actor_class' => $user->accountType->actorClass()]);
+            throw new AuthenticationFailed;
+        }
+
+        $result = $this->transactions->run(function (TransactionContext $tx) use ($user, $clientClass, $platform, $deviceLabel) {
+            return $this->sessions->issue($tx, $user, $clientClass, $platform, $deviceLabel, $this->clock->now());
+        });
+
+        $this->telemetry->authAttempt([
+            'result' => ($result['mfa_required'] ?? false) === true ? 'mfa_required' : 'issued',
+            'method' => 'password',
+            'actor_class' => $user->accountType->actorClass(),
+        ]);
+
+        return $result;
+    }
+}

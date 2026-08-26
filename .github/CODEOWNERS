@@ -4,12 +4,14 @@
 # section "Detailed implementation work" item 1.4 — review rules for clinical,
 # pharmacy-financial, identity, infrastructure, and AI safety areas.
 #
-# STATUS: the team handles below are PLACEHOLDERS. They must be created in the
-# GitHub organization and populated with the accountable owners named by the
-# Phase 00 entry criteria (one accountable owner each for clinical, pharmacy,
-# privacy/legal, security, and operations) before branch protection can enforce
-# this file. Until then this file documents intent and CI cannot rely on it.
-# Tracked as gate G-01-04 in docs/evidence/phase-00/evidence-ledger.md.
+# STATUS: humans named 2026-08-26 (see docs/governance/accountable-owners.md).
+# All five Phase 00 approval roles are held by Mahmoud. The @clinic/... team
+# handles below remain PLACEHOLDERS: the GitHub organization and teams do not
+# exist, so branch protection cannot enforce this file. Until then this file
+# documents intent. Tracked as gate G-01-04.
+#
+# Assessor/remediator separation is lost while one person holds every role.
+# Independent review remains Phase 22. This file is not that review.
 #
 # Later-listed patterns win, so ordering is significant: broad defaults first,
 # safety-critical narrow paths last.
@@ -48,6 +50,7 @@
 # widen what a compromised renderer can reach, so it is not a routine
 # frontend edit.
 /packages/typescript/desktop_bridge_contracts/ @clinic/desktop @clinic/security
+/packages/typescript/encrypted_local_store/ @clinic/desktop @clinic/security
 /apps/doctor-desktop/src/preload/       @clinic/desktop @clinic/security
 /apps/pharmacy-desktop/src/preload/     @clinic/desktop @clinic/security
 /apps/doctor-desktop/src/main/          @clinic/desktop @clinic/security
@@ -61,6 +64,7 @@
 # ---------------------------------------------------------------------------
 /apps/core-api/app/Modules/Auth/        @clinic/backend @clinic/security
 /apps/core-api/app/Modules/Identity/    @clinic/backend @clinic/security
+/apps/core-api/app/Modules/Access/      @clinic/backend @clinic/security
 /apps/core-api/app/Modules/Audit/       @clinic/backend @clinic/security
 **/Policies/                            @clinic/backend @clinic/security
 

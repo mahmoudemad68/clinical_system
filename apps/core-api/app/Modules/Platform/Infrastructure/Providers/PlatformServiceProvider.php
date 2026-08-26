@@ -17,7 +17,9 @@ use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Contracts\CorrelationScope;
 use App\Modules\Platform\Domain\Contracts\CursorSigner;
 use App\Modules\Platform\Domain\Contracts\DiagnosticsRepository;
+use App\Modules\Platform\Domain\Contracts\FieldEncryptor;
 use App\Modules\Platform\Domain\Contracts\GenerateText;
+use App\Modules\Platform\Domain\Contracts\HmacHasher;
 use App\Modules\Platform\Domain\Contracts\IdempotencyStore;
 use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
 use App\Modules\Platform\Domain\Contracts\OutboxRecorder;
@@ -49,6 +51,8 @@ use App\Modules\Platform\Infrastructure\Cache\CacheWarmer;
 use App\Modules\Platform\Infrastructure\Console\CacheWarmCommand;
 use App\Modules\Platform\Infrastructure\Console\OutboxWorkCommand;
 use App\Modules\Platform\Infrastructure\Console\PlatformPruneCommand;
+use App\Modules\Platform\Infrastructure\Crypto\AesGcmEnvelopeEncryptor;
+use App\Modules\Platform\Infrastructure\Crypto\HkdfHmacHasher;
 use App\Modules\Platform\Infrastructure\Health\AiServiceCheck;
 use App\Modules\Platform\Infrastructure\Health\ConfigurationCheck;
 use App\Modules\Platform\Infrastructure\Health\DatabaseCheck;
@@ -115,6 +119,16 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->singleton(IdentityGenerator::class, UuidV7Generator::class);
 
         $this->app->singleton(Redactor::class, PatternRedactor::class);
+
+        $this->app->singleton(FieldEncryptor::class, static fn (): FieldEncryptor => new AesGcmEnvelopeEncryptor(
+            array_map(static fn (mixed $key): string => (string) $key, (array) config('identity.encryption.keys', [])),
+            (int) config('identity.encryption.current_version', 1),
+        ));
+
+        $this->app->singleton(HmacHasher::class, static fn (): HmacHasher => new HkdfHmacHasher(
+            array_map(static fn (mixed $key): string => (string) $key, (array) config('identity.hmac.keys', [])),
+            (int) config('identity.hmac.current_version', 1),
+        ));
 
         $this->app->singleton(TelemetryGateway::class, static function ($app): TelemetryGateway {
             $otlp = null;
@@ -249,7 +263,13 @@ final class PlatformServiceProvider extends ServiceProvider
         // policy stays in one place.
         $this->app->singleton(ReadinessProbe::class, static fn ($app): ReadinessProbe => new ReadinessProbe(
             [
-                new ConfigurationCheck(['app.key', 'app.version', 'database.default']),
+                new ConfigurationCheck([
+                    'app.key',
+                    'app.version',
+                    'database.default',
+                    'identity.hmac.keys.1',
+                    'identity.encryption.keys.1',
+                ]),
                 new DatabaseCheck(DB::connection()),
                 new RedisCheck($app->make(RedisFactory::class), 'cache', true, $app->make(PlatformMetrics::class)),
                 new RedisCheck($app->make(RedisFactory::class), 'queue', true, $app->make(PlatformMetrics::class)),
@@ -416,6 +436,21 @@ final class PlatformServiceProvider extends ServiceProvider
         Feature::define(
             PlatformFeatures::DIAGNOSTICS_SLICE,
             static fn (): bool => (bool) config('platform.features.diagnostics_slice', false),
+        );
+
+        Feature::define(
+            PlatformFeatures::AUTH_REGISTRATION,
+            static fn (): bool => PlatformFeatures::enabled(PlatformFeatures::AUTH_REGISTRATION),
+        );
+
+        Feature::define(
+            PlatformFeatures::IDENTITY_PROFILE_CLAIM,
+            static fn (): bool => PlatformFeatures::enabled(PlatformFeatures::IDENTITY_PROFILE_CLAIM),
+        );
+
+        Feature::define(
+            PlatformFeatures::AUTH_RECOVERY,
+            static fn (): bool => PlatformFeatures::enabled(PlatformFeatures::AUTH_RECOVERY),
         );
 
         foreach (PlatformFeatures::V1_EXCLUSIONS as $name) {

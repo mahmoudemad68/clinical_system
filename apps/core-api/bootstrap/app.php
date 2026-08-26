@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Modules\Auth\Http\Middleware\AuthenticateActor;
+use App\Modules\Auth\Http\Middleware\AuthenticateDevice;
+use App\Modules\Auth\Http\Middleware\DenyPendingBusinessAccess;
+use App\Modules\Auth\Http\Middleware\ValidateCookieCsrf;
 use App\Modules\Platform\Http\Middleware\AssignCorrelationId;
 use App\Modules\Platform\Http\Middleware\EnforceIdempotency;
 use App\Modules\Platform\Http\Middleware\EnforceRequestBounds;
@@ -11,11 +15,14 @@ use App\Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
 use App\Modules\Platform\Http\Middleware\ResolveLocale;
 use App\Modules\Platform\Http\Middleware\SecureResponseHeaders;
 use App\Modules\Platform\Http\Support\ExceptionRenderer;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -65,10 +72,21 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'platform.diagnostics' => RequireDiagnosticsSlice::class,
             'platform.idempotency' => EnforceIdempotency::class,
+            'auth.device' => AuthenticateDevice::class,
+            'auth.actor' => AuthenticateActor::class,
+            'auth.pending' => DenyPendingBusinessAccess::class,
+            'auth.csrf' => ValidateCookieCsrf::class,
         ]);
 
-        // No stateful session for the API. Admin session auth arrives in
-        // Phase 01 on its own middleware group.
+        $middleware->group('identity.session', [
+            EncryptCookies::class,
+            AddQueuedCookiesToResponse::class,
+            StartSession::class,
+            ValidateCookieCsrf::class,
+        ]);
+
+        // Device-token API remains stateless. Admin cookie issuance uses the
+        // identity.session group on the login/MFA/logout routes only.
         $middleware->statefulApi(false);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

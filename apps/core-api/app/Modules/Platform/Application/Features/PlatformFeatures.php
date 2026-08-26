@@ -14,6 +14,12 @@ final class PlatformFeatures
 {
     public const DIAGNOSTICS_SLICE = 'diagnostics-slice';
 
+    public const AUTH_REGISTRATION = 'auth-registration';
+
+    public const IDENTITY_PROFILE_CLAIM = 'identity-profile-claim';
+
+    public const AUTH_RECOVERY = 'auth-recovery';
+
     /** @var list<string> */
     public const V1_EXCLUSIONS = [
         'online-payments',
@@ -38,6 +44,18 @@ final class PlatformFeatures
 
         if ($name === self::DIAGNOSTICS_SLICE) {
             return (bool) config('platform.features.diagnostics_slice', false);
+        }
+
+        if (in_array($name, [self::AUTH_REGISTRATION, self::IDENTITY_PROFILE_CLAIM, self::AUTH_RECOVERY], true)) {
+            if ((string) config('app.env') === 'production') {
+                return false;
+            }
+
+            return match ($name) {
+                self::AUTH_REGISTRATION => (bool) config('identity.registration_enabled', false),
+                self::IDENTITY_PROFILE_CLAIM => (bool) config('identity.profile_claim_enabled', false),
+                default => (bool) config('identity.recovery_enabled', false),
+            };
         }
 
         return false;

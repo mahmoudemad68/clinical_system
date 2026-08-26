@@ -1,9 +1,12 @@
 import 'package:clinic_api_client/clinic_api_client.dart';
+import 'package:clinic_authentication/clinic_authentication.dart';
 import 'package:clinic_common_models/clinic_common_models.dart';
 import 'package:clinic_design_system/clinic_design_system.dart';
 import 'package:clinic_error_handling/clinic_error_handling.dart';
 import 'package:clinic_localization/clinic_localization.dart';
 import 'package:clinic_networking/clinic_networking.dart';
+import 'package:clinic_secure_storage/clinic_secure_storage.dart';
+import 'auth_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,6 +37,25 @@ final httpClientProvider = Provider<ClinicHttpClient>((ref) {
   final client = ClinicHttpClient(baseUrl: kApiBaseUrl);
   ref.onDispose(client.close);
   return client;
+});
+
+final tokenStoreProvider = Provider<TokenStore>((ref) {
+  return TokenStore(SecureStorageVault(ClinicSecureStorage()));
+});
+
+final authApiProvider = Provider<AuthApi>((ref) {
+  final client = ref.watch(httpClientProvider);
+  final tokens = ref.watch(tokenStoreProvider);
+  final api = AuthApi(client, tokens);
+  final alreadyAttached = client.dio.interceptors.any(
+    (interceptor) => interceptor is AuthInterceptor,
+  );
+  if (!alreadyAttached) {
+    client.dio.interceptors.add(
+      AuthInterceptor(store: tokens, client: client, refresh: api.refresh),
+    );
+  }
+  return api;
 });
 
 final platformApiProvider = Provider<PlatformApi>(
@@ -137,22 +159,31 @@ class HealthScreen extends ConsumerWidget {
           constraints: const BoxConstraints(maxWidth: 520),
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: switch (health) {
-              AsyncData(:final value) => HealthPanel(
-                health: value,
-                isLoading: false,
-              ),
-              AsyncError(:final error) => HealthPanel(
-                health: null,
-                isLoading: false,
-                errorMessage: error is ApiFailure
-                    ? error.message
-                    : strings.healthUnreachable,
-                requestId: error is ApiFailure ? error.requestId : null,
-                onRetry: () => ref.invalidate(healthProvider),
-              ),
-              _ => const HealthPanel(health: null, isLoading: true),
-            },
+            child: ListView(
+              children: [
+                PatientAuthPanel(
+                  api: ref.watch(authApiProvider),
+                  onAuthenticated: () => ref.invalidate(healthProvider),
+                ),
+                const SizedBox(height: 24),
+                switch (health) {
+                  AsyncData(:final value) => HealthPanel(
+                    health: value,
+                    isLoading: false,
+                  ),
+                  AsyncError(:final error) => HealthPanel(
+                    health: null,
+                    isLoading: false,
+                    errorMessage: error is ApiFailure
+                        ? error.message
+                        : strings.healthUnreachable,
+                    requestId: error is ApiFailure ? error.requestId : null,
+                    onRetry: () => ref.invalidate(healthProvider),
+                  ),
+                  _ => const HealthPanel(health: null, isLoading: true),
+                },
+              ],
+            ),
           ),
         ),
       ),

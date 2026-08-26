@@ -40,4 +40,17 @@ class ClinicStrings {
   String get statusUnavailable => _ar ? 'غير متاحة' : 'Unavailable';
 
   String get language => _ar ? 'اللغة' : 'Language';
+
+  String get signIn => _ar ? 'دخول' : 'Sign in';
+  String get signOut => _ar ? 'خروج' : 'Sign out';
+  String get phone => _ar ? 'رقم الجوال' : 'Mobile number';
+  String get password => _ar ? 'كلمة المرور' : 'Password';
+  String get otpCode => _ar ? 'رمز التحقق' : 'Verification code';
+  String get register => _ar ? 'إنشاء حساب' : 'Create account';
+  String get name => _ar ? 'الاسم' : 'Name';
+  String get nationalId => _ar ? 'الرقم القومي' : 'National ID';
+  String get sessions => _ar ? 'الجلسات' : 'Sessions';
+  String get revoke => _ar ? 'إلغاء' : 'Revoke';
+  String get authFailed =>
+      _ar ? 'تعذر إكمال تسجيل الدخول.' : 'Sign-in could not be completed.';
 }

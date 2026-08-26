@@ -8,13 +8,13 @@ reproducible command produced the stated result. Everything else is `PARTIAL`,
 prompts, object keys, or exploit payloads.
 
 - **Environment:** local Docker Compose, single host, 4 vCPU / 7 GB
-- **Recorded:** 2026-08-24; gap-fill 2026-08-26; first-party Inertia/Pest/Telescope/Firebase 2026-08-26
+- **Recorded:** 2026-08-24; gap-fill 2026-08-26; first-party Inertia/Pest/Telescope/Firebase 2026-08-26; owners named 2026-08-26
 - **Toolchain:** PHP 8.3.6 · Composer 2.8.12 · Laravel 13.26.1 · Node 22.23.2 ·
   npm 10.9.8 · Python 3.12.3 · Flutter 3.47.1 · Dart 3.13.1 · Electron 44.0.0 ·
   Electron Forge 7.11.2 · Docker 29.7.2 · PostgreSQL 16 + PostGIS 3.4 · Redis 7
 - **Status:** Phase 00 is **OPEN**.
 
-**Gate totals — 47 gates: 30 PASS, 14 PARTIAL, 0 BLOCKED, 3 OPEN.**
+**Gate totals — 47 gates: 31 PASS, 15 PARTIAL, 0 BLOCKED, 1 OPEN.**
 
 Reproduce with `node scripts/evidence/count-gates.mjs`. The script matches only
 rows whose first cell is a gate id, and fails on a duplicate id or a mismatched
@@ -38,7 +38,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | G-02-06 … G-02-09 desktop boundary | `PASS` / `PARTIAL` | See the dedicated gate rows. Inventory, workspace split, and namespace separation pass; the trust boundary is proven at source and behaviour level but not against a packaged artifact. |
 | G-02-10 packaged E2E | `OPEN` | No WebdriverIO suite, no installed artifact, no OS/architecture matrix, no binary fuse inspection. |
 | G-03-02 generated clients | `PASS` | TypeScript generated into `packages/typescript/api_client`. Dart constants generated into `packages/flutter/api_client/lib/src/generated`. |
-| G-06-01 local encryption | `OPEN` | Mobile spike still open, and Electron `safeStorage`, Linux fail-closed behaviour, encrypted native SQLite, ABI, rekey/recovery, and signed-package evidence are all Phase 05/23 work. No desktop build may write clinical content until then. |
+| G-06-01 local encryption | `PARTIAL` | Linux Electron (Node + Electron 44 ABI) and Linux Dart sqlite3mc canary/rotation/wrong-key/fail-closed tests pass. Windows, macOS, Android, and iOS were not executed. No clinical local writes. See [g-06-01-local-encryption-spike.md](g-06-01-local-encryption-spike.md). |
 | G-06-02 / G-06-04 / G-06-05 | `PARTIAL` | Path filters, workspaces, and lockfiles updated; a `desktop` CI job exists. Forge artifacts are not built for any OS, no SBOM has been produced, and SF-001 remains open at high severity. |
 | Client contract / E2E / system rows | `OPEN` for Electron | Packaged and installed Electron journeys, native integration, signing/update, and rollback tests are outstanding. |
 
@@ -51,22 +51,22 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | G-01-01 | ADRs for modular monolith + separate AI service, repo layout, API-first contracts, outbox, UUIDv7, local encryption, data ownership | architecture | [docs/adr](../../adr/) 0001–0007, plus 0008 package policy and 0009 queue boundary | `PASS` | ADR 0006 carries an open compatibility spike (G-06-01) |
 | G-01-02 | C4 context, container, and one component diagram showing dependency direction | architecture | [c4-context](../../architecture/c4-context.md), [c4-container](../../architecture/c4-container.md), [c4-component](../../architecture/c4-component-module-dependency.md) | `PASS` | Diagrams are Mermaid; no rendering check in CI yet |
 | G-01-03 | Module catalog: owner, public ports, events, tables, classification, prohibited dependencies | architecture | [module-catalog.md](../../architecture/module-catalog.md), 24 modules | `PASS` | Only `Platform` is implemented; the rest are declarations |
-| G-01-04 | CODEOWNERS / review rules for clinical, pharmacy-financial, identity, infrastructure, AI safety | architecture | [.github/CODEOWNERS](../../../.github/CODEOWNERS) | `PARTIAL` | Team handles are placeholders. The GitHub org teams do not exist, so branch protection cannot enforce the file. Needs the five accountable owners from the entry criteria. |
+| G-01-04 | CODEOWNERS / review rules for clinical, pharmacy-financial, identity, infrastructure, AI safety | architecture | [.github/CODEOWNERS](../../../.github/CODEOWNERS); [accountable-owners.md](../../governance/accountable-owners.md) | `PARTIAL` | Humans named 2026-08-26: Mahmoud holds clinical, pharmacy, privacy/legal, security, and operations. GitHub `@clinic/...` teams still do not exist, so branch protection cannot enforce the file. Assessor/remediator separation is lost. |
 | G-01-05 | Automated architecture check fails on a known forbidden-dependency fixture, then fixture removed | architecture | `deptrac analyse --config-file=deptrac.yaml` | `PASS` | Clean run after the Inertia/Firebase wiring: 0 violations, 530 allowed, 0 uncovered. Fixture (`Domain` class importing Eloquent + `DB` facade) produced exit 1 with 2 violations; removed, exit 0. Allowed-dependency count rose from the original 216 because Framework now includes `Inertia\\` and Providers includes `Kreait\\`. |
 
 ## 2. Runtime bootstrap (Phase 00 §2)
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
-| G-02-01 | Each deployment unit scaffolded without feature code | all stacks | All six units present and building | `PASS` | core-api (Laravel 13 + first-party Inertia status pages for admin/patient/doctor/pharmacy), ai-service (FastAPI), admin-web (React 19/Vite 8), patient-app (Flutter 3.47.1), doctor-desktop and pharmacy-desktop (Electron 44 + React + TS, per ADR 0010), plus 11 shared Dart and 5 shared TypeScript packages. New first-party UI lives in Laravel/Inertia; existing standalone clients are retained, not deleted. |
+| G-02-01 | Each deployment unit scaffolded without feature code | all stacks | All six units present and building | `PASS` | core-api (Laravel 13 + first-party Inertia status pages for admin/patient/doctor/pharmacy), ai-service (FastAPI), admin-web (React 19/Vite 8), patient-app (Flutter 3.47.1), doctor-desktop and pharmacy-desktop (Electron 44 + React + TS, per ADR 0010), plus 11 shared Dart and 6 shared TypeScript packages. New first-party UI lives in Laravel/Inertia; existing standalone clients are retained, not deleted. |
 | G-02-02 | `/live`, `/ready`, build/version metadata, structured errors, correlation IDs, graceful shutdown | backend, AI | `./vendor/bin/pest --filter HealthEndpointTest`; Inertia `PersonaStatusPageTest` | `PASS` (HTTP) | Feature tests through the real middleware stack: envelope shape, ar/en negotiation, correlation echo, malformed-id replacement, secure headers, and a check that `/ready` leaks no host detail. First-party Inertia pages negotiate ar/en the same way. Graceful shutdown under active load remains untested (Phase 21). |
 | G-02-03 | Liveness checks only process health; readiness checks critical startup state without making every optional dependency a core outage | backend | `./vendor/bin/pest --filter HealthEndpointTest` | `PASS` | Asserted at the HTTP layer: `/live` is unenveloped and touches no dependency; `/ready` names its checks and marks `ai_service` non-critical |
 | G-02-04 | AI/Qdrant readiness failure does not make Laravel core unready | backend, AI | `./vendor/bin/pest --filter ReadinessIsolationTest` | `PASS` (unit) | 6 tests, 13 assertions. Proves ready-with-AI-degraded, ready-with-optional-hard-fail, unready-on-critical-fail, and configurable criticality. The container-level system test (actually stopping the AI service) is still outstanding. |
 | G-02-05 | Octane workers do not leak request-scoped state; regression test with two synthetic identities | backend | `./vendor/bin/pest --filter OctaneStateIsolationTest` | `PASS` | Reset wired to both `RequestReceived` and `RequestTerminated`, so state survives neither an early return nor an exception. 5 tests with two synthetic identities, including a negative control asserting the leak is real without the hook. |
 | G-02-06 | Desktop migration inventory recorded before replacement; no real desktop database silently deleted | desktop, architecture | [desktop-migration-inventory.md](desktop-migration-inventory.md) | `PASS` | Recorded before any file was removed. No `*.db`/`*.sqlite` existed, ADR 0006's encryption spike never closed so no build was permitted to write clinical content locally, and neither app was ever packaged. Safe to replace; no export/import plan required. |
-| G-02-07 | Dart/Melos workspace holds the patient app only; npm workspaces hold admin web and both Electron desktops | architecture, desktop | `melos bootstrap`; `npm ls --workspaces` | `PASS` | Melos bootstraps 12 packages (was 14): patient app plus 11 Dart packages, no desktop entries. npm workspaces resolve admin-web, both desktops, and 5 `packages/typescript/*`. No mixed runtime remains in either desktop app. |
+| G-02-07 | Dart/Melos workspace holds the patient app only; npm workspaces hold admin web and both Electron desktops | architecture, desktop | `melos bootstrap`; `npm ls --workspaces` | `PASS` | Melos bootstraps 12 packages (was 14): patient app plus 11 Dart packages, no desktop entries. npm workspaces resolve admin-web, both desktops, and 6 `packages/typescript/*`. No mixed runtime remains in either desktop app. |
 | G-02-08 | Doctor and pharmacy differ across every security-relevant namespace | desktop, security | `npm run desktop:test` | `PASS` | App ID, product/executable name, user-data directory, protocol scheme, asset scheme, encrypted-DB namespace, device-credential namespace, capability registry, and update channel all distinct, asserted per app including a check that neither config contains the sibling's identity. |
-| G-02-09 | Electron trust boundary: sandbox, context isolation, no Node in renderer, strict CSP, no generic IPC, validated sender, fuses | desktop, security | `npm run desktop:test` | `PARTIAL` | 32 tests per app. 8 are **behavioural**, exercising the extracted sender-origin policy with hostile inputs rather than grepping source; they found a real defect (a credentialed URL `scheme://user:pass@-/` satisfied the origin comparison) which is now rejected. Sender validation additionally checks WebContents identity and top-level frame, and the dev-server branch is gated on `!app.isPackaged`. `GrantFileProtocolExtraPrivileges` disabled per Electron guidance. Proven capable of failing. **The packaged-window half is not done** — WebdriverIO against a real installed artifact per OS, plus binary fuse inspection, is outstanding (G-02-10). |
+| G-02-09 | Electron trust boundary: sandbox, context isolation, no Node in renderer, strict CSP, no generic IPC, validated sender, fuses | desktop, security | `npm run desktop:test` | `PARTIAL` | 35 tests per app. 8 are **behavioural**, exercising the extracted sender-origin policy with hostile inputs rather than grepping source; they found a real defect (a credentialed URL `scheme://user:pass@-/` satisfied the origin comparison) which is now rejected. Sender validation additionally checks WebContents identity and top-level frame, and the dev-server branch is gated on `!app.isPackaged`. `GrantFileProtocolExtraPrivileges` disabled per Electron guidance. Proven capable of failing. **The packaged-window half is not done** — WebdriverIO against a real installed artifact per OS, plus binary fuse inspection, is outstanding (G-02-10). |
 | G-02-10 | Packaged-artifact Electron E2E: WebdriverIO on the approved OS/architecture matrix, installed-package tests, and binary fuse inspection | desktop, test-engineering | — | `OPEN` | No packaged suite, no installed artifact, no OS matrix, and no verification that the fuses are actually flipped in a built binary. Configuration intent is asserted; runtime behaviour is not. Requires `wdio-electron-service` and a build per target. |
 
 ## 3. Contract workflow (Phase 00 §3)
@@ -97,7 +97,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
 | G-05-01 | Classification levels defined: public, internal, personal, sensitive, credential | privacy | [classification-policy.md](../../data-classification/classification-policy.md) | `PASS` | Policy written and encoded in the `Classification` enum, with telemetry, metric-label, and cache rules unit-tested |
-| G-05-02 | Per table/event/log/metric: classification, purpose, lawful basis, access roles, retention, encryption, deletion owner | privacy | [data-inventory.md](../../data-classification/data-inventory.md) | `PARTIAL` | Phase 00 tables, events, logs, metrics, cache prefixes, `notifications`, local Telescope storage, and Inertia props inventoried. Retention owners are `UNASSIGNED` and lawful basis is blank: both need the accountable privacy and legal owners, and stating them without those owners would be worse than leaving them blank. |
+| G-05-02 | Per table/event/log/metric: classification, purpose, lawful basis, access roles, retention, encryption, deletion owner | privacy | [data-inventory.md](../../data-classification/data-inventory.md) | `PARTIAL` | Inventory complete for Phase 00 holdings. Retention owner is Mahmoud. Lawful basis is still blank: naming a privacy owner does not invent a basis. Deletion/anonymization procedures do not exist. |
 | G-05-03 | Logging redaction processor with canary tests for national IDs, phones, tokens, passwords, clinical text, object keys | platform, security | `./vendor/bin/pest --filter RedactionCanaryTest`; `./vendor/bin/pest --filter ExportRedactionTest` | `PASS` (unit + export path) | 41 tests, 67 assertions on the processor. Export-path suite (G-07-05) asserts capture snapshots drop canaries and that a passthrough redactor fails closed in strict mode. |
 | G-05-04 | TLS on non-local hops; private networking for DB/Redis/Qdrant; private object storage; encrypted volumes | devops | Compose binds every port to `127.0.0.1` only | `PARTIAL` | Local posture correct. Staging TLS and network policy not configured. |
 | G-05-05 | Synthetic Egyptian-format data generators that cannot produce known real identities | platform | `./vendor/bin/pest --filter SyntheticDataTest` | `PASS` | Generators write into impossible ranges: national-ID century digit 9 (the scheme assigns 2 or 3) with an impossible date, mobile prefix 019 (unallocated), `.invalid` emails. 8 tests, 4,700+ assertions, including one proving the redactor still catches the generated values. |
@@ -106,10 +106,10 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
-| G-06-01 | Client local-encryption compatibility spike across 5 target platforms | mobile, desktop, security | — | `OPEN` | Condition of ADR 0006. No client may ship local clinical storage until closed. |
+| G-06-01 | Client local-encryption compatibility spike across 5 target platforms | mobile, desktop, security | [g-06-01-local-encryption-spike.md](g-06-01-local-encryption-spike.md); `npm run test --workspace @clinic/encrypted-local-store`; `flutter test` in `clinic_local_database` | `PARTIAL` | Linux Electron (Node + Electron 44 ABI canary) and Linux Dart sqlite3mc pass canary, rotation, wrong-key, and fail-closed tests. Backup-exclusion flags encoded. Windows, macOS, Android, and iOS not executed. No clinical local writes. ADR 0006 stays open until all five targets pass. |
 | G-06-02 | PR pipeline: format, lint, typecheck, architecture rules, contract validation, unit, integration, security scans, SBOM | devops | [pull-request.yaml](../../../.github/workflows/pull-request.yaml) | `PARTIAL` | 7 path-filtered jobs covering all six units plus contracts and security. Written and YAML-valid but **never executed**: there is no GitHub remote, so no run has ever proven it green. |
 | G-06-03 | Post-merge: signed immutable artifacts, signed staging deploy, migrations with lock monitoring, smoke checks | devops | [post-merge.yaml](../../../.github/workflows/post-merge.yaml) | `PARTIAL` | Build-once, keyless-sign-by-digest, attest, and scan are written. The staging job deliberately fails rather than reporting a deploy that cannot happen; production promotion is hard-disabled until Phase 23. |
-| G-06-04 | All deployment units build reproducibly from locked dependencies | devops | `composer.lock`; `package-lock.json`; `requirements.txt` (hashed); root `pubspec.lock` | `PARTIAL` | core-api image builds from lock, exit 0. `npm ci` from the committed lock reproduces a single copy of every overridden package on Node 22.23.2 / npm 10.9.8. The Dart pub workspace produces one root `pubspec.lock`. **Not yet reproducible:** no Electron artifact has been packaged for any OS, so the desktop half of this gate is unproven. |
+| G-06-04 | All deployment units build reproducibly from locked dependencies | devops | `composer.lock`; `package-lock.json`; `requirements.txt` (hashed); root `pubspec.lock`; `npx electron-forge package` | `PARTIAL` | core-api image builds from lock, exit 0. `npm ci` from the committed lock reproduces a single copy of every overridden package on Node 22.23.2 / npm 10.9.8. The Dart pub workspace produces one root `pubspec.lock`. Linux x64 unsigned Forge packages exist locally for both desktops (gitignored `out/`). Windows/macOS packages, signing, and CI reproduction are outstanding. |
 | G-06-05 | Images/artifacts carry SBOMs with no unaccepted critical findings | security | `npm ci` + `npm audit` on Node 22.23.2 / npm 10.9.8; [security-findings.md](security-findings.md) | `PARTIAL` | **Critical: 0. Moderate: 0. Low: 0.** Root overrides resolve `tar` to 7.5.22, `tmp` 0.2.7, `uuid` 11.1.1, `webpack-dev-server` 5.2.6, each a single copy from a clean `npm ci`. One true high root remains: `extract-zip` `<= 2.0.1`, whose latest published version *is* 2.0.1, so no upgrade exists. High blocks promotion; merge needs a recorded time-boxed exception (SF-001). Semgrep carries 13 rules including 6 Electron boundary rules. SBOM generation itself is configured but unexecuted. |
 
 ## 7. Observability (Phase 00 §7)
@@ -126,10 +126,10 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
-| G-08-01 | STRIDE + privacy threat model across the 7 named trust boundaries | security | [phase-00-foundation.md](../../threat-models/phase-00-foundation.md) | `PARTIAL` | All 7 boundaries analysed with STRIDE, plus every named threat from the phase file and 4 residual risks. **Engineering draft, not independently reviewed** — which is exactly the limitation Phase 22 exists to remove. |
+| G-08-01 | STRIDE + privacy threat model across the 7 named trust boundaries | security | [phase-00-foundation.md](../../threat-models/phase-00-foundation.md) | `PARTIAL` | All 7 boundaries analysed with STRIDE, plus every named threat from the phase file and 4 residual risks. Named owner accepted this draft (G-08-04). **Not independently reviewed** — Phase 22 remains the independent re-review. |
 | G-08-02 | Mandatory controls: deny-by-default, request/content-size limits, safe parsers, no wildcard CORS, secure admin headers, secrets withheld from fork jobs, non-root/read-only containers, SBOM provenance, config/flag/secret audit trail, tested redaction, documented emergency rotation | security | `EnforceRequestBounds`; `CorsPolicyTest`; `PersonaStatusPageTest`; `ConfigChangeAuditor`; [emergency-credential-rotation.md](../../runbooks/emergency-credential-rotation.md) | `PARTIAL` | Audit trail and rotation runbook added. CORS origin `*` rejected by test. Inertia pages emit a same-origin CSP; API responses remain `default-src 'none'`. Telescope is local-only and off the production migration path. SBOM provenance still unexecuted (no GitHub remote). Secret-scanning policy exists in CI YAML only. |
-| G-08-03 | Versioned mappings to OWASP ASVS 5.0.0, OWASP API Security, OWASP MASVS/MASTG | security | [owasp-asvs-mapping.md](../../security/owasp-asvs-mapping.md) | `PASS` | Engineering taxonomy with APPLIED/PARTIAL/NOT_APPLICABLE/NOT_TESTED. Explicitly not statutory compliance. Independent approval remains G-08-04. |
-| G-08-04 | Threat model and data classification have security/privacy approval | security, privacy | — | `OPEN` | Requires the named accountable humans; cannot be self-approved |
+| G-08-03 | Versioned mappings to OWASP ASVS 5.0.0, OWASP API Security, OWASP MASVS/MASTG | security | [owasp-asvs-mapping.md](../../security/owasp-asvs-mapping.md) | `PASS` | Engineering taxonomy with APPLIED/PARTIAL/NOT_APPLICABLE/NOT_TESTED. Explicitly not statutory compliance. Owner acceptance of the Phase 00 draft is G-08-04; independent re-review remains Phase 22. |
+| G-08-04 | Threat model and data classification have security/privacy approval | security, privacy | [accountable-owners.md](../../governance/accountable-owners.md); [phase-00-foundation.md](../../threat-models/phase-00-foundation.md); [data-inventory.md](../../data-classification/data-inventory.md) | `PASS` | Named security and privacy owner (Mahmoud) accepted the engineering drafts on 2026-08-26 when instructing Phase 00 closure of this gate. **Assessor/remediator separation is lost.** Not statutory compliance. Independent re-review remains Phase 22. G-02-10 and G-06-01 are not waived. |
 
 ## 9. Test plan (Phase 00 "Test plan")
 
@@ -236,16 +236,16 @@ the database actually did. Neither would have failed a happy-path test.
 
 | # | Blocker | Needs |
 | --- | --- | --- |
-| 1 | CODEOWNERS teams do not exist; branch protection cannot enforce review rules | The five accountable owners named in the Phase 00 entry criteria (clinical, pharmacy, privacy/legal, security, operations) |
-| 2 | Threat model and data classification approval | Security and privacy owners. Engineering cannot self-approve. |
-| 3 | ADR 0006 encryption spike | Five-platform compatibility results plus key rotation, recovery, backup exclusion, and migration tests |
+| 1 | GitHub CODEOWNERS teams do not exist; branch protection cannot enforce review rules | Create the GitHub organization and teams, or map `@clinic/...` to real usernames. Humans are named in [accountable-owners.md](../../governance/accountable-owners.md). |
+| 2 | ADR 0006 encryption spike (G-06-01) | Linux canary/rotation/fail-closed evidence exists. Still needs Windows, macOS, Android, and iOS execution. Not waived. No client may store clinical content locally until closed. |
+| 3 | Packaged Electron E2E (G-02-10) | WebdriverIO on the approved OS/architecture matrix, installed-package tests, binary fuse inspection. Not waived. |
 | 4 | No staging environment | Infrastructure decision and budget |
 | 5 | SF-001: one high advisory (`extract-zip <= 2.0.1`) in the Electron build toolchain with no published fix. Blocks promotion, not merge | Security owner decision under ADR 0008: time-boxed merge exception with an expiry, a vendored patch, or a tooling change (which needs a compatibility ADR) |
 
 ## Honest summary
 
-**47 gates: 30 PASS, 14 PARTIAL, 0 BLOCKED, 3 OPEN** (reproduce with
-`node scripts/evidence/count-gates.mjs --expect PASS=30,PARTIAL=14,BLOCKED=0,OPEN=3`).
+**47 gates: 31 PASS, 15 PARTIAL, 0 BLOCKED, 1 OPEN** (reproduce with
+`node scripts/evidence/count-gates.mjs --expect PASS=31,PARTIAL=15,BLOCKED=0,OPEN=1`).
 
 All six deployment units build, lint, type-check, and test green:
 
@@ -254,10 +254,10 @@ All six deployment units build, lint, type-check, and test green:
 | core-api | **Pest**: 130 unit (4,915 assertions) on host PHP 8.3.6; 64 feature (448 assertions, 1 skipped: live MinIO) in FrankenPHP 8.3 against Docker PostgreSQL 16 + Redis 7. deptrac 0 violations / 530 allowed / 0 uncovered; Pint clean; PHPStan level 6 clean. First-party Inertia status pages, database notifications, local-only Telescope, and the Firebase push adapter are in tree. |
 | ai-service | pytest **15 passed** (auth, deadline, isolation, queue boundary, Hypothesis fuzz); ruff clean on tests/src |
 | admin-web | 5 tests, type-check and type-aware ESLint clean, production build |
-| doctor-desktop | 32 tests (24 boundary + 8 behavioural sender policy), type-check clean |
-| pharmacy-desktop | 32 tests, type-check clean |
-| patient-app + 11 Dart packages | `melos analyze` clean with `--fatal-infos --fatal-warnings`, 20 tests |
-| 5 shared TypeScript packages | type-check clean |
+| doctor-desktop | 35 tests (boundary + sender policy + local-encryption probe), type-check clean; Linux x64 unsigned Forge package produced |
+| pharmacy-desktop | 35 tests, type-check clean; Linux x64 unsigned Forge package produced |
+| patient-app + 11 Dart packages | `melos analyze` clean with `--fatal-infos --fatal-warnings`; secure-storage and local-database spike tests pass on Linux |
+| 6 shared TypeScript packages | type-check clean; `@clinic/encrypted-local-store` 16 tests |
 
 Eight oracles have been demonstrated capable of failing: the event validator,
 the database CHECK constraints, `deptrac`, the redaction canaries, the
@@ -297,11 +297,14 @@ satisfied the comparison.
   a live collector round-trip has not been proven (G-07-01).
 - **`clinic_reporter` can read every table.** Harmless now, unacceptable before
   Phase 01 stores a patient profile.
-- **No authorization layer exists**, and **nothing has been independently
-  reviewed** by a security or privacy owner.
-- **No encrypted desktop storage, no packaged artifact, no SBOM ever produced,
-  no load test ever run.**
+- **No authorization layer exists.** Independent security/privacy re-review is
+  deferred to Phase 22. The named owner accepted the Phase 00 drafts (G-08-04)
+  with assessor/remediator separation lost.
+- **No SBOM has been produced, and no load test has ever run.** Linux
+  encrypted-store tests and unsigned Electron packages exist; they do not close
+  G-02-10 or five-platform G-06-01.
 
-Phase 00 must not be described as complete. Packaged Electron E2E (G-02-10),
-the local-encryption spike (G-06-01), and independent security/privacy
-approval (G-08-04) remain OPEN and need named human owners.
+Phase 00 must not be described as complete. Packaged Electron E2E (G-02-10)
+remains OPEN. The local-encryption spike (G-06-01) is PARTIAL: Linux passed;
+the other four OS targets have not run. Owner naming and G-08-04 acceptance
+do not waive them.

@@ -4,9 +4,10 @@ STRIDE plus privacy analysis across the seven trust boundaries the phase file
 names. Scope is the foundation as built: gateway, core API, PostgreSQL, Redis,
 object storage, the AI service boundary, the outbox, and the developer/CI plane.
 
-**Status: engineering draft, not approved.** Security and privacy sign-off is
-gate G-08-04. This document states what was considered and what was built; it is
-not a compliance position and it has not been independently reviewed.
+**Status: owner-accepted engineering draft, not independently reviewed.**
+Named security/privacy owner (Mahmoud) accepted this draft on 2026-08-26
+(G-08-04). Assessor/remediator separation is lost. This is not a compliance
+position. Independent re-review remains Phase 22.
 
 Method: for each boundary, what crosses it, what an attacker would try, what
 stops them today, and what does not.
@@ -19,7 +20,7 @@ stops them today, and what does not.
 
 | STRIDE | Threat | Control today | Gap |
 | --- | --- | --- | --- |
-| Spoofing | Stolen device token replayed from another device | Bearer token required; Phase 00 accepts only a synthetic token in local/dev | Device binding, rotation, and revocation are Phase 01 |
+| Spoofing | Stolen device token replayed from another device | Bearer token required; Phase 00 accepts only a synthetic token in local/dev | Device binding, rotation, and revocation: see [phase-01-identity.md](phase-01-identity.md) |
 | Tampering | Request body altered in transit | TLS at the gateway | Certificate pinning on mobile is a Phase 08 decision |
 | Repudiation | Client denies making a request | Correlation ID assigned and persisted on every outbox row | Audit trail proper is Phase 01 |
 | Information disclosure | Error response leaks internals | `ExceptionRenderer` maps every throwable to a stable code and safe message; no stack, SQL, or object key | — |

@@ -1,0 +1,10 @@
+---
+description: Use Laravel Telescope for app monitoring and debugging
+alwaysApply: true
+---
+
+# Application Monitoring
+
+- Use **Laravel Telescope** for application monitoring, debugging, queries, requests, jobs, and exceptions.
+- Do not add a second Laravel debug/monitoring UI (Debugbar as the primary debugger, Horizon-only exception browsing, ad-hoc request log dashboards) when Telescope already covers the need.
+- Keep Telescope gated to local/non-production environments unless the project already documents a locked-down production install.

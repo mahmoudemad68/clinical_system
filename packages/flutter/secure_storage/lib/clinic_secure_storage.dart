@@ -1,15 +1,8 @@
 /// Platform key-store backed storage for tokens and the local database key.
 ///
-/// **Phase 00 status: declared, not implemented.**
-///
-/// This package exists now so the workspace layout, the dependency direction,
-/// and the ownership boundary are fixed before anyone writes against it. It is
-/// implemented in Phase 01.
-///
-/// Declaring it early is deliberate: the alternative is a later phase inventing
-/// a boundary under deadline pressure, which is how a client package ends up
-/// reaching into another app's source.
-///
-/// See `docs/architecture/module-catalog.md` for the ownership rules that
-/// apply, and the Phase 01 file for what this package must provide.
+/// G-06-01 spike: options encode backup exclusion. No clinical content is
+/// written here. Token storage is Phase 01.
 library;
+
+export 'src/backup_exclusion.dart';
+export 'src/clinic_secure_storage.dart';

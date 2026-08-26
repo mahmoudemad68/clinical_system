@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/auth/otp_delivery_requested.v1.schema.json",
+  "title": "auth.otp_delivery_requested v1",
+  "description": "An OTP should be delivered. Destination handle is an opaque otp:{id} reference, never a phone number or code.",
+  "type": "object",
+  "required": ["otp_request_id", "destination_handle", "locale"],
+  "additionalProperties": false,
+  "properties": {
+    "otp_request_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "destination_handle": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^otp:[0-9a-f-]{36}$"
+    },
+    "locale": {
+      "type": "string",
+      "enum": ["ar", "en"]
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Auth",
+    "classification": "internal",
+    "consumers": ["auth.otp_delivery"],
+    "retention_days": 7
+  }
+}

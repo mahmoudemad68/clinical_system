@@ -20,13 +20,13 @@ without a new row.
 | ASVS area | Phase 00 control | Status | Evidence |
 | --- | --- | --- | --- |
 | V1 architecture | Modular monolith, AI isolation, CODEOWNERS, deptrac | `PARTIAL` | ADRs 0001–0010; G-01-01…G-01-05. GitHub teams not live. |
-| V2 authentication | Not implemented. Deny-by-default; diagnostics uses a synthetic token | `NOT_APPLICABLE` | Phase 01 |
-| V3 session | Admin cookie session is Phase 01. API is not stateful. | `NOT_APPLICABLE` | `statefulApi(false)` |
+| V2 authentication | Registration, OTP, password, TOTP, recovery (flag-gated) | `PARTIAL` | Pest AuthenticationFlowsTest; recovery on in phpunit only. Packaged client E2E OPEN |
+| V3 session | Device bearer rotation/reuse revoke; admin cookie + CSRF | `PARTIAL` | Cookie CSRF middleware; Electron/Flutter token isolation. Packaged E2E OPEN |
 | V4 access control | Deny-by-default; no object IDs yet | `PARTIAL` | Channel callbacks return false; public routes are health only |
 | V5 validation | Request size, JSON depth, closed OpenAPI additionalProperties | `APPLIED` | `EnforceRequestBounds`; DiagnosticsSliceTest |
-| V6 cryptography | TLS for non-local hops planned; local Compose binds localhost | `PARTIAL` | G-05-04. Staging TLS not configured. Local encryption spike OPEN (G-06-01) |
+| V6 cryptography | TLS for non-local hops planned; local Compose binds localhost | `PARTIAL` | G-05-04. Staging TLS not configured. Local encryption spike PARTIAL on Linux only (G-06-01) |
 | V7 error handling | Stable machine codes; no stack/SQL/object keys | `APPLIED` | ErrorCode; DiagnosticsSliceTest leak assertions |
-| V8 data protection | Classification policy, redaction processor, canary suite | `PARTIAL` | G-05-01…G-05-03, G-07-05. Privacy owner approval OPEN (G-08-04) |
+| V8 data protection | Classification policy, redaction processor, canary suite | `PARTIAL` | G-05-01…G-05-03, G-07-05. Privacy owner accepted the draft (G-08-04); lawful basis still blank; independent re-review is Phase 22 |
 | V9 communication | Private DB/Redis/S3; no wildcard CORS | `PARTIAL` | cors.php; Compose bind 127.0.0.1 |
 | V10 malicious code | Dependency policy, Semgrep, SBOM job written | `PARTIAL` | ADR 0008; SF-001 High open; CI never executed on GitHub |
 | V11 business logic | Idempotency, outbox, fail-closed flags | `APPLIED` | DiagnosticsSliceTest; FeatureFlagAndAuditTest |
@@ -53,8 +53,8 @@ without a new row.
 
 | MASVS group | Status | Notes |
 | --- | --- | --- |
-| MASVS-STORAGE | `NOT_TESTED` | Local encryption spike is G-06-01 / Phase 05 |
-| MASVS-CRYPTO | `NOT_TESTED` | Same spike |
+| MASVS-STORAGE | `PARTIAL` | Linux sqlite3mc canary/rotation tests and backup-exclusion flags in tree. Android/iOS not executed (G-06-01) |
+| MASVS-CRYPTO | `PARTIAL` | sqlite3mc / SQLCipher-compat canary on Linux. Other OS targets not executed. |
 | MASVS-AUTH | `NOT_APPLICABLE` | Phase 01 |
 | MASVS-NETWORK | `PARTIAL` | Clients talk only to Core HTTPS; no direct DB/Redis/S3 |
 | MASVS-PLATFORM | `PARTIAL` | Flutter patient app only in Melos workspace |
@@ -65,5 +65,6 @@ Electron doctor/pharmacy is not MASVS. Packaged-window evidence is G-02-10 and r
 
 ## Residual
 
-Independent security/privacy approval of the threat model and this mapping is
-G-08-04 and cannot be self-approved here.
+Independent security/privacy *re-review* of the threat model and this mapping
+is Phase 22. G-08-04 records named-owner acceptance of the engineering draft
+with assessor/remediator separation lost. This mapping is not certification.

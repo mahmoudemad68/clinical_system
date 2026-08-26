@@ -9,11 +9,17 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  clinic_error_handling:
+    path: ../error_handling
+  clinic_networking:
+    path: ../networking
+  clinic_secure_storage:
+    path: ../secure_storage
+  dio: ^5.9.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
 
-# Part of the root pub workspace; shares the root lockfile.
 resolution: workspace

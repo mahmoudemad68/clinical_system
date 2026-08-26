@@ -160,3 +160,50 @@ groups:
             May indicate credential stuffing, a broken client, or an
             enumeration attempt.
           runbook: docs/runbooks/authorization-denials.md
+
+  - name: identity-auth
+    rules:
+
+      - alert: AuthBruteForcePattern
+        expr: rate(clinic_auth_attempts_total{result="denied"}[5m]) > 30
+        for: 5m
+        labels:
+          severity: warning
+          owner: security
+        annotations:
+          summary: High rate of denied authentication attempts
+          description: Layered rate limits should already be engaging. Investigate stuffing or a broken client.
+          runbook: docs/runbooks/account-takeover.md
+
+      - alert: OtpQueueSpike
+        expr: rate(clinic_otp_requests_total[5m]) > 20
+        for: 5m
+        labels:
+          severity: warning
+          owner: realtime-jobs
+        annotations:
+          summary: OTP request rate above the local budget heuristic
+          description: SMS cost and provider exhaustion risk. Registration may need to stay flagged off.
+          runbook: docs/runbooks/sms-outage.md
+
+      - alert: RefreshTokenReuse
+        expr: increase(clinic_auth_attempts_total{result="refresh_reuse"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          owner: security
+        annotations:
+          summary: A rotated refresh token was presented again
+          description: The token family is revoked. Treat as suspected theft.
+          runbook: docs/runbooks/refresh-reuse.md
+
+      - alert: PrivilegedMfaBypassAttempt
+        expr: increase(clinic_mfa_challenges_total{result="denied"}[5m]) > 20
+        for: 5m
+        labels:
+          severity: warning
+          owner: security
+        annotations:
+          summary: Repeated privileged MFA failures
+          description: May be stuffing against TOTP. Privileged sessions must not issue at AAL1.
+          runbook: docs/runbooks/mfa-recovery.md

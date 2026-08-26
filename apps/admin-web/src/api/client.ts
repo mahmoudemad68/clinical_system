@@ -74,6 +74,16 @@ export const apiClient = createClient<paths>({
   fetch: (...args: Parameters<typeof globalThis.fetch>) => globalThis.fetch(...args),
 });
 
+apiClient.use({
+  onRequest({ request }) {
+    if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
+      for (const [header, value] of Object.entries(csrfHeader())) {
+        request.headers.set(header, value);
+      }
+    }
+  },
+});
+
 /**
  * Read the CSRF token the server set as a cookie and echo it as a header.
  *

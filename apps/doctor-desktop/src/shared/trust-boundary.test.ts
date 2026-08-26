@@ -7,6 +7,7 @@ import {
   CAPABILITY_REGISTRY,
   CHANNELS,
   MAX_IPC_PAYLOAD_BYTES,
+  authSessionViewSchema,
   localeSetRequestSchema,
   platformHealthResponseSchema,
   withinSizeBound,
@@ -43,8 +44,8 @@ const readCode = (relative: string): string =>
  */
 describe('Clinic Doctor — renderer isolation', () => {
   it('renderer source imports no Node or Electron module', () => {
-    // The one permitted exception is the type-only bridge declaration, which
-    // names the contract package but imports nothing executable.
+    // Ambient Window.clinic types live in clinic-bridge.d.ts (tsconfig include).
+    // A runtime import of that file is not a module webpack can resolve.
     const renderer = read('src/renderer/index.tsx');
 
     for (const forbidden of [
@@ -67,8 +68,19 @@ describe('Clinic Doctor — renderer isolation', () => {
     // Every byte in and out goes through window.clinic. A fetch here would be
     // an unauthenticated request outside the main-process transport, and a
     // localStorage write would put data outside the encrypted boundary.
-    for (const forbidden of ['fetch(', 'XMLHttpRequest', 'localStorage', 'sessionStorage', 'indexedDB', 'new WebSocket']) {
+    for (const forbidden of ['fetch(', 'XMLHttpRequest', 'localStorage', 'sessionStorage', 'indexedDB', 'new WebSocket', 'access_token', 'refresh_token']) {
       expect(renderer).not.toContain(forbidden);
+    }
+  });
+
+  it('keeps the encrypted store and native sqlite out of the renderer', () => {
+    const renderer = read('src/renderer/index.tsx');
+    const preload = read('src/preload/index.ts');
+
+    for (const source of [renderer, preload]) {
+      expect(source).not.toContain('encrypted-local-store');
+      expect(source).not.toContain('better-sqlite3');
+      expect(source).not.toContain('EncryptedSqliteStore');
     }
   });
 
@@ -81,6 +93,25 @@ describe('Clinic Doctor — renderer isolation', () => {
     expect(preload).toContain('contextBridge.exposeInMainWorld');
     expect(preload).not.toMatch(/exposeInMainWorld\([^)]*ipcRenderer/);
     expect(preload).not.toMatch(/invoke\s*:\s*\(\s*channel/);
+  });
+});
+
+describe('Clinic Doctor — local encryption', () => {
+  it('fail-closes Linux basic_text in the main process before opening a store', () => {
+    const probe = read('src/main/local-encryption.ts');
+    const main = read('src/main/index.ts');
+
+    expect(probe).toContain('assessOsKeystore');
+    expect(probe).toContain('getSelectedStorageBackend');
+    expect(main).toContain('assessLocalEncryption');
+    expect(main).toContain('localEncryption.allowed');
+  });
+
+  it('does not expose SQL or draft storage through IPC', () => {
+    const capabilities = read('src/main/capabilities.ts');
+    expect(capabilities).not.toContain('EncryptedSqliteStore');
+    expect(capabilities).not.toContain('better-sqlite3');
+    expect(capabilities).not.toMatch(/ipcMain\.handle\(\s*['"`]/);
   });
 });
 
@@ -105,6 +136,16 @@ describe('Clinic Doctor — window security configuration', () => {
     expect(code).not.toContain('--no-sandbox');
     expect(code).not.toMatch(/appendSwitch\(\s*['"`]no-sandbox/);
     expect(code).not.toMatch(/disableHardwareAcceleration|allowRendererProcessReuse:\s*false/);
+  });
+
+  it('configures the Linux SUID sandbox helper instead of disabling Chromium sandboxing', () => {
+    const pkg = read('package.json');
+    const helper = readCode('../../scripts/desktop/ensure-linux-chromium-sandbox.mjs');
+
+    expect(pkg).toContain('ensure-linux-chromium-sandbox.mjs');
+    expect(pkg).not.toContain('--no-sandbox');
+    expect(helper).not.toContain('--no-sandbox');
+    expect(helper).not.toContain('no-sandbox');
   });
 
   it('denies navigation, child windows, permissions, and downloads', () => {
@@ -245,18 +286,35 @@ describe('Clinic Doctor — IPC contract', () => {
     expect(platformHealthResponseSchema.safeParse({ status: 'exploded' }).success).toBe(false);
   });
 
-  it('exposes exactly the Phase 00 capability set and nothing more', () => {
+  it('exposes exactly the Phase 01 capability set and nothing more', () => {
     // A new channel is a new piece of attack surface and must be a deliberate,
     // reviewed change rather than something that appears quietly.
     expect([...ALL_CHANNELS].sort()).toEqual(
       [
         CHANNELS.appMetadata,
+        CHANNELS.authLogin,
+        CHANNELS.authLogout,
+        CHANNELS.authMe,
+        CHANNELS.authRevokeSession,
+        CHANNELS.authSecureStatus,
+        CHANNELS.authSessions,
+        CHANNELS.authVerifyMfa,
         CHANNELS.localeGet,
         CHANNELS.localeSet,
         CHANNELS.platformHealth,
         CHANNELS.platformVersion,
       ].sort(),
     );
+  });
+
+  it('auth IPC responses never include tokens', () => {
+    expect(
+      authSessionViewSchema.safeParse({
+        status: 'active',
+        mfaRequired: false,
+        access_token: 'not-allowed',
+      }).success,
+    ).toBe(false);
   });
 });
 

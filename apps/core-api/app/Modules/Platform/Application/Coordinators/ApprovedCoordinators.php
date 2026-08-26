@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Platform\Application\Coordinators;
 
+use App\Modules\Auth\Application\RegisterAccountCoordinator;
+use App\Modules\Identity\Application\DisableIdentityCoordinator;
+
 /**
  * The only classes allowed to call command ports from more than one module
  * inside one transaction (Phase 00 cross-module coordination).
@@ -23,9 +26,8 @@ final class ApprovedCoordinators
     public static function classes(): array
     {
         return [
-            // Phase 03: BookAppointmentCoordinator
-            // Phase 04: StartConsultationCoordinator, CompleteConsultationCoordinator
-            // Phase 13: CompleteSaleCoordinator
+            RegisterAccountCoordinator::class,
+            DisableIdentityCoordinator::class,
         ];
     }
 }

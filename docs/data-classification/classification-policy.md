@@ -96,6 +96,6 @@ decision: minimize, quarantine, and do not send.
 
 ## Status
 
-**Unapproved.** This document states the engineering position. Security and
-privacy sign-off is gate G-08-04 and has not happened. Nothing here should be
-cited as a compliance position.
+**Owner-accepted engineering draft (G-08-04, 2026-08-26).** Named security and
+privacy owner: Mahmoud. Assessor/remediator separation is lost. Nothing here
+should be cited as a compliance position. Independent re-review remains Phase 22.

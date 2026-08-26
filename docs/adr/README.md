@@ -31,6 +31,9 @@ Copy `0000-adr-template.md` to start. Number sequentially; do not reuse a number
 | [0008](0008-package-and-version-policy.md) | Package selection and version policy | Accepted | 00 |
 | [0009](0009-queue-ownership-across-php-and-python.md) | Queue ownership boundary between Laravel and Python | Accepted | 00 |
 | [0010](0010-electron-react-typescript-desktop-clients.md) | Electron, React, and TypeScript for doctor/pharmacy desktops | Accepted, gated spikes | 00-23 |
+| [0011](0011-identity-assurance-and-profile-claim.md) | Identity assurance levels, profile claim, and recovery | Accepted defaults; claim/recovery gated | 01 |
+| [0012](0012-totp-verifier-package.md) | RFC 6238 TOTP verifier (`spomky-labs/otphp`) | Accepted | 01 |
+| [0013](0013-identity-key-management.md) | Envelope encryption and purpose-separated HMAC keys | Accepted locally; production KMS is Phase 23 | 01 |
 
 ## Open decisions carried by the roadmap
 

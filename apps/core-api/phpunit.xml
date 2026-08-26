@@ -22,6 +22,18 @@
         <env name="APP_KEY" value="01234567890123456789012345678901"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="HASH_DRIVER" value="argon2id"/>
+        <env name="ARGON_MEMORY" value="16384"/>
+        <env name="ARGON_THREADS" value="1"/>
+        <env name="ARGON_TIME" value="1"/>
+        <env name="IDENTITY_ALLOW_SYNTHETIC_NATIONAL_IDS" value="true"/>
+        <env name="IDENTITY_HMAC_KEY_V1" value="test_identity_hmac_v1_not_a_secret_value!!"/>
+        <env name="IDENTITY_ENCRYPTION_KEY_V1" value="test_identity_enc_v1_not_a_secret_value!!"/>
+        <env name="AUTH_OTP_PEPPER_V1" value="test_otp_pepper_v1_not_a_secret_value!!!!"/>
+        <env name="FEATURE_AUTH_REGISTRATION" value="true"/>
+        <env name="FEATURE_IDENTITY_PROFILE_CLAIM" value="false"/>
+        <env name="FEATURE_AUTH_RECOVERY" value="true"/>
+        <env name="IDENTITY_BOOTSTRAP_ENABLED" value="true"/>
         <env name="BROADCAST_CONNECTION" value="reverb"/>
         <env name="REVERB_APP_ID" value="clinic-test"/>
         <env name="REVERB_APP_KEY" value="local_dev_only_not_a_secret"/>
@@ -63,6 +75,8 @@
         <env name="LOG_CHANNEL" value="null"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <env name="SESSION_COOKIE" value="clinic_session"/>
+        <env name="SESSION_SAME_SITE" value="lax"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="FIREBASE_CREDENTIALS" value=""/>

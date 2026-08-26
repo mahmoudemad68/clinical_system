@@ -1,0 +1,10 @@
+---
+description: Use Pest as the primary PHP testing framework
+alwaysApply: true
+---
+
+# Testing
+
+- Use **Pest** as the primary testing framework for Laravel/PHP tests.
+- Put new tests in Pest files (`*.php` Pest tests), not new PHPUnit `*Test.php` class hierarchies, unless an existing PHPUnit suite must be extended in place.
+- Prefer Pest's `describe` / `it` / `expect` style and the repository's existing Pest helpers and datasets.

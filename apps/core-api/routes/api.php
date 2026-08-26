@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Auth\Http\Controllers\AuthController;
 use App\Modules\Platform\Http\Controllers\DiagnosticsController;
 use App\Modules\Platform\Http\Controllers\PlatformHealthController;
 use Illuminate\Support\Facades\Route;
@@ -16,32 +17,76 @@ use Illuminate\Support\Facades\Route;
 | they are unversioned, unenveloped, and registered in routes/operational.php
 | so they can be excluded from the public gateway route.
 |
-| Phase 00 exposes no clinical, identity, appointment, pharmacy, or AI
-| capability. Routes below are health, version, and the flag-gated
-| foundation slice.
-|
 */
 
 Route::prefix('v1')->group(function (): void {
 
-    // Unauthenticated. Coarse status and build metadata only; never hostnames,
-    // dependency versions, or error detail.
     Route::get('/health', [PlatformHealthController::class, 'health'])
         ->name('api.v1.health');
 
     Route::get('/meta/version', [PlatformHealthController::class, 'version'])
         ->name('api.v1.meta.version');
 
-    /*
-     * Foundation slice. Three independent gates stand in front of it:
-     *   1. the feature flag (fails closed),
-     *   2. the environment allow-list (local/development/testing only),
-     *   3. the synthetic device token.
-     *
-     * When the flag is off the route answers 404 rather than 403, so its
-     * existence is not disclosed.
-     */
     Route::middleware(['platform.diagnostics', 'platform.idempotency'])
         ->post('/diagnostics/round-trip', [DiagnosticsController::class, 'roundTrip'])
         ->name('api.v1.diagnostics.round-trip');
+
+    Route::middleware('identity.session')
+        ->get('/auth/csrf', [AuthController::class, 'csrf'])
+        ->name('api.v1.auth.csrf');
+
+    Route::middleware('platform.idempotency')
+        ->post('/auth/registrations', [AuthController::class, 'register'])
+        ->name('api.v1.auth.registrations');
+
+    Route::middleware('platform.idempotency')
+        ->post('/auth/otp-requests', [AuthController::class, 'requestOtp'])
+        ->name('api.v1.auth.otp-requests');
+
+    Route::middleware(['platform.idempotency', 'identity.session'])
+        ->post('/auth/otp-verifications', [AuthController::class, 'verifyOtp'])
+        ->name('api.v1.auth.otp-verifications');
+
+    Route::middleware('identity.session')
+        ->post('/auth/login', [AuthController::class, 'login'])
+        ->name('api.v1.auth.login');
+
+    Route::middleware('identity.session')
+        ->post('/auth/mfa/challenges/{id}/verify', [AuthController::class, 'verifyMfa'])
+        ->name('api.v1.auth.mfa.verify');
+
+    Route::middleware('platform.idempotency')
+        ->post('/auth/token/refresh', [AuthController::class, 'refresh'])
+        ->name('api.v1.auth.token.refresh');
+
+    Route::post('/auth/recovery/start', [AuthController::class, 'recoveryStart'])
+        ->name('api.v1.auth.recovery.start');
+
+    Route::middleware('platform.idempotency')
+        ->post('/auth/recovery/complete', [AuthController::class, 'recoveryComplete'])
+        ->name('api.v1.auth.recovery.complete');
+
+    Route::middleware(['identity.session', 'auth.actor', 'auth.pending'])->group(function (): void {
+        Route::post('/auth/logout', [AuthController::class, 'logout'])
+            ->name('api.v1.auth.logout');
+
+        Route::get('/auth/sessions', [AuthController::class, 'sessions'])
+            ->name('api.v1.auth.sessions.index');
+
+        Route::delete('/auth/sessions/{sessionId}', [AuthController::class, 'destroySession'])
+            ->name('api.v1.auth.sessions.destroy');
+
+        Route::middleware('platform.idempotency')
+            ->post('/auth/sessions/revoke-all', [AuthController::class, 'revokeAll'])
+            ->name('api.v1.auth.sessions.revoke-all');
+
+        Route::post('/auth/password/change', [AuthController::class, 'changePassword'])
+            ->name('api.v1.auth.password.change');
+
+        Route::get('/me', [AuthController::class, 'me'])
+            ->name('api.v1.me.show');
+
+        Route::get('/me/capabilities', [AuthController::class, 'capabilities'])
+            ->name('api.v1.me.capabilities');
+    });
 });

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { APP_CONFIG } from '../shared/app-config';
 import { registerCapabilities, trustWindow } from './capabilities';
+import { assessLocalEncryption } from './local-encryption';
 
 /**
  * Privileged main process.
@@ -196,6 +197,12 @@ function registerAssetProtocol(): void {
 }
 
 app.whenReady().then(() => {
+  const localEncryption = assessLocalEncryption();
+  if (!localEncryption.allowed) {
+    // Fail closed: do not mint a database key and do not open an encrypted file.
+    // Linux `basic_text` is in this branch by policy, not as a degraded mode.
+  }
+
   registerAssetProtocol();
   registerCapabilities();
   createWindow();

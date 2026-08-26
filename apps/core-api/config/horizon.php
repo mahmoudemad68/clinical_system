@@ -72,7 +72,7 @@ return [
     ),
 
     // Horizon UI is an operations surface. It is not on the public API
-    // gateway. Auth is deny-by-default until Phase 01 supplies identity.
+    // gateway. Cookie auth exists; dedicated operator capability remains Phase 02.
     'middleware' => ['web'],
 
     'waits' => $waits,

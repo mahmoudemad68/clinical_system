@@ -24,6 +24,10 @@ dependencies:
     path: ../../packages/flutter/localization
   clinic_networking:
     path: ../../packages/flutter/networking
+  clinic_authentication:
+    path: ../../packages/flutter/authentication
+  clinic_secure_storage:
+    path: ../../packages/flutter/secure_storage
 
   flutter_riverpod: ^3.0.1
 

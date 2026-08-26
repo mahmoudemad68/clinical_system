@@ -1,45 +1,50 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Models\User;
+use App\Modules\Identity\Domain\NationalIdProtector;
+use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
+use App\Modules\Identity\Domain\ValueObjects\AccountType;
+use App\Modules\Identity\Domain\ValueObjects\LanguagePreference;
+use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
+use App\Modules\Platform\Infrastructure\Persistence\BinaryColumn;
+use App\Modules\Platform\Infrastructure\Testing\SyntheticEgyptianData;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
  * @extends Factory<User>
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
-    protected static ?string $password;
+    protected $model = User::class;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
-        return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
-        ];
-    }
+        $synthetic = new SyntheticEgyptianData;
+        $protector = app(NationalIdProtector::class);
+        $phone = $protector->phone($synthetic->mobileNumber());
+        $now = now('UTC');
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
-    public function unverified(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
+        return [
+            'id' => app(IdentityGenerator::class)->next()->value,
+            'name' => $synthetic->name()['given'].' '.$synthetic->name()['family'],
+            'phone_e164_encrypted' => BinaryColumn::bind($protector->encryptPhone($phone)),
+            'phone_lookup_hmac' => BinaryColumn::bind($protector->phoneHmac($phone)),
+            'phone_key_version' => 1,
+            'password_hash' => Hash::driver('argon2id')->make('password-factory-12'),
+            'account_type' => AccountType::Patient->value,
+            'status' => AccountStatus::Active->value,
+            'language' => LanguagePreference::English->value,
+            'credential_version' => 1,
+            'phone_verified_at' => $now,
+            'last_authenticated_at' => null,
+            'bootstrap_exempt' => false,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
     }
 }

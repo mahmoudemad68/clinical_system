@@ -1,0 +1,11 @@
+---
+description: Build the frontend inside Laravel with Inertia.js; no standalone frontend app
+alwaysApply: true
+---
+
+# Frontend
+
+- Build the frontend **inside the Laravel project** using **Inertia.js**.
+- Do **not** create a separate standalone frontend project (no sibling Next.js, Vite SPA, CRA, or Nuxt app).
+- Keep backend and frontend in the **same Laravel codebase** unless the user explicitly requires otherwise.
+- Add pages, components, and client assets under the Laravel app (typically `resources/js` / Inertia pages). Do not scaffold a new `apps/*-web` or `frontend/` package for ordinary UI work.
