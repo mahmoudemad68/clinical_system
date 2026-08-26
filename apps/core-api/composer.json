@@ -15,8 +15,10 @@
         "laravel/reverb": "^1.11",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
+        "league/flysystem-aws-s3-v3": "^3.30",
         "open-telemetry/exporter-otlp": "^1.4",
         "open-telemetry/sdk": "^1.15",
+        "php-http/guzzle7-adapter": "^1.1",
         "predis/predis": "^3.6",
         "sentry/sentry-laravel": "^4.27",
         "symfony/uid": "^7.4"

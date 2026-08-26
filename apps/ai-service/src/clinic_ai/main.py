@@ -16,11 +16,12 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from clinic_ai import __version__
-from clinic_ai.api import health
+from clinic_ai.api import health, internal, metrics
 from clinic_ai.api.dependencies import get_settings
 
 logger = logging.getLogger("clinic_ai")
@@ -75,12 +76,32 @@ def create_app() -> FastAPI:
         # be calling it.
         docs_url="/docs" if settings.environment in ("local", "development") else None,
         redoc_url=None,
-        openapi_url="/openapi.json"
-        if settings.environment in ("local", "development")
-        else None,
+        openapi_url="/openapi.json" if settings.environment in ("local", "development") else None,
     )
 
     app.include_router(health.router)
+    app.include_router(metrics.router)
+    app.include_router(internal.router)
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        if isinstance(exc.detail, dict) and "error" in exc.detail:
+            return JSONResponse(status_code=exc.status_code, content=exc.detail)
+
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"error": {"code": "INTERNAL_ERROR"}},
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request,
+        exc: RequestValidationError,
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={"error": {"code": "VALIDATION_FAILED"}},
+        )
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:

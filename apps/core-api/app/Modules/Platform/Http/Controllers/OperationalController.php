@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Platform\Http\Controllers;
 
 use App\Modules\Platform\Application\Health\ReadinessProbe;
+use App\Modules\Platform\Application\Telemetry\MetricsExposition;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 
 /**
  * Unversioned operational probes for the orchestrator and load balancer.
@@ -20,6 +22,7 @@ final class OperationalController
 {
     public function __construct(
         private readonly ReadinessProbe $readiness,
+        private readonly MetricsExposition $metrics,
         private readonly string $version,
     ) {}
 
@@ -50,5 +53,16 @@ final class OperationalController
         $result = $this->readiness->evaluate();
 
         return new JsonResponse($result->toArray(), $result->httpStatus());
+    }
+
+    /**
+     * Prometheus text exposition. Not enveloped, not on /api/v1, not public.
+     */
+    public function metrics(): Response
+    {
+        return new Response($this->metrics->render(), 200, [
+            'Content-Type' => 'text/plain; version=0.0.4; charset=utf-8',
+            'Cache-Control' => 'no-store',
+        ]);
     }
 }

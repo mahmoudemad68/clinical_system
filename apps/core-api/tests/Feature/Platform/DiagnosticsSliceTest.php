@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
+use App\Modules\Platform\Application\Idempotency\CanonicalRequestHasher;
+use App\Modules\Platform\Domain\ValueObjects\IdempotencyKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -33,6 +35,7 @@ final class DiagnosticsSliceTest extends TestCase
 
         config()->set('platform.features.diagnostics_slice', true);
         config()->set('platform.diagnostics_environments', ['testing', 'local', 'development']);
+        config()->set('platform.diagnostics_slice_token', self::TOKEN);
         putenv('DIAGNOSTICS_SLICE_TOKEN='.self::TOKEN);
     }
 
@@ -304,6 +307,81 @@ final class DiagnosticsSliceTest extends TestCase
         }
 
         $response->assertJsonStructure(['data', 'meta', 'errors' => [['code', 'message']], 'request_id']);
+    }
+
+    #[Test]
+    public function a_concurrent_processing_record_does_not_start_a_second_transition(): void
+    {
+        $clientKey = 'key-concurrent-proc1';
+        $key = IdempotencyKey::scope(
+            $clientKey,
+            'api.v1.diagnostics.round-trip',
+            hash('sha256', self::TOKEN),
+        );
+
+        $body = ['label' => 'concurrent-wait'];
+        $requestHash = (new CanonicalRequestHasher)->hash(
+            'POST',
+            '/api/v1/diagnostics/round-trip',
+            json_encode($body),
+        );
+
+        $now = '2026-08-26T00:00:00.000000+00:00';
+        DB::table('idempotency_keys')->insert([
+            'key_hash' => $key->storageKey,
+            'operation_id' => $key->operationId,
+            'request_hash' => $requestHash,
+            'state' => 'PROCESSING',
+            'status_code' => null,
+            'response_reference' => null,
+            'safe_error_class' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+            'expires_at' => '2026-08-29T00:00:00.000000+00:00',
+        ]);
+
+        $this->postJson(
+            '/api/v1/diagnostics/round-trip',
+            $body,
+            $this->headers($clientKey),
+        )->assertStatus(409)
+            ->assertJsonPath('errors.0.code', 'IDEMPOTENCY_IN_PROGRESS');
+
+        $this->assertSame(0, DB::table('platform_diagnostics')->count());
+    }
+
+    #[Test]
+    public function an_expired_record_does_not_replay_and_the_key_can_be_reclaimed(): void
+    {
+        $clientKey = 'key-expired-reclaim01';
+        $key = IdempotencyKey::scope(
+            $clientKey,
+            'api.v1.diagnostics.round-trip',
+            hash('sha256', self::TOKEN),
+        );
+
+        $past = '2020-01-01T00:00:00.000000+00:00';
+        DB::table('idempotency_keys')->insert([
+            'key_hash' => $key->storageKey,
+            'operation_id' => $key->operationId,
+            'request_hash' => str_repeat('b', 64),
+            'state' => 'SUCCEEDED',
+            'status_code' => 201,
+            'response_reference' => '{"stale":true}',
+            'safe_error_class' => null,
+            'created_at' => $past,
+            'updated_at' => $past,
+            'expires_at' => $past,
+        ]);
+
+        $this->postJson(
+            '/api/v1/diagnostics/round-trip',
+            ['label' => 'after-expiry'],
+            $this->headers($clientKey),
+        )->assertCreated()
+            ->assertJsonPath('data.idempotent_replay', false);
+
+        $this->assertSame(1, DB::table('platform_diagnostics')->count());
     }
 
     /**

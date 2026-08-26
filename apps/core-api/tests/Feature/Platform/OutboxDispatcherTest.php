@@ -241,6 +241,21 @@ final class OutboxDispatcherTest extends TestCase
         $this->assertSame('unsupported_schema_version', $row->last_error_class);
     }
 
+    #[Test]
+    public function a_compatible_v2_payload_is_accepted_during_dual_read(): void
+    {
+        $diagnosticsId = $this->seedDiagnostics();
+        $eventId = $this->seedEvent($diagnosticsId, schemaVersion: 2, extraPayload: ['source' => 'platform']);
+
+        $this->dispatcher()->dispatchBatch();
+
+        $row = DB::table('outbox_events')->where('event_id', $eventId)->first();
+        $this->assertSame('PROCESSED', $row->status);
+
+        $diagnostics = DB::table('platform_diagnostics')->where('id', $diagnosticsId)->first();
+        $this->assertSame(1, (int) $diagnostics->consumed_count);
+    }
+
     // ------------------------------------------------------------ helpers
 
     private function dispatcher(string $workerId = 'test-worker', int $batchSize = 100): OutboxDispatcher
@@ -314,10 +329,14 @@ final class OutboxDispatcherTest extends TestCase
         return $id;
     }
 
+    /**
+     * @param  array<string, mixed>  $extraPayload
+     */
     private function seedEvent(
         string $diagnosticsId,
         string $eventType = 'platform.diagnostics_round_trip_recorded',
         int $schemaVersion = 1,
+        array $extraPayload = [],
     ): string {
         $eventId = (string) UuidV7::generate();
 
@@ -330,12 +349,12 @@ final class OutboxDispatcherTest extends TestCase
             'occurred_at' => now(),
             'correlation_id' => (string) UuidV7::generate(),
             'classification' => 'internal',
-            'payload' => json_encode([
+            'payload' => json_encode(array_merge([
                 'diagnostics_id' => $diagnosticsId,
                 'label' => 'outbox-test',
                 'echo_delay_ms' => 0,
                 'recorded_at' => now()->toRfc3339String(),
-            ], JSON_THROW_ON_ERROR),
+            ], $extraPayload), JSON_THROW_ON_ERROR),
             'status' => 'PENDING',
             'attempts' => 0,
             'available_at' => now(),

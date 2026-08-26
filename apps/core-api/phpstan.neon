@@ -1,0 +1,27 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    # Level 6 is the Phase 00 floor: types, return values, and unreachable
+    # code. Raising it is later work; a floor nobody can run is not a floor.
+    level: 6
+    paths:
+        - app
+    excludePaths:
+        - app/Http/Controllers/Controller.php
+    treatPhpDocTypesAsCertain: false
+    # V1 ships a single Currency case (EGP). Equality checks are the
+    # multi-currency invariant and become live when a second case is added.
+    ignoreErrors:
+        -
+            identifier: identical.alwaysTrue
+            path: app/Modules/Platform/Domain/ValueObjects/Money.php
+        -
+            identifier: notIdentical.alwaysFalse
+            path: app/Modules/Platform/Domain/ValueObjects/Money.php
+        -
+            identifier: void.pure
+            path: app/Modules/Platform/Domain/ValueObjects/Money.php
+        -
+            identifier: booleanNot.alwaysTrue
+            path: app/Modules/Platform/Infrastructure/Console/OutboxWorkCommand.php

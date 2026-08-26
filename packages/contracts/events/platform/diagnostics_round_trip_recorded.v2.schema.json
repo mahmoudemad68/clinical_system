@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/platform/diagnostics_round_trip_recorded.v2.schema.json",
+  "title": "platform.diagnostics_round_trip_recorded v2",
+  "description": "Additive dual-read companion to v1. Adds an optional machine source identifier. Producers still emit v1; consumers accept both until a later phase switches the producer (events/README.md).",
+  "type": "object",
+  "required": ["diagnostics_id", "label", "recorded_at"],
+  "additionalProperties": false,
+  "properties": {
+    "diagnostics_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Identifier of the synthetic diagnostics record committed in the same transaction."
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+      "description": "Machine-generated slug identifying a test run."
+    },
+    "echo_delay_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "Artificial delay the consumer applies before marking the event processed."
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC instant the diagnostics record was written, assigned inside the transaction."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["platform"],
+      "description": "Optional producer identity. Additive in v2; v1 consumers ignore unknown fields only after dual-read is deployed, so this field is omitted by the current producer."
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Platform",
+    "classification": "internal",
+    "consumers": ["platform.diagnostics_consumer"],
+    "retention_days": 7,
+    "enabled_by_flag": "platform.diagnostics_slice",
+    "environments": ["local", "development"]
+  }
+}

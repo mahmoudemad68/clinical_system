@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Platform\Infrastructure\Telemetry\RedactingLogTap;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -63,6 +64,7 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'tap' => [RedactingLogTap::class],
         ],
 
         'daily' => [
@@ -111,6 +113,7 @@ return [
             ],
             'formatter' => env('LOG_STDERR_FORMATTER'),
             'processors' => [PsrLogMessageProcessor::class],
+            'tap' => [RedactingLogTap::class],
         ],
 
         'syslog' => [

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Platform\Http\Middleware;
 
-use App\Modules\Platform\Domain\Contracts\Clock;
+use App\Modules\Platform\Application\Idempotency\CanonicalRequestHasher;
 use App\Modules\Platform\Domain\Contracts\IdempotencyStore;
 use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
 use App\Modules\Platform\Domain\ValueObjects\IdempotencyKey;
@@ -43,7 +43,7 @@ final class EnforceIdempotency
 {
     public function __construct(
         private readonly IdempotencyStore $store,
-        private readonly Clock $clock,
+        private readonly CanonicalRequestHasher $hasher,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -78,7 +78,11 @@ final class EnforceIdempotency
             );
         }
 
-        $requestHash = $this->canonicalRequestHash($request);
+        $requestHash = $this->hasher->hash(
+            $request->getMethod(),
+            $request->getPathInfo(),
+            $request->getContent(),
+        );
         $existing = $this->store->claim($key, $requestHash);
 
         if ($existing !== null) {
@@ -132,47 +136,6 @@ final class EnforceIdempotency
         }
 
         return $response;
-    }
-
-    /**
-     * Canonical hash of the request's intent.
-     *
-     * Covers method, path, and body. Deliberately excludes headers and query
-     * ordering noise: two byte-identical intents must hash the same even if a
-     * proxy added a header on the retry.
-     */
-    private function canonicalRequestHash(Request $request): string
-    {
-        $body = $request->getContent();
-
-        // Decode and re-encode with sorted keys so JSON key ordering does not
-        // change the hash. A client library that reorders keys between attempts
-        // would otherwise turn a legitimate retry into a 409.
-        $decoded = json_decode($body === '' ? '{}' : $body, true);
-        if (is_array($decoded)) {
-            $this->ksortRecursive($decoded);
-            $body = json_encode($decoded, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
-        }
-
-        return hash('sha256', implode("\0", [
-            $request->getMethod(),
-            $request->getPathInfo(),
-            (string) $body,
-        ]));
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $array
-     */
-    private function ksortRecursive(array &$array): void
-    {
-        ksort($array);
-
-        foreach ($array as &$value) {
-            if (is_array($value)) {
-                $this->ksortRecursive($value);
-            }
-        }
     }
 
     private function replay(?int $status, ?string $reference, Identifier $requestId): Response

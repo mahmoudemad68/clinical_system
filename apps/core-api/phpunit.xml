@@ -19,9 +19,16 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="APP_KEY" value="01234567890123456789012345678901"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="BROADCAST_CONNECTION" value="reverb"/>
+        <env name="REVERB_APP_ID" value="clinic-test"/>
+        <env name="REVERB_APP_KEY" value="local_dev_only_not_a_secret"/>
+        <env name="REVERB_APP_SECRET" value="local_dev_only_not_a_secret"/>
+        <env name="REVERB_HOST" value="127.0.0.1"/>
+        <env name="REVERB_PORT" value="8081"/>
+        <env name="REVERB_SCHEME" value="http"/>
         <env name="CACHE_STORE" value="array"/>
         <!--
             Feature tests run against real PostgreSQL, not SQLite.
@@ -36,7 +43,7 @@
             their own instance.
         -->
         <env name="DB_CONNECTION" value="pgsql"/>
-        <env name="DB_HOST" value="postgres"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="5432"/>
         <env name="DB_DATABASE" value="clinic_test"/>
         <env name="DB_USERNAME" value="clinic_migrator"/>
@@ -46,9 +53,14 @@
         <env name="APP_BUSINESS_TIMEZONE" value="Africa/Cairo"/>
         <env name="APP_SUPPORTED_LOCALES" value="ar,en"/>
         <env name="REDIS_CLIENT" value="predis"/>
+        <env name="REDIS_HOST" value="127.0.0.1"/>
         <env name="AI_SERVICE_BASE_URL" value=""/>
         <env name="TELEMETRY_REDACTION_STRICT" value="true"/>
+        <env name="PENNANT_STORE" value="array"/>
+        <env name="OTEL_ENABLED" value="false"/>
+        <env name="CORS_ALLOWED_ORIGINS" value="http://localhost:5173"/>
         <env name="MAIL_MAILER" value="array"/>
+        <env name="LOG_CHANNEL" value="null"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

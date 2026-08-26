@@ -9,3 +9,4 @@
 library;
 
 export 'src/platform_api.dart';
+export 'src/generated/openapi_contract.dart';

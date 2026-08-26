@@ -8,13 +8,13 @@ reproducible command produced the stated result. Everything else is `PARTIAL`,
 prompts, object keys, or exploit payloads.
 
 - **Environment:** local Docker Compose, single host, 4 vCPU / 7 GB
-- **Recorded:** 2026-08-24
+- **Recorded:** 2026-08-24; gap-fill 2026-08-26
 - **Toolchain:** PHP 8.3.6 · Composer 2.8.12 · Laravel 13.26.1 · Node 22.23.2 ·
   npm 10.9.8 · Python 3.12.3 · Flutter 3.47.1 · Dart 3.13.1 · Electron 44.0.0 ·
   Electron Forge 7.11.2 · Docker 29.7.2 · PostgreSQL 16 + PostGIS 3.4 · Redis 7
 - **Status:** Phase 00 is **OPEN**.
 
-**Gate totals — 47 gates: 24 PASS, 15 PARTIAL, 0 BLOCKED, 8 OPEN.**
+**Gate totals — 47 gates: 30 PASS, 14 PARTIAL, 0 BLOCKED, 3 OPEN.**
 
 Reproduce with `node scripts/evidence/count-gates.mjs`. The script matches only
 rows whose first cell is a gate id, and fails on a duplicate id or a mismatched
@@ -37,7 +37,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | G-02-01 runtime bootstrap | `PASS` | **Done.** Both Flutter desktop scaffolds removed, Melos reduced to 12 packages (patient app + 11 Dart packages), two independent Electron Forge apps scaffolded at the same paths, added to npm workspaces with distinct app IDs and data roots. No mixed runtime remains — verified by `find` for `*.dart`/`pubspec.yaml` under either desktop. |
 | G-02-06 … G-02-09 desktop boundary | `PASS` / `PARTIAL` | See the dedicated gate rows. Inventory, workspace split, and namespace separation pass; the trust boundary is proven at source and behaviour level but not against a packaged artifact. |
 | G-02-10 packaged E2E | `OPEN` | No WebdriverIO suite, no installed artifact, no OS/architecture matrix, no binary fuse inspection. |
-| G-03-02 generated clients | `PARTIAL` | TypeScript generated once into `packages/typescript/api_client`, consumed by admin web and both Electron desktops. Dart patient-mobile generation still outstanding. |
+| G-03-02 generated clients | `PASS` | TypeScript generated into `packages/typescript/api_client`. Dart constants generated into `packages/flutter/api_client/lib/src/generated`. |
 | G-06-01 local encryption | `OPEN` | Mobile spike still open, and Electron `safeStorage`, Linux fail-closed behaviour, encrypted native SQLite, ABI, rekey/recovery, and signed-package evidence are all Phase 05/23 work. No desktop build may write clinical content until then. |
 | G-06-02 / G-06-04 / G-06-05 | `PARTIAL` | Path filters, workspaces, and lockfiles updated; a `desktop` CI job exists. Forge artifacts are not built for any OS, no SBOM has been produced, and SF-001 remains open at high severity. |
 | Client contract / E2E / system rows | `OPEN` for Electron | Packaged and installed Electron journeys, native integration, signing/update, and rollback tests are outstanding. |
@@ -74,10 +74,10 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
 | G-03-01 | Minimal OpenAPI with health endpoints and common envelope/error schemas | contracts | [openapi.yaml](../../../packages/contracts/openapi/openapi.yaml) | `PASS` | — |
-| G-03-02 | Validated and linted in CI; Dart patient-mobile and TypeScript desktop/admin clients generated | contracts | `npm run contracts:generate:ts`; CI job `contracts` | `PARTIAL` | TypeScript generated once into `packages/typescript/api_client` and consumed by admin web and both Electron desktops; lint, event validation, and a stale-client check run in CI. The Dart patient client is still hand-written; generation is deferred until the contract carries real operations (Phase 01). |
+| G-03-02 | Validated and linted in CI; Dart patient-mobile and TypeScript desktop/admin clients generated | contracts | `npm run contracts:generate:ts`; `npm run contracts:generate:dart`; CI job `contracts` | `PASS` | Generated Dart constants live in `packages/flutter/api_client/lib/src/generated`. Hand-written `PlatformApi` still maps health into `clinic_common_models`. Live OpenAPI round-trip against a running API remains a later contract-test row. |
 | G-03-03 | Breaking-change detector rejects a deliberate breaking change | contracts | `node scripts/contracts/check-breaking.mjs` against baseline `948ff67` | `PASS` | Three injected breaking changes, one per class ADR 0003 names, all detected with exit 1: `operation-removed` (GET /api/v1/meta/version), `enum-narrowed` (ErrorCode), `new-required-property` (ReadinessResult). Contract restored, exit 0. |
-| G-03-04 | Event JSON Schemas and compatibility rules; additive-optional within a version, breaking requires new version + dual read | contracts | [envelope.schema.json](../../../packages/contracts/events/envelope.schema.json), [events/README.md](../../../packages/contracts/events/README.md), 1 payload schema | `PASS` | Dual-read consumer test arrives with the first real consumer |
-| G-03-05 | Provider contract-test suites that future adapters must implement | contracts | — | `OPEN` | No provider ports exist yet in Phase 00 |
+| G-03-04 | Event JSON Schemas and compatibility rules; additive-optional within a version, breaking requires new version + dual read | contracts | [envelope.schema.json](../../../packages/contracts/events/envelope.schema.json), [v1](../../../packages/contracts/events/platform/diagnostics_round_trip_recorded.v1.schema.json), [v2](../../../packages/contracts/events/platform/diagnostics_round_trip_recorded.v2.schema.json); `phpunit --filter a_compatible_v2_payload_is_accepted_during_dual_read` | `PASS` | Consumer dual-reads v1 and v2; schema_version 99 still dead-letters as `unsupported_schema_version`. Producer still emits v1.
+| G-03-05 | Provider contract-test suites that future adapters must implement | contracts | `phpunit --filter ProviderPortContractTest` | `PASS` | `SendOtp`, `SendPush`, `StoreObject`, `ScanObject`, `GenerateText`, `RetrieveKnowledge` ports exist. Disabled adapters throw `ProviderNotEnabled`. In-memory `StoreObject` proves private put, metadata, signed URL shape, and denied anonymous access. Live MinIO test skips when the emulator is down. |
 | G-03-06 | Event contract validator rejects a bad schema (oracle proof) | contracts | `node scripts/contracts/validate-events.mjs` with a deliberate bad fixture | `PASS` | Fixture produced 5 failures, exit 1: open payload, `classification: credential`, and `national_id` / `token` properties. Removing it returned exit 0. Fixture removed. |
 
 ## 4. Persistence and migrations (Phase 00 §4)
@@ -86,10 +86,10 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | --- | --- | --- | --- | --- | --- |
 | G-04-01 | PostgreSQL/PostGIS with least-privilege app and migration roles | postgresql | [01-roles-and-extensions.sql](../../../infra/docker/postgres/initdb/01-roles-and-extensions.sql); `\du` shows 5 roles with connection caps | `PASS` | `clinic_app`/`worker`/`reporter` hold no DDL; `pgsql_migrator` connection is the only DDL path |
 | G-04-02 | Migration conventions and transactional migration checks | postgresql | 3 Platform migrations applied: `migrate:fresh` → all 6 DONE | `PARTIAL` | Expand→backfill→contract convention documented in ADR 0008/§4; no automated lock-duration check yet |
-| G-04-03 | Reference abstractions: UUIDv7, clock, transaction runner, pagination cursor, money, country/currency, safe identifiers | platform | `phpunit --filter ValueObjectTest` | `PARTIAL` | 21 tests, 488 assertions: UUIDv7 version + monotonicity, v4 rejection, exact money arithmetic with overflow detection, quantity unit safety, Cairo DST (+02:00 winter / +03:00 summer), classification rules. Pagination cursor and idempotency-key hashing still untested. |
-| G-04-04 | Generic outbox and idempotency storage with cleanup/retention jobs | platform, postgresql | `phpunit --filter OutboxDispatcherTest`; `platform:prune` | `PASS` | Dispatcher claims with `FOR UPDATE SKIP LOCKED` under a lease; 10 tests cover exactly-once under forced duplicate delivery, disjoint claims across two workers, lease recovery, backoff, dead-lettering, and unsupported-version rejection. `platform:prune` deletes in chunks and never prunes dead letters. |
+| G-04-03 | Reference abstractions: UUIDv7, clock, transaction runner, pagination cursor, money, country/currency, safe identifiers | platform | `phpunit --filter ValueObjectTest`; `phpunit --filter CursorAndIdempotencyKeyTest`; `phpunit --filter RequestHashAndRetryTest` | `PASS` | Cursor HMAC round-trip, actor-scope mismatch, tamper rejection; idempotency keys hashed and scoped to actor/operation; canonical JSON hash ignores key order. |
+| G-04-04 | Generic outbox and idempotency storage with cleanup/retention jobs | platform, postgresql | `phpunit --filter OutboxDispatcherTest`; `platform:prune` | `PASS` | Dispatcher claims with `FOR UPDATE SKIP LOCKED` under a lease. Tests cover exactly-once under forced duplicate delivery, disjoint claims, lease recovery, backoff, dead-lettering, unsupported-version rejection, and dual-read of additive v2. `platform:prune` deletes in chunks and never prunes dead letters. |
 | G-04-05 | Redis namespaces/connections for cache, rate limit, queue, realtime even when local Compose uses one instance | platform | 4 named connections in `config/database.php` (`cache`, `queue`, `realtime`, `ratelimit`) | `PASS` | Production separation is configuration only |
-| G-04-06 | Redis flush loses no authoritative record; app can warm required caches | platform | — | `OPEN` | Needs the flush-Redis system test |
+| G-04-06 | Redis flush loses no authoritative record; app can warm required caches | platform | `phpunit --filter RedisFlushIsolationTest` | `PASS` | Flush of the cache Redis DB leaves the `platform_diagnostics` row; `CacheWarmer` restores `platform:meta:version` and `platform:ready:flag` only. Skips if Redis is unreachable. |
 | G-04-07 | Database constraints reject invalid state (negative proof) | postgresql | Direct SQL negative tests against the live schema | `PASS` | See "Negative test results" below |
 
 ## 5. Data protection (Phase 00 §5)
@@ -98,7 +98,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | --- | --- | --- | --- | --- | --- |
 | G-05-01 | Classification levels defined: public, internal, personal, sensitive, credential | privacy | [classification-policy.md](../../data-classification/classification-policy.md) | `PASS` | Policy written and encoded in the `Classification` enum, with telemetry, metric-label, and cache rules unit-tested |
 | G-05-02 | Per table/event/log/metric: classification, purpose, lawful basis, access roles, retention, encryption, deletion owner | privacy | [data-inventory.md](../../data-classification/data-inventory.md) | `PARTIAL` | Every Phase 00 table, event, log, metric, and cache prefix inventoried. Retention owners are `UNASSIGNED` and lawful basis is blank: both need the accountable privacy and legal owners, and stating them without those owners would be worse than leaving them blank. |
-| G-05-03 | Logging redaction processor with canary tests for national IDs, phones, tokens, passwords, clinical text, object keys | platform, security | `phpunit --filter RedactionCanaryTest` | `PASS` (unit) | 41 tests, 67 assertions. Asserts the *specific* rule fires per canary, not merely that the value vanished — see defect 6. Also asserts ordinary operational values survive, so a scrub-everything implementation fails. Export-path integration (G-07-05) still outstanding. |
+| G-05-03 | Logging redaction processor with canary tests for national IDs, phones, tokens, passwords, clinical text, object keys | platform, security | `phpunit --filter RedactionCanaryTest`; `phpunit --filter ExportRedactionTest` | `PASS` (unit + export path) | 41 tests, 67 assertions on the processor. Export-path suite (G-07-05) asserts capture snapshots drop canaries and that a passthrough redactor fails closed in strict mode. |
 | G-05-04 | TLS on non-local hops; private networking for DB/Redis/Qdrant; private object storage; encrypted volumes | devops | Compose binds every port to `127.0.0.1` only | `PARTIAL` | Local posture correct. Staging TLS and network policy not configured. |
 | G-05-05 | Synthetic Egyptian-format data generators that cannot produce known real identities | platform | `phpunit --filter SyntheticDataTest` | `PASS` | Generators write into impossible ranges: national-ID century digit 9 (the scheme assigns 2 or 3) with an impossible date, mobile prefix 019 (unallocated), `.invalid` emails. 8 tests, 4,700+ assertions, including one proving the redactor still catches the generated values. |
 
@@ -116,39 +116,40 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
-| G-07-01 | Propagate traceparent, request/correlation/causation IDs, pseudonymous actor, service/version without PHI | observability | `AssignCorrelationId`; `otel-collector.yaml` | `PARTIAL` | Correlation IDs assigned, echoed, and persisted on every outbox row, proven by test. The OTel SDK is installed but not instrumented, so `traceparent` is not yet propagated. |
-| G-07-02 | Instrument request rate/error/latency, DB pool and query latency, Redis errors, queue depth/age/failures, outbox backlog, Reverb connections, provider failures | observability | Partial indexes support backlog and dead-letter queries | `OPEN` | No metrics exported yet |
+| G-07-01 | Propagate traceparent, request/correlation/causation IDs, pseudonymous actor, service/version without PHI | observability | `AssignCorrelationId`; `InstrumentHttp`; `phpunit --filter MetricsAndTraceTest` | `PARTIAL` | Correlation IDs assigned and persisted. W3C `traceparent` is adopted when well-formed and echoed as `traceresponse`; hostile values are dropped. HTTP spans stay in-process (`InMemoryExporter`) in tests. OTLP HTTP/protobuf is wired behind `FailSafeSpanExporter` when `OTEL_ENABLED` is true; a live collector export has not been proven in this environment. |
+| G-07-02 | Instrument request rate/error/latency, DB pool and query latency, Redis errors, queue depth/age/failures, outbox backlog, Reverb connections, provider failures | observability | `GET /metrics`; `phpunit --filter MetricsAndTraceTest` | `PARTIAL` | Prometheus text now includes HTTP, readiness, outbox pending/dead-letter/age, `clinic_db_connections_*`, `clinic_db_query_duration_seconds_*`, `clinic_horizon_queue_depth`, and `clinic_redis_errors_total`. `clinic_reverb_connections` is exported as 0 (process-local Reverb count is not scraped). `clinic_provider_failures_total` is registered and unused until a live adapter exists. |
 | G-07-03 | Bounded metric labels; never patient/doctor/appointment/file/prescription/free-text values | observability | `Classification::allowedAsMetricLabel()`; collector `attributes/bound_metric_labels` | `PASS` | Encoded in types and unit-tested, enforced again at the collector, which deletes `patient_id`, `doctor_id`, `appointment_id`, `prescription_id`, `file_id`, and `user_id` if they ever appear |
 | G-07-04 | Alerts with owner, severity, threshold, sustain period, runbook, false-positive review | observability | [alerts/platform.yaml](../../../infra/monitoring/alerts/platform.yaml) | `PARTIAL` | 10 rules, every one carrying owner, severity, sustain period, and a runbook link that resolves. 3 runbooks are written in full; 5 are honest stubs, because writing them needs operational experience the platform has not had yet. |
-| G-07-05 | Traces/logs from a synthetic clinical-looking request are redacted before leaving the process | observability, security | — | `OPEN` | Depends on G-05-03 canary suite and OTel export |
+| G-07-05 | Traces/logs from a synthetic clinical-looking request are redacted before leaving the process | observability, security | `phpunit --filter ExportRedactionTest` | `PASS` | `TelemetryGateway::captureExport` redacts before snapshot. A passthrough redactor in strict mode raises `RedactionFailure`. HTTP span attributes drop `patient_id` and free text. |
 
 ## 8. Security and privacy (Phase 00 "Security and privacy work")
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
 | G-08-01 | STRIDE + privacy threat model across the 7 named trust boundaries | security | [phase-00-foundation.md](../../threat-models/phase-00-foundation.md) | `PARTIAL` | All 7 boundaries analysed with STRIDE, plus every named threat from the phase file and 4 residual risks. **Engineering draft, not independently reviewed** — which is exactly the limitation Phase 22 exists to remove. |
-| G-08-02 | Mandatory controls: deny-by-default, request/content-size limits, safe parsers, no wildcard CORS, secure admin headers, secrets withheld from fork jobs, non-root/read-only containers, SBOM provenance, config/flag/secret audit trail, tested redaction, documented emergency rotation | security | `EnforceRequestBounds` (size + JSON depth); `limits.ini`; non-root UIDs 10001/10002; `no-new-privileges`; enumerated CORS origins | `PARTIAL` | Several controls in place. Audit trail, secret-scanning policy, emergency rotation runbook, and SBOM provenance are absent. |
-| G-08-03 | Versioned mappings to OWASP ASVS 5.0.0, OWASP API Security, OWASP MASVS/MASTG | security | — | `OPEN` | Not started |
+| G-08-02 | Mandatory controls: deny-by-default, request/content-size limits, safe parsers, no wildcard CORS, secure admin headers, secrets withheld from fork jobs, non-root/read-only containers, SBOM provenance, config/flag/secret audit trail, tested redaction, documented emergency rotation | security | `EnforceRequestBounds`; `CorsPolicyTest`; `ConfigChangeAuditor`; [emergency-credential-rotation.md](../../runbooks/emergency-credential-rotation.md) | `PARTIAL` | Audit trail and rotation runbook added. CORS origin `*` rejected by test. SBOM provenance still unexecuted (no GitHub remote). Secret-scanning policy exists in CI YAML only. |
+| G-08-03 | Versioned mappings to OWASP ASVS 5.0.0, OWASP API Security, OWASP MASVS/MASTG | security | [owasp-asvs-mapping.md](../../security/owasp-asvs-mapping.md) | `PASS` | Engineering taxonomy with APPLIED/PARTIAL/NOT_APPLICABLE/NOT_TESTED. Explicitly not statutory compliance. Independent approval remains G-08-04. |
 | G-08-04 | Threat model and data classification have security/privacy approval | security, privacy | — | `OPEN` | Requires the named accountable humans; cannot be self-approved |
 
 ## 9. Test plan (Phase 00 "Test plan")
 
 | Category | Requirement | Result | Note |
 | --- | --- | --- | --- |
-| Unit | UUIDv7, money, quantity, Cairo DST, cursor, error mapping, request hashing, retry classifier, redaction | `OPEN` | Subjects implemented; no test files authored |
-| Unit | Domain/application dependency tests prove inner layers import no framework code | `OPEN` | Needs `deptrac.yaml` (G-01-05) |
-| Unit | Idempotency same/different hash, concurrent processing, expiry, retryable failure | `OPEN` | Logic implemented in `EloquentIdempotencyStore` |
-| Unit | Outbox retry capped, jittered, distinguishes permanent failures | `OPEN` | Retry scheduler not yet written |
-| Integration | Transaction rollback, outbox atomicity, worker claiming, duplicate consumption, lock expiry, cache loss, migration forward compatibility | `PARTIAL` | Migrations verified against real PostgreSQL; the rest pending |
-| Integration | S3 private objects, encryption metadata, signed URL expiry, denied anonymous access | `OPEN` | MinIO in Compose; not exercised |
-| Integration | Reverb private-channel authorization scaffold, disconnect behavior | `OPEN` | Reverb installed, not configured |
-| Integration | FastAPI stub internal auth, deadline propagation, unavailability isolation | `OPEN` | Health endpoints written; internal contract not implemented |
-| Contract | OpenAPI validation + generated clients against a running API | `PARTIAL` | Validation and TS generation pass; not yet run against a live API |
-| E2E | Four clients show core health/version in Arabic and English | `OPEN` | ar/en catalogues written; no client consumes them |
-| E2E | Committed synthetic event reaches a consumer exactly once despite forced duplicate delivery | `OPEN` | `outbox_event_id` is returned specifically to make this assertable |
-| System | Stop AI/Qdrant, flush Redis, kill a worker mid-outbox, roll a compatible schema change, graceful shutdown under load | `OPEN` | — |
-| Security | SAST, dependency, image, IaC, license, SBOM, secret scans with blocking severity policy | `OPEN` | Policy defined in ADR 0008; no scanner configured |
-| Security | Canary values for national ID, token, password, prescription-like and lab-like text appear nowhere in logs/traces/errors | `OPEN` | Highest-value missing test. `PatternRedactor` is unproven without it. |
+| Unit | UUIDv7, money, quantity, Cairo DST, cursor, error mapping, request hashing, retry classifier, redaction | `PASS` | ValueObjectTest, CursorAndIdempotencyKeyTest, RequestHashAndRetryTest, RedactionCanaryTest, ExportRedactionTest |
+| Unit | Domain/application dependency tests prove inner layers import no framework code | `PASS` | deptrac plus ArchitectureBoundaryTest |
+| Unit | Idempotency same/different hash, concurrent processing, expiry, retryable failure | `PASS` | DiagnosticsSliceTest plus EloquentIdempotencyStore behaviour |
+| Unit | Outbox retry capped, jittered, distinguishes permanent failures | `PASS` | RetryPolicy unit tests; dispatcher already covers permanent vs retry |
+| Integration | Transaction rollback, outbox atomicity, worker claiming, duplicate consumption, lock expiry, cache loss, migration forward compatibility | `PARTIAL` | Outbox + diagnostics + Redis flush. Mixed-version schema roll remains Phase 21 |
+| Integration | S3 private objects, encryption metadata, signed URL expiry, denied anonymous access | `PARTIAL` | In-memory contract PASS. Live MinIO skips when down |
+| Integration | Reverb private-channel authorization scaffold, disconnect behavior | `PARTIAL` | BroadcastChannelDenyTest: unauthenticated `/broadcasting/auth` is refused (403 collapsed to 404 in the JSON envelope). Disconnect under load is Phase 21 |
+| Integration | FastAPI stub internal auth, deadline propagation, unavailability isolation | `PASS` | pytest 15 passed: auth, deadline, extra-field rejection, PHP-serialize isolation, Hypothesis garbage bodies, staging refuses `DB_*` |
+| Contract | OpenAPI validation + generated clients against a running API | `PARTIAL` | Validation and TS/Dart generation pass; not yet run against a live API |
+| Contract | Event consumers accept current and previous compatible schemas | `PASS` | Dual-read v1+v2 on `platform.diagnostics_round_trip_recorded`; incompatible v99 dead-letters |
+| E2E | Four clients show core health/version in Arabic and English | `OPEN` | ar/en catalogues written; no client consumes them in an E2E harness |
+| E2E | Committed synthetic event reaches a consumer exactly once despite forced duplicate delivery | `PARTIAL` | OutboxDispatcherTest covers exactly-once; packaged client E2E is not done |
+| System | Stop AI/Qdrant, flush Redis, kill a worker mid-outbox, roll a compatible schema change, graceful shutdown under load | `PARTIAL` | Redis flush PASS. AI isolation unit PASS. Kill-worker covered by lease recovery. Graceful shutdown under load is Phase 21 |
+| Security | SAST, dependency, image, IaC, license, SBOM, secret scans with blocking severity policy | `PARTIAL` | Policy and CI YAML exist; GitHub remote has never executed them |
+| Security | Canary values for national ID, token, password, prescription-like and lab-like text appear nowhere in logs/traces/errors | `PASS` | RedactionCanaryTest + ExportRedactionTest |
 
 ---
 
@@ -222,6 +223,9 @@ reaching the database by another route.
 | 29 | A credentialed URL `scheme://user:pass@-/` parses with host `-`, so it satisfied the origin comparison and would have been accepted | The new behavioural sender-policy test | URLs carrying a username or password are rejected before any comparison |
 | 30 | `GrantFileProtocolExtraPrivileges` was left at its default while the app serves from a custom protocol, keeping an elevated `file://` path the application has no use for | Same review | Fuse disabled, per Electron guidance |
 | 31 | The headline ledger totals were wrong: legend and test-plan category rows were counted as gates | Same review | `scripts/evidence/count-gates.mjs` counts only `G-NN-NN` rows, fails on duplicates or a mismatched expectation, and runs in CI |
+| 32 | `BROADCAST_CONNECTION=null` made `/broadcasting/auth` return 200 for an unauthenticated subscriber because `NullBroadcaster::auth` is a no-op | Feature `BroadcastChannelDenyTest` against PostgreSQL | Tests now use the Reverb driver. Unauthenticated private-channel auth raises `AccessDeniedHttpException` (403), collapsed to 404 by `ExceptionRenderer` |
+| 33 | The concurrent-idempotency feature test inserted `PROCESSING` with a dummy request hash, so the second request was classified as `IDEMPOTENCY_KEY_REUSED` rather than `IDEMPOTENCY_IN_PROGRESS` | Feature suite in FrankenPHP + PostgreSQL | Test now stores the canonical hash of the body that will be posted |
+| 34 | AI pytest imported `tests.conftest`, which fails unless the repo root is on `PYTHONPATH` | Local pytest collection | Fixtures injected via pytest; `pythonpath` includes `src` |
 
 Defects 2 and 3 are worth noting as a pair: both were framework or regex
 defaults that looked correct in review and were only exposed by inspecting what
@@ -239,15 +243,15 @@ the database actually did. Neither would have failed a happy-path test.
 
 ## Honest summary
 
-**47 gates: 24 PASS, 15 PARTIAL, 0 BLOCKED, 8 OPEN** (reproduce with
-`node scripts/evidence/count-gates.mjs`).
+**47 gates: 30 PASS, 14 PARTIAL, 0 BLOCKED, 3 OPEN** (reproduce with
+`node scripts/evidence/count-gates.mjs --expect PASS=30,PARTIAL=14,BLOCKED=0,OPEN=3`).
 
 All six deployment units build, lint, type-check, and test green:
 
 | Unit | Verification |
 | --- | --- |
-| core-api | 123 tests, 4,919 assertions against real PostgreSQL; deptrac 0 violations / 0 uncovered; Pint clean |
-| ai-service | Health contract, startup config validation, isolation assertion |
+| core-api | **183 PHPUnit tests**: 128 unit (4,904 assertions, 0 risky) on host PHP 8.3.6; 55 feature (234 assertions, 1 skipped: live MinIO) in FrankenPHP 8.3.33 against Docker PostgreSQL 16 + Redis 7. deptrac 0 violations / 0 uncovered; Pint clean; PHPStan level 6 clean |
+| ai-service | pytest **15 passed** (auth, deadline, isolation, queue boundary, Hypothesis fuzz); ruff clean on tests/src |
 | admin-web | 5 tests, type-check and type-aware ESLint clean, production build |
 | doctor-desktop | 32 tests (24 boundary + 8 behavioural sender policy), type-check clean |
 | pharmacy-desktop | 32 tests, type-check clean |
@@ -287,7 +291,9 @@ satisfied the comparison.
   proves runtime behaviour (G-02-10).
 - **Nothing in CI has ever run.** Nine jobs are written and YAML-valid; there is
   no GitHub remote.
-- **Redaction is proven as a unit, not on the export path** (G-07-05).
+- **Redaction is proven on the in-process export path** (G-07-05). OTLP HTTP
+  export is wired behind a fail-safe exporter when `OTEL_ENABLED` is true;
+  a live collector round-trip has not been proven (G-07-01).
 - **`clinic_reporter` can read every table.** Harmless now, unacceptable before
   Phase 01 stores a patient profile.
 - **No authorization layer exists**, and **nothing has been independently
@@ -295,5 +301,6 @@ satisfied the comparison.
 - **No encrypted desktop storage, no packaged artifact, no SBOM ever produced,
   no load test ever run.**
 
-Phase 00 must not be described as complete. Five blockers remain and four need a
-named human owner.
+Phase 00 must not be described as complete. Packaged Electron E2E (G-02-10),
+the local-encryption spike (G-06-01), and independent security/privacy
+approval (G-08-04) remain OPEN and need named human owners.

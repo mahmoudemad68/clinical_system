@@ -24,3 +24,4 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/live', [OperationalController::class, 'live'])->name('operational.live');
 Route::get('/ready', [OperationalController::class, 'ready'])->name('operational.ready');
+Route::get('/metrics', [OperationalController::class, 'metrics'])->name('operational.metrics');

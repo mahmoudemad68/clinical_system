@@ -6,6 +6,7 @@ namespace App\Modules\Platform\Infrastructure\Health;
 
 use App\Modules\Platform\Application\Health\CheckStatus;
 use App\Modules\Platform\Application\Health\DependencyCheck;
+use App\Modules\Platform\Infrastructure\Telemetry\PlatformMetrics;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Throwable;
 
@@ -22,6 +23,7 @@ final class RedisCheck implements DependencyCheck
         private readonly RedisFactory $redis,
         private readonly string $connectionName,
         private readonly bool $critical = true,
+        private readonly ?PlatformMetrics $metrics = null,
     ) {}
 
     public function name(): string
@@ -41,6 +43,10 @@ final class RedisCheck implements DependencyCheck
 
             return CheckStatus::Pass;
         } catch (Throwable) {
+            $this->metrics?->increment('clinic_redis_errors_total', [
+                'connection' => $this->connectionName,
+            ]);
+
             return CheckStatus::Fail;
         }
     }

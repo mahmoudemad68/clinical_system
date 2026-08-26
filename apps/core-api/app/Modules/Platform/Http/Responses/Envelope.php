@@ -23,6 +23,7 @@ final class Envelope
 {
     /**
      * @param  array<string, mixed>  $meta
+     * @param  array<string, string>  $headers
      */
     public static function ok(
         mixed $data,
@@ -47,6 +48,10 @@ final class Envelope
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $meta
+     * @param  array<string, string>  $headers
+     */
     public static function created(
         mixed $data,
         Identifier $requestId,
@@ -56,6 +61,9 @@ final class Envelope
         return self::ok($data, $requestId, $meta, 201, $headers);
     }
 
+    /**
+     * @param  array<string, mixed>  $meta
+     */
     public static function noContent(Identifier $requestId, array $meta = []): JsonResponse
     {
         return self::ok(null, $requestId, $meta, 200);

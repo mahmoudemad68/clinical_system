@@ -106,6 +106,8 @@ return [
     'telemetry' => [
         'redaction_enabled' => (bool) env('TELEMETRY_REDACTION_ENABLED', true),
         'redaction_strict' => (bool) env('TELEMETRY_REDACTION_STRICT', false),
+        'otel_enabled' => (bool) env('OTEL_ENABLED', false),
+        'otlp_endpoint' => (string) env('OTEL_EXPORTER_OTLP_ENDPOINT', ''),
     ],
 
     /*
@@ -149,5 +151,7 @@ return [
     |
     */
     'diagnostics_environments' => ['local', 'development', 'testing'],
+
+    'diagnostics_slice_token' => (string) env('DIAGNOSTICS_SLICE_TOKEN', ''),
 
 ];

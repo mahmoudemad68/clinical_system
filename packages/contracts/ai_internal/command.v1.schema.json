@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clinic.invalid/contracts/ai_internal/command.v1.schema.json",
+  "title": "ai.internal.command.v1",
+  "description": "Authenticated Laravel → FastAPI command envelope. Phase 00 scaffold: schema and auth only. No product tools.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "command_id",
+    "command_type",
+    "schema_version",
+    "idempotency_key",
+    "deadline_at",
+    "correlation_id",
+    "payload"
+  ],
+  "properties": {
+    "command_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv7. Also the cross-boundary idempotency identity with idempotency_key."
+    },
+    "command_type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,63}$",
+      "description": "Namespaced command name. Phase 00 accepts the type and refuses to execute it."
+    },
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 255,
+      "pattern": "^[A-Za-z0-9._~-]+$"
+    },
+    "deadline_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC RFC 3339 instant. An expired deadline is an unknown outcome, never a second task."
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Object references and scope only. No clinical text, prompts, or credentials.",
+      "properties": {
+        "object_ref": {
+          "type": "string",
+          "maxLength": 160,
+          "pattern": "^[a-z][a-z0-9_./-]{0,159}$"
+        },
+        "scope": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        }
+      }
+    }
+  },
+  "x-clinic": {
+    "owning_module": "ai_platform",
+    "classification": "internal",
+    "consumers": ["ai-service"],
+    "retention_days": 7
+  }
+}

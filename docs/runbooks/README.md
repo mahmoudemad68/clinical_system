@@ -17,6 +17,7 @@ opens with "restart the service" teaches people to restart before understanding.
 | [slow-queries](slow-queries.md) | `SlowQueriesRising` | warning |
 | [redaction-failure](redaction-failure.md) | `RedactionCanaryDetected` | critical |
 | [authorization-denials](authorization-denials.md) | `AuthorizationDenialSpike` | warning |
+| [emergency-credential-rotation](emergency-credential-rotation.md) | Manual / security incident | critical |
 
 ## Standing rules
 

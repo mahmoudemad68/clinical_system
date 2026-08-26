@@ -22,6 +22,7 @@ final class ErrorEnvelope
      * A single error.
      *
      * @param  array<string, mixed>  $meta  bounded, non-sensitive detail such as an allowed range
+     * @param  array<string, string>  $headers
      */
     public static function of(
         ErrorCode $code,
@@ -75,6 +76,7 @@ final class ErrorEnvelope
 
     /**
      * @param  list<array<string, mixed>>  $errors
+     * @param  array<string, string>  $headers
      */
     private static function respond(
         array $errors,

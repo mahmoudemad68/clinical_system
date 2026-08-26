@@ -56,7 +56,7 @@ parameters:
     - name: Http
       collectors:
         - type: directory
-          value: app/Modules/.*/Http/.*
+          value: app/Modules/[^/]+/Http/.*
 
     - name: Jobs
       collectors:
@@ -95,6 +95,8 @@ parameters:
           value: ^Sentry\\.*
         - type: classLike
           value: ^OpenTelemetry\\.*
+        - type: classLike
+          value: ^Monolog\\.*
         - type: classLike
           value: ^GuzzleHttp\\.*
         - type: classLike

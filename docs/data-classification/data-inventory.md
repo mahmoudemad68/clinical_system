@@ -76,6 +76,29 @@ second effect. 72 hours is the engineering default pending an owner.
 flag-gated, environment-restricted, and dropped when Phase 01 delivers real
 slices. Its owner is engineering because nothing in it is regulated.
 
+### `features`
+
+Pennant store. Name, scope, and JSON value of a server-owned flag. Values are
+booleans for V1 exclusions (always resolved false in application code).
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `name`, `scope` | internal | Flag identity | app | until deleted | at rest | UNASSIGNED |
+| `value` | internal | Serialized boolean or metadata. Never a secret. | app | as row | at rest | UNASSIGNED |
+
+### `platform_config_audits`
+
+Configuration, flag, and secret-access audit. Secret *values* are withheld.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Row identity | app, operator | 90 days (default) | at rest | UNASSIGNED |
+| `kind` | internal | `flag`, `config`, or `secret_access` | app, operator | as row | at rest | UNASSIGNED |
+| `key` | internal | Config/flag name | app, operator | as row | at rest | UNASSIGNED |
+| `from_value` / `to_value` | internal | Booleans or `[withheld]` | app, operator | as row | at rest | UNASSIGNED |
+| `actor_key` | internal | Pseudonymous actor fingerprint | app, operator | as row | at rest | UNASSIGNED |
+| `occurred_at` | internal | When | app, operator | as row | at rest | UNASSIGNED |
+
 ---
 
 ## Events
@@ -102,7 +125,21 @@ verified by the canary suite, and scrubbed again at the collector.
 ## Metrics
 
 Every Phase 00 metric is `internal` and carries only bounded labels:
-`service`, `version`, `status`, `check`, `connection`, `event_type`.
+`service`, `version`, `method`, `route`, `status`, `status_class`, `check`,
+`queue`, `error_class`, `connection`, `rule`, `le`.
+
+Families exported by `/metrics`:
+
+- `clinic_http_responses_total`, `clinic_http_request_duration_seconds`
+- `clinic_readiness_status`, `clinic_dependency_status`
+- `clinic_outbox_pending_total`, `clinic_outbox_dead_letter_total`, `clinic_outbox_oldest_pending_age_seconds`
+- `clinic_db_connections_in_use`, `clinic_db_connections_limit`
+- `clinic_db_query_duration_seconds_bucket|_sum|_count`
+- `clinic_horizon_queue_depth`
+- `clinic_redis_errors_total`
+- `clinic_reverb_connections` (0 until the Reverb process exports a live count)
+- `clinic_provider_failures_total` (unused until a live adapter exists)
+- `clinic_redaction_canary_total`
 
 **No metric may be labelled** with a patient, doctor, appointment, file,
 prescription, user, or free-text value. The collector deletes those keys if they
@@ -112,11 +149,11 @@ ever appear, and `Classification::allowedAsMetricLabel()` encodes the rule.
 
 | Prefix | Owner | Class | TTL | Invalidation | Max payload | On miss |
 | --- | --- | --- | --- | --- | --- | --- |
-| *(none in Phase 00)* | — | — | — | — | — | — |
+| `platform:meta:version` | platform | public | 60s | deploy / `platform:cache-warm` | 32 bytes | read APP_VERSION |
+| `platform:ready:flag` | platform | internal | 10s | readiness change / warm | 1 byte | recompute readiness |
 
-Phase 00 configures Redis connections but caches nothing. Every future cache
-entry needs a row here before it ships, including behaviour when missing or
-stale (ADR 0007). A cache with no inventory row fails review.
+These keys hold no PHI. An empty Redis after restart degrades to a cache miss;
+PostgreSQL remains authoritative (G-04-06).
 
 ## Files
 

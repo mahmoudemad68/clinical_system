@@ -5,25 +5,45 @@ declare(strict_types=1);
 namespace App\Modules\Platform\Infrastructure\Providers;
 
 use App\Modules\Platform\Application\Diagnostics\RecordRoundTripHandler;
+use App\Modules\Platform\Application\Features\PlatformFeatures;
 use App\Modules\Platform\Application\Health\HealthProbeClient;
 use App\Modules\Platform\Application\Health\ReadinessProbe;
+use App\Modules\Platform\Application\Idempotency\CanonicalRequestHasher;
 use App\Modules\Platform\Application\Outbox\RetryPolicy;
+use App\Modules\Platform\Application\Telemetry\HttpInstrumentation;
+use App\Modules\Platform\Application\Telemetry\MetricsExposition;
 use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\Contracts\CorrelationScope;
+use App\Modules\Platform\Domain\Contracts\CursorSigner;
 use App\Modules\Platform\Domain\Contracts\DiagnosticsRepository;
+use App\Modules\Platform\Domain\Contracts\GenerateText;
 use App\Modules\Platform\Domain\Contracts\IdempotencyStore;
 use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
 use App\Modules\Platform\Domain\Contracts\OutboxRecorder;
 use App\Modules\Platform\Domain\Contracts\Redactor;
+use App\Modules\Platform\Domain\Contracts\RetrieveKnowledge;
+use App\Modules\Platform\Domain\Contracts\ScanObject;
+use App\Modules\Platform\Domain\Contracts\SendOtp;
+use App\Modules\Platform\Domain\Contracts\SendPush;
+use App\Modules\Platform\Domain\Contracts\StoreObject;
 use App\Modules\Platform\Domain\Contracts\TransactionRunner;
 use App\Modules\Platform\Http\Controllers\DiagnosticsController;
 use App\Modules\Platform\Http\Controllers\OperationalController;
 use App\Modules\Platform\Http\Controllers\PlatformHealthController;
 use App\Modules\Platform\Http\Middleware\EnforceIdempotency;
 use App\Modules\Platform\Http\Middleware\EnforceRequestBounds;
+use App\Modules\Platform\Http\Middleware\InstrumentHttp;
 use App\Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
 use App\Modules\Platform\Http\Middleware\ResolveLocale;
 use App\Modules\Platform\Http\Middleware\SecureResponseHeaders;
+use App\Modules\Platform\Infrastructure\Adapters\DisabledGenerateText;
+use App\Modules\Platform\Infrastructure\Adapters\DisabledRetrieveKnowledge;
+use App\Modules\Platform\Infrastructure\Adapters\DisabledScanObject;
+use App\Modules\Platform\Infrastructure\Adapters\DisabledSendOtp;
+use App\Modules\Platform\Infrastructure\Adapters\DisabledSendPush;
+use App\Modules\Platform\Infrastructure\Audit\ConfigChangeAuditor;
+use App\Modules\Platform\Infrastructure\Cache\CacheWarmer;
+use App\Modules\Platform\Infrastructure\Console\CacheWarmCommand;
 use App\Modules\Platform\Infrastructure\Console\OutboxWorkCommand;
 use App\Modules\Platform\Infrastructure\Console\PlatformPruneCommand;
 use App\Modules\Platform\Infrastructure\Health\AiServiceCheck;
@@ -32,24 +52,41 @@ use App\Modules\Platform\Infrastructure\Health\DatabaseCheck;
 use App\Modules\Platform\Infrastructure\Health\HttpHealthProbeClient;
 use App\Modules\Platform\Infrastructure\Health\RedisCheck;
 use App\Modules\Platform\Infrastructure\Identity\UuidV7Generator;
+use App\Modules\Platform\Infrastructure\ObjectStorage\InMemoryStoreObject;
+use App\Modules\Platform\Infrastructure\ObjectStorage\S3StoreObject;
 use App\Modules\Platform\Infrastructure\Outbox\DiagnosticsRoundTripConsumer;
 use App\Modules\Platform\Infrastructure\Outbox\OutboxDispatcher;
+use App\Modules\Platform\Infrastructure\Pagination\HmacCursorSigner;
 use App\Modules\Platform\Infrastructure\Persistence\EloquentDiagnosticsRepository;
 use App\Modules\Platform\Infrastructure\Persistence\EloquentIdempotencyStore;
 use App\Modules\Platform\Infrastructure\Persistence\EloquentOutboxRecorder;
+use App\Modules\Platform\Infrastructure\Telemetry\FailSafeSpanExporter;
+use App\Modules\Platform\Infrastructure\Telemetry\MetricsRenderer;
 use App\Modules\Platform\Infrastructure\Telemetry\PatternRedactor;
+use App\Modules\Platform\Infrastructure\Telemetry\PlatformMetrics;
+use App\Modules\Platform\Infrastructure\Telemetry\RecordingHttpInstrumentation;
+use App\Modules\Platform\Infrastructure\Telemetry\TelemetryGateway;
 use App\Modules\Platform\Infrastructure\Time\SystemClock;
 use App\Modules\Platform\Infrastructure\Transaction\CorrelationIdProvider;
 use App\Modules\Platform\Infrastructure\Transaction\DatabaseTransactionRunner;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Octane\Events\RequestReceived;
 use Laravel\Octane\Events\RequestTerminated;
+use Laravel\Pennant\Events\FeatureUpdated;
+use Laravel\Pennant\Feature;
+use OpenTelemetry\API\Signals;
+use OpenTelemetry\Contrib\Otlp\ContentTypes;
+use OpenTelemetry\Contrib\Otlp\HttpEndpointResolver;
+use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
+use OpenTelemetry\Contrib\Otlp\SpanExporter;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 /**
  * Wires the Platform shared kernel.
@@ -73,6 +110,76 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->singleton(IdentityGenerator::class, UuidV7Generator::class);
 
         $this->app->singleton(Redactor::class, PatternRedactor::class);
+
+        $this->app->singleton(TelemetryGateway::class, static function ($app): TelemetryGateway {
+            $otlp = null;
+
+            if ((bool) config('platform.telemetry.otel_enabled', false)) {
+                $endpoint = (string) config('platform.telemetry.otlp_endpoint', '');
+
+                if ($endpoint !== '') {
+                    try {
+                        $resolved = HttpEndpointResolver::create()->resolveToString($endpoint, Signals::TRACE);
+                        $transport = (new OtlpHttpTransportFactory)->create($resolved, ContentTypes::PROTOBUF);
+                        $otlp = new FailSafeSpanExporter(new SpanExporter($transport));
+                    } catch (Throwable) {
+                        $otlp = null;
+                    }
+                }
+            }
+
+            return new TelemetryGateway(
+                $app->make(Redactor::class),
+                (bool) config('platform.telemetry.redaction_strict', false),
+                'core-api',
+                (string) config('app.version', '0.0.0-dev'),
+                $otlp,
+            );
+        });
+
+        $this->app->singleton(PlatformMetrics::class, static fn (): PlatformMetrics => new PlatformMetrics(
+            'core-api',
+            (string) config('app.version', '0.0.0-dev'),
+        ));
+
+        $this->app->singleton(MetricsRenderer::class);
+        $this->app->singleton(MetricsExposition::class, static fn ($app): MetricsExposition => $app->make(MetricsRenderer::class));
+
+        $this->app->singleton(HttpInstrumentation::class, static fn ($app): HttpInstrumentation => new RecordingHttpInstrumentation(
+            $app->make(TelemetryGateway::class),
+            $app->make(PlatformMetrics::class),
+        ));
+
+        $this->app->singleton(CanonicalRequestHasher::class);
+
+        $this->app->singleton(CursorSigner::class, static fn (): CursorSigner => new HmacCursorSigner(
+            (string) config('app.key'),
+        ));
+
+        $this->app->singleton(SendOtp::class, DisabledSendOtp::class);
+        $this->app->singleton(SendPush::class, DisabledSendPush::class);
+        $this->app->singleton(ScanObject::class, DisabledScanObject::class);
+        $this->app->singleton(GenerateText::class, DisabledGenerateText::class);
+        $this->app->singleton(RetrieveKnowledge::class, DisabledRetrieveKnowledge::class);
+
+        $this->app->singleton(StoreObject::class, static function ($app): StoreObject {
+            if ($app->environment('testing')) {
+                return new InMemoryStoreObject;
+            }
+
+            return new S3StoreObject($app['filesystem']->disk('s3'));
+        });
+
+        $this->app->singleton(CacheWarmer::class, static fn ($app): CacheWarmer => new CacheWarmer(
+            $app['cache']->store(),
+            (string) config('app.version', '0.0.0-dev'),
+        ));
+
+        $this->app->singleton(ConfigChangeAuditor::class, static fn ($app): ConfigChangeAuditor => new ConfigChangeAuditor(
+            DB::connection(),
+            $app->make(IdentityGenerator::class),
+            $app->make(Clock::class),
+        ));
 
         // Request-scoped under Octane. The Octane hooks in bootstrap reset this
         // between requests; without that, a long-lived worker would carry one
@@ -118,8 +225,10 @@ final class PlatformServiceProvider extends ServiceProvider
             [
                 new ConfigurationCheck(['app.key', 'app.version', 'database.default']),
                 new DatabaseCheck(DB::connection()),
-                new RedisCheck($app->make(RedisFactory::class), 'cache'),
-                new RedisCheck($app->make(RedisFactory::class), 'queue'),
+                new RedisCheck($app->make(RedisFactory::class), 'cache', true, $app->make(PlatformMetrics::class)),
+                new RedisCheck($app->make(RedisFactory::class), 'queue', true, $app->make(PlatformMetrics::class)),
+                new RedisCheck($app->make(RedisFactory::class), 'realtime', true, $app->make(PlatformMetrics::class)),
+                new RedisCheck($app->make(RedisFactory::class), 'ratelimit', true, $app->make(PlatformMetrics::class)),
                 // Optional by default. This is the isolation proof: an AI
                 // outage reports degraded and core stays ready (gate G-02-04).
                 new AiServiceCheck(
@@ -132,6 +241,7 @@ final class PlatformServiceProvider extends ServiceProvider
 
         $this->app->bind(OperationalController::class, static fn ($app): OperationalController => new OperationalController(
             $app->make(ReadinessProbe::class),
+            $app->make(MetricsExposition::class),
             (string) config('app.version', '0.0.0'),
         ));
 
@@ -192,12 +302,16 @@ final class PlatformServiceProvider extends ServiceProvider
             (bool) config('platform.features.diagnostics_slice', false),
             (string) config('app.env', 'production'),
             (array) config('platform.diagnostics_environments', []),
-            (string) env('DIAGNOSTICS_SLICE_TOKEN', ''),
+            (string) config('platform.diagnostics_slice_token', ''),
         ));
 
         $this->app->bind(EnforceIdempotency::class, static fn ($app): EnforceIdempotency => new EnforceIdempotency(
             $app->make(IdempotencyStore::class),
-            $app->make(Clock::class),
+            $app->make(CanonicalRequestHasher::class),
+        ));
+
+        $this->app->bind(InstrumentHttp::class, static fn ($app): InstrumentHttp => new InstrumentHttp(
+            $app->make(HttpInstrumentation::class),
         ));
 
         $this->app->bind(DiagnosticsController::class, static fn ($app): DiagnosticsController => new DiagnosticsController(
@@ -219,9 +333,12 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->loadTranslationsFrom(base_path('lang'), '');
 
         $this->resetRequestScopedStateBetweenOctaneRequests();
+        $this->defineFeatureFlags();
+        $this->auditFeatureChanges();
+        $this->observeDatabaseQueries();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([OutboxWorkCommand::class, PlatformPruneCommand::class]);
+            $this->commands([OutboxWorkCommand::class, PlatformPruneCommand::class, CacheWarmCommand::class]);
         }
     }
 
@@ -258,5 +375,40 @@ final class PlatformServiceProvider extends ServiceProvider
 
         Event::listen(RequestReceived::class, $reset);
         Event::listen(RequestTerminated::class, $reset);
+    }
+
+    private function observeDatabaseQueries(): void
+    {
+        DB::listen(function (QueryExecuted $query): void {
+            $this->app->make(PlatformMetrics::class)->observeQuery($query->time / 1000.0);
+        });
+    }
+
+    private function defineFeatureFlags(): void
+    {
+        Feature::define(
+            PlatformFeatures::DIAGNOSTICS_SLICE,
+            static fn (): bool => (bool) config('platform.features.diagnostics_slice', false),
+        );
+
+        foreach (PlatformFeatures::V1_EXCLUSIONS as $name) {
+            Feature::define($name, static fn (): bool => false);
+        }
+    }
+
+    private function auditFeatureChanges(): void
+    {
+        Event::listen(FeatureUpdated::class, function (FeatureUpdated $event): void {
+            $value = is_bool($event->value)
+                ? ($event->value ? 'true' : 'false')
+                : 'defined';
+
+            $this->app->make(ConfigChangeAuditor::class)->record(
+                kind: 'flag',
+                key: str_replace('_', '-', (string) $event->feature),
+                fromValue: null,
+                toValue: $value,
+            );
+        });
     }
 }

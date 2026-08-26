@@ -37,7 +37,9 @@ final class DiagnosticsRoundTripConsumer implements OutboxConsumer
 
     public function supportedVersions(): array
     {
-        return [1];
+        // Dual-read: v1 is the current producer; v2 is additive-optional and
+        // ignored until a later phase switches the producer (events/README.md).
+        return [1, 2];
     }
 
     public function consume(string $eventId, array $payload): void

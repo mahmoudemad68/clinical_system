@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Platform\Http\Middleware\AssignCorrelationId;
 use App\Modules\Platform\Http\Middleware\EnforceIdempotency;
 use App\Modules\Platform\Http\Middleware\EnforceRequestBounds;
+use App\Modules\Platform\Http\Middleware\InstrumentHttp;
 use App\Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
 use App\Modules\Platform\Http\Middleware\ResolveLocale;
 use App\Modules\Platform\Http\Middleware\SecureResponseHeaders;
@@ -12,6 +13,7 @@ use App\Modules\Platform\Http\Support\ExceptionRenderer;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
         then: function (): void {
             // Operational probes are registered without the api prefix or the
             // api middleware group: an orchestrator must be able to reach them
@@ -38,7 +41,9 @@ return Application::configure(basePath: dirname(__DIR__))
          *   4. secure headers applied to every response on the way out.
          */
         $middleware->api(prepend: [
+            HandleCors::class,
             AssignCorrelationId::class,
+            InstrumentHttp::class,
             EnforceRequestBounds::class,
             ResolveLocale::class,
             SecureResponseHeaders::class,

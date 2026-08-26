@@ -72,8 +72,8 @@ final class PlatformHealthController
 
         foreach ($result->checks as $check) {
             $component = match ($check->name) {
-                'postgresql', 'configuration', 'redis_cache' => 'core',
-                'redis_queue' => 'realtime',
+                'postgresql', 'configuration', 'redis_cache', 'redis_ratelimit' => 'core',
+                'redis_queue', 'redis_realtime' => 'realtime',
                 'ai_service' => 'ai',
                 default => null,
             };
