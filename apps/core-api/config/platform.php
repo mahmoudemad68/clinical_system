@@ -154,4 +154,18 @@ return [
 
     'diagnostics_slice_token' => (string) env('DIAGNOSTICS_SLICE_TOKEN', ''),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Firebase
+    |--------------------------------------------------------------------------
+    |
+    | Push delivery uses kreait/laravel-firebase behind SendPush. Empty
+    | credentials keep the adapter fail-closed (DisabledSendPush). Inbox
+    | persistence is independent and uses Laravel Database Notifications.
+    |
+    */
+    'firebase' => [
+        'credentials' => (string) env('FIREBASE_CREDENTIALS', env('GOOGLE_APPLICATION_CREDENTIALS', '')),
+    ],
+
 ];

@@ -213,7 +213,7 @@ jobs:
           DB_USERNAME: clinic_migrator
           DB_PASSWORD: ci_only_not_a_secret
           REDIS_HOST: localhost
-        run: ./vendor/bin/phpunit
+        run: ./vendor/bin/pest
 
   # -------------------------------------------------------------- ai-service
   ai-service:

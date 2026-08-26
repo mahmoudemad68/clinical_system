@@ -99,6 +99,40 @@ Configuration, flag, and secret-access audit. Secret *values* are withheld.
 | `actor_key` | internal | Pseudonymous actor fingerprint | app, operator | as row | at rest | UNASSIGNED |
 | `occurred_at` | internal | When | app, operator | as row | at rest | UNASSIGNED |
 
+### `notifications`
+
+Laravel Database Notifications inbox. This is the source of truth for a user-visible notice. Push is delivery only and must not invent a parallel inbox table.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Notification identity (UUID) | app | until deleted / retention job | at rest | UNASSIGNED |
+| `type` | internal | PHP notification class name | app | as row | at rest | UNASSIGNED |
+| `notifiable_type` / `notifiable_id` | personal | Actor reference, not a clinical record | app | as row | at rest | UNASSIGNED |
+| `data` | internal | `notification_type` plus opaque resource refs. Never clinical text, national IDs, or device tokens. | app | as row | at rest | UNASSIGNED |
+| `read_at` | internal | Inbox read state | app | as row | at rest | UNASSIGNED |
+| `created_at` / `updated_at` | internal | Lifecycle | app | as row | at rest | UNASSIGNED |
+
+### Telescope tables (`telescope_entries`, `telescope_entries_tags`, `telescope_monitoring`)
+
+Local debugging only. Migrations live under `database/telescope/` and are loaded when `APP_ENV=local`. They are **not** on the production migration path and must not exist in staging or production schemas. `content` can hold request/query snapshots, so the tables are treated as credential-capable even though they are never a product inbox.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `content` | credential | Local request/query debug snapshot | local operator | local prune | at rest (developer volume) | engineering (local only) |
+| remaining columns | internal | Indexing and display for the local UI | local operator | local prune | at rest | engineering (local only) |
+
+---
+
+## First-party Inertia props
+
+Phase 00 status pages share only process liveness. No actor, tenant, host, check list, or Telescope payload.
+
+| Prop | Class | Purpose |
+| --- | --- | --- |
+| `service`, `version`, `status` | public | Process identity and liveness |
+| `message`, `labels.*`, `locale` | public | Arabic/English catalogue copy |
+| shared `locale` | public | Negotiated `ar` or `en` |
+
 ---
 
 ## Events
@@ -138,7 +172,7 @@ Families exported by `/metrics`:
 - `clinic_horizon_queue_depth`
 - `clinic_redis_errors_total`
 - `clinic_reverb_connections` (0 until the Reverb process exports a live count)
-- `clinic_provider_failures_total` (unused until a live adapter exists)
+- `clinic_provider_failures_total` (`error_class=push` from the Firebase adapter; other providers still unused)
 - `clinic_redaction_canary_total`
 
 **No metric may be labelled** with a patient, doctor, appointment, file,
@@ -172,8 +206,8 @@ Private object storage is provisioned; no file type is defined until Phase 02.
    Egypt is a legal question, not an engineering default.
 2. **No lawful-basis column is filled in.** That requires the privacy and legal
    owners, and stating a basis without them would be worse than leaving it blank.
-3. **Deletion and anonymization procedures do not exist.** Phase 00 holds no
-   personal data, so nothing is currently at risk, but they must exist before
-   Phase 01 stores a patient profile.
+3. **Deletion and anonymization procedures do not exist.**
+   `notifications.notifiable_id` is already a personal actor reference.
+   Procedures must exist before Phase 01 stores a patient profile.
 
 Tracked as G-05-02 and G-08-04 in the evidence ledger.

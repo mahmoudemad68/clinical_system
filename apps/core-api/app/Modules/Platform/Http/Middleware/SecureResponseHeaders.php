@@ -11,53 +11,42 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Secure response headers (mandatory Phase 00 control).
  *
- * These are cheap and they close real classes of attack, so they are applied
- * unconditionally rather than per-route.
- *
- * The API returns JSON only, so the CSP is maximally restrictive: nothing
- * should ever be loaded from an API response. The admin web application ships
- * its own, looser policy from its own server; this one must not be copied
- * there, because a policy that permits a UI to work is a different document.
+ * API JSON responses render nothing, so their CSP denies every fetch.
+ * First-party Inertia pages need a same-origin policy that still forbids
+ * framing, objects, and eval. Telescope ships its own assets and is local-only.
  */
 final class SecureResponseHeaders
 {
-    public function __construct(private readonly bool $enableHsts) {}
+    private const API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+
+    private const WEB_CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
+
+    private const WEB_DEV_CONNECT = ' http://127.0.0.1:5173 http://localhost:5173 ws://127.0.0.1:5173 ws://localhost:5173';
+
+    public function __construct(
+        private readonly bool $enableHsts,
+        private readonly bool $viteDevConnect = false,
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
 
-        // A JSON API renders nothing. Deny everything.
-        $response->headers->set(
-            'Content-Security-Policy',
-            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
-        );
+        if (! $request->is('telescope*')) {
+            $response->headers->set('Content-Security-Policy', $this->contentSecurityPolicy($request));
+        }
 
-        // Stop a browser from second-guessing the declared content type, which
-        // is how a JSON response becomes executable script.
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'DENY');
-
-        // No cross-origin referrer leakage of API paths, which can carry
-        // identifiers.
         $response->headers->set('Referrer-Policy', 'no-referrer');
-
-        // Nothing here needs camera, microphone, or geolocation.
         $response->headers->set(
             'Permissions-Policy',
             'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
         );
-
-        // API responses are per-actor. A shared cache must never retain them.
         $response->headers->set('Cache-Control', 'no-store, private');
-
-        // Do not advertise the stack.
         $response->headers->remove('X-Powered-By');
         $response->headers->remove('Server');
 
-        // HSTS only where TLS actually terminates. Sending it over plain HTTP
-        // in local development would pin localhost to https in the developer's
-        // browser, which is a genuinely annoying thing to undo.
         if ($this->enableHsts && $request->isSecure()) {
             $response->headers->set(
                 'Strict-Transport-Security',
@@ -66,5 +55,22 @@ final class SecureResponseHeaders
         }
 
         return $response;
+    }
+
+    private function contentSecurityPolicy(Request $request): string
+    {
+        if ($request->is('api/*')) {
+            return self::API_CSP;
+        }
+
+        if ($this->viteDevConnect) {
+            return str_replace(
+                "connect-src 'self'",
+                "connect-src 'self'".self::WEB_DEV_CONNECT,
+                self::WEB_CSP,
+            );
+        }
+
+        return self::WEB_CSP;
     }
 }

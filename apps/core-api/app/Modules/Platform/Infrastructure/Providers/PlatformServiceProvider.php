@@ -10,6 +10,7 @@ use App\Modules\Platform\Application\Health\HealthProbeClient;
 use App\Modules\Platform\Application\Health\ReadinessProbe;
 use App\Modules\Platform\Application\Idempotency\CanonicalRequestHasher;
 use App\Modules\Platform\Application\Outbox\RetryPolicy;
+use App\Modules\Platform\Application\Status\PlatformStatusQuery;
 use App\Modules\Platform\Application\Telemetry\HttpInstrumentation;
 use App\Modules\Platform\Application\Telemetry\MetricsExposition;
 use App\Modules\Platform\Domain\Contracts\Clock;
@@ -20,6 +21,7 @@ use App\Modules\Platform\Domain\Contracts\GenerateText;
 use App\Modules\Platform\Domain\Contracts\IdempotencyStore;
 use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
 use App\Modules\Platform\Domain\Contracts\OutboxRecorder;
+use App\Modules\Platform\Domain\Contracts\RecordInboxNotification;
 use App\Modules\Platform\Domain\Contracts\Redactor;
 use App\Modules\Platform\Domain\Contracts\RetrieveKnowledge;
 use App\Modules\Platform\Domain\Contracts\ScanObject;
@@ -41,6 +43,7 @@ use App\Modules\Platform\Infrastructure\Adapters\DisabledRetrieveKnowledge;
 use App\Modules\Platform\Infrastructure\Adapters\DisabledScanObject;
 use App\Modules\Platform\Infrastructure\Adapters\DisabledSendOtp;
 use App\Modules\Platform\Infrastructure\Adapters\DisabledSendPush;
+use App\Modules\Platform\Infrastructure\Adapters\FirebaseSendPush;
 use App\Modules\Platform\Infrastructure\Audit\ConfigChangeAuditor;
 use App\Modules\Platform\Infrastructure\Cache\CacheWarmer;
 use App\Modules\Platform\Infrastructure\Console\CacheWarmCommand;
@@ -52,6 +55,7 @@ use App\Modules\Platform\Infrastructure\Health\DatabaseCheck;
 use App\Modules\Platform\Infrastructure\Health\HttpHealthProbeClient;
 use App\Modules\Platform\Infrastructure\Health\RedisCheck;
 use App\Modules\Platform\Infrastructure\Identity\UuidV7Generator;
+use App\Modules\Platform\Infrastructure\Notifications\LaravelDatabaseInbox;
 use App\Modules\Platform\Infrastructure\ObjectStorage\InMemoryStoreObject;
 use App\Modules\Platform\Infrastructure\ObjectStorage\S3StoreObject;
 use App\Modules\Platform\Infrastructure\Outbox\DiagnosticsRoundTripConsumer;
@@ -76,6 +80,7 @@ use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Kreait\Firebase\Contract\Messaging;
 use Laravel\Octane\Events\RequestReceived;
 use Laravel\Octane\Events\RequestTerminated;
 use Laravel\Pennant\Events\FeatureUpdated;
@@ -157,7 +162,28 @@ final class PlatformServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(SendOtp::class, DisabledSendOtp::class);
-        $this->app->singleton(SendPush::class, DisabledSendPush::class);
+        $this->app->singleton(SendPush::class, static function ($app): SendPush {
+            $credentials = (string) config('platform.firebase.credentials', '');
+
+            if ($credentials === '') {
+                return new DisabledSendPush;
+            }
+
+            return new FirebaseSendPush(
+                $app->make(Messaging::class),
+                $app->make(PlatformMetrics::class),
+            );
+        });
+
+        $this->app->singleton(RecordInboxNotification::class, static fn ($app): RecordInboxNotification => new LaravelDatabaseInbox(
+            DB::connection(),
+            $app->make(IdentityGenerator::class),
+            $app->make(Clock::class),
+        ));
+
+        $this->app->bind(PlatformStatusQuery::class, static fn (): PlatformStatusQuery => new PlatformStatusQuery(
+            (string) config('app.version', '0.0.0-dev'),
+        ));
         $this->app->singleton(ScanObject::class, DisabledScanObject::class);
         $this->app->singleton(GenerateText::class, DisabledGenerateText::class);
         $this->app->singleton(RetrieveKnowledge::class, DisabledRetrieveKnowledge::class);
@@ -296,6 +322,7 @@ final class PlatformServiceProvider extends ServiceProvider
             // HSTS only outside local, and only when the request actually
             // arrived over TLS. Pinning localhost to https is hard to undo.
             config('app.env') !== 'local',
+            config('app.env') === 'local',
         ));
 
         $this->app->bind(RequireDiagnosticsSlice::class, static fn (): RequireDiagnosticsSlice => new RequireDiagnosticsSlice(

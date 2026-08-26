@@ -38,7 +38,7 @@ with another user's activity.
 | --- | --- | --- | --- |
 | Spoofing | Cross-site request using the admin's session | Session is an HTTP-only, `SameSite` cookie; the transport wrapper echoes the CSRF cookie as a header, which a cross-origin page cannot read to copy | Session issuance itself is Phase 01 |
 | Information disclosure | Token readable by injected script | No token in `localStorage`; the session cookie is HTTP-only (`plan.md` section 5) | — |
-| Tampering | XSS injecting a request | React escapes by default; API responses carry `default-src 'none'` CSP and `nosniff` | Admin app's own CSP is set by its host, not yet configured |
+| Tampering | XSS injecting a request | React escapes by default; API responses carry `default-src 'none'` CSP and `nosniff`; Inertia pages carry a same-origin CSP (`default-src 'self'`, no `unsafe-eval`, no third-party font CDN) plus `nosniff` / `DENY` framing | — |
 | Elevation of privilege | Admin reaching clinical data | Admin has no clinical read path by design; "admin" never implies PHI access | Enforced by absence in Phase 00; needs policies from Phase 02 |
 
 ## Boundary 3 — Gateway to core workers and Reverb

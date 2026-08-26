@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Platform\Http\Middleware\AssignCorrelationId;
 use App\Modules\Platform\Http\Middleware\EnforceIdempotency;
 use App\Modules\Platform\Http\Middleware\EnforceRequestBounds;
+use App\Modules\Platform\Http\Middleware\HandleInertiaRequests;
 use App\Modules\Platform\Http\Middleware\InstrumentHttp;
 use App\Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
 use App\Modules\Platform\Http\Middleware\ResolveLocale;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
+        web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         channels: __DIR__.'/../routes/channels.php',
@@ -40,6 +42,17 @@ return Application::configure(basePath: dirname(__DIR__))
          *   3. locale negotiated for safe, localized error messages;
          *   4. secure headers applied to every response on the way out.
          */
+        $middleware->web(prepend: [
+            AssignCorrelationId::class,
+            InstrumentHttp::class,
+            ResolveLocale::class,
+            SecureResponseHeaders::class,
+        ]);
+
+        $middleware->web(append: [
+            HandleInertiaRequests::class,
+        ]);
+
         $middleware->api(prepend: [
             HandleCors::class,
             AssignCorrelationId::class,
@@ -69,8 +82,16 @@ return Application::configure(basePath: dirname(__DIR__))
          * trace, SQL, an object key, or a provider payload (phase file, "API
          * contract"). The request_id is the only handle support needs.
          */
-        $exceptions->render(
-            static fn (Throwable $e, Request $request) => ExceptionRenderer::render($e, $request),
-        );
+        $exceptions->render(static function (Throwable $e, Request $request) {
+            if ($request->header('X-Inertia') || $request->is('telescope*')) {
+                return null;
+            }
+
+            if ($request->is('api/*') || $request->is('live') || $request->is('ready') || $request->is('metrics') || $request->expectsJson()) {
+                return ExceptionRenderer::render($e, $request);
+            }
+
+            return null;
+        });
     })
     ->create();

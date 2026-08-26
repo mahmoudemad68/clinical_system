@@ -2,68 +2,53 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Platform;
-
-use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
-/**
- * Phase 00 queue ownership: Horizon consumes Laravel jobs only. Python workers
- * never deserialize PHP payloads (ADR 0009).
- */
-final class QueueBoundaryTest extends TestCase
-{
-    #[Test]
-    public function horizon_lanes_are_php_owned_and_exclude_python_broker_names(): void
-    {
-        $defaults = config('horizon.defaults');
-        $this->assertIsArray($defaults);
+uses(TestCase::class);
 
-        $queues = [];
+it('keeps Horizon lanes PHP-owned and excludes Python broker names', function () {
+    $defaults = config('horizon.defaults');
+    expect($defaults)->toBeArray();
 
-        foreach ($defaults as $supervisor) {
-            $this->assertIsArray($supervisor);
-            $this->assertSame('redis', $supervisor['connection']);
-            $this->assertIsArray($supervisor['queue']);
-            foreach ($supervisor['queue'] as $queue) {
-                $queues[] = $queue;
-            }
+    $queues = [];
+
+    foreach ($defaults as $supervisor) {
+        expect($supervisor)->toBeArray()
+            ->and($supervisor['connection'])->toBe('redis')
+            ->and($supervisor['queue'])->toBeArray();
+        foreach ($supervisor['queue'] as $queue) {
+            $queues[] = $queue;
         }
-
-        $this->assertSame(
-            [
-                'critical',
-                'notifications',
-                'files',
-                'integrations',
-                'analytics',
-                'reports',
-                'backups',
-                'ai-orchestration',
-            ],
-            array_values(array_unique($queues)),
-        );
-
-        foreach (['dramatiq', 'celery', 'rq', 'arq', 'ai'] as $pythonName) {
-            $this->assertNotContains($pythonName, $queues);
-        }
-
-        $this->assertSame('queue', config('horizon.use'));
     }
 
-    #[Test]
-    public function an_ai_internal_command_is_not_a_php_serialized_job(): void
-    {
-        $command = json_encode([
-            'command_id' => '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c01',
-            'command_type' => 'phase00.ping',
-            'schema_version' => 1,
-            'idempotency_key' => 'phase00-command-key-1',
-            'deadline_at' => '2026-08-26T00:00:00Z',
-            'correlation_id' => '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c02',
-            'payload' => ['scope' => 'phase00'],
-        ], JSON_THROW_ON_ERROR);
+    expect(array_values(array_unique($queues)))->toBe([
+        'critical',
+        'notifications',
+        'files',
+        'integrations',
+        'analytics',
+        'reports',
+        'backups',
+        'ai-orchestration',
+    ]);
 
-        $this->assertFalse(@unserialize($command, ['allowed_classes' => false]));
+    foreach (['dramatiq', 'celery', 'rq', 'arq', 'ai'] as $pythonName) {
+        expect($queues)->not->toContain($pythonName);
     }
-}
+
+    expect(config('horizon.use'))->toBe('queue');
+});
+
+it('does not treat an AI internal command as a PHP serialized job', function () {
+    $command = json_encode([
+        'command_id' => '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c01',
+        'command_type' => 'phase00.ping',
+        'schema_version' => 1,
+        'idempotency_key' => 'phase00-command-key-1',
+        'deadline_at' => '2026-08-26T00:00:00Z',
+        'correlation_id' => '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c02',
+        'payload' => ['scope' => 'phase00'],
+    ], JSON_THROW_ON_ERROR);
+
+    expect(@unserialize($command, ['allowed_classes' => false]))->toBeFalse();
+});
