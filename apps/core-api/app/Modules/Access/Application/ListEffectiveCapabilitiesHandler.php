@@ -19,7 +19,7 @@ final class ListEffectiveCapabilitiesHandler implements ListEffectiveCapabilitie
         $fromGrants = $this->grants->activeCapabilities($actor->userId, $now);
         $knownGrants = array_values(array_filter(
             $fromGrants,
-            static fn (string $capability): bool => Capabilities::isKnown($capability),
+            static fn (string $capability): bool => Capabilities::isGrantable($capability),
         ));
 
         $merged = array_values(array_unique([...$actor->capabilities, ...$knownGrants]));

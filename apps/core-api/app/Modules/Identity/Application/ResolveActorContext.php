@@ -42,13 +42,26 @@ final class ResolveActorContext
             throw new AuthenticationFailed;
         }
 
-        $session = $this->auth->findSessionByHash($hash);
+        $session = $this->auth->findActiveSessionByDevice(Identifier::fromTrusted((string) $device->id));
+
+        if ($session === null) {
+            throw new AuthenticationFailed;
+        }
+
+        $now = new DateTimeImmutable('now');
+        if (new DateTimeImmutable((string) $session->absolute_expires_at) <= $now) {
+            throw new AuthenticationFailed;
+        }
+
+        if ((int) $session->credential_version !== $user->credentialVersion) {
+            throw new AuthenticationFailed;
+        }
 
         return $this->context(
             $user,
-            $session !== null ? Identifier::fromTrusted((string) $session->id) : null,
+            Identifier::fromTrusted((string) $session->id),
             Identifier::fromTrusted((string) $device->id),
-            $session !== null ? AssuranceLevel::from((string) $session->assurance_level) : AssuranceLevel::Aal1Password,
+            AssuranceLevel::from((string) $session->assurance_level),
         );
     }
 
@@ -63,7 +76,7 @@ final class ResolveActorContext
         return $this->context($user, $sessionId, null, $assurance);
     }
 
-    public function fromCookieUser(Identifier $userId): ActorContext
+    public function fromCookieUser(Identifier $userId, string $laravelSessionId): ActorContext
     {
         $user = $this->identities->findById($userId);
 
@@ -71,9 +84,10 @@ final class ResolveActorContext
             throw new AuthenticationFailed;
         }
 
-        $session = $this->auth->latestCookieSession($userId);
+        $hash = $this->hmac->digest('session_token', 'cookie:'.$laravelSessionId);
+        $session = $this->auth->findSessionByHash($hash);
 
-        if ($session === null) {
+        if ($session === null || (string) $session->user_id !== $userId->value || (string) $session->session_kind !== 'admin_cookie') {
             throw new AuthenticationFailed;
         }
 
@@ -110,7 +124,7 @@ final class ResolveActorContext
             $deviceId,
             $sessionId,
             [],
-            Capabilities::AUTHENTICATED_SELF,
+            Capabilities::forActor($user->accountType->value, $assurance->satisfiesPrivilegedSession()),
         );
     }
 }

@@ -27,10 +27,13 @@ final class AesGcmEnvelopeEncryptor implements FieldEncryptor
     public function __construct(
         private readonly array $keys,
         private readonly int $currentVersion,
+        private readonly int $minKeyLength = 32,
     ) {
-        if ($this->currentVersion < 1 || ! isset($this->keys[$this->currentVersion])) {
+        if ($this->currentVersion < 1 || ! isset($this->keys[$this->currentVersion]) || $this->keys[$this->currentVersion] === '') {
             throw new RuntimeException('Identity encryption current version has no key.');
         }
+
+        $this->assertKey($this->keys[$this->currentVersion]);
     }
 
     public function encrypt(string $purpose, string $plaintext): string
@@ -102,6 +105,15 @@ final class AesGcmEnvelopeEncryptor implements FieldEncryptor
             throw new RuntimeException('Identity encryption key is missing.');
         }
 
+        $this->assertKey($material);
+
         return hash('sha256', $material, true);
+    }
+
+    private function assertKey(string $material): void
+    {
+        if (strlen($material) < $this->minKeyLength) {
+            throw new RuntimeException('Identity encryption key entropy is below the approved minimum.');
+        }
     }
 }

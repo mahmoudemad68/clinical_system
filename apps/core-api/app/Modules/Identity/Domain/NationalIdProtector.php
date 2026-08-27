@@ -32,6 +32,22 @@ final class NationalIdProtector
         return $this->hmac->digest('phone_lookup', $phone->e164());
     }
 
+    /**
+     * @return list<string>
+     */
+    public function phoneLookupHmacs(PhoneE164 $phone): array
+    {
+        return $this->hmac->lookupDigests('phone_lookup', $phone->e164());
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function nationalIdLookupHmacs(NationalId $nationalId): array
+    {
+        return $this->hmac->lookupDigests('national_id_lookup', $nationalId->canonical());
+    }
+
     public function nationalIdHmac(NationalId $nationalId): string
     {
         return $this->hmac->digest('national_id_lookup', $nationalId->canonical());

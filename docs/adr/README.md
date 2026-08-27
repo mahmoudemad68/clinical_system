@@ -34,6 +34,7 @@ Copy `0000-adr-template.md` to start. Number sequentially; do not reuse a number
 | [0011](0011-identity-assurance-and-profile-claim.md) | Identity assurance levels, profile claim, and recovery | Accepted defaults; claim/recovery gated | 01 |
 | [0012](0012-totp-verifier-package.md) | RFC 6238 TOTP verifier (`spomky-labs/otphp`) | Accepted | 01 |
 | [0013](0013-identity-key-management.md) | Envelope encryption and purpose-separated HMAC keys | Accepted locally; production KMS is Phase 23 | 01 |
+| [0014](0014-national-id-check-digit-deferred.md) | Egyptian National ID check-digit is not invented | Accepted engineering constraint; legal policy outstanding | 01 |
 
 ## Open decisions carried by the roadmap
 

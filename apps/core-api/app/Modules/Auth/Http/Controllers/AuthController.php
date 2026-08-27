@@ -5,20 +5,29 @@ declare(strict_types=1);
 namespace App\Modules\Auth\Http\Controllers;
 
 use App\Models\User;
+use App\Modules\Auth\Application\ApplyRecoveryHandler;
 use App\Modules\Auth\Application\AuthenticatePasswordHandler;
 use App\Modules\Auth\Application\CompleteMfaHandler;
 use App\Modules\Auth\Application\CompleteRecoveryHandler;
+use App\Modules\Auth\Application\ConfirmTotpHandler;
+use App\Modules\Auth\Application\CredentialIssuer;
+use App\Modules\Auth\Application\DisableTotpHandler;
+use App\Modules\Auth\Application\EnrollTotpHandler;
 use App\Modules\Auth\Application\RefreshDeviceSessionHandler;
 use App\Modules\Auth\Application\RegisterAccountCoordinator;
 use App\Modules\Auth\Application\RequestOtpHandler;
+use App\Modules\Auth\Application\RotateRecoveryCodesHandler;
 use App\Modules\Auth\Application\SessionCommandHandler;
 use App\Modules\Auth\Application\VerifyOtpHandler;
+use App\Modules\Auth\Domain\Contracts\AuthDirectory;
 use App\Modules\Auth\Domain\Contracts\PasswordHasher;
 use App\Modules\Auth\Domain\Rules\PasswordPolicy;
 use App\Modules\Identity\Application\MeQuery;
 use App\Modules\Identity\Domain\ValueObjects\ActorContext;
+use App\Modules\Platform\Domain\Contracts\Clock;
 use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use App\Modules\Platform\Http\Responses\Envelope;
+use App\Modules\Platform\Http\Support\ClosedJsonValidator;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +45,7 @@ final class AuthController
 
     public function register(Request $request, RegisterAccountCoordinator $handler): JsonResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'name' => ['required', 'string', 'max:200'],
             'phone' => ['required', 'string', 'max:32'],
             'national_id' => ['required', 'string', 'max:32'],
@@ -51,7 +60,7 @@ final class AuthController
 
     public function requestOtp(Request $request, RequestOtpHandler $handler): JsonResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'phone' => ['required', 'string', 'max:32'],
             'purpose' => ['required', Rule::in(['registration', 'phone_change', 'recovery', 'profile_claim'])],
             'language' => ['sometimes', Rule::in(['ar', 'en'])],
@@ -69,7 +78,7 @@ final class AuthController
 
     public function verifyOtp(Request $request, VerifyOtpHandler $handler): JsonResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'challenge_id' => ['required', 'uuid'],
             'code' => ['required', 'string', 'size:6'],
             'client_class' => ['required', Rule::in(['patient_mobile', 'doctor_desktop', 'pharmacy_desktop', 'admin_web'])],
@@ -92,7 +101,7 @@ final class AuthController
 
     public function login(Request $request, AuthenticatePasswordHandler $handler): JsonResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'phone' => ['required', 'string', 'max:32'],
             'password' => ['required', 'string', 'max:128'],
             'client_class' => ['required', Rule::in(['patient_mobile', 'doctor_desktop', 'pharmacy_desktop', 'admin_web'])],
@@ -116,11 +125,11 @@ final class AuthController
 
     public function verifyMfa(Request $request, CompleteMfaHandler $handler, string $id): JsonResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'code' => ['required', 'string', 'size:6'],
         ]);
 
-        $payload = $handler->handle($id, $data['code']);
+        $payload = $handler->handle($id, $data['code'], $this->ipPrefix($request));
         $this->establishAdminCookie($request, $payload);
 
         return Envelope::ok($payload, $this->requestId($request));
@@ -128,19 +137,20 @@ final class AuthController
 
     public function refresh(Request $request, RefreshDeviceSessionHandler $handler): JsonResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'refresh_token' => ['required', 'string', 'max:256'],
         ]);
 
-        return Envelope::ok($handler->handle($data['refresh_token']), $this->requestId($request));
+        return Envelope::ok($handler->handle(
+            $data['refresh_token'],
+            $request->headers->get('Idempotency-Key'),
+            $this->ipPrefix($request),
+        ), $this->requestId($request));
     }
 
     public function logout(Request $request, SessionCommandHandler $handler): JsonResponse
     {
-        $actor = $this->actor($request);
-        if ($actor->sessionId !== null) {
-            $handler->revoke($actor, $actor->sessionId->value);
-        }
+        $handler->logoutCurrent($this->actor($request));
         Auth::guard('web')->logout();
         $request->session()?->invalidate();
 
@@ -168,7 +178,7 @@ final class AuthController
 
     public function changePassword(Request $request, SessionCommandHandler $handler, PasswordHasher $hasher, PasswordPolicy $policy): JsonResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'current_password' => ['required', 'string', 'max:128'],
             'new_password' => ['required', 'string', 'max:128'],
         ]);
@@ -180,7 +190,7 @@ final class AuthController
 
     public function recoveryStart(Request $request, RequestOtpHandler $handler): JsonResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'phone' => ['required', 'string', 'max:32'],
             'language' => ['sometimes', Rule::in(['ar', 'en'])],
         ]);
@@ -192,15 +202,15 @@ final class AuthController
 
     public function recoveryComplete(Request $request, CompleteRecoveryHandler $handler): JsonResponse
     {
-        $data = $request->validate([
+        $data = ClosedJsonValidator::validate($request, [
             'challenge_id' => ['required', 'uuid'],
             'code' => ['required', 'string', 'size:6'],
             'password' => ['required', 'string', 'max:128'],
         ]);
 
-        $handler->handle($data['challenge_id'], $data['code'], $data['password']);
+        $result = $handler->handle($data['challenge_id'], $data['code'], $data['password']);
 
-        return Envelope::ok(['status' => 'completed'], $this->requestId($request));
+        return Envelope::ok($result, $this->requestId($request));
     }
 
     public function me(Request $request, MeQuery $query): JsonResponse
@@ -211,6 +221,46 @@ final class AuthController
     public function capabilities(Request $request, MeQuery $query): JsonResponse
     {
         return Envelope::ok(['capabilities' => $query->capabilities($this->actor($request))], $this->requestId($request));
+    }
+
+    public function enrollTotp(Request $request, EnrollTotpHandler $handler): JsonResponse
+    {
+        return Envelope::ok($handler->handle($this->actor($request)), $this->requestId($request));
+    }
+
+    public function confirmTotp(Request $request, ConfirmTotpHandler $handler): JsonResponse
+    {
+        $data = ClosedJsonValidator::validate($request, [
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+
+        return Envelope::ok($handler->handle($this->actor($request), $data['code']), $this->requestId($request));
+    }
+
+    public function rotateRecoveryCodes(Request $request, RotateRecoveryCodesHandler $handler): JsonResponse
+    {
+        $data = ClosedJsonValidator::validate($request, [
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+
+        return Envelope::ok($handler->handle($this->actor($request), $data['code']), $this->requestId($request));
+    }
+
+    public function disableTotp(Request $request, DisableTotpHandler $handler): JsonResponse
+    {
+        $data = ClosedJsonValidator::validate($request, [
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+        $handler->handle($this->actor($request), $data['code']);
+
+        return Envelope::ok(['disabled' => true], $this->requestId($request));
+    }
+
+    public function applyRecovery(Request $request, ApplyRecoveryHandler $handler, string $id): JsonResponse
+    {
+        $status = $handler->handle($this->actor($request), Identifier::fromString($id));
+
+        return Envelope::ok(['status' => $status], $this->requestId($request));
     }
 
     /**
@@ -226,6 +276,14 @@ final class AuthController
         if ($user instanceof User) {
             Auth::guard('web')->login($user);
             $request->session()->regenerate();
+            $sessionId = $payload['session_id'] ?? null;
+            if (is_string($sessionId) && $sessionId !== '') {
+                app(AuthDirectory::class)->bindCookieSessionHash(
+                    Identifier::fromTrusted($sessionId),
+                    app(CredentialIssuer::class)->hashToken('cookie:'.$request->session()->getId()),
+                    app(Clock::class)->now(),
+                );
+            }
         }
     }
 

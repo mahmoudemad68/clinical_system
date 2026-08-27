@@ -34,13 +34,16 @@ final class PostgresAuditStore implements AppendAuditEvent
     ): Identifier {
         $id = $this->identities->next();
         $occurred = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $occurredAt = $occurred->format('Y-m-d H:i:s.uP');
+
+        $this->connection->selectOne("SELECT pg_advisory_xact_lock(hashtext('audit_events_chain'))");
 
         $previous = $this->connection->table('audit_events')
-            ->orderByDesc('occurred_at')
-            ->orderByDesc('id')
+            ->orderByDesc('chain_sequence')
             ->value('row_hash');
 
-        $payload = json_encode($metadata, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $sequence = (int) ($this->connection->selectOne("SELECT nextval('audit_events_chain_sequence_seq') AS n")->n ?? 0);
+        $payload = self::canonicalMetadata($metadata);
         $previousBytes = $previous === null ? '' : BinaryColumn::asString($previous);
         $rowHash = hash('sha256', implode('|', [
             $previousBytes === '' ? '' : bin2hex($previousBytes),
@@ -48,23 +51,39 @@ final class PostgresAuditStore implements AppendAuditEvent
             $eventName,
             $objectType,
             $objectId->value,
+            (string) ($actorId === null ? '' : $actorId->value),
+            (string) ($actorType ?? ''),
             $payload,
-            $occurred->format(DATE_RFC3339),
+            $occurredAt,
         ]), true);
 
-        $this->connection->table('audit_events')->insert([
-            'id' => $id->value,
-            'event_name' => $eventName,
-            'actor_id' => $actorId?->value,
-            'actor_type' => $actorType,
-            'object_type' => $objectType,
-            'object_id' => $objectId->value,
-            'metadata' => $payload,
-            'previous_hash' => $previous === null ? null : BinaryColumn::bind($previousBytes),
-            'row_hash' => BinaryColumn::bind($rowHash),
-            'occurred_at' => $occurred->format('Y-m-d H:i:s.uP'),
-        ]);
+        $this->connection->statement(
+            'SELECT clinic_append_audit_event(?, ?, ?, ?, ?, ?, ?::jsonb, ?::bytea, ?::bytea, ?, ?::timestamptz)',
+            [
+                $id->value,
+                $eventName,
+                $actorId?->value,
+                $actorType,
+                $objectType,
+                $objectId->value,
+                $payload,
+                $previousBytes === '' ? null : BinaryColumn::bind($previousBytes),
+                BinaryColumn::bind($rowHash),
+                $sequence,
+                $occurredAt,
+            ],
+        );
 
         return $id;
+    }
+
+    /**
+     * @param  array<string, bool|int|float|string|null>  $metadata
+     */
+    public static function canonicalMetadata(array $metadata): string
+    {
+        ksort($metadata);
+
+        return json_encode($metadata, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     }
 }

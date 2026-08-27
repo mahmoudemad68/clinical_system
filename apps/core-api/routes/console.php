@@ -9,3 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('auth:prune-expired')->hourly();
+Schedule::command('audit:verify-chain')->everyFifteenMinutes();
+Schedule::command('identity:apply-due-recoveries')->everyFifteenMinutes();

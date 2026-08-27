@@ -123,6 +123,11 @@ final class PostgresIdentityStore implements UserDirectory
         ]);
     }
 
+    public function countByAccountType(AccountType $type): int
+    {
+        return $this->connection->table('users')->where('account_type', $type->value)->count();
+    }
+
     public function lockById(Identifier $userId): ?UserAccount
     {
         $row = $this->connection->selectOne(

@@ -23,15 +23,19 @@ return [
 
     'hmac' => [
         'current_version' => (int) env('IDENTITY_HMAC_VERSION', 1),
+        'min_key_length' => 32,
         'keys' => [
             1 => (string) env('IDENTITY_HMAC_KEY_V1', ''),
+            2 => (string) env('IDENTITY_HMAC_KEY_V2', ''),
         ],
     ],
 
     'encryption' => [
         'current_version' => (int) env('IDENTITY_ENCRYPTION_VERSION', 1),
+        'min_key_length' => 32,
         'keys' => [
             1 => (string) env('IDENTITY_ENCRYPTION_KEY_V1', ''),
+            2 => (string) env('IDENTITY_ENCRYPTION_KEY_V2', ''),
         ],
     ],
 
@@ -75,7 +79,28 @@ return [
         'otp_per_subject_per_hour' => (int) env('AUTH_OTP_PER_SUBJECT_PER_HOUR', 5),
         'otp_per_ip_per_hour' => (int) env('AUTH_OTP_PER_IP_PER_HOUR', 20),
         'recovery_per_subject_per_hour' => (int) env('AUTH_RECOVERY_PER_SUBJECT_PER_HOUR', 3),
+        'refresh_per_device_per_minute' => (int) env('AUTH_REFRESH_PER_DEVICE_PER_MINUTE', 30),
+        'refresh_per_ip_per_minute' => (int) env('AUTH_REFRESH_PER_IP_PER_MINUTE', 60),
+        'mfa_per_challenge_per_minute' => (int) env('AUTH_MFA_PER_CHALLENGE_PER_MINUTE', 10),
     ],
+
+    'recovery' => [
+        'cooling_off_seconds' => (int) env('IDENTITY_RECOVERY_COOLING_OFF_SECONDS', 86400),
+    ],
+
+    'retention' => [
+        'otp_row_days' => (int) env('IDENTITY_OTP_ROW_DAYS', 30),
+        'revoked_session_days' => (int) env('IDENTITY_REVOKED_SESSION_DAYS', 90),
+    ],
+
+    'refresh' => [
+        'replay_grace_seconds' => (int) env('AUTH_REFRESH_REPLAY_GRACE_SECONDS', 60),
+    ],
+
+    'trusted_proxies' => array_values(array_filter(array_map(
+        static fn (string $hop): string => trim($hop),
+        explode(',', (string) env('TRUSTED_PROXIES', '')),
+    ))),
 
     'bootstrap' => [
         'enabled' => (bool) env('IDENTITY_BOOTSTRAP_ENABLED', false),

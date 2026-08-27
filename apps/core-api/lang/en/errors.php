@@ -18,6 +18,7 @@ return [
     'unsupported_media_type' => 'The request content type is not supported.',
     'request_too_large' => 'The request is too large.',
     'unauthenticated' => 'Authentication is required.',
+    'csrf_mismatch' => 'The request could not be verified. Reload the page and try again.',
     'token_expired' => 'Your session has expired. Please sign in again.',
     'permission_denied' => 'You do not have access to this resource.',
     'not_found' => 'The requested resource was not found.',

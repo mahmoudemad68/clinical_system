@@ -106,7 +106,8 @@
 /docs/data-classification/              @clinic/privacy-legal @clinic/security
 /docs/evidence/                         @clinic/security @clinic/qa
 /docs/runbooks/                         @clinic/devops @clinic/security
-/.github/workflows/security.yml         @clinic/security @clinic/devops
+/.github/workflows/pull-request.yaml    @clinic/security @clinic/devops
+/.github/workflows/post-merge.yaml      @clinic/security @clinic/devops
 /.gitleaks.toml                         @clinic/security
 /.semgrep.yml                           @clinic/security
 

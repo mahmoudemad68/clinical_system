@@ -31,7 +31,7 @@ High `extract-zip` remain. Those do not block local Phase 01 implementation.
 | G-01-03 | Assurance + claim ADR | architecture | [ADR 0011](../../adr/0011-identity-assurance-and-profile-claim.md) | `PASS` | Claim/recovery stay gated; production enablement needs owners. |
 | G-01-04 | TOTP package ADR + lock | architecture | [ADR 0012](../../adr/0012-totp-verifier-package.md); `spomky-labs/otphp` 11.5.0 | `PASS` | — |
 | G-01-05 | Key management ADR | architecture | [ADR 0013](../../adr/0013-identity-key-management.md) | `PARTIAL` | Local keys; production KMS is Phase 23. |
-| G-01-06 | OpenAPI + events + generated clients | contracts | `npm run contracts:verify` (2026-08-26); `npm run contracts:breaking` vs `main` | `PASS` | Lint, 10 event schemas, TS/Dart generate succeeded. Breaking detector reported no breaks vs `main` (additive `/auth/*` and `/me`). |
+| G-01-06 | OpenAPI + events + generated clients | contracts | `npm run contracts:verify` (2026-08-26); `npm run contracts:breaking` vs `origin/main` | `PASS` | Lint, **12 event schemas**, TS/Dart generate succeeded. Breaking detector reported no breaks vs `origin/main` (additive `/auth/*`, `/me`, `access.grant_*`). |
 | G-01-07 | Registration → OTP → restricted session | test | `AuthenticationFlowsTest` on FrankenPHP + PostgreSQL | `PASS` | Restricted pending session; password change 404. |
 | G-01-08 | Privileged TOTP + replay | test | same | `PASS` | Replay of the MFA step is rejected. |
 | G-01-09 | Refresh reuse revokes family | test | same | `PASS` | Revoke commits before the 401; rotated token is then denied. |
@@ -39,16 +39,16 @@ High `extract-zip` remain. Those do not block local Phase 01 implementation.
 | G-01-11 | Default-deny / no clinical capability | test | `IdentityRulesTest`; capabilities JSON missing `clinical.record.read` | `PASS` | Clinical grant names stay unknown to Access listing. |
 | G-01-12 | Concurrent OTP/phone/token/link races | test | sequential consume-once + unique grant index | `PARTIAL` | Unique indexes and sequential consume/reuse tests pass. Two-connection/pcntl race harness not run. |
 | G-01-13 | Cookie CSRF admin flow | laravel + admin | `ValidateCookieCsrf`; Inertia `/login`; `apps/admin-web` LoginPanel | `PARTIAL` | Device OTP/login skips CSRF; admin cookie login without CSRF is 401. Browser Playwright/E2E not run. |
-| G-01-14 | Flutter secure token store | flutter | `packages/flutter/authentication` `flutter test` | `PARTIAL` | Vault write/clear and `AuthOutcome.withoutSecrets` pass. Device OS matrix not run. |
+| G-01-14 | Flutter secure token store | flutter | `packages/flutter/authentication` `flutter test` | `PARTIAL` | Envelope write/clear, fail-closed vault write, and `AuthOutcome.withoutSecrets` pass. Device OS matrix not run. |
 | G-01-15 | Electron main-process credentials | electron | `npm run desktop:test` | `PARTIAL` | Doctor 37 and pharmacy 37 Vitest trust-boundary tests pass. Packaged WebdriverIO remains OPEN (Phase 00 G-02-10). |
 | G-01-16 | Session revoke vs realtime SLO | realtime | `SessionRevokedConsumer` metrics; HTTP deny on revoked hashes | `OPEN` | Phase 00 still denies all Reverb subscriptions. No measured socket-close SLO. HTTP refresh/new requests deny. |
 | G-01-17 | Redaction of identity canaries | security | OTP outbox payload test; Phase 00 redactor unit tests | `PARTIAL` | Outbox payload omits phone/NID/code. Log/Sentry/Horizon sweep not executed. |
 | G-01-18 | Octane alternating identity | test | `OctaneStateIsolationTest`; actor is request-scoped | `PARTIAL` | Phase 00 reset hook passes. No new dual-user authenticated Octane HTTP case. |
 | G-01-19 | Threat model + inventory + runbooks + alerts | security | `docs/threat-models/phase-01-identity.md`; inventory; identity runbooks; `infra/monitoring/alerts/platform.yaml` | `PARTIAL` | Engineering draft; not independently reviewed. |
 | G-01-20 | k6 abuse harness | test | `tests/k6/auth-abuse.js` | `OPEN` | Script present; k6 not executed this session. |
-| G-01-21 | No Critical/unaccepted High | security | — | `OPEN` | Independent review not performed. SF-001 from Phase 00 remains. Assessor/remediator separation is lost. |
+| G-01-21 | No Critical/unaccepted High | security | [independent-phase-00-phase-01-review-2026-08-26.md](../security-review/independent-phase-00-phase-01-review-2026-08-26.md) | `OPEN` | Independent review: **DO NOT APPROVE**. ISR remediations are in code; this implementer cannot close the gate. SF-001 High remains with a time-boxed merge exception that still blocks promotion. Assessor/remediator separation is lost. |
 | G-01-22 | Profile claim never discloses | product/privacy | flag default false; phpunit claim false; OTP purpose `profile_claim` → 404 | `PASS` (control) | Enablement still requires product/privacy/security/support owners. |
-| G-01-23 | Pint, PHPStan, deptrac, Pest, contracts | laravel/test | commands in Verification log | `PARTIAL` | Local commands below. CI workflow has not been executed against this branch. |
+| G-01-23 | Pint, PHPStan, deptrac, Pest, contracts | laravel/test | commands in Verification log | `PARTIAL` | Local Pint, PHPStan (0 errors), deptrac (0 uncovered), Pest 235 passed / 1 skipped, and contracts:verify succeeded. **GitHub CI has not executed this branch.** |
 
 ## Flags that must stay off outside approved tests
 
@@ -63,16 +63,16 @@ Commands and results from this implementation session. Host PHP has no `pdo_pgsq
 | Command | Result |
 | --- | --- |
 | `vendor/bin/pint --dirty` | passed |
-| `vendor/bin/phpstan analyse --memory-limit=1G` (touched handlers/stores) | 0 errors |
-| `vendor/bin/deptrac analyse` | 0 violations, 1190 allowed, 7 uncovered |
-| Docker `php artisan test` | 225 passed, 1 skipped (MinIO), 0 failed |
-| `npm run contracts:verify` | OpenAPI valid; 10 event schemas; TS/Dart generated |
-| `npm run contracts:breaking` | no breaking changes against `main` |
+| `vendor/bin/phpstan analyse --memory-limit=1G` | 0 errors |
+| `vendor/bin/deptrac analyse --fail-on-uncovered --report-uncovered` | 0 violations, 0 uncovered, 1310 allowed |
+| Docker `./vendor/bin/pest` (`dunglas/frankenphp:1-php8.3`, `DB_HOST=postgres`) | **235 passed**, 1 skipped (MinIO), 0 failed |
+| `npm run contracts:verify` | OpenAPI valid; **12 event schemas**; TS/Dart generated |
+| `npm run contracts:breaking` | no breaking changes against `origin/main` |
 | `npm run desktop:test` | doctor 37 passed, pharmacy 37 passed |
-| `npm run admin:typecheck` / `admin:test` | tsc clean; 5 passed |
-| `flutter test` in `packages/flutter/authentication` | 2 passed |
+| `npm run admin:typecheck` | tsc clean |
+| `npm run admin:test` | 5 passed |
+| `flutter test` in `packages/flutter/authentication` | 3 passed |
 | `flutter test` in `packages/flutter/secure_storage` | 3 passed |
-| `apps/patient-app` backup exclusion test | 1 passed |
 
 ## What is still not a phase close
 

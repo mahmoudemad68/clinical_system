@@ -1,0 +1,12 @@
+reverb_revoke_slo
+generated_at=2026-08-26T22:26:19+00:00
+base=http://127.0.0.1:8080
+mode=unauthenticated_probe
+logout_status=0
+http_deny_status=401
+http_probe_seconds=0.2867
+slo_seconds=5
+http_deny_within_slo=yes
+reverb_reachable=no
+socket_close_slo=NOT_MEASURED_reverb_unreachable
+authoritative_control=http_deny

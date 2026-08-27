@@ -28,6 +28,7 @@ enum ErrorCode: string
     case UnsupportedMediaType = 'UNSUPPORTED_MEDIA_TYPE';
     case RequestTooLarge = 'REQUEST_TOO_LARGE';
     case Unauthenticated = 'UNAUTHENTICATED';
+    case CsrfMismatch = 'CSRF_MISMATCH';
     case TokenExpired = 'TOKEN_EXPIRED';
     case PermissionDenied = 'PERMISSION_DENIED';
     case NotFound = 'NOT_FOUND';
@@ -49,6 +50,7 @@ enum ErrorCode: string
             self::UnsupportedMediaType => 415,
             self::RequestTooLarge => 413,
             self::Unauthenticated, self::TokenExpired => 401,
+            self::CsrfMismatch => 403,
             self::PermissionDenied => 403,
             self::NotFound => 404,
             self::StateConflict,

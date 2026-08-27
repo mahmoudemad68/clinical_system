@@ -21,6 +21,16 @@ enum ClientClass: string
         return ! $this->usesCookieSession();
     }
 
+    public function compatibleWith(string $accountType): bool
+    {
+        return match ($this) {
+            self::PatientMobile => $accountType === 'patient',
+            self::DoctorDesktop => $accountType === 'doctor',
+            self::PharmacyDesktop => $accountType === 'pharmacy',
+            self::AdminWeb => $accountType === 'admin' || $accountType === 'secretary',
+        };
+    }
+
     public function defaultPlatform(): DevicePlatform
     {
         return match ($this) {

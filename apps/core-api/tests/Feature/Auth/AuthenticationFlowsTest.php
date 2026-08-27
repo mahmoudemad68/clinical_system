@@ -239,6 +239,80 @@ describe('refresh reuse', function () {
         ], idem('ref-3'));
         $second->assertUnauthorized();
     });
+
+    it('replays a lost refresh response for the same idempotency key', function () {
+        $payload = syntheticIdentity();
+        $this->postJson('/api/v1/auth/registrations', $payload, idem('reg-replay'))->assertCreated();
+        dispatchOutbox();
+        $verify = $this->postJson('/api/v1/auth/otp-verifications', [
+            'challenge_id' => DB::table('otp_requests')->value('id'),
+            'code' => lastOtp('registration'),
+            'client_class' => 'patient_mobile',
+            'platform' => 'android',
+            'device_label' => 'phone',
+        ], idem('ver-replay'));
+        $verify->assertOk();
+
+        $firstRefresh = $verify->json('data.refresh_token');
+        $rotated = $this->postJson('/api/v1/auth/token/refresh', [
+            'refresh_token' => $firstRefresh,
+        ], idem('ref-lost'));
+        $rotated->assertOk();
+
+        $replay = $this->postJson('/api/v1/auth/token/refresh', [
+            'refresh_token' => $firstRefresh,
+        ], idem('ref-lost'));
+        $replay->assertOk()
+            ->assertJsonPath('data.refresh_token', $rotated->json('data.refresh_token'));
+    });
+
+    it('revokes the family when a consumed generation is presented', function () {
+        $payload = syntheticIdentity();
+        $this->postJson('/api/v1/auth/registrations', $payload, idem('reg-n2'))->assertCreated();
+        dispatchOutbox();
+        $verify = $this->postJson('/api/v1/auth/otp-verifications', [
+            'challenge_id' => DB::table('otp_requests')->value('id'),
+            'code' => lastOtp('registration'),
+            'client_class' => 'patient_mobile',
+            'platform' => 'android',
+            'device_label' => 'phone',
+        ], idem('ver-n2'));
+        $original = $verify->json('data.refresh_token');
+
+        $first = $this->postJson('/api/v1/auth/token/refresh', [
+            'refresh_token' => $original,
+        ], idem('ref-n2-1'))->assertOk();
+        $this->postJson('/api/v1/auth/token/refresh', [
+            'refresh_token' => $first->json('data.refresh_token'),
+        ], idem('ref-n2-2'))->assertOk();
+
+        $this->postJson('/api/v1/auth/token/refresh', [
+            'refresh_token' => $original,
+        ], idem('ref-n2-old'))->assertUnauthorized();
+    });
+
+    it('revokes the device session on logout so refresh cannot continue', function () {
+        $payload = syntheticIdentity();
+        $this->postJson('/api/v1/auth/registrations', $payload, idem('reg-logout'))->assertCreated();
+        dispatchOutbox();
+        $verify = $this->postJson('/api/v1/auth/otp-verifications', [
+            'challenge_id' => DB::table('otp_requests')->value('id'),
+            'code' => lastOtp('registration'),
+            'client_class' => 'patient_mobile',
+            'platform' => 'android',
+            'device_label' => 'phone',
+        ], idem('ver-logout'));
+        $access = $verify->json('data.access_token');
+        $refresh = $verify->json('data.refresh_token');
+
+        $this->postJson('/api/v1/auth/logout', [], ['Authorization' => 'Bearer '.$access])
+            ->assertOk()
+            ->assertJsonPath('data.revoked', true);
+
+        $this->postJson('/api/v1/auth/token/refresh', [
+            'refresh_token' => $refresh,
+        ], idem('ref-after-logout'))->assertUnauthorized();
+    });
 });
 
 describe('authorization matrix', function () {
@@ -301,14 +375,46 @@ describe('enumeration and csrf', function () {
             ->and($unknown->json('errors.0.message'))->toBe($wrong->json('errors.0.message'));
     });
 
-    it('rejects admin cookie login without a csrf header', function () {
+    it('rejects a browser origin login without csrf even when credentials are valid', function () {
+        $payload = syntheticIdentity();
+        $this->postJson('/api/v1/auth/registrations', $payload, idem('reg-csrf'))->assertCreated();
+        dispatchOutbox();
+        $this->postJson('/api/v1/auth/otp-verifications', [
+            'challenge_id' => DB::table('otp_requests')->value('id'),
+            'code' => lastOtp('registration'),
+            'client_class' => 'patient_mobile',
+            'platform' => 'android',
+            'device_label' => 'phone',
+        ], idem('ver-csrf'))->assertOk();
+
+        DB::table('users')->update([
+            'status' => 'active',
+            'phone_verified_at' => now('UTC'),
+        ]);
+
+        $this->get('/login')->assertOk()->assertCookie('XSRF-TOKEN');
+        $this->withCredentials()
+            ->withUnencryptedCookie((string) config('session.cookie'), 'browser-session')
+            ->postJson('/api/v1/auth/login', [
+                'phone' => $payload['phone'],
+                'password' => $payload['password'],
+                'client_class' => 'patient_mobile',
+                'platform' => 'android',
+                'device_label' => 'phone',
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('errors.0.code', 'CSRF_MISMATCH');
+    });
+
+    it('rejects unknown json properties on login', function () {
         $this->postJson('/api/v1/auth/login', [
             'phone' => '01900000001',
             'password' => 'correct-horse-battery',
-            'client_class' => 'admin_web',
-            'platform' => 'web',
-            'device_label' => 'admin-browser',
-        ])->assertUnauthorized();
+            'client_class' => 'patient_mobile',
+            'platform' => 'android',
+            'device_label' => 'phone',
+            'admin' => true,
+        ])->assertUnprocessable();
     });
 
     it('does not put destination or code facts in the otp outbox payload', function () {
@@ -358,7 +464,7 @@ describe('recovery and claim flags', function () {
             'challenge_id' => $challengeId,
             'code' => lastOtp('recovery'),
             'password' => 'recovered-horse-battery',
-        ], idem('rec-complete'))->assertOk();
+        ], idem('rec-complete'))->assertOk()->assertJsonPath('data.status', 'applied');
 
         $this->postJson('/api/v1/auth/token/refresh', [
             'refresh_token' => $oldRefresh,
@@ -423,5 +529,134 @@ describe('inertia admin login surface', function () {
             );
 
         expect($response->getContent())->not->toContain('localStorage');
+    });
+
+    it('rejects a forged login post without a csrf token', function () {
+        $this->from('/login')->post('/login', [
+            'phone' => '01900000001',
+            'password' => 'correct-horse-battery',
+        ])->assertStatus(419);
+    });
+
+    it('rejects unknown fields on a csrf-valid inertia login post', function () {
+        $this->get('/login')->assertOk();
+        $this->from('/login')->post('/login', [
+            'phone' => '01900000001',
+            'password' => 'correct-horse-battery',
+            'admin' => '1',
+            '_token' => csrf_token(),
+        ])->assertRedirect()->assertSessionHasErrors('admin');
+    });
+});
+
+describe('mfa enroll and recovery cooling-off', function () {
+    it('enrolls and confirms totp for an active patient', function () {
+        $payload = syntheticIdentity();
+        $this->postJson('/api/v1/auth/registrations', $payload, idem('reg-mfa-enroll'))->assertCreated();
+        dispatchOutbox();
+        $verify = $this->postJson('/api/v1/auth/otp-verifications', [
+            'challenge_id' => DB::table('otp_requests')->value('id'),
+            'code' => lastOtp('registration'),
+            'client_class' => 'patient_mobile',
+            'platform' => 'android',
+            'device_label' => 'phone',
+        ], idem('ver-mfa-enroll'));
+        $verify->assertOk();
+        DB::table('users')->update([
+            'status' => 'active',
+            'phone_verified_at' => now('UTC'),
+        ]);
+        $token = $verify->json('data.access_token');
+
+        $enroll = $this->postJson('/api/v1/auth/mfa/totp/enroll', [], ['Authorization' => 'Bearer '.$token]);
+        $enroll->assertOk();
+        $uri = (string) $enroll->json('data.provisioning_uri');
+        expect($uri)->toStartWith('otpauth://');
+
+        $query = [];
+        parse_str((string) parse_url($uri, PHP_URL_QUERY), $query);
+        $secret = (string) ($query['secret'] ?? '');
+        $code = app(TotpVerifier::class)->codeAt($secret, app(Clock::class)->now());
+
+        $confirm = $this->postJson('/api/v1/auth/mfa/totp/confirm', [
+            'code' => $code,
+        ], ['Authorization' => 'Bearer '.$token]);
+        $confirm->assertOk()
+            ->assertJsonPath('data.verified', true);
+        expect($confirm->json('data.recovery_codes'))->toBeArray()->not->toBeEmpty();
+    });
+
+    it('returns cooling_off instead of applied when the delay is positive', function () {
+        config(['identity.recovery.cooling_off_seconds' => 86400]);
+        $payload = syntheticIdentity();
+        $this->postJson('/api/v1/auth/registrations', $payload, idem('reg-cool'))->assertCreated();
+        dispatchOutbox();
+        $this->postJson('/api/v1/auth/otp-verifications', [
+            'challenge_id' => DB::table('otp_requests')->value('id'),
+            'code' => lastOtp('registration'),
+            'client_class' => 'patient_mobile',
+            'platform' => 'android',
+            'device_label' => 'phone',
+        ], idem('ver-cool'))->assertOk();
+
+        $this->postJson('/api/v1/auth/recovery/start', [
+            'phone' => $payload['phone'],
+            'language' => 'en',
+        ])->assertOk();
+        dispatchOutbox();
+        $challengeId = DB::table('otp_requests')->where('purpose', 'recovery')->orderByDesc('created_at')->value('id');
+        $this->postJson('/api/v1/auth/otp-verifications', [
+            'challenge_id' => $challengeId,
+            'code' => lastOtp('recovery'),
+            'client_class' => 'patient_mobile',
+            'platform' => 'android',
+            'device_label' => 'phone',
+        ], idem('ver-cool-otp'))->assertOk();
+
+        $this->postJson('/api/v1/auth/recovery/complete', [
+            'challenge_id' => $challengeId,
+            'code' => lastOtp('recovery'),
+            'password' => 'recovered-horse-battery',
+        ], idem('cool-complete'))->assertOk()->assertJsonPath('data.status', 'cooling_off');
+
+        expect(DB::table('recovery_requests')->value('status'))->toBe('cooling_off')
+            ->and(DB::table('recovery_requests')->value('applied_at'))->toBeNull();
+    });
+});
+
+describe('revocation latency and channel auth', function () {
+    it('denies a revoked access token and session channel inside the http slo', function () {
+        $payload = syntheticIdentity();
+        $this->postJson('/api/v1/auth/registrations', $payload, idem('reg-slo'))->assertCreated();
+        dispatchOutbox();
+        $verify = $this->postJson('/api/v1/auth/otp-verifications', [
+            'challenge_id' => DB::table('otp_requests')->value('id'),
+            'code' => lastOtp('registration'),
+            'client_class' => 'patient_mobile',
+            'platform' => 'android',
+            'device_label' => 'phone',
+        ], idem('ver-slo'));
+        $verify->assertOk();
+        $token = $verify->json('data.access_token');
+        $sessionId = $verify->json('data.session_id');
+
+        $authorized = $this->postJson('/broadcasting/auth', [
+            'socket_id' => '1.1',
+            'channel_name' => 'private-auth.session.'.$sessionId,
+        ], ['Authorization' => 'Bearer '.$token]);
+        expect($authorized->status())->toBe(200);
+
+        $started = hrtime(true);
+        $this->postJson('/api/v1/auth/logout', [], ['Authorization' => 'Bearer '.$token])->assertOk();
+        $denied = $this->getJson('/api/v1/me', ['Authorization' => 'Bearer '.$token]);
+        $channel = $this->postJson('/broadcasting/auth', [
+            'socket_id' => '1.2',
+            'channel_name' => 'private-auth.session.'.$sessionId,
+        ], ['Authorization' => 'Bearer '.$token]);
+        $elapsed = (hrtime(true) - $started) / 1e9;
+
+        $denied->assertUnauthorized();
+        expect($channel->status())->toBeIn([401, 403])
+            ->and($elapsed)->toBeLessThan((float) config('identity.session.revocation_slo_seconds'));
     });
 });

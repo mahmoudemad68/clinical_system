@@ -39,6 +39,21 @@ final class RequestHashAndRetryTest extends TestCase
     }
 
     #[Test]
+    public function secret_fields_do_not_change_the_canonical_hash(): void
+    {
+        $hasher = new CanonicalRequestHasher;
+
+        $this->assertSame(
+            $hasher->hash('POST', '/api/v1/auth/login', '{"phone":"1","password":"alpha-secret"}'),
+            $hasher->hash('POST', '/api/v1/auth/login', '{"phone":"1","password":"beta-secret"}'),
+        );
+        $this->assertSame(
+            $hasher->hash('POST', '/api/v1/auth/token/refresh', '{"refresh_token":"one"}'),
+            $hasher->hash('POST', '/api/v1/auth/token/refresh', '{"refresh_token":"two"}'),
+        );
+    }
+
+    #[Test]
     public function method_is_normalized_so_case_does_not_split_retries(): void
     {
         $hasher = new CanonicalRequestHasher;

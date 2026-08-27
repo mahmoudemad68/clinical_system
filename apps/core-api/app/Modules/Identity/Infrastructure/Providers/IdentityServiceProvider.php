@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Infrastructure\Providers;
 
-use App\Modules\Audit\Domain\Contracts\AppendAuditEvent;
-use App\Modules\Audit\Infrastructure\Persistence\PostgresAuditStore;
 use App\Modules\Identity\Application\DisableIdentityCoordinator;
 use App\Modules\Identity\Application\LinkVerifiedPatientAccount;
 use App\Modules\Identity\Application\MeQuery;
@@ -18,7 +16,6 @@ use App\Modules\Identity\Infrastructure\Console\RotateIdentityKeysCommand;
 use App\Modules\Identity\Infrastructure\Persistence\PostgresIdentityStore;
 use App\Modules\Platform\Domain\Contracts\FieldEncryptor;
 use App\Modules\Platform\Domain\Contracts\HmacHasher;
-use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\ServiceProvider;
 
@@ -37,10 +34,6 @@ final class IdentityServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(PatientIdentityRegistry::class, UnavailablePatientIdentityRegistry::class);
-        $this->app->singleton(AppendAuditEvent::class, static fn ($app): AppendAuditEvent => new PostgresAuditStore(
-            $app->make(ConnectionInterface::class),
-            $app->make(IdentityGenerator::class),
-        ));
 
         $this->app->bind(ResolveActorContext::class);
         $this->app->bind(MeQuery::class);

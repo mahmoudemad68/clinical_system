@@ -1,4 +1,5 @@
-import { net } from 'electron';
+import { app, net } from 'electron';
+import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { baseRequestHeaders, unwrapEnvelope, type paths } from '@clinic/api-client';
 import type {
@@ -30,6 +31,7 @@ const BASE_URL = process.env['CLINIC_API_BASE_URL'] ?? 'http://localhost:8080';
 
 let memoryAccess: string | null = null;
 let memoryRefresh: string | null = null;
+let refreshIdempotencyKey: string | null = null;
 
 function restoreFromDisk(): void {
   if (memoryAccess !== null) {
@@ -63,6 +65,7 @@ async function requestJson<T>(
   locale: string,
   body?: Record<string, unknown>,
   extraHeaders: Record<string, string> = {},
+  allowRefresh = true,
 ): Promise<T> {
   restoreFromDisk();
   const headers: Record<string, string> = {
@@ -70,7 +73,7 @@ async function requestJson<T>(
     ...extraHeaders,
   };
 
-  if (memoryAccess !== null && !path.startsWith('/api/v1/auth/login') && !path.includes('/auth/mfa/')) {
+  if (memoryAccess !== null && !path.startsWith('/api/v1/auth/login') && !path.includes('/auth/mfa/') && path !== '/api/v1/auth/token/refresh') {
     headers['Authorization'] = `Bearer ${memoryAccess}`;
   }
 
@@ -78,11 +81,27 @@ async function requestJson<T>(
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await net.fetch(`${BASE_URL}${path}`, {
+  const base = new URL(BASE_URL);
+  if (app.isPackaged && base.protocol !== 'https:') {
+    throw new Error('INSECURE_TRANSPORT');
+  }
+  const target = new URL(`${BASE_URL}${path}`);
+  if (target.origin !== base.origin) {
+    throw new Error('ORIGIN_REFUSED');
+  }
+
+  const response = await net.fetch(target.toString(), {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+
+  if (response.status === 401 && allowRefresh && memoryRefresh !== null && path !== '/api/v1/auth/token/refresh' && path !== '/api/v1/auth/logout') {
+    const rotated = await refreshTokens(locale);
+    if (rotated) {
+      return requestJson<T>(method, path, locale, body, extraHeaders, false);
+    }
+  }
 
   const json: unknown = await response.json().catch(() => null);
   const result = unwrapEnvelope<T>(json, response.status);
@@ -92,6 +111,28 @@ async function requestJson<T>(
   }
 
   return result.data;
+}
+
+async function refreshTokens(locale: string): Promise<boolean> {
+  if (memoryRefresh === null) {
+    return false;
+  }
+  refreshIdempotencyKey ??= randomUUID();
+  try {
+    const data = await requestJson<{
+      access_token?: string;
+      refresh_token?: string;
+    }>('POST', '/api/v1/auth/token/refresh', locale, {
+      refresh_token: memoryRefresh,
+    }, {
+      'Idempotency-Key': refreshIdempotencyKey,
+    }, false);
+    persistIssued(data);
+    refreshIdempotencyKey = null;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function persistIssued(data: {
@@ -215,14 +256,11 @@ export const platformGateway = {
   },
 
   async logout(locale: string): Promise<{ revoked: true }> {
-    try {
-      await requestJson<{ revoked: boolean }>('POST', '/api/v1/auth/logout', locale, {});
-    } catch {
-      // Local clear still happens; server revoke is best-effort after expiry.
-    }
+    await requestJson<{ revoked: boolean }>('POST', '/api/v1/auth/logout', locale, {});
+    clearDeviceTokens();
     memoryAccess = null;
     memoryRefresh = null;
-    clearDeviceTokens();
+    refreshIdempotencyKey = null;
     return { revoked: true };
   },
 

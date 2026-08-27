@@ -59,7 +59,11 @@ final class PostgresAuthStore implements AuthDirectory
             ->where('purpose', $purpose)
             ->whereNull('consumed_at')
             ->whereNull('invalidated_at')
-            ->update(['invalidated_at' => $now->format('Y-m-d H:i:s.uP')]);
+            ->update([
+                'invalidated_at' => $now->format('Y-m-d H:i:s.uP'),
+                'code_ciphertext' => null,
+                'destination_ciphertext' => null,
+            ]);
     }
 
     public function lockOtp(Identifier $id): ?stdClass
@@ -83,6 +87,8 @@ final class PostgresAuthStore implements AuthDirectory
     {
         $this->connection->table('otp_requests')->where('id', $id->value)->update([
             'consumed_at' => $now->format('Y-m-d H:i:s.uP'),
+            'code_ciphertext' => null,
+            'destination_ciphertext' => null,
         ]);
     }
 
@@ -109,12 +115,65 @@ final class PostgresAuthStore implements AuthDirectory
     public function lockDeviceByRefreshHash(string $hash): ?stdClass
     {
         $bound = BinaryColumn::bind($hash);
+        $idRow = $this->connection->selectOne(
+            'SELECT id FROM user_devices WHERE refresh_token_hash = ? OR previous_refresh_token_hash = ?
+             UNION
+             SELECT d.id FROM user_devices d
+             INNER JOIN auth_refresh_consumptions c ON c.family_id = d.refresh_family_id
+             WHERE c.token_hash = ?
+             LIMIT 1',
+            [$bound, $bound, $bound],
+        );
+
+        if (! $idRow instanceof stdClass) {
+            return null;
+        }
+
         $row = $this->connection->selectOne(
-            'SELECT * FROM user_devices WHERE refresh_token_hash = ? OR previous_refresh_token_hash = ? FOR UPDATE',
-            [$bound, $bound],
+            'SELECT * FROM user_devices WHERE id = ? FOR UPDATE',
+            [$idRow->id],
         );
 
         return $row instanceof stdClass ? $this->normalizeDevice($row) : null;
+    }
+
+    public function recordConsumedRefresh(string $familyId, string $tokenHash, int $generation, DateTimeImmutable $now): void
+    {
+        $this->connection->table('auth_refresh_consumptions')->insertOrIgnore([
+            'family_id' => $familyId,
+            'token_hash' => BinaryColumn::bind($tokenHash),
+            'generation' => $generation,
+            'consumed_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
+    public function consumedRefreshExists(string $hash): bool
+    {
+        return $this->connection->table('auth_refresh_consumptions')
+            ->where('token_hash', BinaryColumn::bind($hash))
+            ->exists();
+    }
+
+    public function storeRefreshReplay(
+        Identifier $deviceId,
+        string $idempotencyHmac,
+        string $cipher,
+        DateTimeImmutable $expiresAt,
+    ): void {
+        $this->connection->table('user_devices')->where('id', $deviceId->value)->update([
+            'refresh_replay_ciphertext' => BinaryColumn::bind($cipher),
+            'refresh_replay_idempotency_hmac' => BinaryColumn::bind($idempotencyHmac),
+            'refresh_replay_expires_at' => $expiresAt->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
+    public function clearRefreshReplay(Identifier $deviceId): void
+    {
+        $this->connection->table('user_devices')->where('id', $deviceId->value)->update([
+            'refresh_replay_ciphertext' => null,
+            'refresh_replay_idempotency_hmac' => null,
+            'refresh_replay_expires_at' => null,
+        ]);
     }
 
     public function findDeviceByAccessHash(string $hash): ?stdClass
@@ -147,6 +206,37 @@ final class PostgresAuthStore implements AuthDirectory
             'last_seen_at' => $now->format('Y-m-d H:i:s.uP'),
             'updated_at' => $now->format('Y-m-d H:i:s.uP'),
         ]);
+    }
+
+    public function findActiveSessionByDevice(Identifier $deviceId): ?stdClass
+    {
+        $row = $this->connection->table('auth_sessions')
+            ->where('device_id', $deviceId->value)
+            ->whereNull('revoked_at')
+            ->orderByDesc('created_at')
+            ->first();
+
+        return $row instanceof stdClass ? $this->normalizeSession($row) : null;
+    }
+
+    public function bindCookieSessionHash(Identifier $sessionId, string $hash, DateTimeImmutable $now): void
+    {
+        $this->connection->table('auth_sessions')->where('id', $sessionId->value)->update([
+            'session_hash' => BinaryColumn::bind($hash),
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
+    public function updateSessionAccessHash(Identifier $deviceId, string $accessHash, DateTimeImmutable $now): void
+    {
+        $this->connection->table('auth_sessions')
+            ->where('device_id', $deviceId->value)
+            ->whereNull('revoked_at')
+            ->update([
+                'session_hash' => BinaryColumn::bind($accessHash),
+                'last_seen_at' => $now->format('Y-m-d H:i:s.uP'),
+                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+            ]);
     }
 
     public function revokeDeviceFamily(string $familyId, string $reason, DateTimeImmutable $now): void
@@ -269,6 +359,18 @@ final class PostgresAuthStore implements AuthDirectory
         ]);
     }
 
+    public function revokeSessionsForDevice(Identifier $deviceId, string $reason, DateTimeImmutable $now): void
+    {
+        $this->connection->table('auth_sessions')
+            ->where('device_id', $deviceId->value)
+            ->whereNull('revoked_at')
+            ->update([
+                'revoked_at' => $now->format('Y-m-d H:i:s.uP'),
+                'revoked_reason' => $reason,
+                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+            ]);
+    }
+
     public function revokeAllSessions(Identifier $userId, string $reason, DateTimeImmutable $now): void
     {
         $this->connection->table('auth_sessions')
@@ -340,6 +442,26 @@ final class PostgresAuthStore implements AuthDirectory
         $this->connection->table('mfa_factors')->insert($row);
     }
 
+    public function pendingTotp(Identifier $userId): ?stdClass
+    {
+        $row = $this->connection->table('mfa_factors')
+            ->where('user_id', $userId->value)
+            ->where('factor_type', 'totp')
+            ->whereNull('disabled_at')
+            ->whereNull('verified_at')
+            ->first();
+
+        return $row instanceof stdClass ? $this->normalizeFactor($row) : null;
+    }
+
+    public function markTotpVerified(Identifier $factorId, DateTimeImmutable $now): void
+    {
+        $this->connection->table('mfa_factors')->where('id', $factorId->value)->update([
+            'verified_at' => $now->format('Y-m-d H:i:s.uP'),
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
     public function insertRecoveryCodes(array $rows): void
     {
         if ($rows === []) {
@@ -372,27 +494,153 @@ final class PostgresAuthStore implements AuthDirectory
         ]);
     }
 
+    public function insertRecoveryRequest(
+        Identifier $id,
+        Identifier $userId,
+        Identifier $otpId,
+        string $status,
+        string $passwordHash,
+        ?DateTimeImmutable $coolingOffUntil,
+        ?DateTimeImmutable $appliedAt,
+        DateTimeImmutable $now,
+    ): void {
+        $this->connection->table('recovery_requests')->insert([
+            'id' => $id->value,
+            'user_id' => $userId->value,
+            'otp_id' => $otpId->value,
+            'status' => $status,
+            'new_password_hash' => $passwordHash,
+            'cooling_off_until' => $coolingOffUntil?->format('Y-m-d H:i:s.uP'),
+            'applied_at' => $appliedAt?->format('Y-m-d H:i:s.uP'),
+            'created_at' => $now->format('Y-m-d H:i:s.uP'),
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
     public function pruneExpiredOtps(DateTimeImmutable $now): int
     {
-        return $this->connection->table('otp_requests')
+        $stamp = $now->format('Y-m-d H:i:s.uP');
+        $invalidated = $this->connection->table('otp_requests')
             ->whereNull('consumed_at')
             ->whereNull('invalidated_at')
-            ->where('expires_at', '<', $now->format('Y-m-d H:i:s.uP'))
+            ->where('expires_at', '<', $stamp)
             ->update([
-                'invalidated_at' => $now->format('Y-m-d H:i:s.uP'),
+                'invalidated_at' => $stamp,
             ]);
+
+        $this->connection->table('otp_requests')
+            ->where(function ($query): void {
+                $query->whereNotNull('consumed_at')->orWhereNotNull('invalidated_at');
+            })
+            ->whereNotNull('code_ciphertext')
+            ->update([
+                'code_ciphertext' => null,
+                'destination_ciphertext' => null,
+            ]);
+
+        $otpDays = (int) config('identity.retention.otp_row_days', 30);
+        $cutoff = $now->modify(sprintf('-%d days', $otpDays))->format('Y-m-d H:i:s.uP');
+        $this->connection->table('otp_requests')
+            ->where(function ($query) use ($cutoff): void {
+                $query->where(function ($inner) use ($cutoff): void {
+                    $inner->whereNotNull('invalidated_at')->where('invalidated_at', '<', $cutoff);
+                })->orWhere(function ($inner) use ($cutoff): void {
+                    $inner->whereNotNull('consumed_at')->where('consumed_at', '<', $cutoff);
+                });
+            })
+            ->whereNull('code_ciphertext')
+            ->delete();
+
+        return $invalidated;
     }
 
     public function pruneExpiredSessions(DateTimeImmutable $now): int
     {
-        return $this->connection->table('auth_sessions')
+        $stamp = $now->format('Y-m-d H:i:s.uP');
+        $revoked = $this->connection->table('auth_sessions')
             ->whereNull('revoked_at')
-            ->where('absolute_expires_at', '<', $now->format('Y-m-d H:i:s.uP'))
+            ->where('absolute_expires_at', '<', $stamp)
             ->update([
-                'revoked_at' => $now->format('Y-m-d H:i:s.uP'),
+                'revoked_at' => $stamp,
                 'revoked_reason' => 'expired',
-                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+                'updated_at' => $stamp,
             ]);
+
+        $sessionDays = (int) config('identity.retention.revoked_session_days', 90);
+        $cutoff = $now->modify(sprintf('-%d days', $sessionDays))->format('Y-m-d H:i:s.uP');
+        $this->connection->table('auth_sessions')
+            ->whereNotNull('revoked_at')
+            ->where('revoked_at', '<', $cutoff)
+            ->delete();
+
+        $this->connection->table('mfa_challenges')
+            ->where('expires_at', '<', $now->modify('-1 day')->format('Y-m-d H:i:s.uP'))
+            ->delete();
+
+        $this->connection->table('user_devices')
+            ->whereNotNull('refresh_replay_expires_at')
+            ->where('refresh_replay_expires_at', '<', $stamp)
+            ->update([
+                'refresh_replay_ciphertext' => null,
+                'refresh_replay_idempotency_hmac' => null,
+                'refresh_replay_expires_at' => null,
+            ]);
+
+        return $revoked;
+    }
+
+    public function lockRecoveryRequest(Identifier $id): ?stdClass
+    {
+        $row = $this->connection->selectOne(
+            'SELECT * FROM recovery_requests WHERE id = ? FOR UPDATE',
+            [$id->value],
+        );
+
+        return $row instanceof stdClass ? $row : null;
+    }
+
+    public function markRecoveryApplied(Identifier $id, DateTimeImmutable $now): void
+    {
+        $this->connection->table('recovery_requests')->where('id', $id->value)->update([
+            'status' => 'applied',
+            'applied_at' => $now->format('Y-m-d H:i:s.uP'),
+            'new_password_hash' => '',
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
+    public function dueCoolingOffRecoveryIds(DateTimeImmutable $now): array
+    {
+        return $this->connection->table('recovery_requests')
+            ->where('status', 'cooling_off')
+            ->whereNull('applied_at')
+            ->whereNotNull('cooling_off_until')
+            ->where('cooling_off_until', '<=', $now->format('Y-m-d H:i:s.uP'))
+            ->pluck('id')
+            ->all();
+    }
+
+    public function disableTotpFactor(Identifier $factorId, Identifier $disabledBy, DateTimeImmutable $now): void
+    {
+        $userId = $this->connection->table('mfa_factors')->where('id', $factorId->value)->value('user_id');
+        $tombstone = random_bytes(32);
+        $this->connection->table('mfa_factors')->where('id', $factorId->value)->update([
+            'disabled_at' => $now->format('Y-m-d H:i:s.uP'),
+            'disabled_by' => $disabledBy->value,
+            'secret_ciphertext' => BinaryColumn::bind($tombstone),
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+        if (is_string($userId) && $userId !== '') {
+            $this->deleteUnconsumedRecoveryCodes(Identifier::fromTrusted($userId));
+        }
+    }
+
+    public function deleteUnconsumedRecoveryCodes(Identifier $userId): void
+    {
+        $this->connection->table('mfa_recovery_codes')
+            ->where('user_id', $userId->value)
+            ->whereNull('consumed_at')
+            ->delete();
     }
 
     private function normalizeOtp(stdClass $row): stdClass
@@ -411,6 +659,12 @@ final class PostgresAuthStore implements AuthDirectory
         $row->refresh_token_hash = $row->refresh_token_hash !== null ? BinaryColumn::asString($row->refresh_token_hash) : null;
         $row->previous_refresh_token_hash = $row->previous_refresh_token_hash !== null
             ? BinaryColumn::asString($row->previous_refresh_token_hash)
+            : null;
+        $row->refresh_replay_ciphertext = isset($row->refresh_replay_ciphertext)
+            ? BinaryColumn::asString($row->refresh_replay_ciphertext)
+            : null;
+        $row->refresh_replay_idempotency_hmac = isset($row->refresh_replay_idempotency_hmac)
+            ? BinaryColumn::asString($row->refresh_replay_idempotency_hmac)
             : null;
 
         return $row;

@@ -18,5 +18,13 @@ interface HmacHasher
      */
     public function digest(string $purpose, string $canonical): string;
 
+    /**
+     * Digests for every configured HMAC version so lookups survive rotation.
+     *
+     * @param  non-empty-string  $purpose
+     * @return list<non-empty-string>
+     */
+    public function lookupDigests(string $purpose, string $canonical): array;
+
     public function currentVersion(): int;
 }

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Access\Application\DefaultDenyAuthorizer;
+use App\Modules\Access\Domain\Contracts\GrantStore;
 use App\Modules\Access\Domain\ValueObjects\Capabilities;
 use App\Modules\Auth\Domain\Rules\PasswordPolicy;
 use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
@@ -88,7 +89,7 @@ describe('default-deny authorizer', function () {
             [],
             Capabilities::AUTHENTICATED_SELF,
         );
-        $authorizer = new DefaultDenyAuthorizer;
+        $authorizer = new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class));
 
         expect($authorizer->decide($actor, Capabilities::IDENTITY_ME_READ)->allowed)->toBeTrue();
         expect($authorizer->decide($actor, 'clinical.record.read')->allowed)->toBeFalse()
@@ -109,7 +110,7 @@ describe('default-deny authorizer', function () {
             Capabilities::AUTHENTICATED_SELF,
         );
 
-        expect((new DefaultDenyAuthorizer)->decide($actor, Capabilities::PASSWORD_CHANGE)->reasonCode)
+        expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::PASSWORD_CHANGE)->reasonCode)
             ->toBe('pending_restricted');
     });
 });

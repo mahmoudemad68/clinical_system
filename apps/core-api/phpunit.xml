@@ -42,6 +42,11 @@
         <env name="REVERB_PORT" value="8081"/>
         <env name="REVERB_SCHEME" value="http"/>
         <env name="CACHE_STORE" value="array"/>
+        <env name="AUTH_RATE_LIMIT_STORE" value="ratelimit"/>
+        <env name="AUTH_RATE_LIMIT_DRIVER" value="array"/>
+        <env name="IDENTITY_RECOVERY_COOLING_OFF_SECONDS" value="0"/>
+        <env name="IDENTITY_HMAC_KEY_V2" value="test_identity_hmac_v2_not_a_secret_value!!"/>
+        <env name="IDENTITY_ENCRYPTION_KEY_V2" value="test_identity_enc_v2_not_a_secret_value!!"/>
         <!--
             Feature tests run against real PostgreSQL, not SQLite.
 
@@ -60,6 +65,10 @@
         <env name="DB_DATABASE" value="clinic_test"/>
         <env name="DB_USERNAME" value="clinic_migrator"/>
         <env name="DB_PASSWORD" value="local_dev_only_not_a_secret"/>
+        <env name="DB_MIGRATION_USERNAME" value="clinic_migrator"/>
+        <env name="DB_MIGRATION_PASSWORD" value="local_dev_only_not_a_secret"/>
+        <env name="DB_AUDIT_USERNAME" value="clinic_audit_writer"/>
+        <env name="DB_AUDIT_PASSWORD" value="local_dev_only_not_a_secret"/>
         <env name="DB_URL" value=""/>
         <env name="APP_VERSION" value="0.0.0-test"/>
         <env name="APP_BUSINESS_TIMEZONE" value="Africa/Cairo"/>

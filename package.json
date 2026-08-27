@@ -34,7 +34,9 @@
     "desktop:package": "npm run package --workspace apps/doctor-desktop && npm run package --workspace apps/pharmacy-desktop",
     "desktop:configure-sandbox": "node scripts/desktop/ensure-linux-chromium-sandbox.mjs",
     "packages:typecheck": "npm run typecheck --workspaces --if-present",
-    "packages:test": "npm run test --workspaces --if-present"
+    "packages:test": "npm run test --workspaces --if-present",
+    "e2e:csrf": "npm test --prefix tests/e2e",
+    "desktop:inspect-asar": "node scripts/desktop/inspect-packaged-asar.mjs"
   },
   "devDependencies": {
     "@redocly/cli": "2.47.0",

@@ -251,6 +251,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/mfa/totp/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start self-service TOTP enrollment */
+        post: operations["enrollTotp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/mfa/totp/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm TOTP enrollment and issue recovery codes once */
+        post: operations["confirmTotp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/mfa/recovery-codes/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace unused MFA recovery codes */
+        post: operations["rotateMfaRecoveryCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/mfa/totp/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable the active TOTP factor */
+        post: operations["disableTotp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/recovery/requests/{id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operator apply for manual_review recovery */
+        post: operations["applyRecoveryRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/token/refresh": {
         parameters: {
             query?: never;
@@ -549,7 +634,7 @@ export interface components {
          *     Status mapping (phase file "API contract"):
          *       400 malformed protocol or input
          *       401 unauthenticated
-         *       403 denied
+         *       403 denied or CSRF mismatch
          *       404 hiding resource existence is safer
          *       409 state, version, or idempotency conflict
          *       422 field or business validation
@@ -557,7 +642,7 @@ export interface components {
          *       5xx server or dependency failure
          * @enum {string}
          */
-        ErrorCode: "MALFORMED_REQUEST" | "UNSUPPORTED_MEDIA_TYPE" | "REQUEST_TOO_LARGE" | "UNAUTHENTICATED" | "TOKEN_EXPIRED" | "PERMISSION_DENIED" | "NOT_FOUND" | "STATE_CONFLICT" | "VERSION_CONFLICT" | "IDEMPOTENCY_KEY_REUSED" | "IDEMPOTENCY_IN_PROGRESS" | "VALIDATION_FAILED" | "CURSOR_INVALID" | "UNSUPPORTED_SCHEMA_VERSION" | "RATE_LIMITED" | "DEPENDENCY_UNAVAILABLE" | "INTERNAL_ERROR";
+        ErrorCode: "MALFORMED_REQUEST" | "UNSUPPORTED_MEDIA_TYPE" | "REQUEST_TOO_LARGE" | "UNAUTHENTICATED" | "CSRF_MISMATCH" | "TOKEN_EXPIRED" | "PERMISSION_DENIED" | "NOT_FOUND" | "STATE_CONFLICT" | "VERSION_CONFLICT" | "IDEMPOTENCY_KEY_REUSED" | "IDEMPOTENCY_IN_PROGRESS" | "VALIDATION_FAILED" | "CURSOR_INVALID" | "UNSUPPORTED_SCHEMA_VERSION" | "RATE_LIMITED" | "DEPENDENCY_UNAVAILABLE" | "INTERNAL_ERROR";
         LivenessResult: {
             /** @enum {string} */
             status: "alive";
@@ -679,6 +764,14 @@ export interface components {
         MfaVerifyRequest: {
             code: string;
         };
+        MfaEnrollResult: {
+            factor_id: components["schemas"]["Uuid"];
+            provisioning_uri: string;
+        };
+        MfaConfirmResult: {
+            verified: boolean;
+            recovery_codes: string[];
+        };
         RefreshRequest: {
             refresh_token: string;
         };
@@ -756,8 +849,11 @@ export interface components {
         AuthAck: {
             revoked?: boolean;
             credential_rotated?: boolean;
-            status?: string;
+            /** @enum {string} */
+            status?: "applied" | "cooling_off" | "manual_review" | "completed";
             csrf?: boolean;
+            disabled?: boolean;
+            recovery_codes?: string[];
         };
     };
     responses: {
@@ -1312,6 +1408,136 @@ export interface operations {
                 };
             };
             422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    enrollTotp: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provisioning URI once. Never logged. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["MfaEnrollResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    confirmTotp: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaVerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Recovery codes shown once. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["MfaConfirmResult"];
+                    };
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    rotateMfaRecoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaVerifyRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["AuthAck"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    disableTotp: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaVerifyRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["AuthAck"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    applyRecoveryRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["AuthAck"];
+            404: components["responses"]["NotFound"];
         };
     };
     refreshDeviceToken: {

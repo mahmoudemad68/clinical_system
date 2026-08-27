@@ -129,6 +129,27 @@ Options:
   decision covering native modules, CSP, packaged assets, signing, and every
   target OS.
 
+### Recorded time-boxed merge exception (ADR 0008)
+
+- **Decision:** merge of this High finding is permitted until **2026-11-26T00:00:00Z**.
+- **Owner:** Mahmoud (named security owner). **Assessor/remediator separation is lost**; this exception is not independent approval.
+- **Promotion:** still **blocked**. This exception is not a production-readiness sign-off.
+- **Compensating controls:** build-time only; trusted Electron CDN archives; ephemeral CI runners; no signing credentials in the affected lane (see above).
+- **Watch:** upstream `extract-zip` and `@electron/packager` for a fixed release. Re-open if a fix is published before expiry.
+- **Expiry action:** after 2026-11-26 the finding blocks merge as well as promotion unless a new exception is recorded or the advisory is resolved.
+
+### Scan isolation (does not weaken promotion)
+
+PR filesystem Trivy uses `infra/security/trivy-merge.ignore` and lists **only**
+`CVE-2026-56876` / `GHSA-jmr9-qjv8-65gv`. A CI expiry step fails the PR job
+after 2026-11-26T00:00:00Z even if the ignore file is still present.
+
+Post-merge `promotion-fs-scan` runs the **same** Trivy filesystem scan **without**
+that ignore file and with `exit-code: 1`. Image scans never use the merge
+ignore and never set `ignore-unfixed`. SF-001 therefore still blocks promotion.
+
+This implementer cannot close SF-001. Independent retest remains required (G-08-04 OPEN).
+
 ### Tracking
 
 Evidence ledger gate G-06-05. It is `PARTIAL`, not `PASS`, and not `BLOCKED`:

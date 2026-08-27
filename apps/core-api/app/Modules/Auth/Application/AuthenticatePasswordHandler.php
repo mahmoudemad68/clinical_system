@@ -7,6 +7,7 @@ namespace App\Modules\Auth\Application;
 use App\Modules\Auth\Domain\Contracts\AuthenticationRateLimiter;
 use App\Modules\Auth\Domain\Contracts\AuthTelemetry;
 use App\Modules\Auth\Domain\Contracts\PasswordHasher;
+use App\Modules\Auth\Domain\ValueObjects\ClientClass;
 use App\Modules\Identity\Domain\Contracts\UserDirectory;
 use App\Modules\Identity\Domain\NationalIdProtector;
 use App\Modules\Platform\Domain\Contracts\Clock;
@@ -36,7 +37,13 @@ final class AuthenticatePasswordHandler
         $hmac = $this->protector->phoneHmac($parsed);
         $this->rates->hitLogin($hmac, $ipPrefix ?? '0.0.0.0');
 
-        $user = $this->identities->findByPhoneHmac($hmac);
+        $user = null;
+        foreach ($this->protector->phoneLookupHmacs($parsed) as $candidate) {
+            $user = $this->identities->findByPhoneHmac($candidate);
+            if ($user !== null) {
+                break;
+            }
+        }
 
         if ($user === null) {
             $this->hasher->dummyVerify($password);
@@ -45,6 +52,11 @@ final class AuthenticatePasswordHandler
         }
 
         if (! $this->hasher->verify($password, $user->passwordHash) || ! $user->status->canReceiveDeviceSession()) {
+            $this->telemetry->authAttempt(['result' => 'denied', 'method' => 'password', 'actor_class' => $user->accountType->actorClass()]);
+            throw new AuthenticationFailed;
+        }
+
+        if (! ClientClass::from($clientClass)->compatibleWith($user->accountType->value)) {
             $this->telemetry->authAttempt(['result' => 'denied', 'method' => 'password', 'actor_class' => $user->accountType->actorClass()]);
             throw new AuthenticationFailed;
         }

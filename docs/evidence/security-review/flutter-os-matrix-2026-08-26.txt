@@ -1,0 +1,42 @@
+flutter_os_matrix
+generated_at=2026-08-26T22:18:48Z
+host_os=Linux
+host_arch=x86_64
+flutter_bin=/home/mahmoud/sdk/flutter/bin/flutter
+Flutter 3.47.1 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision 6655482ec0 (7 days ago) • 2026-08-19 10:07:23 -0700
+Engine • hash 11d79658c444477b06513d32b52c8c4ccb7276b0 (revision 5d53178869) (8 days ago) • 2026-08-18 23:36:01.000Z
+Tools • Dart 3.13.1 • DevTools 2.60.0
+--- devices ---
+Found 1 connected device:
+  Linux (desktop) • linux • linux-x64 • Ubuntu 24.04.4 LTS 7.0.0-30-generic
+
+Run "flutter emulators" to list and start any available device emulators.
+
+If you expected another device to be detected, please run "flutter doctor" to diagnose potential issues. You may also try increasing the time to wait for connected devices with the "--device-timeout" flag. Visit https://flutter.dev/setup/ for troubleshooting tips.
+--- package tests ---
+Resolving dependencies in `/home/mahmoud/Desktop/clinic_project`...
+Downloading packages...
+  _fe_analyzer_shared 103.0.0 (105.0.0 available)
+  analyzer 13.3.0 (14.1.0 available)
+  cli_util 0.5.2 (0.6.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  package_config 2.2.0 (3.0.0 available)
+  pub_updater 0.5.0 (0.6.0 available)
+  test 1.31.1 (1.31.2 available)
+  test_api 0.7.12 (0.7.13 available)
+  test_core 0.6.18 (0.6.19 available)
+Got dependencies in `/home/mahmoud/Desktop/clinic_project`!
+9 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading /home/mahmoud/Desktop/clinic_project/packages/flutter/authentication/test/token_store_test.dart
+00:00 +0: token store writes a single envelope so a crash cannot split the pair
+00:00 +1: a vault write failure leaves no split access/refresh pair
+00:00 +2: clear fails closed when the vault still holds an envelope
+00:00 +3: auth outcome strips tokens before UI consumption
+00:00 +4: All tests passed!
+--- os backup restore ---
+android_emulator=not_run
+ios_simulator=not_run
+os_backup_restore=not_run host_is_linux
+status=PARTIAL_HOST_TESTS_ONLY

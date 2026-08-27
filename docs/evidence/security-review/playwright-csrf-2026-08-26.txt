@@ -1,0 +1,13 @@
+playwright_csrf_session
+generated_at=2026-08-26T22:27:03Z
+base=http://127.0.0.1:8080
+config=tests/e2e/playwright.config.ts
+spec=tests/e2e/csrf-session.spec.ts
+browser=chromium
+results=4 passed / 0 failed
+- login page sets session cookie and XSRF-TOKEN
+- inertia login without csrf token is 419
+- csrf token from one browser session is rejected in another (419 or 403)
+- api login after a browser visit without csrf is 403 CSRF_MISMATCH
+exit_code=0
+note=Synthetic phone 01900000001 only. Server used tests/e2e/laravel.env placeholders.

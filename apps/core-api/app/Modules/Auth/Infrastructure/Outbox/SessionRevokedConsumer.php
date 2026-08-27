@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Auth\Infrastructure\Outbox;
 
+use App\Modules\Auth\Infrastructure\Realtime\SessionDisconnectedBroadcast;
 use App\Modules\Platform\Application\Outbox\OutboxConsumer;
 use App\Modules\Platform\Infrastructure\Telemetry\PlatformMetrics;
 use DateTimeImmutable;
+use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 /**
@@ -49,5 +52,20 @@ final class SessionRevokedConsumer implements OutboxConsumer
         $this->metrics->set('clinic_session_revocation_latency_seconds', $latency, [
             'client_class' => 'unknown',
         ]);
+
+        try {
+            $sessionId = (string) ($payload['session_id'] ?? '');
+            $reason = (string) ($payload['reason_code'] ?? '');
+            Redis::connection('realtime')->publish('clinic.session.disconnect', json_encode([
+                'session_id' => $sessionId,
+                'user_id' => $payload['user_id'] ?? '',
+                'reason_code' => $reason,
+            ], JSON_THROW_ON_ERROR));
+            if ($sessionId !== '') {
+                Broadcast::event(new SessionDisconnectedBroadcast($sessionId, $reason));
+            }
+        } catch (Throwable) {
+            // HTTP deny remains authoritative. Publish failure is recorded as lag, not success.
+        }
     }
 }

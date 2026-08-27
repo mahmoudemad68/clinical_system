@@ -508,6 +508,129 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /api/v1/auth/mfa/totp/enroll:
+    post:
+      tags: [auth]
+      operationId: enrollTotp
+      summary: Start self-service TOTP enrollment
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Provisioning URI once. Never logged.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MfaEnrollResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/auth/mfa/totp/confirm:
+    post:
+      tags: [auth]
+      operationId: confirmTotp
+      summary: Confirm TOTP enrollment and issue recovery codes once
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+      responses:
+        '200':
+          description: Recovery codes shown once.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MfaConfirmResult'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/auth/mfa/recovery-codes/rotate:
+    post:
+      tags: [auth]
+      operationId: rotateMfaRecoveryCodes
+      summary: Replace unused MFA recovery codes
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthAck'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/auth/mfa/totp/disable:
+    post:
+      tags: [auth]
+      operationId: disableTotp
+      summary: Disable the active TOTP factor
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthAck'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/auth/recovery/requests/{id}/apply:
+    post:
+      tags: [auth]
+      operationId: applyRecoveryRequest
+      summary: Operator apply for manual_review recovery
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthAck'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/v1/auth/token/refresh:
     post:
       tags: [auth]
@@ -1030,7 +1153,7 @@ components:
         Status mapping (phase file "API contract"):
           400 malformed protocol or input
           401 unauthenticated
-          403 denied
+          403 denied or CSRF mismatch
           404 hiding resource existence is safer
           409 state, version, or idempotency conflict
           422 field or business validation
@@ -1041,6 +1164,7 @@ components:
         - UNSUPPORTED_MEDIA_TYPE
         - REQUEST_TOO_LARGE
         - UNAUTHENTICATED
+        - CSRF_MISMATCH
         - TOKEN_EXPIRED
         - PERMISSION_DENIED
         - NOT_FOUND
@@ -1312,6 +1436,31 @@ components:
           type: string
           pattern: '^[0-9]{6}$'
 
+    MfaEnrollResult:
+      type: object
+      required: [factor_id, provisioning_uri]
+      additionalProperties: false
+      properties:
+        factor_id:
+          $ref: '#/components/schemas/Uuid'
+        provisioning_uri:
+          type: string
+          maxLength: 512
+
+    MfaConfirmResult:
+      type: object
+      required: [verified, recovery_codes]
+      additionalProperties: false
+      properties:
+        verified:
+          type: boolean
+        recovery_codes:
+          type: array
+          maxItems: 16
+          items:
+            type: string
+            maxLength: 32
+
     RefreshRequest:
       type: object
       required: [refresh_token]
@@ -1513,9 +1662,18 @@ components:
           type: boolean
         status:
           type: string
+          enum: [applied, cooling_off, manual_review, completed]
           maxLength: 32
         csrf:
           type: boolean
+        disabled:
+          type: boolean
+        recovery_codes:
+          type: array
+          maxItems: 16
+          items:
+            type: string
+            maxLength: 32
 
   responses:
 
