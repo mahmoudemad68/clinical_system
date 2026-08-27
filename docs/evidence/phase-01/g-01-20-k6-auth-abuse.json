@@ -2,7 +2,7 @@
   "gate": "G-01-20",
   "result": "PASS",
   "ci_green_sha": "ecabb9ffccc2820c24bd75edeb8c0c5a81d84910",
-  "candidate_sha": "ecabb9ffccc2820c24bd75edeb8c0c5a81d84910",
+  "candidate_sha": "b161c5b72fc2a30b2a8f1f877c0620bb357dd1f0",
   "recorded_at": "2026-08-27T14:11:35Z",
   "command": "bash scripts/perf/run-k6-auth-abuse.sh",
   "k6_exit_code": 0,

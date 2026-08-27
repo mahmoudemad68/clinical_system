@@ -3,7 +3,7 @@
 - **Gate:** G-01-20
 - **Result:** PASS
 - **CI-green SHA (PR #3, not merged):** `ecabb9ffccc2820c24bd75edeb8c0c5a81d84910`
-- **Candidate SHA:** `ecabb9ffccc2820c24bd75edeb8c0c5a81d84910`
+- **Candidate SHA:** `b161c5b72fc2a30b2a8f1f877c0620bb357dd1f0`
 - **Recorded:** 2026-08-27T14:11:35Z
 - **k6:** k6 v2.2.0 (commit/00a9a1b7f5, go1.26.5, linux/amd64)
 - **k6 exit:** 0
