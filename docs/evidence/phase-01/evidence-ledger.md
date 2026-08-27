@@ -19,7 +19,7 @@ self-granted. Phase 22 remains the assurance phase.
 
 Phase 00 is OPEN/PARTIAL (see `docs/evidence/phase-00/evidence-ledger.md`).
 Contracts, correlation IDs, idempotency, outbox, and redaction are consumable.
-CI never run, packaged Electron E2E (G-02-10) OPEN, G-06-01 Linux-only, SF-001
+CI never run, packaged Electron E2E (G-02-10) PARTIAL (Linux only), G-06-01 Linux-only, SF-001
 High `extract-zip` remain. Those do not block local Phase 01 implementation.
 
 ## Gates
@@ -40,7 +40,7 @@ High `extract-zip` remain. Those do not block local Phase 01 implementation.
 | G-01-12 | Concurrent OTP/phone/token/link races | test | [`g-01-12-two-connection-races.md`](g-01-12-two-connection-races.md); `bash scripts/perf/run-two-connection-auth-races.sh` | `PASS` | 40 iterations × two OS processes per scenario; 0 deadlocks/timeouts. Phone uniqueness remains unique-index + sequential HTTP. MFA TOTP HTTP consume not raced (OTP + recovery consume were). Phase 01 stays OPEN. |
 | G-01-13 | Cookie CSRF admin flow | laravel + admin | `ValidateCookieCsrf`; Inertia `/login`; `apps/admin-web` LoginPanel | `PARTIAL` | Device OTP/login skips CSRF; admin cookie login without CSRF is 401. Browser Playwright/E2E not run. |
 | G-01-14 | Flutter secure token store | flutter | `packages/flutter/authentication` `flutter test` | `PARTIAL` | Envelope write/clear, fail-closed vault write, and `AuthOutcome.withoutSecrets` pass. Device OS matrix not run. |
-| G-01-15 | Electron main-process credentials | electron | `npm run desktop:test` | `PARTIAL` | Doctor 37 and pharmacy 37 Vitest trust-boundary tests pass. Packaged WebdriverIO remains OPEN (Phase 00 G-02-10). |
+| G-01-15 | Electron main-process credentials | electron | `npm run desktop:test` | `PARTIAL` | Doctor and pharmacy Vitest trust-boundary tests pass. Phase 00 G-02-10 Linux packaged WebdriverIO is recorded; Windows/macOS have not run. |
 | G-01-16 | Session revoke vs realtime SLO | realtime | [`g-01-16-reverb-disconnect-slo.md`](g-01-16-reverb-disconnect-slo.md); `bash scripts/perf/run-reverb-disconnect-slo.sh` | `PASS` | Local live Reverb: 100 samples, max 0.131s / p99 0.045s vs 5s SLO, 0 timeouts. HTTP deny remains authoritative. Not a production SLO proof. Phase 01 stays OPEN. |
 | G-01-17 | Redaction of identity canaries | security | OTP outbox payload test; Phase 00 redactor unit tests | `PARTIAL` | Outbox payload omits phone/NID/code. Log/Sentry/Horizon sweep not executed. |
 | G-01-18 | Octane alternating identity | test | `OctaneStateIsolationTest`; actor is request-scoped | `PARTIAL` | Phase 00 reset hook passes. No new dual-user authenticated Octane HTTP case. |

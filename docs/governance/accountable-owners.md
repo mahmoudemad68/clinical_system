@@ -27,4 +27,5 @@ Assessor/remediator separation is **lost**. That is recorded, not hidden.
 - ADR 0006 still forbids local clinical storage until G-06-01 is `PASS` on all
   five target platforms. Linux evidence is recorded; Windows, macOS, Android,
   and iOS have not run.
-- Packaged Electron E2E (G-02-10) is still missing and is not waived.
+- Packaged Electron E2E (G-02-10) is PARTIAL: Linux packaged WebdriverIO ran;
+  Windows and macOS have not. It is not waived.
