@@ -22,7 +22,10 @@ description = "Possible Egyptian national ID (14 digits) committed to the reposi
 # logs, or test data (docs/phases/README.md invariant 5). A 14-digit literal in
 # source is either a real identifier or a fixture that looks like one; both are
 # worth a human look.
-regex = '''(?<![0-9])[23][0-9]{13}(?![0-9])'''
+# Go RE2 has no lookaround. Capture the 14-digit value so allowlists and
+# reports see the identifier, not the surrounding delimiter.
+regex = '''(^|[^0-9])([23][0-9]{13})([^0-9]|$)'''
+secretGroup = 2
 tags = ["pii", "national-id"]
 
 [allowlist]
@@ -36,6 +39,7 @@ paths = [
   '''composer\.lock$''',
   '''apps/ai-service/requirements\.txt$''',
   '''docs/.*\.md$''',
+  '''\.deptrac\.cache$''',
 ]
 
 regexes = [
@@ -43,8 +47,17 @@ regexes = [
   # makes an accidental real secret stand out rather than blend in.
   '''local_dev_only_not_a_secret''',
   '''ci_only_not_a_secret''',
-  # Synthetic canaries in the redaction test suite. These are structurally
-  # valid but deliberately impossible identities (birth date 2999-99-99).
+  # Synthetic canaries and documented impossible/test identities. These are
+  # exact literals, not a generic 14-digit allowlist.
   '''29999999999999''',
+  '''29901011234567''',
+  '''30001010100011''',
+  '''29999010100011''',
+  '''29801011234567''',
   '''phase00-synthetic-diagnostics-token''',
+  # Redaction-suite JWT canary and documented fake examples. Exact literals
+  # only; default Gitleaks rules still flag unknown keys.
+  '''eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiJ0ZXN0In0''',
+  '''sk_live_abc123''',
+  '''unique/partial/exclusion''',
 ]
