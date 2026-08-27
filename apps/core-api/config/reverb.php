@@ -30,7 +30,7 @@ return [
 
         'reverb' => [
             'host' => env('REVERB_SERVER_HOST', '0.0.0.0'),
-            'port' => env('REVERB_SERVER_PORT', 8080),
+            'port' => env('REVERB_SERVER_PORT', 8081),
             'path' => env('REVERB_SERVER_PATH', ''),
             'hostname' => env('REVERB_HOST'),
             'options' => [
@@ -84,13 +84,23 @@ return [
                 ],
                 // Enumerated origins only. A wildcard here is the same defect
                 // as wildcard CORS and is rejected by Semgrep.
-                'allowed_origins' => array_values(array_filter(array_map(
-                    static fn (string $origin): string => trim($origin),
+                'allowed_origins' => array_values(array_unique(array_filter(array_map(
+                    static function (string $origin): string {
+                        $origin = trim($origin);
+                        if ($origin === '') {
+                            return '';
+                        }
+
+                        // Reverb compares against parse_url(..., PHP_URL_HOST).
+                        $host = parse_url($origin, PHP_URL_HOST);
+
+                        return is_string($host) && $host !== '' ? $host : $origin;
+                    },
                     explode(',', (string) env(
                         'REVERB_ALLOWED_ORIGINS',
                         env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000'),
                     )),
-                ))),
+                )))),
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
                 'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'max_connections' => env('REVERB_APP_MAX_CONNECTIONS', 500),

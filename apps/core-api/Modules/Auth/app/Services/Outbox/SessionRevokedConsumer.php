@@ -7,15 +7,16 @@ namespace Modules\Auth\Services\Outbox;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Redis;
+use Modules\Auth\Services\Realtime\DisconnectRevokedReverbSessions;
 use Modules\Auth\Services\Realtime\SessionDisconnectedBroadcast;
 use Modules\Platform\Services\Outbox\OutboxConsumer;
 use Modules\Platform\Services\Telemetry\PlatformMetrics;
 use Throwable;
 
 /**
- * Fan-out for realtime disconnect. Reverb unsubscription is eventual; HTTP
- * already denies on the authoritative revoked timestamp. Measured latency is
- * consumer lag, not a proven socket-close SLO (G-01-16 OPEN).
+ * Fan-out for realtime disconnect. The Redis list is drained by the Reverb
+ * process, which terminates matching WebSocket connections. HTTP deny remains
+ * authoritative if Reverb is down.
  */
 final class SessionRevokedConsumer implements OutboxConsumer
 {
@@ -56,11 +57,15 @@ final class SessionRevokedConsumer implements OutboxConsumer
         try {
             $sessionId = (string) ($payload['session_id'] ?? '');
             $reason = (string) ($payload['reason_code'] ?? '');
-            Redis::connection('realtime')->publish('clinic.session.disconnect', json_encode([
+            $message = json_encode([
                 'session_id' => $sessionId,
                 'user_id' => $payload['user_id'] ?? '',
                 'reason_code' => $reason,
-            ], JSON_THROW_ON_ERROR));
+            ], JSON_THROW_ON_ERROR);
+            $realtime = Redis::connection('realtime');
+            // Durable instruction for the Reverb process (socket close).
+            $realtime->rpush(DisconnectRevokedReverbSessions::QUEUE_KEY, $message);
+            $realtime->publish(DisconnectRevokedReverbSessions::QUEUE_KEY, $message);
             if ($sessionId !== '') {
                 Broadcast::event(new SessionDisconnectedBroadcast($sessionId, $reason));
             }

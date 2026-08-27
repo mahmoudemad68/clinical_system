@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Modules\Auth\Providers;
 
 use Illuminate\Cache\RateLimiter;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Modules\Auth\Console\ApplyDueRecoveriesCommand;
 use Modules\Auth\Console\BootstrapAdminCommand;
@@ -20,6 +22,7 @@ use Modules\Auth\Http\Controllers\AuthController;
 use Modules\Auth\Http\Middleware\AuthenticateActor;
 use Modules\Auth\Http\Middleware\AuthenticateDevice;
 use Modules\Auth\Http\Middleware\DenyPendingBusinessAccess;
+use Modules\Auth\Listeners\ReverbSessionDisconnectListener;
 use Modules\Auth\Rules\PasswordPolicy;
 use Modules\Auth\Services\Adapters\DisabledDeliverOtpSms;
 use Modules\Auth\Services\Adapters\RecordingDeliverOtpSms;
@@ -122,6 +125,8 @@ final class AuthServiceProvider extends ServiceProvider
             $dispatcher->register($this->app->make(OtpDeliveryConsumer::class));
             $dispatcher->register($this->app->make(SessionRevokedConsumer::class));
         });
+
+        Event::listen(CommandStarting::class, [ReverbSessionDisconnectListener::class, 'subscribe']);
 
         if ($this->app->runningInConsole()) {
             $this->commands([

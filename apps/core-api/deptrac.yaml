@@ -73,6 +73,8 @@ parameters:
           value: ^Kreait\\.*
         - type: classLike
           value: ^OTPHP\\.*
+        - type: classLike
+          value: ^React\\.*
 
     - name: DomainSafeVendor
       collectors:

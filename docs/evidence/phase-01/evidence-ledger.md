@@ -41,7 +41,7 @@ High `extract-zip` remain. Those do not block local Phase 01 implementation.
 | G-01-13 | Cookie CSRF admin flow | laravel + admin | `ValidateCookieCsrf`; Inertia `/login`; `apps/admin-web` LoginPanel | `PARTIAL` | Device OTP/login skips CSRF; admin cookie login without CSRF is 401. Browser Playwright/E2E not run. |
 | G-01-14 | Flutter secure token store | flutter | `packages/flutter/authentication` `flutter test` | `PARTIAL` | Envelope write/clear, fail-closed vault write, and `AuthOutcome.withoutSecrets` pass. Device OS matrix not run. |
 | G-01-15 | Electron main-process credentials | electron | `npm run desktop:test` | `PARTIAL` | Doctor 37 and pharmacy 37 Vitest trust-boundary tests pass. Packaged WebdriverIO remains OPEN (Phase 00 G-02-10). |
-| G-01-16 | Session revoke vs realtime SLO | realtime | `SessionRevokedConsumer` metrics; HTTP deny on revoked hashes | `OPEN` | Phase 00 still denies all Reverb subscriptions. No measured socket-close SLO. HTTP refresh/new requests deny. |
+| G-01-16 | Session revoke vs realtime SLO | realtime | [`g-01-16-reverb-disconnect-slo.md`](g-01-16-reverb-disconnect-slo.md); `bash scripts/perf/run-reverb-disconnect-slo.sh` | `PASS` | Local live Reverb: 100 samples, max 0.131s / p99 0.045s vs 5s SLO, 0 timeouts. HTTP deny remains authoritative. Not a production SLO proof. Phase 01 stays OPEN. |
 | G-01-17 | Redaction of identity canaries | security | OTP outbox payload test; Phase 00 redactor unit tests | `PARTIAL` | Outbox payload omits phone/NID/code. Log/Sentry/Horizon sweep not executed. |
 | G-01-18 | Octane alternating identity | test | `OctaneStateIsolationTest`; actor is request-scoped | `PARTIAL` | Phase 00 reset hook passes. No new dual-user authenticated Octane HTTP case. |
 | G-01-19 | Threat model + inventory + runbooks + alerts | security | `docs/threat-models/phase-01-identity.md`; inventory; identity runbooks; `infra/monitoring/alerts/platform.yaml` | `PARTIAL` | Engineering draft; not independently reviewed. |
@@ -74,10 +74,19 @@ Commands and results from this implementation session. Host PHP has no `pdo_pgsq
 | `flutter test` in `packages/flutter/authentication` | 3 passed |
 | `flutter test` in `packages/flutter/secure_storage` | 3 passed |
 
+## Verification log (2026-08-27, G-01-16)
+
+| Command | Result |
+| --- | --- |
+| `bash scripts/perf/run-reverb-disconnect-slo.sh` | Pest `--group=reverb-slo` **2 passed** (sibling isolation + 100 live revoke→WS-close samples). p50 0.025804s, p95 0.036743s, p99 0.044737s, max 0.131135s, timeouts 0 vs 5s SLO. |
+| Docker `./vendor/bin/pest tests/Unit/Auth/DisconnectRevokedReverbSessionsTest.php` | **2 passed** |
+| `vendor/bin/pint --dirty` | passed |
+
+Phase 01 remains OPEN. G-01-21 stays OPEN.
+
 ## What is still not a phase close
 
 - Independent security/privacy/legal approval (G-01-21, Phase 22)
-- Measured Reverb disconnect SLO (G-01-16)
 - Two-connection concurrency harness and k6 execution (G-01-12, G-01-20)
 - Packaged Electron WebdriverIO (Phase 00 G-02-10)
 - CI run of this branch

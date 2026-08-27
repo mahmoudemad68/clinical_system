@@ -15,8 +15,8 @@ use Modules\Platform\Support\Identifier;
 | to subscribe until Phase 04 supplies actor-scoped queue channels. A
 | channel name is not authorization (invariant 13).
 |
-| Session disconnect is bound to the exact auth_sessions row. Measured
-| socket-close SLO remains G-01-16 OPEN.
+| Session disconnect is bound to the exact auth_sessions row. The Reverb
+| process closes subscribed sockets when that row is revoked.
 |
 */
 
