@@ -3,7 +3,7 @@
 - **Gate:** G-01-12
 - **Result:** PASS
 - **CI-green SHA (PR #3, not merged):** `e80625ef5984d3b69ff358a267e2da041dcadcce`
-- **Candidate SHA:** `e80625ef5984d3b69ff358a267e2da041dcadcce`
+- **Candidate SHA:** `c4fc2b7b6dab468ce0e4afcedd7401ee26bc7d2d`
 - **Recorded:** 2026-08-27T13:30:00Z
 - **Pest:** 5 passed, 815 assertions, 171.34s
 - **Infrastructure failures:** 0 deadlocks, 0 timeouts, 0 scenario failures
