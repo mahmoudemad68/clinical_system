@@ -76,6 +76,15 @@ final class SessionCommandService
                 throw new AuthenticationFailed;
             }
 
+            // Device then session: same order as refresh rotation to avoid
+            // a deadlock with a concurrent token refresh.
+            if ($deviceId !== null) {
+                $this->auth->lockDevice($deviceId);
+            }
+            if ($sessionId !== null) {
+                $this->auth->lockSession($sessionId);
+            }
+
             if ($sessionId !== null) {
                 $this->auth->revokeSession($sessionId, 'user_logout', $now);
             }
@@ -109,6 +118,10 @@ final class SessionCommandService
 
             $now = $this->clock->now();
             $id = Identifier::fromTrusted((string) $session->id);
+            if ($session->device_id !== null) {
+                $this->auth->lockDevice(Identifier::fromTrusted((string) $session->device_id));
+            }
+            $this->auth->lockSession($id);
             $this->auth->revokeSession($id, 'user_revoke', $now);
             if ($session->device_id !== null) {
                 $this->auth->revokeDevice(Identifier::fromTrusted((string) $session->device_id), 'user_revoke', $now);

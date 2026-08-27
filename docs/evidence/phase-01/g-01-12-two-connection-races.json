@@ -1,0 +1,72 @@
+{
+  "gate": "G-01-12",
+  "result": "PASS",
+  "generated_at": "2026-08-27T13:28:00+00:00",
+  "recorded_at": "2026-08-27T13:30:00Z",
+  "ci_green_sha": "e80625ef5984d3b69ff358a267e2da041dcadcce",
+  "candidate_sha": "e80625ef5984d3b69ff358a267e2da041dcadcce",
+  "command": "bash scripts/perf/run-two-connection-auth-races.sh",
+  "image": "clinic-php-pgsql:local",
+  "concurrency_method": "two_os_processes_file_barrier_then_independent_laravel_http_kernels",
+  "db_isolation": "read committed (PostgreSQL default)",
+  "locking": {
+    "refresh": "SELECT user_devices ... FOR UPDATE by current/previous/consumed refresh hash",
+    "logout": "FOR UPDATE user_devices then auth_sessions (same order as refresh)",
+    "otp_mfa": "SELECT otp_requests / mfa_challenges WHERE id = ? FOR UPDATE",
+    "unique_indexes": [
+      "auth_refresh_consumptions_token_hash_unique",
+      "user_devices_active_refresh_hash_unique"
+    ]
+  },
+  "failures": 0,
+  "deadlocks": 0,
+  "timeouts": 0,
+  "pest": {
+    "tests": 5,
+    "assertions": 815,
+    "duration_seconds": 171.34
+  },
+  "scenarios": {
+    "dual_refresh_same_token": {
+      "iterations": 40,
+      "failures": 0,
+      "deadlocks": 0,
+      "timeouts": 0,
+      "result": "PASS",
+      "invariant": "At most one live session/device/refresh hash; reuse of the loser revokes the family; unique consumption hashes."
+    },
+    "refresh_vs_logout": {
+      "iterations": 40,
+      "failures": 0,
+      "deadlocks": 0,
+      "timeouts": 0,
+      "result": "PASS",
+      "invariant": "Device then session row locks. Logout commit leaves zero live sessions; refresh-first leaves at most one successor until logout revokes it."
+    },
+    "rotated_reuse_vs_inflight_successor": {
+      "iterations": 40,
+      "failures": 0,
+      "deadlocks": 0,
+      "timeouts": 0,
+      "result": "PASS",
+      "invariant": "Presenting N-1 while N is in flight revokes the family. Zero live sessions remain."
+    },
+    "otp_single_consumer_and_attempts": {
+      "iterations": 40,
+      "wrong_code_iterations": 40,
+      "failures": 0,
+      "deadlocks": 0,
+      "timeouts": 0,
+      "result": "PASS",
+      "invariant": "FOR UPDATE on otp_requests: one consume, one session; concurrent wrong codes commit both attempt increments."
+    },
+    "recovery_otp_single_consumer": {
+      "iterations": 40,
+      "failures": 0,
+      "deadlocks": 0,
+      "timeouts": 0,
+      "result": "PASS",
+      "invariant": "Recovery complete locks the OTP row; one applied recovery and one credential_version bump."
+    }
+  }
+}

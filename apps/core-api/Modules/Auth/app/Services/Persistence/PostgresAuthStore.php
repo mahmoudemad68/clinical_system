@@ -115,26 +115,44 @@ final class PostgresAuthStore implements AuthDirectory
     public function lockDeviceByRefreshHash(string $hash): ?stdClass
     {
         $bound = BinaryColumn::bind($hash);
-        $idRow = $this->connection->selectOne(
-            'SELECT id FROM user_devices WHERE refresh_token_hash = ? OR previous_refresh_token_hash = ?
-             UNION
-             SELECT d.id FROM user_devices d
-             INNER JOIN auth_refresh_consumptions c ON c.family_id = d.refresh_family_id
-             WHERE c.token_hash = ?
-             LIMIT 1',
+        $row = $this->connection->selectOne(
+            'SELECT * FROM user_devices
+             WHERE id = (
+                SELECT id FROM (
+                    SELECT id FROM user_devices
+                    WHERE refresh_token_hash = ? OR previous_refresh_token_hash = ?
+                    UNION
+                    SELECT d.id FROM user_devices d
+                    INNER JOIN auth_refresh_consumptions c ON c.family_id = d.refresh_family_id
+                    WHERE c.token_hash = ?
+                ) candidates
+                LIMIT 1
+             )
+             FOR UPDATE',
             [$bound, $bound, $bound],
         );
 
-        if (! $idRow instanceof stdClass) {
-            return null;
-        }
+        return $row instanceof stdClass ? $this->normalizeDevice($row) : null;
+    }
 
+    public function lockDevice(Identifier $id): ?stdClass
+    {
         $row = $this->connection->selectOne(
             'SELECT * FROM user_devices WHERE id = ? FOR UPDATE',
-            [$idRow->id],
+            [$id->value],
         );
 
         return $row instanceof stdClass ? $this->normalizeDevice($row) : null;
+    }
+
+    public function lockSession(Identifier $id): ?stdClass
+    {
+        $row = $this->connection->selectOne(
+            'SELECT * FROM auth_sessions WHERE id = ? FOR UPDATE',
+            [$id->value],
+        );
+
+        return $row instanceof stdClass ? $this->normalizeSession($row) : null;
     }
 
     public function recordConsumedRefresh(string $familyId, string $tokenHash, int $generation, DateTimeImmutable $now): void

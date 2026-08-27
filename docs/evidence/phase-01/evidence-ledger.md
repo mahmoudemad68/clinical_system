@@ -37,7 +37,7 @@ High `extract-zip` remain. Those do not block local Phase 01 implementation.
 | G-01-09 | Refresh reuse revokes family | test | same | `PASS` | Revoke commits before the 401; rotated token is then denied. |
 | G-01-10 | Enumeration-safe login | test | same | `PASS` | Unknown and wrong password share `UNAUTHENTICATED`. |
 | G-01-11 | Default-deny / no clinical capability | test | `IdentityRulesTest`; capabilities JSON missing `clinical.record.read` | `PASS` | Clinical grant names stay unknown to Access listing. |
-| G-01-12 | Concurrent OTP/phone/token/link races | test | sequential consume-once + unique grant index | `PARTIAL` | Unique indexes and sequential consume/reuse tests pass. Two-connection/pcntl race harness not run. |
+| G-01-12 | Concurrent OTP/phone/token/link races | test | [`g-01-12-two-connection-races.md`](g-01-12-two-connection-races.md); `bash scripts/perf/run-two-connection-auth-races.sh` | `PASS` | 40 iterations × two OS processes per scenario; 0 deadlocks/timeouts. Phone uniqueness remains unique-index + sequential HTTP. MFA TOTP HTTP consume not raced (OTP + recovery consume were). Phase 01 stays OPEN. |
 | G-01-13 | Cookie CSRF admin flow | laravel + admin | `ValidateCookieCsrf`; Inertia `/login`; `apps/admin-web` LoginPanel | `PARTIAL` | Device OTP/login skips CSRF; admin cookie login without CSRF is 401. Browser Playwright/E2E not run. |
 | G-01-14 | Flutter secure token store | flutter | `packages/flutter/authentication` `flutter test` | `PARTIAL` | Envelope write/clear, fail-closed vault write, and `AuthOutcome.withoutSecrets` pass. Device OS matrix not run. |
 | G-01-15 | Electron main-process credentials | electron | `npm run desktop:test` | `PARTIAL` | Doctor 37 and pharmacy 37 Vitest trust-boundary tests pass. Packaged WebdriverIO remains OPEN (Phase 00 G-02-10). |
@@ -84,10 +84,17 @@ Commands and results from this implementation session. Host PHP has no `pdo_pgsq
 
 Phase 01 remains OPEN. G-01-21 stays OPEN.
 
+## Verification log (2026-08-27, G-01-12)
+
+| Command | Result |
+| --- | --- |
+| `bash scripts/perf/run-two-connection-auth-races.sh` | Pest `--group=two-connection-race` **5 passed**, 815 assertions, 171.34s. 40 iterations each: dual refresh, refresh vs logout, rotated reuse vs in-flight successor, OTP consume + wrong-code attempts, recovery consume. 0 failures, 0 deadlocks, 0 timeouts. |
+| `vendor/bin/pint --dirty` | passed |
+
 ## What is still not a phase close
 
 - Independent security/privacy/legal approval (G-01-21, Phase 22)
-- Two-connection concurrency harness and k6 execution (G-01-12, G-01-20)
+- k6 execution (G-01-20)
 - Packaged Electron WebdriverIO (Phase 00 G-02-10)
 - CI run of this branch
 - TOTP enrollment HTTP/UX beyond bootstrap (not on the Phase 01 route list)

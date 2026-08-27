@@ -45,6 +45,10 @@ interface AuthDirectory
 
     public function lockDeviceByRefreshHash(string $hash): ?stdClass;
 
+    public function lockDevice(Identifier $id): ?stdClass;
+
+    public function lockSession(Identifier $id): ?stdClass;
+
     public function findDeviceByAccessHash(string $hash): ?stdClass;
 
     public function recordConsumedRefresh(string $familyId, string $tokenHash, int $generation, DateTimeImmutable $now): void;
