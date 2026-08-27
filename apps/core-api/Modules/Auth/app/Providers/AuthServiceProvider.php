@@ -115,8 +115,13 @@ final class AuthServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->app->make(OutboxDispatcher::class)->register($this->app->make(OtpDeliveryConsumer::class));
-        $this->app->make(OutboxDispatcher::class)->register($this->app->make(SessionRevokedConsumer::class));
+        // Register consumers when the dispatcher is first resolved. Instantiating
+        // them during boot would construct the identity encryptor, which must
+        // not require runtime secrets for Composer package discovery.
+        $this->app->afterResolving(OutboxDispatcher::class, function (OutboxDispatcher $dispatcher): void {
+            $dispatcher->register($this->app->make(OtpDeliveryConsumer::class));
+            $dispatcher->register($this->app->make(SessionRevokedConsumer::class));
+        });
 
         if ($this->app->runningInConsole()) {
             $this->commands([

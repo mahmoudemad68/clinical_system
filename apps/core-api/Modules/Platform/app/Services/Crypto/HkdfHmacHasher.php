@@ -20,20 +20,21 @@ final class HkdfHmacHasher implements HmacHasher
         private readonly int $currentVersion,
         private readonly int $minKeyLength = 32,
     ) {
-        if ($this->currentVersion < 1 || ! isset($this->keys[$this->currentVersion]) || $this->keys[$this->currentVersion] === '') {
-            throw new RuntimeException('Identity HMAC current version has no key.');
-        }
-
-        $this->assertKey($this->keys[$this->currentVersion]);
+        // Keys are required only when hashing. Application boot and Composer
+        // package discovery must not need runtime HMAC secrets.
     }
 
     public function digest(string $purpose, string $canonical): string
     {
+        $this->assertCurrentKey();
+
         return $this->digestVersion($purpose, $canonical, $this->currentVersion);
     }
 
     public function lookupDigests(string $purpose, string $canonical): array
     {
+        $this->assertCurrentKey();
+
         $out = [];
 
         foreach ($this->keys as $version => $master) {
@@ -51,6 +52,15 @@ final class HkdfHmacHasher implements HmacHasher
     public function currentVersion(): int
     {
         return $this->currentVersion;
+    }
+
+    private function assertCurrentKey(): void
+    {
+        if ($this->currentVersion < 1 || ! isset($this->keys[$this->currentVersion]) || $this->keys[$this->currentVersion] === '') {
+            throw new RuntimeException('Identity HMAC current version has no key.');
+        }
+
+        $this->assertKey($this->keys[$this->currentVersion]);
     }
 
     private function digestVersion(string $purpose, string $canonical, int $version): string

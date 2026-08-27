@@ -233,6 +233,20 @@ jobs:
           DB_MIGRATION_PASSWORD: ci_only_not_a_secret
         run: php artisan migrate --database=pgsql_migrator --force
 
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/core-api/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Inertia assets
+        # Persona status pages render through Vite. Pest must see a real
+        # production manifest; withoutVite() would skip that contract.
+        run: npm run build
+
       - name: Tests
         env:
           DB_HOST: localhost
@@ -243,10 +257,6 @@ jobs:
           DB_MIGRATION_PASSWORD: ci_only_not_a_secret
           REDIS_HOST: localhost
         run: ./vendor/bin/pest
-
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
 
       - name: Browser CSRF and session cookies
         working-directory: .
@@ -262,8 +272,6 @@ jobs:
         run: |
           npm ci --prefix tests/e2e
           npx --prefix tests/e2e playwright install --with-deps chromium
-          npm ci --prefix apps/core-api
-          npm run build --prefix apps/core-api
           php apps/core-api/artisan serve --host=127.0.0.1 --port=8080 &
           sleep 3
           npx --prefix tests/e2e playwright test --config tests/e2e/playwright.config.ts
@@ -395,6 +403,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
       security-events: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
@@ -404,11 +413,13 @@ jobs:
       - name: Record candidate SHA
         run: bash scripts/ci/assert-candidate-sha.sh
 
-      # Secrets must never reach a fork/PR job from untrusted code, so this
-      # workflow requests no secrets at all.
+      # Fork/PR jobs must not receive repository secrets or a PAT. The
+      # automatically issued workflow token is enough for gitleaks to resolve
+      # the pull-request diff.
       - name: Secret scan
         uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3  # v2.3.7
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
 
       - name: SAST

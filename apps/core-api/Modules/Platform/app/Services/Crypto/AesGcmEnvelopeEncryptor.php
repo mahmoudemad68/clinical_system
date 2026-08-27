@@ -29,15 +29,13 @@ final class AesGcmEnvelopeEncryptor implements FieldEncryptor
         private readonly int $currentVersion,
         private readonly int $minKeyLength = 32,
     ) {
-        if ($this->currentVersion < 1 || ! isset($this->keys[$this->currentVersion]) || $this->keys[$this->currentVersion] === '') {
-            throw new RuntimeException('Identity encryption current version has no key.');
-        }
-
-        $this->assertKey($this->keys[$this->currentVersion]);
+        // Keys are required only when encrypting or decrypting. Composer
+        // package discovery and image builds must boot without runtime secrets.
     }
 
     public function encrypt(string $purpose, string $plaintext): string
     {
+        $this->assertCurrentKey();
         $key = $this->binaryKey($this->currentVersion);
         $iv = random_bytes(self::IV_LENGTH);
         $tag = '';
@@ -61,6 +59,8 @@ final class AesGcmEnvelopeEncryptor implements FieldEncryptor
 
     public function decrypt(string $purpose, string $envelope): string
     {
+        $this->assertCurrentKeyReadableOrPrior();
+
         if (strlen($envelope) < 2 + self::IV_LENGTH + self::TAG_LENGTH) {
             throw new RuntimeException('Envelope is truncated.');
         }
@@ -95,6 +95,30 @@ final class AesGcmEnvelopeEncryptor implements FieldEncryptor
     public function currentVersion(): int
     {
         return $this->currentVersion;
+    }
+
+    private function assertCurrentKey(): void
+    {
+        if ($this->currentVersion < 1 || ! isset($this->keys[$this->currentVersion]) || $this->keys[$this->currentVersion] === '') {
+            throw new RuntimeException('Identity encryption current version has no key.');
+        }
+
+        $this->assertKey($this->keys[$this->currentVersion]);
+    }
+
+    /**
+     * Decrypt still fails closed when no key material exists at all, but an
+     * envelope for a prior version may be readable after a rotation.
+     */
+    private function assertCurrentKeyReadableOrPrior(): void
+    {
+        foreach ($this->keys as $material) {
+            if (is_string($material) && $material !== '') {
+                return;
+            }
+        }
+
+        throw new RuntimeException('Identity encryption current version has no key.');
     }
 
     private function binaryKey(int $version): string
