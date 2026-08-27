@@ -45,7 +45,7 @@ High `extract-zip` remain. Those do not block local Phase 01 implementation.
 | G-01-17 | Redaction of identity canaries | security | OTP outbox payload test; Phase 00 redactor unit tests | `PARTIAL` | Outbox payload omits phone/NID/code. Log/Sentry/Horizon sweep not executed. |
 | G-01-18 | Octane alternating identity | test | `OctaneStateIsolationTest`; actor is request-scoped | `PARTIAL` | Phase 00 reset hook passes. No new dual-user authenticated Octane HTTP case. |
 | G-01-19 | Threat model + inventory + runbooks + alerts | security | `docs/threat-models/phase-01-identity.md`; inventory; identity runbooks; `infra/monitoring/alerts/platform.yaml` | `PARTIAL` | Engineering draft; not independently reviewed. |
-| G-01-20 | k6 abuse harness | test | `tests/k6/auth-abuse.js` | `OPEN` | Script present; k6 not executed this session. |
+| G-01-20 | k6 abuse harness | test | [`g-01-20-k6-auth-abuse.md`](g-01-20-k6-auth-abuse.md); `bash scripts/perf/run-k6-auth-abuse.sh` | `PASS` | Live dual FrankenPHP processes, Redis `ratelimit` DB 3. Shared 429 across processes; 429s on login/OTP request/resend/verify/refresh/MFA/recovery; below-threshold 401/200 with zero 429s; Retry-After present; 0 5xx; no canaries. Not a production capacity/SLO proof. Phase 01 stays OPEN. |
 | G-01-21 | No Critical/unaccepted High | security | [independent-phase-00-phase-01-review-2026-08-26.md](../security-review/independent-phase-00-phase-01-review-2026-08-26.md) | `OPEN` | Independent review: **DO NOT APPROVE**. ISR remediations are in code; this implementer cannot close the gate. SF-001 High remains with a time-boxed merge exception that still blocks promotion. Assessor/remediator separation is lost. |
 | G-01-22 | Profile claim never discloses | product/privacy | flag default false; phpunit claim false; OTP purpose `profile_claim` → 404 | `PASS` (control) | Enablement still requires product/privacy/security/support owners. |
 | G-01-23 | Pint, PHPStan, deptrac, Pest, contracts | laravel/test | commands in Verification log | `PARTIAL` | Local Pint, PHPStan (0 errors), deptrac (0 uncovered), Pest 235 passed / 1 skipped, and contracts:verify succeeded. **GitHub CI has not executed this branch.** |
@@ -91,10 +91,21 @@ Phase 01 remains OPEN. G-01-21 stays OPEN.
 | `bash scripts/perf/run-two-connection-auth-races.sh` | Pest `--group=two-connection-race` **5 passed**, 815 assertions, 171.34s. 40 iterations each: dual refresh, refresh vs logout, rotated reuse vs in-flight successor, OTP consume + wrong-code attempts, recovery consume. 0 failures, 0 deadlocks, 0 timeouts. |
 | `vendor/bin/pint --dirty` | passed |
 
+## Verification log (2026-08-27, G-01-20)
+
+| Command | Result |
+| --- | --- |
+| Docker `./vendor/bin/pest tests/Feature/Auth/AuthHttpRateLimitTest.php tests/Feature/Auth/RedisRateLimitTest.php` | **5 passed** (29 assertions) |
+| Docker `./vendor/bin/pest tests/Feature/Auth/AuthenticationFlowsTest.php` | **22 passed** (143 assertions) |
+| `vendor/bin/pint --dirty` | passed |
+| `vendor/bin/phpstan analyse` (touched Auth limiter files) | 0 errors |
+| `bash scripts/perf/run-k6-auth-abuse.sh` | Live dual-process API, Redis DB 3. k6 v2.2.0, 292 req, 0 dropped, 0 5xx, 0 below-threshold 429s, 429s on all 8 abuse scenarios, Retry-After present, privacy scan clean. **PASS**. |
+
+Phase 01 remains OPEN. G-01-21 stays OPEN.
+
 ## What is still not a phase close
 
 - Independent security/privacy/legal approval (G-01-21, Phase 22)
-- k6 execution (G-01-20)
 - Packaged Electron WebdriverIO (Phase 00 G-02-10)
 - CI run of this branch
 - TOTP enrollment HTTP/UX beyond bootstrap (not on the Phase 01 route list)

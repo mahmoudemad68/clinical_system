@@ -7,6 +7,7 @@ namespace Modules\Auth\Services;
 use DateTimeImmutable;
 use Modules\Audit\Contracts\AppendAuditEvent;
 use Modules\Auth\Contracts\AuthDirectory;
+use Modules\Auth\Contracts\AuthenticationRateLimiter;
 use Modules\Auth\Enums\ClientClass;
 use Modules\Auth\Enums\OtpPurpose;
 use Modules\Identity\Contracts\UserDirectory;
@@ -28,13 +29,21 @@ final class VerifyOtpService
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
         private readonly IssueAuthenticatedSession $sessions,
+        private readonly AuthenticationRateLimiter $rates,
     ) {}
 
     /**
      * @return array<string, mixed>
      */
-    public function handle(string $challengeId, string $code, string $clientClass, string $platform, string $deviceLabel): array
-    {
+    public function handle(
+        string $challengeId,
+        string $code,
+        string $clientClass,
+        string $platform,
+        string $deviceLabel,
+        string $ipPrefix = '0.0.0.0',
+    ): array {
+        $this->rates->hitOtpVerify(strtolower(trim($challengeId)), $ipPrefix);
         $id = Identifier::fromString($challengeId);
 
         $result = $this->transactions->run(function (TransactionContext $tx) use ($id, $code, $clientClass, $platform, $deviceLabel): array {

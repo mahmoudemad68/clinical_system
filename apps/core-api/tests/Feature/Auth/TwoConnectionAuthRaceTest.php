@@ -67,8 +67,11 @@ beforeEach(function () {
         'identity.rate_limits.otp_per_subject_per_hour' => 100000,
         'identity.rate_limits.login_per_ip_per_minute' => 100000,
         'identity.rate_limits.recovery_per_subject_per_hour' => 100000,
+        'identity.rate_limits.recovery_per_ip_per_hour' => 100000,
         'identity.rate_limits.refresh_per_device_per_minute' => 100000,
         'identity.rate_limits.refresh_per_ip_per_minute' => 100000,
+        'identity.rate_limits.otp_verify_per_ip_per_minute' => 100000,
+        'identity.rate_limits.otp_verify_per_challenge_per_minute' => 100000,
         'identity.otp.global_hourly_budget' => 100000,
     ]);
     app()->forgetInstance(AuthenticationRateLimiter::class);

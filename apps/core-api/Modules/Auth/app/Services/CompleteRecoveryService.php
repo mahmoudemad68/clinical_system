@@ -42,13 +42,14 @@ final class CompleteRecoveryService
     /**
      * @return array{status: string}
      */
-    public function handle(string $challengeId, string $code, string $password): array
+    public function handle(string $challengeId, string $code, string $password, string $ipPrefix = '0.0.0.0'): array
     {
         if (! PlatformFeatures::enabled(PlatformFeatures::AUTH_RECOVERY)) {
             throw new FeatureUnavailable;
         }
 
         $this->policy->assert($password);
+        $this->rates->hitRecovery('complete:'.strtolower(trim($challengeId)), $ipPrefix);
         $id = Identifier::fromString($challengeId);
 
         $result = $this->transactions->run(function (TransactionContext $tx) use ($id, $code, $password): array {

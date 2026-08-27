@@ -97,6 +97,7 @@ packages/flutter/api_client/lib/src/generated/
 # ---------------------------------------------------------------------------
 infra/docker/**/data/
 infra/**/.volumes/
+tmp/
 docs/evidence/**/local/
 *.sbom.json
 !docs/evidence/**/*.sbom.json

@@ -92,6 +92,7 @@ final class AuthController
             $data['client_class'],
             $data['platform'],
             $data['device_label'],
+            $this->ipPrefix($request),
         );
 
         $this->establishAdminCookie($request, $payload);
@@ -208,7 +209,7 @@ final class AuthController
             'password' => ['required', 'string', 'max:128'],
         ]);
 
-        $result = $handler->handle($data['challenge_id'], $data['code'], $data['password']);
+        $result = $handler->handle($data['challenge_id'], $data['code'], $data['password'], $this->ipPrefix($request));
 
         return Envelope::ok($result, $this->requestId($request));
     }

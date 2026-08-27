@@ -39,8 +39,8 @@ final class CompleteMfaService
      */
     public function handle(string $challengeId, string $code, string $ipPrefix = '0.0.0.0'): array
     {
+        $this->rates->hitMfa(strtolower(trim($challengeId)), $ipPrefix);
         $id = Identifier::fromString($challengeId);
-        $this->rates->hitMfa($id->value, $ipPrefix);
 
         $result = $this->transactions->run(function (TransactionContext $tx) use ($id, $code): array {
             $challenge = $this->auth->lockMfaChallenge($id);

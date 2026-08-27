@@ -45,6 +45,9 @@
         <env name="CACHE_STORE" value="array"/>
         <env name="AUTH_RATE_LIMIT_STORE" value="ratelimit"/>
         <env name="AUTH_RATE_LIMIT_DRIVER" value="array"/>
+        <env name="AUTH_OTP_VERIFY_PER_IP_PER_MINUTE" value="100000"/>
+        <env name="AUTH_OTP_VERIFY_PER_CHALLENGE_PER_MINUTE" value="100000"/>
+        <env name="AUTH_RECOVERY_PER_IP_PER_HOUR" value="100000"/>
         <env name="IDENTITY_RECOVERY_COOLING_OFF_SECONDS" value="0"/>
         <env name="IDENTITY_HMAC_KEY_V2" value="test_identity_hmac_v2_not_a_secret_value!!"/>
         <env name="IDENTITY_ENCRYPTION_KEY_V2" value="test_identity_enc_v2_not_a_secret_value!!"/>
