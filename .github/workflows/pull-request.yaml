@@ -13,6 +13,9 @@
 # Path filters keep the runtime honest: only changed units run their full
 # suite, while contract validation always runs because a contract change
 # affects every consumer.
+#
+# Evidence binds to the pull-request head commit. github.sha on pull_request
+# is GitHub's synthetic merge ref, not the reviewed candidate.
 
 name: pull-request
 
@@ -34,6 +37,8 @@ env:
   PHP_VERSION: '8.3'
   NODE_VERSION: '22'
   PYTHON_VERSION: '3.12'
+  CANDIDATE_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
+  TRIVY_VERSION: v0.70.0
 
 jobs:
 
@@ -51,6 +56,10 @@ jobs:
       infra: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36  # v3.0.2
         id: filter
         with:
@@ -89,8 +98,11 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
+          ref: ${{ env.CANDIDATE_SHA }}
           # The breaking-change detector diffs against main, so it needs history.
           fetch-depth: 0
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
@@ -173,6 +185,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        working-directory: ${{ github.workspace }}
+        run: bash scripts/ci/assert-candidate-sha.sh
 
       - uses: shivammathur/setup-php@9e72090525849c5e82e596468b86eb55e9cc5401  # 2.32.0
         with:
@@ -181,6 +198,14 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Application environment
+        # composer install runs package:discover, which boots Identity. Copy
+        # committed non-secret placeholders before Composer scripts run.
+        # CI postgres uses a distinct password from local.env; workload roles
+        # are created by migrations because clinic_migrator is the image
+        # superuser.
+        run: cp .env.example .env
+
       - name: Install dependencies from the committed lock
         # --no-interaction with a lock present is a frozen install: a lockfile
         # that would change fails the build (ADR 0008).
@@ -188,13 +213,6 @@ jobs:
 
       - name: Fail if the lockfile drifted
         run: git diff --exit-code -- composer.lock
-
-      - name: Application environment
-        # PHPStan and artisan boot Auth outbox consumers, which construct the
-        # identity encryptor. Missing keys fail closed. CI postgres uses a
-        # distinct password from local.env; workload roles are created by
-        # migrations because clinic_migrator is the image superuser.
-        run: cp .env.example .env
 
       - name: Format check
         run: ./vendor/bin/pint --test
@@ -263,6 +281,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        working-directory: ${{ github.workspace }}
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -290,6 +313,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -310,6 +337,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: subosito/flutter-action@f2c4f6686ca8e8d6e6d0f28410eeef506ed66aff  # v2.18.0
         with:
           flutter-version: '3.47.1'
@@ -328,6 +359,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -364,7 +399,10 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
+          ref: ${{ env.CANDIDATE_SHA }}
           fetch-depth: 0
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
 
       # Secrets must never reach a fork/PR job from untrusted code, so this
       # workflow requests no secrets at all.
@@ -392,14 +430,24 @@ jobs:
           print("SF-001 merge exception still in window until 2026-11-26T00:00:00Z")
           PY
 
-      - name: Filesystem and dependency scan
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0  # v0.29.0
+      - name: Install Trivy
+        # Older trivy-action (v0.29.0) resolved setup-trivy by a withdrawn
+        # version tag after the 2026-03-19 Trivy incident. Pin both actions
+        # by commit SHA and skip the nested installer.
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
         with:
+          version: ${{ env.TRIVY_VERSION }}
+          cache: true
+
+      - name: Filesystem and dependency scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          skip-setup-trivy: true
           scan-type: fs
           scanners: vuln,secret,misconfig
           severity: CRITICAL,HIGH
           exit-code: '1'
-          ignorefile: infra/security/trivy-merge.ignore
+          trivyignores: infra/security/trivy-merge.ignore
 
       - name: Generate SBOM
         uses: anchore/sbom-action@df80a981bc6edbc4e220a492d3cbe9f5547a6e75  # v0.17.9
@@ -422,6 +470,10 @@ jobs:
             dockerfile: infra/docker/ai-service.Dockerfile
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2  # v3.10.0
       - id: build
         uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4  # v6.15.0
@@ -434,14 +486,20 @@ jobs:
           tags: clinic-pr/${{ matrix.unit }}:scan
           build-args: |
             APP_VERSION=0.0.0-pr
-            BUILD_COMMIT=${{ github.sha }}
+            BUILD_COMMIT=${{ env.CANDIDATE_SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Scan the built image
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0  # v0.29.0
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
         with:
+          version: ${{ env.TRIVY_VERSION }}
+          cache: true
+      - name: Scan the built image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          skip-setup-trivy: true
           image-ref: clinic-pr/${{ matrix.unit }}:scan
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: 'false'
-          ignorefile: infra/security/trivy-image.ignore
+          trivyignores: infra/security/trivy-image.ignore
