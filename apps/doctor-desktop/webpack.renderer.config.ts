@@ -1,5 +1,5 @@
 import type { Configuration } from 'webpack';
-import { rules } from './webpack.rules';
+import { rendererRules } from './webpack.rules';
 
 /**
  * Renderer bundle.
@@ -13,7 +13,7 @@ export const rendererConfig: Configuration = {
   target: 'web',
   module: {
     rules: [
-      ...rules,
+      ...rendererRules,
       { test: /\.css$/, use: [{ loader: 'style-loader' }, { loader: 'css-loader' }] },
     ],
   },

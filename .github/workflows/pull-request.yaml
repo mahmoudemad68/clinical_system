@@ -84,6 +84,8 @@ jobs:
               - 'apps/pharmacy-desktop/**'
               - 'packages/typescript/**'
               - 'packages/contracts/openapi/**'
+              - 'tests/desktop-e2e/**'
+              - 'scripts/desktop/**'
             contracts:
               - 'packages/contracts/**'
               - 'scripts/contracts/**'
@@ -392,10 +394,63 @@ jobs:
       - name: Shared TypeScript packages
         run: npm run packages:test
 
-      # Packaging is not run here. It downloads the Electron binary per target
-      # and rebuilds native addons, which belongs in the post-merge lane where
-      # the artifact is actually retained. Phase 00 CI never receives signing
-      # credentials (Phase 23 owns those).
+      # Unsigned packaged-window evidence is G-02-10 (desktop-packaged-e2e).
+      # Signing credentials stay out of pull requests (Phase 23).
+
+  # ------------------------------------------ desktop packaged E2E (G-02-10)
+  desktop-packaged-e2e:
+    name: Packaged Electron E2E (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        shell: bash
+        run: bash scripts/ci/assert-candidate-sha.sh
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm ci --prefix tests/desktop-e2e
+      - run: npm run contracts:generate:ts
+
+      - name: Linux runtime libraries for packaged Chromium
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libnss3 libnspr4 libatk-bridge2.0-0 libatk1.0-0 libgtk-3-0 libgbm1 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libcups2 libasound2t64 \
+            || sudo apt-get install -y xvfb libnss3 libnspr4 libatk-bridge2.0-0 libatk1.0-0 libgtk-3-0 libgbm1 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libcups2 libasound2
+
+      - name: Packaged Doctor and Pharmacy WebdriverIO
+        shell: bash
+        env:
+          # Installers/signing stay Phase 23. This job packages and launches the
+          # unsigned Forge binaries. Make is best-effort locally, not the gate.
+          CLINIC_DESKTOP_SKIP_MAKE: '1'
+        run: node scripts/desktop/run-packaged-e2e.mjs
+
+      - name: Upload packaged E2E logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: g-02-10-${{ matrix.os }}
+          path: |
+            tests/desktop-e2e/logs/
+            docs/evidence/phase-00/g-02-10-packaged-electron-e2e.json
+            docs/evidence/phase-00/g-02-10-packaged-electron-e2e.md
+          if-no-files-found: warn
+
 
   # ---------------------------------------------------------------- security
   security:

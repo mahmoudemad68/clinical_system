@@ -1,5 +1,5 @@
 import { safeStorage } from 'electron';
-import { assessOsKeystore, type OsKeystoreDecision } from '@clinic/encrypted-local-store';
+import { assessOsKeystore, type OsKeystoreDecision } from '@clinic/encrypted-local-store/keystore-policy';
 
 /**
  * Decide whether this process may wrap a database key with the OS account facility.

@@ -23,10 +23,12 @@ interface DatabaseConstructor {
 }
 
 // The published package's `exports` omit `types`, so a static import fails
-// TypeScript under `moduleResolution: bundler`. The native addon is loaded at
-// runtime from Node, never from a renderer bundle.
-const require = createRequire(import.meta.url);
-const Database = require('better-sqlite3-multiple-ciphers') as DatabaseConstructor;
+// TypeScript under `moduleResolution: bundler`. Load the native addon only
+// when a store is opened — importing keystore policy must not require it.
+function loadDatabaseConstructor(): DatabaseConstructor {
+  const require = createRequire(import.meta.url);
+  return require('better-sqlite3-multiple-ciphers') as DatabaseConstructor;
+}
 
 const KEY_BYTES = 32;
 
@@ -125,6 +127,7 @@ export class EncryptedSqliteStore {
       writeAtomic(keyFilePath, options.vault.wrap(key));
     }
 
+    const Database = loadDatabaseConstructor();
     const db = new Database(filePath);
     applyCipher(db, key);
 

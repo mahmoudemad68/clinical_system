@@ -84,6 +84,15 @@ describe('Clinic Pharmacy — renderer isolation', () => {
     }
   });
 
+  it('does not run the native-module relocator against the renderer webpack graph', () => {
+    // The relocator injects `__dirname`. In a `target: 'web'` renderer that is
+    // an immediate ReferenceError and React never mounts.
+    const rendererWebpack = read('webpack.renderer.config.ts');
+    expect(rendererWebpack).toContain('rendererRules');
+    expect(rendererWebpack).not.toContain('webpack-asset-relocator');
+    expect(read('webpack.rules.ts')).toContain('export const rendererRules');
+  });
+
   it('preload exposes no raw ipcRenderer and no generic invoke', () => {
     const preload = read('src/preload/index.ts');
 
@@ -180,9 +189,12 @@ describe('Clinic Pharmacy — window security configuration', () => {
 
   it('contains asset path traversal', () => {
     // Without the containment check a crafted ../.. path reads arbitrary files
-    // with the application's privileges.
-    expect(main).toContain('path.relative');
-    expect(main).toContain("startsWith('..')");
+    // with the application's privileges. The join/relative logic lives in
+    // packaged-assets.ts so a leading-slash URL cannot discard the renderer root.
+    const assets = read('src/main/packaged-assets.ts');
+    expect(main).toContain('resolvePackagedAsset');
+    expect(assets).toContain('path.relative');
+    expect(assets).toContain("startsWith('..')");
   });
 
   it('declares a CSP that forbids remote script and any renderer connection', () => {
