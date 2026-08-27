@@ -5,7 +5,7 @@ description: Design, implement, or repair this clinic project's automated test a
 
 # Clinic Test Engineering
 
-Build tests that can falsify roadmap claims across all stacks and failure modes. Preserve independent oracles: domain and security owners define required invariants, while this skill owns how they are exercised repeatably and evidenced.
+Build tests that can falsify roadmap claims across all stacks and failure modes. Preserve independent oracles: business and security owners define required invariants, while this skill owns how they are exercised repeatably and evidenced.
 
 ## Read the required sources
 
@@ -27,9 +27,9 @@ Own:
 - flake diagnosis and test reliability budgets without weakening assertions;
 - proof that an important test fails when its protected invariant is deliberately violated in a safe test seam.
 
-The owning domain/architecture skill specifies behavior and state meaning. PostgreSQL/realtime/file/AI/client skills supply faithful seams and fixtures. Security/privacy assurance owns threat selection, rules of engagement, finding severity/closure, risk exceptions, and release recommendation. This skill may implement an authorized security regression but cannot mark a security finding closed or convert an unreviewed legal/clinical requirement into a passing oracle.
+The owning business/architecture skill specifies behavior and state meaning. PostgreSQL/realtime/file/AI/client skills supply faithful seams and fixtures. Security/privacy assurance owns threat selection, rules of engagement, finding severity/closure, risk exceptions, and release recommendation. This skill may implement an authorized security regression but cannot mark a security finding closed or replace a documented clinical requirement with a convenient oracle. Legal review is not required to implement or complete tests.
 
-Do not alter production policy merely to make a test easy. Request a narrow seam—clock, ID generator, port, fault injector, or observer—when observability is missing.
+Do not alter production policy merely to make a test easy. Request a narrow seam—clock, ID generator, provider interface, fault injector, or observer—when observability is missing.
 
 ## Test invariants
 
@@ -48,7 +48,7 @@ Do not alter production policy merely to make a test easy. Request a narrow seam
 
 Use the locked Phase 00 choices and existing repository convention:
 
-- Laravel: **Pest** as the primary runner, Laravel HTTP/database fakes only where faithful, Inertia page assertions (`assertInertia`), and Mockery at external ports rather than internal implementation details. Do not start new PHPUnit class-test hierarchies.
+- Laravel: **Pest** as the primary runner, Laravel HTTP/database fakes only where faithful, Inertia page assertions (`assertInertia`), and Mockery at external provider interfaces rather than internal implementation details. Do not start new PHPUnit class-test hierarchies.
 - Inertia patient/doctor/pharmacy/admin UI: Pest HTTP/Inertia tests, Vite/TypeScript checks where used, and browser Playwright/axe-core for critical journeys. Do not add Flutter, Electron WebdriverIO, or a standalone Vitest SPA suite unless the user explicitly requires a native/separate client.
 - Python/AI: `pytest`, `pytest-asyncio`, `respx`, Hypothesis, provider-contract fixtures, and versioned evaluation datasets; model judges never decide correctness alone.
 - Contracts/system: generated OpenAPI clients where `/api/v1` is the contract, JSON/event/tool schema checks, approved schema/property fuzzing, real PostgreSQL/PostGIS, Redis, Reverb, private S3 emulator, Qdrant for AI scope, and k6 for HTTP/WebSocket/load scenarios.
@@ -103,7 +103,7 @@ Model external responses as typed success, denial, timeout, disconnect, rate lim
 
 ### 3. Implement the smallest conclusive proof
 
-Make assertions at public/domain boundaries. Include a negative control or mutation check for high-risk or newly built harnesses so a false-positive suite is exposed. Avoid snapshotting sensitive or volatile output and avoid tests that merely match documentation wording, generated headings, log text, or internal call order.
+Make assertions at public or module-service boundaries. Include a negative control or mutation check for high-risk or newly built harnesses so a false-positive suite is exposed. Avoid snapshotting sensitive or volatile output and avoid tests that merely match documentation wording, generated headings, log text, or internal call order.
 
 ### 4. Run and diagnose
 
@@ -137,4 +137,4 @@ At minimum, preserve coverage for:
 
 ## Completion evidence
 
-Return the risks and newly proven behavior first. List changed harnesses/tests, exact commands and results, negative-control outcome, coverage-matrix updates, flakes/skips/gaps, environment/tool versions, and evidence locations. State which independent domain, security/privacy, clinical/legal/pharmacy, performance, or release review remains.
+Return the risks and newly proven behavior first. List changed harnesses/tests, exact commands and results, negative-control outcome, coverage-matrix updates, flakes/skips/gaps, environment/tool versions, and evidence locations. State which independent business, security/privacy, clinical/pharmacy, performance, or release review remains; legal review is never a test-completion gate.

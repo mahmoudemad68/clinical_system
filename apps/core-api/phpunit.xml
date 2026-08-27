@@ -78,7 +78,6 @@
         <env name="AI_SERVICE_BASE_URL" value=""/>
         <env name="TELEMETRY_REDACTION_STRICT" value="true"/>
         <env name="PENNANT_STORE" value="array"/>
-        <env name="OTEL_ENABLED" value="false"/>
         <env name="CORS_ALLOWED_ORIGINS" value="http://localhost:5173"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="LOG_CHANNEL" value="null"/>

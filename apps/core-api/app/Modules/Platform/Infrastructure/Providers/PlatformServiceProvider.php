@@ -68,7 +68,6 @@ use App\Modules\Platform\Infrastructure\Pagination\HmacCursorSigner;
 use App\Modules\Platform\Infrastructure\Persistence\EloquentDiagnosticsRepository;
 use App\Modules\Platform\Infrastructure\Persistence\EloquentIdempotencyStore;
 use App\Modules\Platform\Infrastructure\Persistence\EloquentOutboxRecorder;
-use App\Modules\Platform\Infrastructure\Telemetry\FailSafeSpanExporter;
 use App\Modules\Platform\Infrastructure\Telemetry\MetricsRenderer;
 use App\Modules\Platform\Infrastructure\Telemetry\PatternRedactor;
 use App\Modules\Platform\Infrastructure\Telemetry\PlatformMetrics;
@@ -89,13 +88,7 @@ use Laravel\Octane\Events\RequestReceived;
 use Laravel\Octane\Events\RequestTerminated;
 use Laravel\Pennant\Events\FeatureUpdated;
 use Laravel\Pennant\Feature;
-use OpenTelemetry\API\Signals;
-use OpenTelemetry\Contrib\Otlp\ContentTypes;
-use OpenTelemetry\Contrib\Otlp\HttpEndpointResolver;
-use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
-use OpenTelemetry\Contrib\Otlp\SpanExporter;
 use Psr\Log\LoggerInterface;
-use Throwable;
 
 /**
  * Wires the Platform shared kernel.
@@ -133,28 +126,11 @@ final class PlatformServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(TelemetryGateway::class, static function ($app): TelemetryGateway {
-            $otlp = null;
-
-            if ((bool) config('platform.telemetry.otel_enabled', false)) {
-                $endpoint = (string) config('platform.telemetry.otlp_endpoint', '');
-
-                if ($endpoint !== '') {
-                    try {
-                        $resolved = HttpEndpointResolver::create()->resolveToString($endpoint, Signals::TRACE);
-                        $transport = (new OtlpHttpTransportFactory)->create($resolved, ContentTypes::PROTOBUF);
-                        $otlp = new FailSafeSpanExporter(new SpanExporter($transport));
-                    } catch (Throwable) {
-                        $otlp = null;
-                    }
-                }
-            }
-
             return new TelemetryGateway(
                 $app->make(Redactor::class),
                 (bool) config('platform.telemetry.redaction_strict', false),
                 'core-api',
                 (string) config('app.version', '0.0.0-dev'),
-                $otlp,
             );
         });
 

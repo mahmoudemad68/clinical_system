@@ -27,7 +27,7 @@ Own:
 - privacy data inventory, minimization/purpose/recipient/retention/cross-border questions, processor-risk evidence, and qualified-review gaps;
 - security finding reproduction, impact/likelihood/confidence/severity, remediation criteria, independent retest, exception review, and release recommendation.
 
-Runtime/domain owners implement controls and fixes. `clinic-test-engineering` owns reusable harness mechanics and non-security test evidence; it may automate a regression supplied here but cannot close the finding. Architecture resolves boundary changes. Production/DR owns promotion and operational recovery. Qualified Egyptian legal/privacy, clinical, and pharmacy professionals own legal/regulatory/clinical conclusions.
+Runtime/business owners implement controls and fixes. `clinic-test-engineering` owns reusable harness mechanics and non-security test evidence; it may automate a regression supplied here but cannot close the finding. Architecture resolves boundary changes. Production/DR owns promotion and operational recovery. Clinical and pharmacy reviewers own clinical conclusions. Legal advice may inform project assumptions but is advisory and never blocks engineering completion.
 
 Maintain assessor/remediator separation for material findings. If the same person or agent must make a small fix, record the loss of independence and require a separate reviewer/retest before closure.
 
@@ -46,17 +46,17 @@ Maintain assessor/remediator separation for material findings. If the same perso
 
 ## Security/privacy design model
 
-Keep control ownership distributed behind narrow ports:
+Keep control ownership distributed through focused services and, only where substitution is required, small interfaces:
 
 ```text
 Authentication / DeviceSession       AuthorizationDecision
 NationalIdProtector / FieldCrypto    KeyResolver / SecretResolver
 AuditEventWriter / ChainVerifier     SecurityEventSink
 RateLimit / AbuseDecision            FileValidation / MalwareScan / SignedAccess
-Retention / RightsCoordinator       AiCapability / Output / ProviderPrivacy
+Retention / RightsService           AiCapability / Output / ProviderPrivacy
 ```
 
-Business/application layers own policy-facing interfaces; frameworks/providers implement least-privilege adapters. Substitutes preserve deny/fail-safe behavior, deadlines, cancellation, audit, and redaction. No shared administrator, database, provider, or security “god client” is acceptable.
+Owning Laravel modules implement policy-facing services; external providers use least-privilege integration classes or small interfaces. Substitutes preserve deny/fail-safe behavior, deadlines, cancellation, audit, and redaction. No shared administrator, database, provider, or security “god client” is acceptable.
 
 For every change, trace data and authority across all applicable edges: Inertia patient / doctor-pharmacy / admin browser → Laravel → PostgreSQL/Redis/Reverb/S3 → FastAPI/Qdrant/model providers → pharmacy/SMS/Firebase push/telemetry/backups. Verify service identities, network reachability, and caches/search/analytics projections as well as primary API policy. Native Electron IPC or Flutter platform channels are in scope only when the user explicitly requires a native client.
 
@@ -88,7 +88,7 @@ preconditions + impact | control/owner | verification/evidence
 residual risk + reviewer/decision/expiry
 ```
 
-Reconcile every field/event/cache/file/vector/prompt/message/log/trace/metric/backup with purpose, subjects, system locations, recipients/processors, minimum access, encryption, retention/deletion/legal hold, residency/cross-border review, and accountable approval. Ask qualified reviewers; do not infer the answer.
+Reconcile every field/event/cache/file/vector/prompt/message/log/trace/metric/backup with purpose, subjects, system locations, recipients/processors, minimum access, encryption, retention/deletion/legal hold, residency/cross-border handling, and accountable project decision. When a legal detail is unresolved, record a conservative configurable assumption and continue; optional advice does not block the work.
 
 ### 3. Review architecture and implementation
 
@@ -102,11 +102,11 @@ Run static/dependency/secret/container/IaC/contract checks locally or in approve
 
 ### 5. Triage and remediate
 
-Create one finding per root cause with observation, reproducer, affected artifact/environment, impact, exploit preconditions, likelihood, severity, confidence, data classification, owner, due date, safe evidence, and explicit closure criteria. Route fixes to the owning domain/stack skill. Add the lowest-layer regression plus adjacent/systemic variant review, rebuild, and independently retest.
+Create one finding per root cause with observation, reproducer, affected artifact/environment, impact, exploit preconditions, likelihood, severity, confidence, data classification, owner, due date, safe evidence, and explicit closure criteria. Route fixes to the owning business/stack skill. Add the lowest-layer regression plus adjacent/systemic variant review, rebuild, and independently retest.
 
 ### 6. Gate the release honestly
 
-Map applicable controls to implementation references, repeatable verification, evidence, result, and reviewer. Report unresolved Critical/High findings, untested scope, privacy/legal/clinical/pharmacy conditions, expired exceptions, and missing incident/recovery evidence. Recommend release only under the exact Phase 22/23 gate; production owner makes the promotion decision.
+Map applicable controls to implementation references, repeatable verification, evidence, result, and reviewer. Report unresolved Critical/High findings, untested scope, privacy/clinical/pharmacy conditions, recorded compliance assumptions, expired exceptions, and missing incident/recovery evidence. Missing legal review is not a blocker. Recommend release under the Phase 22/23 engineering gate; the production owner makes the promotion decision.
 
 ## Required abuse coverage
 
@@ -139,4 +139,4 @@ Map applicable controls to implementation references, repeatable verification, e
 
 ## Completion evidence
 
-Lead with the assurance outcome and release impact. Provide scoped artifact/config identities, threat/privacy deltas, confirmed findings and safe reproducers, exact tool/manual test results, regressions and independent retests, control-map gaps, exceptions/expiry, qualified reviews still required, stop-condition events, and the evidence manifest location. Separate observed fact, inference, and recommendation.
+Lead with the assurance outcome and release impact. Provide scoped artifact/config identities, threat/privacy deltas, confirmed findings and safe reproducers, exact tool/manual test results, regressions and independent retests, control-map gaps, exceptions/expiry, non-blocking compliance assumptions, stop-condition events, and the evidence manifest location. Separate observed fact, inference, and recommendation.

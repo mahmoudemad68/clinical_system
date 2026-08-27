@@ -4,7 +4,7 @@
 
 Deliver structured encounter-scoped prescriptions, medication instructions, explicit reminder schedules, active-period calculation, immutable exposure/versioning, reasoned amendments, patient read views, and audited prescription print/export.
 
-Prescriptions depend on an application-owned `MedicationReferencePort`, not a direct medication-catalog table or model. A minimal approved reference adapter may be used in this phase; the complete Egyptian medication catalog and inventory integration arrive later without changing the prescription domain. There is no unsafe fallback from an unresolved reference to an arbitrary unverified product.
+Prescriptions depend on a module-owned `MedicationReferenceService`, not a direct medication-catalog table or model. A minimal approved reference integration may be used in this phase; the complete Egyptian medication catalog and inventory integration arrive later without changing the public service contract. There is no unsafe fallback from an unresolved reference to an arbitrary unverified product.
 
 The observable outcome is that a doctor can draft and finalize a prescription only in an authorized encounter, every finalized version is immediately immutable and patient-readable, external use records an additional exposure milestone, every correction preserves prior versions and raises the required notification event, and retries/concurrent edits never create duplicate or overwritten clinical instructions.
 
@@ -27,7 +27,7 @@ The observable outcome is that a doctor can draft and finalize a prescription on
 - Phase 05 encounter, contextual write authorization, patient read projection, revision/audit conventions, and online completion coordination pass.
 - Clinical/product/pharmacy experts approve medication-reference provenance, dose/frequency/duration/route vocabularies and bounds, reminder semantics, required finalize fields, correction wording, and print template.
 - Phase 09 is not required for persistence/finalization. Prescription and reminder events accumulate safely in outbox/notification contracts until delivery is enabled.
-- Phase 10 full medication catalog is not an entry criterion. Its adapter must later pass the same `MedicationReferencePort` contract.
+- Phase 10 full medication catalog is not an entry criterion. Its adapter must later pass the same `MedicationReferenceService` contract.
 
 ## Non-goals
 
@@ -36,11 +36,11 @@ The observable outcome is that a doctor can draft and finalize a prescription on
 - No medical report, sick leave, or referral generation; Phase 07 owns those documents.
 - No patient editing, renewal, repeat prescription, dosage inference, or automatic conversion of frequency to times without doctor confirmation.
 
-## Module ownership and SOLID boundaries
+## Laravel module ownership and services
 
 ### `Prescriptions`
 
-Owns prescription aggregate, item instructions, versions, state/exposure, amendments, active period, access/exposure events, and authorized projections.
+Owns prescription models, item instructions, versions, state/exposure, amendments, active period, access/exposure events, and authorized projections.
 
 ```text
 CreatePrescriptionDraft
@@ -66,9 +66,9 @@ CancelFutureReminderOccurrences
 
 ### `PrescriptionDocuments`
 
-Owns prescription render model, template version, render/print/export intent, private artifact reference, and exposure coordination. Rendering is behind `PrescriptionRendererPort`; OS printing remains a client adapter implemented in the Electron main process for the doctor desktop.
+Owns prescription render model, template version, render/print/export intent, private artifact reference, and exposure coordination. Rendering is behind `PrescriptionRendererService`; OS printing remains a client adapter implemented in the Electron main process for the doctor desktop.
 
-### `MedicationReferencePort`
+### `MedicationReferenceService`
 
 Owned by Prescriptions:
 
@@ -94,19 +94,19 @@ MedicationReferenceSnapshot:
 ### Dependency direction
 
 ```text
-Prescription HTTP -> Application -> Domain
-Application -> EncounterAuthorizationPort / MedicationReferencePort / RendererPort
-Infrastructure -> PostgreSQL / S3 / outbox / PDF renderer
-Medication catalog later -> implements MedicationReferencePort
+Prescription controller/Form Request -> PrescriptionService -> Eloquent models/policies
+PrescriptionService -> EncounterAuthorizationService / MedicationReferenceService / PrescriptionRendererService
+Provider integrations -> S3 / PDF renderer; service transaction -> PostgreSQL / outbox
+Medication catalog later -> supplies MedicationReferenceService behavior
 ```
 
-The aggregate calculates state and active period; controllers, Eloquent observers, renderers, reminder workers, Flutter patient-mobile widgets, and Electron React views contain no prescription mutation rules.
+`PrescriptionService` calculates state and active period using Eloquent models and backed status enums; controllers, observers, renderers, reminder workers, Flutter widgets, and Electron React views contain no prescription mutation rules.
 
 ## Packages and platform capabilities
 
 - Laravel/PostgreSQL transactions, policies, idempotency, outbox, private S3, clock, and audit foundations.
 - `brick/money` only where a future print/legal fee appears; prescription instructions never use floating-point quantities.
-- A reviewed server-side PDF renderer behind `PrescriptionRendererPort` (for example a pinned `dompdf/dompdf` adapter if compatibility/security tests pass). Templates accept escaped typed fields, not arbitrary HTML.
+- A reviewed server-side PDF renderer behind `PrescriptionRendererService` (for example a pinned `dompdf/dompdf` adapter if compatibility/security tests pass). Templates accept escaped typed fields, not arbitrary HTML.
 - Flutter patient mobile uses the generated Dart client, Riverpod, Freezed, form validation, and `intl` for read-only prescription/reminder views.
 - Electron doctor desktop uses React, TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, the generated TypeScript client, and a main-process print/download adapter. The client never renders a legally authoritative prescription from untrusted local state.
 - Pest/PHPUnit, property tests for schedules/state machines, snapshot/PDF structural tests, real PostgreSQL concurrency tests, Flutter patient-mobile integration tests, Electron main/preload/renderer tests, and WebdriverIO with `@wdio/electron-service` packaged-app print/E2E tests.
@@ -237,7 +237,7 @@ DRAFT -> FINALIZED -> EXPOSED -> AMENDED
 ### Create and edit draft
 
 1. Doctor opens the current authorized encounter and creates/reuses one draft with idempotency key.
-2. Search calls the `MedicationReferencePort` with bounded query/limit and receives safe approved references.
+2. Search calls the `MedicationReferenceService` with bounded query/limit and receives safe approved references.
 3. Add item resolves reference server-side, snapshots display data, validates dose/frequency/duration/dates/route/note, and appends a draft revision under aggregate lock/version.
 4. Update/remove uses expected prescription version. Stale requests return `409`, preserving both client intent and server state for explicit refresh.
 5. Draft autosave may use Phase 05 local encrypted outbox, bound to prescription/encounter/patient and reauthorized on sync.
@@ -388,7 +388,7 @@ Jobs:
 
 - OpenAPI/generated Dart patient-mobile and TypeScript Electron clients for draft/items/reminders/finalize/amend/read/print/reference search.
 - Electron print bridge contracts reject forged senders, arbitrary path/URL/content, stale artifact/version, unsupported options, cancellation races, and responses containing tokens or local paths.
-- `MedicationReferencePort`, encounter authorization, renderer, object store, reminder delivery, clock, audit, and outbox adapters pass owned contracts.
+- `MedicationReferenceService`, encounter authorization, renderer, object store, reminder delivery, clock, audit, and outbox adapters pass owned contracts.
 - Event schemas reject prescription text/medication/dose/note/PDF identity content.
 
 ### End-to-end tests
@@ -438,7 +438,7 @@ medication_reference_resolution_total{result}
 1. Add prescription/reference/reminder/access/amendment/document schemas and synthetic fixtures; enable read-only reference search first.
 2. Populate the minimal reference adapter only from an approved versioned source. If approval is absent, keep prescription finalization disabled rather than accept free text.
 3. Enable draft/editor for a clinical pilot, then finalize/patient read after audit and concurrency tests.
-4. Enable PDF print/export only after renderer isolation, template clinical/legal approval, and exposure transaction tests.
+4. Enable PDF print/export only after renderer isolation, versioned clinical/content review, and exposure transaction tests. Legal approval is not required.
 5. Enable reminder intents before delivery; Phase 09 activation consumes backlog only within valid future occurrence windows.
 6. Phase 10 introduces its adapter in shadow comparison, verifies stable mappings/snapshots, then switches the port. Historical rows remain untouched.
 7. Rollback disables new mutations/render/reminders while preserving every version/amendment/artifact/audit row for forward recovery.
@@ -448,15 +448,15 @@ medication_reference_resolution_total{result}
 - Cannot mutate/delete an exposed prescription; amendments keep original/current versions, reason, actor, time, diff, and patient critical notification intent.
 - Concurrent update/finalize/print/amend tests produce deterministic single versions and no overwrite/duplicate side effects.
 - `active_until`, all reminder modes, DST/date boundaries, and no-adherence behavior pass clinician-approved cases.
-- Full catalog is not required: Phase 06 uses only `MedicationReferencePort`; adapter contract and future catalog compatibility test pass.
+- Full catalog is not required: Phase 06 uses only `MedicationReferenceService`; adapter contract and future catalog compatibility test pass.
 - Print artifacts are private, exact-version bound, injection-safe, audited, and mark exposure before release.
 - Patient/admin/secretary/pharmacy/AI/unrelated-doctor authorization and telemetry-canary suites pass.
 - Prescription read p95 is at or below 300 ms on the agreed dataset; critical correction queue age stays within the approved SLO.
-- Clinical/product/security/privacy/legal approve reference provenance, instruction bounds, correction messaging, print template, and threat delta.
+- Clinical, product, security, and privacy evidence covers reference provenance, instruction bounds, correction messaging, print template, and threat delta. Missing legal sign-off never blocks completion.
 - No Critical or unaccepted exploitable High finding remains.
 
 ## Deliverables
 
-- `Prescriptions`, `MedicationReminders`, and `PrescriptionDocuments` modules with `MedicationReferencePort`.
+- `Prescriptions`, `MedicationReminders`, and `PrescriptionDocuments` modules with `MedicationReferenceService`.
 - Schemas, minimal approved reference adapter, OpenAPI/events/jobs, doctor editor/print flow, and patient read/reminder views.
 - Immutable-version/concurrency/security evidence, template/reference ADRs, dashboards, alerts, and runbooks.

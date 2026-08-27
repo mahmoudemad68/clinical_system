@@ -24,7 +24,7 @@ Read the upstream domain sources for that persona:
 
 Also read the AI sections of [performance](../../../docs/phases/21_performance_scaling_observability_and_resilience.md), [security/privacy](../../../docs/phases/22_security_privacy_and_compliance_validation.md), and [release/recovery](../../../docs/phases/23_disaster_recovery_release_and_production.md).
 
-Inspect current persona ports, public/internal OpenAPI schemas, domain policies/commands, conversation/run/tool tables, prompt/rule versions, client contract, tests, and local changes.
+Inspect current persona services, public/internal OpenAPI schemas, Laravel policies/service actions, conversation/run/tool tables, prompt/rule versions, client contract, tests, and local changes.
 
 ## Ownership
 
@@ -33,7 +33,7 @@ Own persona application behavior and its typed interfaces:
 - Laravel public AI endpoints, persona authorization/context readers, conversation/run state, rate/cost/budget policy, cancellation, audit, and safe events;
 - FastAPI persona workflow, structured prompt/input/output schemas, bounded retrieval/generation orchestration, and answer policy adapters;
 - deterministic capability registry and typed read-tool proposals/execution handoff;
-- explicit human-confirmed handoff into existing domain commands;
+- explicit human-confirmed handoff into existing Laravel module services;
 - persona-specific unit/integration/contract/E2E/system/security tests and evaluation fixtures supplied to the independent evaluation skill.
 
 Client ownership follows persona Inertia surfaces inside Laravel: `clinic-electron-desktop-development` owns Doctor AI and Pharmacy AI pages, while `clinic-flutter-development` owns Patient AI pages. Coordinate contract changes; do not put client UI code in the AI service or AI policy in any client. Do not create standalone Electron/Flutter apps unless the user explicitly requires a native client.
@@ -46,7 +46,7 @@ Client ownership follows persona Inertia surfaces inside Laravel: `clinic-electr
 - Patient context is allowed only after `Start Consultation`: the encounter exists, appointment is `IN_CONSULTATION`, doctor/location match, and current access grant is valid. `BOOKED`, `CHECKED_IN`, and `WAITING` are insufficient.
 - Revalidate access before sensitive delivery and cancel on completion/abort/revocation.
 - AI reads/recommends only. It cannot diagnose autonomously, prescribe/finalize, request labs, write notes, finish encounters, or interpret radiology pixels.
-- `Copy to notes` is a separate, editable, authenticated Clinical command authored by the doctor with AI provenance.
+- `Copy to notes` is a separate, editable, authenticated Clinical service action authored by the doctor with AI provenance.
 
 ### Pharmacy AI
 
@@ -62,7 +62,7 @@ Client ownership follows persona Inertia surfaces inside Laravel: `clinic-electr
 - A deterministic emergency stop is terminal for normal questioning and cannot be downgraded by the model. Approved fixed copy, not free-form model text, communicates it.
 - Output states possible causes, urgency, and canonical specialty without definitive diagnosis or treatment.
 - Doctor ranking is earliest availability then rating; distance is display-only.
-- Booking uses the existing atomic booking command and a short-lived, actor/exact-proposal-bound human confirmation proof. FastAPI/model cannot obtain or manufacture it.
+- Booking uses the existing atomic booking service and a short-lived, actor/exact-proposal-bound human confirmation proof. FastAPI/model cannot obtain or manufacture it.
 - Triage conversation is separate from the medical record and is not imported automatically.
 
 ## Shared hard boundaries
@@ -79,10 +79,10 @@ Client ownership follows persona Inertia surfaces inside Laravel: `clinic-electr
 
 ## Implementation workflow
 
-1. Select exactly one persona/use case and trace its state change/read path through the persona phase and upstream domain command/query.
+1. Select exactly one persona/use case and trace its state change/read path through the persona phase and upstream Laravel module service.
 2. Write allowed, denied, ambiguous, stale, concurrent, cancelled, dependency-failure, and abuse cases before changing the contract.
 3. Define strict public and internal schemas, server-derived context, authorization snapshot, idempotency identity, budgets, terminal states, stable safe errors, and content retention/classification.
-4. Implement deterministic policy and domain handoff first; the model may propose only within the capability/output schema.
+4. Implement deterministic policy and module-service handoff first; the model may propose only within the capability/output schema.
 5. Implement bounded retrieval/generation and validate output against current authorization/state before storage or delivery.
 6. Persist encrypted conversation content and safe trace/source/tool metadata. Keep sensitive bodies out of events/logs/traces/metrics.
 7. Add a contract-compatible Inertia surface and coordinate with the persona's UI owner without transferring authority to the client.
@@ -94,12 +94,12 @@ Verify at minimum:
 
 - pure policy/state/output/budget/cancellation/idempotency tests, including model inability to lower deterministic safety or expand scope;
 - real PostgreSQL/Redis/Qdrant integration for conversation/run/tool races, authorization revocation, active-version filters, stale data, and duplicate delivery;
-- public OpenAPI, internal Pydantic, tool registry, domain port, event, and provider contract tests with compatible error semantics;
+- public OpenAPI, internal Pydantic, tool registry, Laravel service, event, and provider contract tests with compatible error semantics;
 - E2E allowed and denied journeys for the selected persona, including explicit human action and exactly-once domain effect where applicable;
 - system tests for provider/Qdrant/worker outage, saturation, network interruption, reconnect/cancel, and Core independence;
 - adversarial prompt/indirect injection, cross-tenant/scope, forged tool/grant/filter, data exfiltration, unsafe markup, denial-of-wallet, and output-substitution tests;
 - Phase 21 retrieval/first-token/capacity targets without Core pool starvation;
 - versioned Arabic/English normal, edge, ambiguous, critical, adversarial, and failure cases handed to evaluation governance with model/prompt/retrieval/rule/tool/provider versions;
-- zero unauthorized disclosure, autonomous Core write, unconfirmed booking, generated inventory truth, enabled future feature, or unsupported clinical/legal claim.
+- zero unauthorized disclosure, autonomous Core write, unconfirmed booking, generated inventory truth, enabled future feature, or unsupported clinical/regulatory claim.
 
 `clinic-ai-platform` owns ingestion/retrieval/provider mechanics, `clinic-ai-evaluation-governance` owns thresholds and promotion evidence, observability owns cross-system SLOs, security assurance independently validates, and production/DR owns activation and recovery.

@@ -23,7 +23,7 @@ Each INTEGRATED branch receives a canonical, read-only PostgreSQL mirror with ex
 
 - Phase 10 provides branch operating modes, connector-service identity/capability, catalog references, and strict mode-transition guard.
 - Phases 11-13 enforce that INTEGRATED branches cannot mutate native stock, purchase, or POS truth.
-- Phase 14 supplies the public BranchAvailabilityQuery and freshness/redaction contract.
+- Phase 14 supplies the public `BranchAvailabilityService` and freshness/redaction contract.
 - Phase 00 supplies Horizon, outbox, idempotency, secret management, OpenAPI/events, telemetry, and security environments.
 - At least one named external system supplies a documented, authorized, read-only API/database/export contract and test fixture.
 - Pharmacy owner, external vendor, security, privacy, and operations approve credentials, deployment/egress, frequency, freshness threshold, and support ownership.
@@ -37,7 +37,7 @@ Each INTEGRATED branch receives a canonical, read-only PostgreSQL mirror with ex
 - No activation of an unmatched product in patient search.
 - No connector access to clinical, identity, prescription, chat, AI, payment, or unrelated branch data.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Ownership
 
@@ -56,12 +56,12 @@ Each INTEGRATED branch receives a canonical, read-only PostgreSQL mirror with ex
       owns branch mode/status and connector-service authorization
 
     MedicineDiscovery
-      reads the public mirror through BranchAvailabilityQuery
+      reads the public mirror through BranchAvailabilityService
 
     Native Inventory
       remains separate and receives no integrated sync movement
 
-### Ports
+### Module services and external integrations
 
     ExternalPharmacyConnector
       probe(deadline)
@@ -75,16 +75,16 @@ Each INTEGRATED branch receives a canonical, read-only PostgreSQL mirror with ex
       stagePage(run_id, generation_id, canonical_rows)
       promoteGeneration(run_id, generation_id)
 
-    IntegrationAvailabilityQuery
+    IntegrationAvailabilityService
       availableBranches(medication_ids, point, freshness_policy)
 
     ConnectorCredentialProvider
     ConnectorEgressPolicy
-    SyncRunRepository
+    SyncRunService
     Clock
 
 - Connector implementations pass one contract suite and expose typed transient, permanent-auth, schema, mapping, timeout, and source-unavailable failures.
-- Adapters cannot obtain Eloquent models or generic database handles from domain/application code.
+- Vendor integrations cannot obtain Eloquent models or generic database handles from another module; their owning service supplies typed canonical data.
 - Canonical records use absolute observed quantities/status, not additive deltas. Repeating a page cannot double stock.
 - A server-owned connector/branch binding determines tenant scope; no request payload selects another branch.
 
@@ -94,7 +94,7 @@ Each INTEGRATED branch receives a canonical, read-only PostgreSQL mirror with ex
 
 - Laravel 13 HTTP client/Guzzle for bounded API adapters.
 - PDO/database drivers only in isolated vendor adapters using read-only, query-allowlisted credentials; no configurable arbitrary SQL text.
-- Horizon integrations queue, PostgreSQL staging/mirror, outbox, audit, OpenTelemetry, and Sentry redaction.
+- Horizon integrations queue, PostgreSQL staging/mirror, outbox, audit, Prometheus, Laravel Telescope (local), and Sentry redaction.
 - Symfony UID/Laravel UUIDv7, deptrac/deptrac, Larastan/PHPStan, Pest/PHPUnit, Eris, and Testcontainers/Docker vendor fixtures.
 - Secret-manager adapter for external credentials; the database stores credential references, never plaintext secrets.
 
@@ -256,7 +256,7 @@ Authorized pharmacy/catalog reviewer sees sanitized external identifiers/name me
     PUT  /api/v1/pharmacy/branches/{branch_id}/connector/product-mappings/{mapping_id}
     POST /api/v1/pharmacy/branches/{branch_id}/connector/pause
 
-Credentials never appear in API responses. Connector activation/mode transition uses a dedicated coordinator, not a generic branch PATCH.
+Credentials never appear in API responses. Connector activation/mode transition uses `BranchModeTransitionService`, not a generic branch PATCH.
 
 Stable errors include CONNECTOR_ACCESS_DENIED, BRANCH_MODE_MISMATCH, CONNECTOR_NOT_READY, CONNECTOR_AUTH_FAILED, CONNECTOR_SCHEMA_UNSUPPORTED, CONNECTOR_SOURCE_UNAVAILABLE, SYNC_ALREADY_RUNNING, SYNC_PAGE_CONFLICT, SYNC_CONFIGURATION_CHANGED, SYNC_RECONCILIATION_FAILED, PRODUCT_UNMATCHED, MAPPING_VERSION_CONFLICT, and MIRROR_STALE.
 
@@ -330,7 +330,7 @@ Unknown fields reject unless versioned compatibility explicitly permits them. No
 ### Contract tests
 
 - Every ExternalPharmacyConnector implementation passes canonical schema, deadlines, cancellation, paging, typed errors, no-secret logging, and idempotency tests.
-- IntegrationAvailabilityQuery matches Phase 14 native public/freshness/redaction contract.
+- `IntegrationAvailabilityService` matches the Phase 14 native public/freshness/redaction contract.
 - Generated Dart patient and TypeScript Electron/admin clients, plus current/previous event schema replay, pass.
 - Electron preload/IPC capability schemas reject credential/SQL/URL fields, unregistered channels, invalid sender frames, oversized payloads, and stale branch/config versions.
 

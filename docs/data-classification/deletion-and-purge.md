@@ -1,8 +1,8 @@
 # Deletion and ciphertext purge (engineering procedure)
 
-**Status:** engineering runbook. **Not** a legal erasure decision, statutory
-retention schedule, or privacy-officer approval. G-08-04 and lawful-basis
-columns stay OPEN.
+**Status:** engineering runbook, accepted by the privacy owner (Mahmoud,
+2026-08-27) for the documented identity tables. This is not an Egyptian PDPL
+article citation. G-08-04 stays OPEN until independent retest.
 
 This file is the procedure the inventory refers to. Jobs must not log
 plaintext, OTP codes, National IDs, or TOTP URIs.
@@ -25,7 +25,7 @@ must remain for a short integrity window (consumed OTP id referenced by
 | Session past absolute expiry | Set `revoked_at`; after session TTL `DELETE` hashes by deleting the row | `auth:prune-expired` |
 | MFA factor disabled | Overwrite `secret_ciphertext` with a non-decryptable tombstone; delete unused recovery hashes | MFA disable handler + prune |
 | Account closed/disabled | Revoke sessions and devices; identity disable coordinator | Phase 01 disable path |
-| Subject erasure request | **OPEN legal workflow.** Engineering will not invent an Egyptian legal basis. Until legal signs a schedule, operators must not run an ad-hoc production wipe | legal + privacy owner |
+| Subject erasure request | Owner-approved: follow this runbook; do not invent a wipe outside it. A full data-subject rights workflow is still unimplemented | privacy owner (Mahmoud) |
 
 ## Ciphertext purge rules
 
@@ -41,6 +41,6 @@ must remain for a short integrity window (consumed OTP id referenced by
 
 ## Lawful basis
 
-Every inventory row that processes personal data has
-`lawful_basis = OPEN_LEGAL_DECISION`. Filling that column with an invented
-article number would be worse than leaving it explicitly open.
+Personal/sensitive identity processing in the inventory is
+`owner_approved_2026-08-27` (Mahmoud). That records owner acceptance of the
+documented purpose. It is not a statutory article number.

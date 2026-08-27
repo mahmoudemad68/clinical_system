@@ -20,7 +20,6 @@ def internal_token() -> str:
 def app(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("AI_ENVIRONMENT", "local")
     monkeypatch.setenv("AI_INTERNAL_TOKEN", TEST_INTERNAL_TOKEN)
-    monkeypatch.setenv("AI_OTEL_ENABLED", "false")
     monkeypatch.setenv("AI_QDRANT_URL", "http://qdrant.invalid:6333")
     get_settings.cache_clear()
     application = create_app()

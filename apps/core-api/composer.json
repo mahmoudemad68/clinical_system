@@ -18,9 +18,7 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
         "league/flysystem-aws-s3-v3": "^3.30",
-        "open-telemetry/exporter-otlp": "^1.4",
-        "open-telemetry/sdk": "^1.15",
-        "php-http/guzzle7-adapter": "^1.1",
+        "nwidart/laravel-modules": "^13.0",
         "predis/predis": "^3.6",
         "sentry/sentry-laravel": "^4.27",
         "spomky-labs/otphp": "^11.3",
@@ -93,6 +91,11 @@
             "dont-discover": [
                 "laravel/telescope"
             ]
+        },
+        "merge-plugin": {
+            "include": [
+                "Modules/*/composer.json"
+            ]
         }
     },
     "config": {
@@ -101,8 +104,7 @@
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true,
-            "php-http/discovery": true,
-            "tbachert/spi": true
+            "wikimedia/composer-merge-plugin": true
         }
     },
     "minimum-stability": "stable",

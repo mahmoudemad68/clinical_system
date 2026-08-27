@@ -5,7 +5,7 @@ description: Design, implement, run, and review this clinic project's versioned 
 
 # Clinic AI Evaluation and Governance
 
-Produce independent, reproducible evidence for Doctor AI, Pharmacy AI, Patient AI, and the shared retrieval platform. Separate measurement from implementation and reserve clinical/pharmacy/legal approval for qualified owners.
+Produce independent, reproducible evidence for Doctor AI, Pharmacy AI, Patient AI, and the shared retrieval platform. Separate measurement from implementation and reserve clinical/pharmacy acceptance for qualified reviewers; legal review is advisory and non-blocking.
 
 ## Read the required sources
 
@@ -39,7 +39,7 @@ This skill may implement evaluation harnesses and fixtures. It does not implemen
 - The same change bundle can be evaluated, but the product/platform implementer cannot silently change datasets, thresholds, exclusions, graders, or critical-case labels to obtain a pass.
 - Qualified medical reviewers own clinical thresholds, critical red-flag cases, Doctor AI limits, patient urgency/routing safety, and patient-facing wording acceptance.
 - Qualified pharmacy/clinical reviewers own medication/pharmacy knowledge and tool-answer acceptance.
-- Privacy/legal reviewers own provider-processing, retention/residency, consent, and Egyptian-law decisions. A NIST/metric mapping is not legal or regulatory compliance.
+- Project privacy/security configuration owns provider-processing, retention/residency, and consent defaults. Record unresolved legal questions as assumptions and continue; a NIST/metric mapping is not legal or regulatory compliance.
 - A model judge is a noisy measurement adapter, not ground truth. Calibrate it against blinded human judgments and retain disagreement/error analysis.
 - Security assurance owns the final independent prompt-injection, tenant leakage, excessive agency, credential/data exfiltration, and penetration gate. This skill includes those cases as AI regressions but does not close security findings.
 - Observability/performance owns production-like SLO/load methodology. This skill consumes signed latency/cost artifacts and runs bounded AI workloads; it does not redefine Core load acceptance.
@@ -106,4 +106,4 @@ Verify at minimum:
 - NIST AI RMF/GenAI Profile mappings link to actual owners, tests, monitoring, incidents, and decisions rather than generic claims;
 - reports make no certification, legal-compliance, diagnostic-accuracy, or clinical-safety claim beyond the approved evidence.
 
-An evaluation gate is complete only when the exact candidate and evaluation artifacts match, all designated critical cases pass, approved numeric thresholds pass, qualified reviewers sign their scopes, open conditions are explicit, and production/DR receives a reproducible evidence manifest.
+An evaluation gate is complete when the exact candidate and evaluation artifacts match, all designated critical cases pass, approved numeric thresholds pass, required clinical/pharmacy review is recorded, open technical conditions are explicit, and production/DR receives a reproducible evidence manifest. Legal sign-off is not required.

@@ -2,7 +2,7 @@
 
 ## Objective
 
-Independently validate that the assembled V1 enforces its identity, tenant, clinical, pharmacy, financial, file, realtime, AI, infrastructure, privacy, audit, and supply-chain boundaries under normal, malicious, concurrent, degraded, and recovery conditions. Close findings with reproducible evidence and obtain the qualified privacy/legal/clinical/pharmacy reviews required before production.
+Independently validate that the assembled V1 enforces its identity, tenant, clinical, pharmacy, financial, file, realtime, AI, infrastructure, privacy, audit, and supply-chain boundaries under normal, malicious, concurrent, degraded, and recovery conditions. Close findings with reproducible engineering evidence, obtain clinical/pharmacy review where required, and record conservative configurable compliance assumptions. Legal sign-off is not a phase or release gate.
 
 Security and privacy were implementation work in every prior phase. This phase is the cross-system assurance gate, not the first security pass and not a substitute for secure design or code review.
 
@@ -35,7 +35,7 @@ Mapping or passing selected controls is **not** a claim of certification, statut
 - Phases 00-21 are deployed to an isolated, production-like staging environment with locked images/dependencies, synthetic test data, test accounts/tenants, observability, kill switches, and restoreable snapshots.
 - Architecture diagrams, data-flow inventory, module/table ownership, OpenAPI/events/tool schemas, threat models, SBOMs, data classification, provider inventory, and prior test evidence are current.
 - An accountable scope owner approves written rules of engagement for manual/automated testing, including targets, identities, time, techniques, rate/concurrency, prohibited actions, evidence handling, stop conditions, and contacts.
-- Qualified Egyptian privacy/legal, clinical, and pharmacy reviewers are identified. Engineering does not infer PDPC, Egyptian Drug Authority, healthcare, pharmacy, labor, consumer, evidence, or cross-border-processing obligations.
+- Privacy/security, clinical, and pharmacy project contacts are identified. Optional legal advice may refine recorded assumptions, but its absence does not block implementation, validation, or completion. Engineering does not claim statutory or regulatory approval.
 - Incident response and emergency credential/feature revocation contacts are available during testing.
 
 ## Non-goals
@@ -47,7 +47,7 @@ Mapping or passing selected controls is **not** a claim of certification, statut
 - No complex admin roles, online payments, emergency specialist chat, medication alternatives/reservations, branch transfer, supplier API, adherence, image diagnosis, or multi-country feature validation because they remain out of V1.
 - No storing raw exploit payloads, credentials, tokens, medical content, or sensitive evidence in tickets, chat, source control, CI logs, or generated reports.
 
-## Security assurance ownership and SOLID boundaries
+## Security assurance ownership and service boundaries
 
 ### Control ownership remains distributed
 
@@ -59,25 +59,25 @@ Pharmacy/Financial      tenancy, ledger, invoice/refund invariants
 Files                   upload quarantine, scan, signed delivery, access log
 AI/KnowledgeBase        scope filters, tool policy, deterministic safety, traces
 Platform                network, secrets, images, telemetry, backups, incident controls
-Privacy/Legal           processing inventory, retention, rights, processors, legal review
+Privacy/Compliance      processing inventory, retention, rights, processors, assumptions
 Security Assurance      mapping, independent tests, findings, evidence, release recommendation
 ```
 
-The assurance function verifies owners; it does not become a runtime god service and cannot grant access or bypass domain state machines.
+The assurance function verifies owners; it does not become a runtime god service and cannot grant access or bypass module business rules and backed-enum transitions.
 
-### Security/privacy ports
+### Security/privacy services
 
 ```text
 AuthenticationService / DeviceSessionService
-AuthorizationDecisionPort
+AuthorizationService
 NationalIdProtector
 FieldEncryption / KeyResolver
 AuditEventWriter / AuditChainVerifier
 SecurityEventSink
-RateLimitPolicy / AbuseDecisionPort
+RateLimitPolicy / AbuseProtectionService
 FileTypeValidator / MalwareScanner / SignedObjectAccess
 SecretResolver / WorkloadIdentityVerifier
-DataRetentionPolicy / DataSubjectRequestCoordinator
+DataRetentionPolicy / DataSubjectRequestService
 AiCapabilityPolicy / AiOutputPolicy / ProviderPrivacyPolicy
 ```
 
@@ -85,7 +85,7 @@ AiCapabilityPolicy / AiOutputPolicy / ProviderPrivacyPolicy
 - **Open/closed:** providers/scanners/key managers add reviewed adapters behind stable contracts.
 - **Liskov substitution:** adapters preserve deny/fail-safe behavior, typed errors, deadlines, audit, and no-secret leakage.
 - **Interface segregation:** workloads receive only required operations/credentials; no shared administrator/provider “god client.”
-- **Dependency inversion:** business/application layers own policy/crypto/audit ports; frameworks/vendors implement them.
+- **Conventional services:** owning Laravel modules implement policy, crypto, audit, and retention services; genuinely replaceable frameworks/vendors may sit behind small provider interfaces.
 
 ## Assurance packages and tools
 
@@ -262,7 +262,7 @@ This is an AI-governance verification map, not a claim that NIST certifies the p
 2. Verify minimization, purpose limitation, separation of patient AI conversations from medical records, transient location handling, no raw staging clone, safe support access, and no sensitive analytics dimensions.
 3. Exercise approved access/correction/deletion/retention workflows and legal holds where defined, recording effects on PostgreSQL, S3 versions, Qdrant rebuildable indexes, caches, analytics, providers, and backups.
 4. Review external LLM/SMS/FCM/S3/monitoring/processors for contracts, security, training use, retention, residency/cross-border transfer, subprocessors, deletion, incident notice, and continuity.
-5. Qualified Egyptian counsel/privacy professionals validate PDPC requirements and cross-border processing. Qualified clinical/pharmacy/legal reviewers validate Egyptian Drug Authority and other healthcare/pharmacy obligations, medication content, record/evidence retention, patient wording, and operational policies.
+5. Privacy/security owners document conservative configurable assumptions for PDPC, provider, retention, rights, and cross-border handling. Qualified clinical/pharmacy reviewers validate medication content, patient wording, and operational safety where required. Optional legal advice may refine these decisions without blocking work.
 6. Record explicit decisions, conditions, gaps, owners, and expiry. Do not translate an engineering control into a legal conclusion.
 
 ### 7. Finding remediation and retest
@@ -298,7 +298,7 @@ It never accepts passwords, tokens, National ID, phone, raw request/response, me
 ### Required security/privacy jobs
 
 - Audit-chain verification, expired session/device/token cleanup, OTP abuse cleanup, idempotency/outbox retention, stale signed-upload cleanup, file quarantine reconciliation, access review, secret/certificate/key-age checks, dependency/SBOM monitoring, data-retention/clear workflows, Qdrant deletion/rebuild reconciliation, and AI evaluation regression.
-- Jobs are least-privilege, idempotent, bounded, cancellable, audited, and fail visibly. Retention jobs do not bypass legal hold/policy and never directly delete immutable clinical/financial history contrary to domain/legal rules.
+- Jobs are least-privilege, idempotent, bounded, cancellable, audited, and fail visibly. Retention jobs do not bypass configured legal-hold/retention policy and never directly delete immutable clinical/financial history contrary to module business rules.
 
 ## Client and release-hardening work
 
@@ -338,7 +338,7 @@ It never accepts passwords, tokens, National ID, phone, raw request/response, me
 - National-ID normalization/HMAC uniqueness/encryption/redaction; session/MFA/OTP/rate/idempotency states; audit hash chain; signed URL; tool/proposal grant; retention decisions.
 - State machines reject skipped/stale/duplicate/backward transitions for appointment/encounter/prescription/lab/invoice/stock/return/refund/AI.
 - Parsers/validators/redactors/sanitizers/security-event schemas and metric-label allowlists use property/fuzz tests with Arabic/Unicode/encoded payloads.
-- Electron renderer tests prove UI/domain logic cannot import privileged modules; preload tests expose only named capability methods; main tests enforce sender/session/scope/schema/size/deadline/cancellation policy and safe error mapping for every handler.
+- Electron renderer tests prove UI/business logic cannot import privileged modules; preload tests expose only named capability methods; main tests enforce sender/session/scope/schema/size/deadline/cancellation policy and safe error mapping for every handler.
 
 ### Integration tests
 
@@ -397,7 +397,7 @@ Rehearse at least stolen device/session, leaked provider secret, unauthorized cl
 2. Run mapping/applicability review, automated pipeline, targeted manual tests, privacy/data inventory, AI/clinical/pharmacy evaluation, and incident exercises.
 3. Remediate/rebuild/retest; do not patch a different artifact than the release candidate.
 4. Validate production configuration/network/secrets/feature flags using safe checks, not production data extraction.
-5. Security, privacy/legal, clinical, pharmacy, operations, and product owners sign their scoped evidence/conditions.
+5. Security, privacy, clinical, pharmacy, operations, and product owners record their scoped evidence and conditions. Legal sign-off is not required.
 6. Phase 23 performs restore/failover/deployment/rollback rehearsal before final go-live.
 
 ## Acceptance and exit gate
@@ -408,7 +408,7 @@ Rehearse at least stolen device/session, leaked provider secret, unauthorized cl
 - No unresolved Critical finding exists; no unresolved High remains in exposed or identity/authorization/clinical/financial/file/AI-tool/secret/recovery boundaries.
 - SAST, DAST, dependency/license, secret, SBOM/provenance, container/IaC, API/schema fuzz, mobile/desktop/web, manual penetration, and evidence-integrity gates pass against the exact signed candidate.
 - Canary national IDs, phones, credentials, clinical/prescription/lab text, prompts, and object keys are absent from logs/traces/errors/metrics/reports.
-- Qualified Egyptian privacy/legal review has validated applicable PDPC/cross-border/provider/rights/retention requirements; qualified clinical/pharmacy/legal reviewers have validated applicable Egyptian Drug Authority and healthcare/pharmacy constraints. Conditions are explicit and closed or release-blocking.
+- Privacy/security assumptions for PDPC/cross-border/provider/rights/retention handling are explicit, configurable, and tested; qualified clinical/pharmacy review covers applicable medication and healthcare safety constraints. Optional legal advice may refine the assumptions, but no missing legal review is release-blocking.
 - Incident exercises, kill switches, rotations, dashboards, alerts, runbooks, data-retention/rights workflows, and finding lifecycle are operational.
 - Assurance mappings are presented as verification evidence only, with no unsupported certification or legal-compliance claim.
 - All V1 exclusions remain disabled/absent, and Phase 23 receives a signed security/privacy/clinical/pharmacy release recommendation plus complete evidence manifest.

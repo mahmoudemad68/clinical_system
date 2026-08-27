@@ -18,7 +18,7 @@ Read completely before changing platform code:
 
 For material runtime work also read the AI portions of [performance/resilience](../../../docs/phases/21_performance_scaling_observability_and_resilience.md), [security/privacy validation](../../../docs/phases/22_security_privacy_and_compliance_validation.md), and [rebuild/production](../../../docs/phases/23_disaster_recovery_release_and_production.md).
 
-Inspect current internal schemas, Laravel KnowledgeBase/AI gateway ports, FastAPI feature layout, Python queue, model/config lockfiles, Qdrant collection definitions, test fixtures/evaluation harness, telemetry, ADRs, and local changes.
+Inspect current internal schemas, Laravel KnowledgeBase/AI gateway services, genuine provider interfaces, FastAPI feature layout, Python queue, model/config lockfiles, Qdrant collection definitions, test fixtures/evaluation harness, telemetry, ADRs, and local changes.
 
 ## Ownership
 
@@ -28,7 +28,7 @@ Own platform mechanics and their typed boundaries:
 - the AI-owned `TaskQueue`, Python-native worker envelopes, retries, leases, checkpoints, and dead-letter/reconciliation behavior;
 - bounded document fetch, parser/OCR sandbox, cleaning, structure-aware chunking, dense/sparse embedding, staging/index validation, activation support, and rebuild;
 - Qdrant collection/payload/index adapters, mandatory filter construction, hybrid retrieval/fusion/reranking, and source provenance;
-- LLM, embedder, reranker, parser, OCR, vector index, object-source, provider, and evaluation-runner ports/adapters;
+- LLM, embedder, reranker, parser, OCR, vector index, object-source, provider, and evaluation-runner integration services or small replaceable-provider interfaces;
 - model/prompt/retrieval/provider/config artifact versioning and trace-compatible platform metadata;
 - unit/property/integration/contract/system/security/performance tests for the platform.
 
@@ -60,7 +60,7 @@ The platform may expose evaluation execution primitives and raw metric artifacts
 ## Implementation workflow
 
 1. Identify the owned platform capability, its Phase 16 acceptance rule, trust boundaries, data classification, failure semantics, and consuming product contract.
-2. Inspect the relevant port and adapter. Add or narrow a port only when the capability has a distinct reason to change; keep provider SDK types inside infrastructure.
+2. Inspect the relevant service and provider integration. Add an interface only when multiple implementations or a real test seam require substitution; keep provider SDK types inside the integration class.
 3. Define strict versioned command/callback/retrieval schemas, idempotency identity, deadlines/cancellation, resource budgets, typed errors, and safe telemetry before implementation.
 4. Implement the explicit bounded workflow. Persist/checkpoint durable state before remote work and make duplicate/reordered/crash recovery deterministic.
 5. Validate scope and source at every boundary, not only in prompts. Recheck hashes/manifests/counts/config versions before marking ready.

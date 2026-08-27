@@ -34,8 +34,8 @@ C4Container
         ContainerDb(qdrant, "Qdrant", "Qdrant", "Rebuildable retrieval index")
         ContainerDb(s3, "Object storage", "S3-compatible, private", "Original file source of truth")
 
-        Container(otel, "OpenTelemetry Collector", "OTel", "Trace and metric pipeline with redaction verification")
         Container(prom, "Prometheus + Grafana", "Prometheus, Grafana", "Metrics, dashboards, alerts")
+        Container(telescope, "Telescope", "Laravel Telescope", "Local-only request/query/job inspection; never on production migrations")
     }
 
     Rel(clients, gateway, "HTTPS / JSON, WSS")
@@ -58,9 +58,8 @@ C4Container
     Rel(aiApi, aiWorker, "AI-owned TaskQueue")
     Rel(aiApi, coreApi, "Status/result callback", "Authenticated; never writes core tables")
 
-    Rel(coreApi, otel, "Traces and metrics", "Redacted before export")
-    Rel(aiApi, otel, "Traces and metrics", "Redacted before export")
-    Rel(otel, prom, "Metrics")
+    Rel(coreApi, prom, "Metrics", "/metrics, redacted labels")
+    Rel(aiApi, prom, "Metrics", "/metrics, redacted labels")
 ```
 
 ## Container responsibilities and limits

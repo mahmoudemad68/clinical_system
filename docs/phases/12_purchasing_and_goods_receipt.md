@@ -22,7 +22,7 @@ A receipt is one idempotent strong-consistency workflow: purchase-order progress
 ## Entry criteria and dependencies
 
 - Phase 10 supplies active medications, exact packaging conversions, branch tenancy/capabilities, and strict NATIVE/INTEGRATED mode.
-- Phase 11 supplies InventoryCommandPort, batches, immutable movements, balances, alert events, and reconciliation.
+- Phase 11 supplies InventoryService, batches, immutable movements, balances, alert events, and reconciliation.
 - Phase 00 supplies idempotency, transaction context, outbox, audit, OpenAPI, telemetry, and test environments.
 - Pharmacy owners approve purchasing/receiving roles, evidence requirements, and acceptable PO/receipt retention.
 
@@ -35,7 +35,7 @@ A receipt is one idempotent strong-consistency workflow: purchase-order progress
 - No stock creation before receipt commit.
 - No offline receipt synchronization.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Ownership
 
@@ -46,25 +46,24 @@ A receipt is one idempotent strong-consistency workflow: purchase-order progress
     Inventory module
       batches, movements, balances, FEFO readiness, alerts
 
-    ReceivePurchaseCoordinator
+    ReceivePurchaseService
       owns cross-module transaction and idempotent workflow contract
 
     PharmacyOrganizations
       branch status, mode, membership, purchasing/receiving capability
 
-Purchasing cannot insert stock_batches or stock_movements. ReceivePurchaseCoordinator calls PurchasingReceiptPort and InventoryCommandPort with one transaction context. Inventory cannot change PO status.
+Purchasing cannot insert stock_batches or stock_movements. ReceivePurchaseService calls PurchasingReceiptService and InventoryService with one transaction context. Inventory cannot change PO status.
 
-### Ports
+### Module services and external integrations
 
-    SupplierRepository
-    PurchaseOrderRepository
+    Eloquent models: Supplier, PurchaseOrder, PurchaseOrderItem, GoodsReceipt
 
-    PurchasingReceiptPort
+    PurchasingReceiptService
       lockOutstanding(po_id, transaction_context)
       recordReceipt(receipt_command, transaction_context)
       applyReceivedTotals(po_id, receipt_totals, transaction_context)
 
-    InventoryCommandPort
+    InventoryService
       registerReceivedBatch(batch_command, transaction_context)
 
     PurchaseAuthorization
@@ -75,18 +74,18 @@ Purchasing cannot insert stock_batches or stock_movements. ReceivePurchaseCoordi
     TransactionManager
     Clock
 
-- Separate create/order/receive commands; a generic update endpoint cannot skip state rules.
+- Separate create/order/receive service methods; a generic update endpoint cannot skip state rules.
 - Receipt calculation is pure and testable independently of Eloquent.
-- Supplier storage is local/manual. Any future external adapter must implement a new narrow port and cannot auto-receive.
+- Supplier storage is local/manual. Any future external provider uses a small purpose-specific interface and cannot auto-receive.
 
 ## Packages and runtime components
 
-- Laravel 13, PostgreSQL, Horizon, outbox, audit, OpenTelemetry, Sentry, and UUIDv7 foundations.
+- Laravel 13, PostgreSQL, Horizon, outbox, audit, Prometheus, Laravel Telescope (local), Sentry, and UUIDv7 foundations.
 - brick/money for ordered/received unit cost as integer minor units with EGP.
 - deptrac/deptrac, Larastan/PHPStan, Pest/PHPUnit, and Eris for state/math property tests.
 - Pharmacy Electron desktop uses React/TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, and an OpenAPI-generated TypeScript client behind typed preload/main capabilities. Printing, export, authenticated transport, and any encrypted draft storage are main-owned privileged adapters, optionally delegating blocking work to a utility process after the OS/ABI spike, not renderer packages.
 
-Do not add a workflow/state-machine package. Explicit enum transitions and coordinator tests keep the purchasing contract visible.
+Do not add a workflow/state-machine package. Backed enum transitions and coordinating-service tests keep the purchasing contract visible.
 
 ## Persistent schemas, invariants, and indexes
 
@@ -178,7 +177,7 @@ Constraints/indexes:
 ### Full or partial receipt
 
 1. Client retrieves the latest outstanding quantities and submits item quantities, batch numbers, expiry dates, costs, receipt number, PO version, and Idempotency-Key.
-2. ReceivePurchaseCoordinator authenticates and builds a server-owned branch authorization context.
+2. ReceivePurchaseService authenticates and builds a server-owned branch authorization context.
 3. Idempotency store rejects same key/different canonical request.
 4. Begin transaction; lock PO and all affected item rows in deterministic ID order.
 5. Recheck ORDERED/PARTIALLY_RECEIVED, NATIVE mode, capability, version, medication/package references, and outstanding totals.
@@ -218,7 +217,7 @@ Constraints/indexes:
     POST /api/v1/pharmacy/branches/{branch_id}/purchase-orders/{po_id}/receipts
     GET  /api/v1/pharmacy/branches/{branch_id}/goods-receipts/{receipt_id}
 
-All mutations use aggregate version; order and receipt use Idempotency-Key.
+All mutations use record version; order and receipt use Idempotency-Key.
 
 Stable errors include PURCHASE_ACCESS_DENIED, BRANCH_MODE_READ_ONLY, PO_NOT_RECEIVABLE, PO_VERSION_CONFLICT, RECEIPT_DUPLICATE_CONFLICT, RECEIVED_QUANTITY_EXCEEDS_OUTSTANDING, RECEIPT_BATCH_INVALID, MEDICATION_NOT_RECEIVABLE, PACKAGING_VERSION_CONFLICT, INVENTORY_RECONCILIATION_REQUIRED, and RECEIPT_OUTCOME_UNKNOWN.
 
@@ -278,7 +277,7 @@ No supplier/PO content is exposed through the generic admin role. Operational ag
 
 - Generated TypeScript pharmacy client covers money/quantities, omitted received quantity semantics, versions, idempotency outcome, and stable errors.
 - Preload/IPC contract tests cover draft persistence, barcode input, print/export, canonical-result polling, sender validation, schema bounds, timeout, and cancellation.
-- PurchasingReceiptPort and InventoryCommandPort transaction-context contracts prove all-or-nothing behavior.
+- PurchasingReceiptService and InventoryService transaction-context contracts prove all-or-nothing behavior.
 - Events replay safely and omit supplier/contact/cost data.
 
 ### End-to-end tests

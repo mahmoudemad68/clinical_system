@@ -7,6 +7,6 @@ alwaysApply: true
 
 - Send **push notifications through Firebase**.
 - Persist in-app notifications with **Laravel Database Notifications** (`Illuminate\Notifications\DatabaseNotification` / `notifications` table). Do not invent a parallel stored-notification table unless a phase explicitly requires it.
-- Integrate Firebase in Laravel with **`kreait/laravel-firebase`**. Put Firebase SDK usage behind a narrow adapter; do not call the SDK from controllers or domain code.
+- Integrate Firebase in Laravel with **`kreait/laravel-firebase`**. Put Firebase SDK usage in a module-owned notification service; do not call the SDK directly from controllers.
 - A user-visible notification should be stored in the database even when a push is also sent. Push is delivery; the database row is the source of truth for the inbox.
 - Do not add OneSignal, Pusher Beams, Expo push, or other push vendors as the primary channel.

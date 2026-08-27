@@ -12,7 +12,7 @@ The observable outcome is that a patient sees the most relevant current event, c
 - Sections 18-23, lines 728-913: doctor dashboard/public location, offering, availability, and booking inputs used by patient discovery.
 - Sections 43-46, lines 1482-1567: patient home, manual doctor search, availability/rating ranking, and completed-appointment reviews.
 - Sections 67-69, lines 2113-2193: later medicine discovery/current prescription separation; only navigation placeholders are permitted here.
-- Sections 90-93, lines 2650-2763: patient AI/AI booking arrive later; Phase 08 supplies deterministic doctor/slot ports only.
+- Sections 90-93, lines 2650-2763: patient AI/AI booking arrive later; Phase 08 supplies deterministic doctor/slot services only.
 - Sections 100-101, lines 2898-2947: later notifications feed patient-home freshness.
 - Sections 105-106, lines 3029-3077: API contracts, cursor pagination, UTC, and Cairo display.
 - Sections 111, 115, and 119-123, lines 3229-3254, 3305-3319, and 3386-3493: indexes/cache, rates, audit, redaction, and privacy.
@@ -27,7 +27,7 @@ The observable outcome is that a patient sees the most relevant current event, c
 - Phase 03 schedule/offering/availability/appointment APIs and Phase 04 completed appointment state are available.
 - Phase 05-07 provide authorized read models for appointments, encounter follow-up, prescriptions/reminders, labs, and clinical documents used by home cards.
 - Product approves home-card priority/tie-breaking, review rating/comment/moderation policy, doctor search matching, price/display wording, and location permission UX.
-- Privacy/legal approves map-provider use, location non-retention, review content/privacy rules, and public doctor-profile fields.
+- Privacy and security owners document map-provider use, location non-retention, review content/privacy rules, and public doctor-profile fields as configurable project policy. Legal sign-off is not required.
 
 ## Non-goals
 
@@ -37,7 +37,7 @@ The observable outcome is that a patient sees the most relevant current event, c
 - No online payment, multi-country, navigation engine, background location tracking, stored patient route history, or distance-based doctor ranking.
 - No fake “Coming Soon” endpoint that performs excluded behavior. Disabled cards may be metadata-only and server-feature-flagged.
 
-## Module ownership and SOLID boundaries
+## Laravel module ownership and services
 
 ### `PatientExperience`
 
@@ -49,7 +49,7 @@ SelectHeroCard
 GetPatientNavigationCapabilities
 ```
 
-It consumes narrow read ports that return classified summaries. One failing optional card degrades that card with a safe retry state; it must not turn a core home response into a data leak or fabricate stale clinical facts.
+It consumes narrow public module services that return classified summaries. One failing optional card degrades that card with a safe retry state; it must not turn a core home response into a data leak or fabricate stale clinical facts.
 
 ### `DoctorDiscovery`
 
@@ -79,11 +79,11 @@ Review moderation is a fixed capability, not a complex admin-role system. Modera
 
 ### `Localization`
 
-Owns locale identifiers, translation-key catalogs, formatting conventions, fallback policy, RTL metadata, and translation completeness tooling. Domain/API errors retain stable codes; clients localize them.
+Owns locale identifiers, translation-key catalogs, formatting conventions, fallback policy, RTL metadata, and translation completeness tooling. Server/API errors retain stable codes; clients localize them.
 
 ### Boundary rules
 
-- Patient home/discovery are query modules and may not write source-domain tables.
+- Patient home/discovery are read-focused modules and may not write another module's tables.
 - Public projections are explicit allowlists. Doctor verification documents, personal contacts, patient counts, queue details, and clinical content never enter them.
 - Search/ranking consumes only server data. Client-supplied rating, availability, distance, doctor status, or price is ignored.
 - Current patient location is a sensitive transient request value, excluded from persistence, cache keys, events, logs, traces, analytics, and provider telemetry controlled by the platform.
@@ -91,7 +91,7 @@ Owns locale identifiers, translation-key catalogs, formatting conventions, fallb
 ## Packages and platform capabilities
 
 - PostgreSQL `pg_trgm`, normalized search columns, GIN/GiST as measured, and PostGIS `geography` with `ST_DWithin`/distance ordering.
-- Laravel query/application services, cursor pagination, cache for public directory summaries, outbox projection consumers, policies, and rate limiting.
+- Laravel module services, cursor pagination, cache for public directory summaries, outbox projection consumers, policies, and rate limiting.
 - Flutter patient mobile uses `intl`, localization generation, Riverpod, Dio/generated Dart client, `geolocator` (permission/current-position only), `url_launcher`, and Google Maps integration only where the approved UX needs an embedded map.
 - Electron doctor desktop uses React, TypeScript, TanStack Query, MUI, i18next, the generated TypeScript client, React Testing Library, WebdriverIO with `@wdio/electron-service` for packaged-app E2E/screenshots, and axe-core for its public-profile preview.
 - React browser admin uses `i18next`, MUI RTL support, React Testing Library, Playwright, and axe-core for the review-moderation/admin-safe surface.
@@ -178,11 +178,11 @@ Use `users.language` from Phase 01; optionally store client-specific display loc
 
 ### Patient home
 
-Prefer an application query assembled from bounded source-domain projections. If a `patient_home_projection` is introduced after measurement, it stores only identifiers, card types, safe timestamps/status codes, version, and expiry—not diagnosis, prescription text, lab content, National ID, phone, or current location.
+Prefer a `PatientHomeService` read assembled from bounded source-module projections. If a `patient_home_projection` is introduced after measurement, it stores only identifiers, card types, safe timestamps/status codes, version, and expiry—not diagnosis, prescription text, lab content, National ID, phone, or current location.
 
 ## Core invariants
 
-1. Home shows only the authenticated patient's data through domain-owned safe summary ports.
+1. Home shows only the authenticated patient's data through owning-module safe summary services.
 2. Hero selection is deterministic using product-approved priority, due time, status, and stable tie-break; it never uses AI.
 3. Discovery returns only approved/listed doctors and active public locations/offerings.
 4. Ranking is `earliest availability ascending`, then `rating descending`, then a documented stable tie-break. Distance is display/filter only and never affects ranking in V1.
@@ -200,8 +200,8 @@ Prefer an application query assembled from bounded source-domain projections. If
 ### Patient home aggregation
 
 1. Authenticate patient and resolve patient profile server-side.
-2. In one bounded application query, ask ports for upcoming appointment, next doctor-confirmed medication reminder, pending lab, new/current prescription, and follow-up summary.
-3. Each port returns a safe card candidate with source ID, type, status code, due time, updated/version, and route capability—not raw clinical content.
+2. In one bounded `PatientHomeService` call, ask owning-module services for upcoming appointment, next doctor-confirmed medication reminder, pending lab, new/current prescription, and follow-up summary.
+3. Each service returns a safe card candidate with source ID, type, status code, due time, updated/version, and route capability—not raw clinical content.
 4. Filter stale/ineligible cards, apply approved priority such as upcoming dose, appointment, pending lab, new prescription, follow-up, then due time/stable key.
 5. Return one hero plus bounded secondary sections and `as_of` metadata.
 6. If one optional source fails, return a typed degraded section and telemetry. Do not silently show a stale medical instruction as current.
@@ -213,7 +213,7 @@ Home card actions re-fetch authoritative source state. A card never authorizes b
 1. Validate bounded name/specialty query, locale, cursor, optional radius, and optional current point.
 2. Normalize Arabic/English search text with an approved search-specific function; preserve original display text and avoid confusable/over-normalization collisions.
 3. Query only approved directory entries and active locations. Apply specialty/name and optional `ST_DWithin` filter.
-4. Load safe offering/next-availability summaries without N+1 calls; use a projection/batched port.
+4. Load safe offering/next-availability summaries without N+1 calls; use a projection or batched module service.
 5. Calculate distance in PostgreSQL for display when a point is supplied, then discard the point after response construction.
 6. Rank by earliest availability then rating, stable tie-break. Distance remains display-only.
 7. Return opaque actor/filter/order-bound cursor and `availability_as_of`. Selecting a slot calls Phase 03.
@@ -326,7 +326,7 @@ Jobs:
 - **Search injection/DoS:** parameterized queries, bounded query/radius, normalized plain text, indexed patterns, wildcard controls, statement timeout, and load shedding.
 - **Ranking manipulation/unfairness:** deterministic published rule, server data, rating eligibility/aggregate reconciliation, stable tie-break, no distance ranking, version/as-of telemetry, no hidden sponsored ordering.
 - **Fake/review abuse:** completed-owned appointment proof, unique constraint, moderation, no client publish flag, plain-text escaping, privacy warning, audit, rate/anomaly limits.
-- **Home cross-patient leak:** per-port server patient binding, explicit card DTO allowlists, no PHI cache, alternating-user Octane tests.
+- **Home cross-patient leak:** per-service server patient binding, explicit card DTO allowlists, no PHI cache, alternating-user Octane tests.
 - **Map/deep-link injection:** fixed approved host/scheme, encoded numeric destination from server, no arbitrary URL from API/provider/client.
 - **Localization/accessibility safety:** no truncation of medication/lab/status meaning, semantic keys, correct RTL exceptions, accessible labels/focus, translation review for clinical wording.
 
@@ -343,13 +343,13 @@ Jobs:
 
 - Real PostgreSQL `pg_trgm`/PostGIS search/filter/distance correctness and representative `EXPLAIN` index plans.
 - Projection idempotency/out-of-order events, stale availability, cache loss/invalidation, review unique race, aggregate publish/hide/remove.
-- Patient-home read ports with partial dependency failure and no cross-patient/PHI caching.
+- Patient-home read services with partial dependency failure and no cross-patient/PHI caching.
 - Map deep-link and location-permission adapters through recorded/synthetic fixtures only.
 
 ### Contract tests
 
 - OpenAPI/generated Dart patient-mobile and TypeScript Electron/admin clients for home/directory/location/offerings/availability/reviews/language, including coordinate no-log classification.
-- Directory/profile/scheduling/home-source/map-link/moderation ports pass owned contracts.
+- Directory/profile/scheduling/home-source/map-link/moderation services and provider integrations pass their focused contracts.
 - Event schemas and projection compatibility; review comments and current coordinates are forbidden from events.
 
 ### End-to-end tests

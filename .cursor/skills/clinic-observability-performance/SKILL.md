@@ -1,6 +1,6 @@
 ---
 name: clinic-observability-performance
-description: Instrument this clinic platform and execute or analyze k6 performance tests, OpenTelemetry, Prometheus/Grafana, Laravel Telescope, health/readiness, query measurements, and capacity evidence. Use for SLOs, scaling, saturation, runtime tuning, and safe degradation; PostgreSQL index, query, schema, and migration changes belong to clinic-postgresql-consistency. Not for backup/failover execution or release control.
+description: Instrument this clinic platform and execute or analyze k6 performance tests, Prometheus/Grafana, Laravel Telescope, health/readiness, query measurements, and capacity evidence. Use for SLOs, scaling, saturation, runtime tuning, and safe degradation; PostgreSQL index, query, schema, and migration changes belong to clinic-postgresql-consistency. Not for backup/failover execution or release control.
 ---
 
 # Clinic Observability and Performance
@@ -24,7 +24,7 @@ Also read the owning feature phase's observability, failure, concurrency, indexe
 
 Own measurement and performance engineering:
 
-- OpenTelemetry context propagation and approved HTTP/DB/Redis/queue/Reverb/S3/Qdrant/AI/provider/client instrumentation, including Inertia/browser patient, doctor, pharmacy, and admin boundaries;
+- W3C `traceparent` echo, Prometheus `/metrics`, and approved HTTP/DB/Redis/queue/Reverb/S3/Qdrant/AI/provider/client instrumentation, including Inertia/browser patient, doctor, pharmacy, and admin boundaries;
 - **Laravel Telescope** for local/non-production request, query, job, and exception debugging; do not treat Telescope as the production SLO console;
 - bounded metric/log/trace/error schemas, central redaction, sampling, dashboards, alerts, SLI/SLO calculations, and health/readiness behavior;
 - k6 HTTP/WebSocket workload models, synthetic datasets, threshold evaluation, load/soak/stress/reconnect/fault experiments, and immutable result artifacts;
@@ -68,7 +68,7 @@ Feature owners still implement business logic and local instrumentation calls. T
 1. Define the user/system question, owning SLO/invariant, baseline, workload/failure model, authorization, safety limits, and pass/fail criteria before instrumentation or load.
 2. Inspect existing traces, metrics, query plans, indexes, pools, queues, caches, and topology. Confirm missing evidence rather than guessing a bottleneck.
 3. Add the smallest standardized redacted instrumentation needed across boundary adapters; verify label cardinality and telemetry failure/backpressure behavior.
-4. Create a functional low-load scenario and domain reconciliation first, then steady, connection, burst, AI, soak, stress, reconnect, and fault variants as applicable.
+4. Create a functional low-load scenario and business-data reconciliation first, then steady, connection, burst, AI, soak, stress, reconnect, and fault variants as applicable.
 5. Run in controlled staging, analyze per-layer latency/saturation/error/backlog/cost, identify the first bottleneck, and preserve immutable evidence.
 6. Optimize in the Phase 21 order: correctness/query/index/N+1/payload, pools/PgBouncer, reviewed caching/coalescing, horizontal scale, safe replicas, measured partitioning, then only consider sharding.
 7. Rerun focused and mixed tests. Reject an optimization that regresses correctness, security, privacy, failure behavior, or another critical SLO.
@@ -78,12 +78,12 @@ Feature owners still implement business logic and local instrumentation calls. T
 
 Verify at minimum:
 
-- instrumentation unit tests for timing, status/error classification, context propagation, redaction, bounded labels, and telemetry exporter failure;
-- integration tests for DB/PgBouncer pools, Redis separation/loss, outbox/worker replay, Reverb multi-node/backpressure/reconnect, S3/provider timeouts, Qdrant/AI saturation, and collector backpressure;
+- instrumentation unit tests for timing, status/error classification, context propagation, redaction, and bounded labels;
+- integration tests for DB/PgBouncer pools, Redis separation/loss, outbox/worker replay, Reverb multi-node/backpressure/reconnect, S3/provider timeouts, Qdrant/AI saturation, and metrics scrape failure;
 - query-plan/index/cardinality assertions on representative data while retaining security predicates;
 - contract tests for `/live`/`/ready`, safe detailed health, realtime sequence, cache freshness, adapter timeouts, and versioned k6 result schema;
 - E2E critical journeys under load, including denied cases and ambiguous idempotent writes;
-- all Phase 21 sustained/burst/WebSocket/AI/stress/recovery thresholds with exact candidate/topology artifacts and zero domain invariant violation;
+- all Phase 21 sustained/burst/WebSocket/AI/stress/recovery thresholds with exact candidate/topology artifacts and zero business-invariant violation;
 - soak checks for server and browser memory, connection, file-descriptor/handle, cache, and queue drift plus Octane cross-request state leakage;
 - load-abuse tests for body/pagination/search/geo/WebSocket/retry/queue/telemetry/AI cost amplification without uncontrolled denial of service;
 - canary sensitive values absent from metrics/logs/traces/errors/profiles/results and internal observability endpoints inaccessible publicly;

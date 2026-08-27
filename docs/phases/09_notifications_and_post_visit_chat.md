@@ -21,7 +21,7 @@ The phase makes push and realtime delivery observable and retryable without maki
 
 - Phase 01 provides authenticated users, device sessions, device-token revocation, OTP policy, and actor resolution.
 - Phase 03 provides appointment identity and patient/doctor relationships.
-- Phases 04-05 provide the atomic consultation-completion coordinator and authoritative encounter status.
+- Phases 04-05 provide the atomic `CompleteConsultationService` and authoritative encounter status.
 - Phases 06-07 emit prescription and lab events without embedding clinical content in event payloads.
 - Phase 00 provides the outbox, Horizon lanes, Reverb authorization, OpenAPI, audit, telemetry, and idempotency contracts.
 - Product/security approve notification wording that does not expose medical facts on a locked screen.
@@ -35,7 +35,7 @@ The phase makes push and realtime delivery observable and retryable without maki
 - No Windows/Linux FCM dependency for Electron doctor or pharmacy desktops; those clients use authorized main-process realtime and privacy-safe in-app/local presentation.
 - No clinical advice automation or AI participation in chat.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Ownership
 
@@ -53,23 +53,22 @@ The phase makes push and realtime delivery observable and retryable without maki
     IAM module
       owns device sessions and push-token lifecycle
 
-    Infrastructure adapters
+    External integrations
       Reverb, FCM, SMS provider, clock, and queue implementations
 
-The CompleteConsultationCoordinator calls a narrow Chat port inside the same PostgreSQL transaction that completes the encounter. It creates or confirms the one chat thread and writes the outbox event. Push, realtime broadcast, and analytics happen only after commit.
+The `CompleteConsultationService` calls `ChatService` inside the same PostgreSQL transaction that completes the encounter. It creates or confirms the one chat thread and writes the outbox event. Push, realtime broadcast, and analytics happen only after commit.
 
-### Ports
+### Module services and external integrations
 
-    OpenPostVisitThread
+    ChatService
       ensureForCompletedEncounter(encounter_id, patient_id, doctor_id, opened_at)
 
     ChatAccessPolicy
       mayRead(actor_id, thread_id)
       maySend(actor_id, thread_id, now)
 
-    ChatMessageRepository
-    NotificationIntentRepository
-    DeliveryAttemptRepository
+    NotificationService
+    DeliveryAttemptService
 
     PushSender
       send(device_token_reference, template_payload, deadline)
@@ -82,7 +81,7 @@ The CompleteConsultationCoordinator calls a narrow Chat port inside the same Pos
 
     Clock
 
-- Chat does not import Encounter Eloquent models; the coordinator supplies verified IDs and time.
+- Chat does not import Encounter Eloquent models; `CompleteConsultationService` supplies verified IDs and time.
 - Notifications consume versioned events and never write prescription, lab, appointment, queue, or chat state.
 - Provider SDK errors are translated to stable transient, permanent-token, rejected, timeout, and unavailable categories.
 - Templates receive approved scalar fields only. They cannot query arbitrary tables or render raw clinical text.
@@ -97,8 +96,8 @@ Versions are selected and locked under Phase 00 policy.
 - Laravel Horizon and Redis for the notifications lane and failed-job visibility.
 - Laravel Reverb for private chat and per-user event channels.
 - laravel-notification-channels/fcm, or an ADR-approved maintained FCM adapter, behind PushSender.
-- The selected Egyptian SMS SDK/API behind SmsOtpSender; provider types never escape Infrastructure.
-- PostgreSQL, Laravel encryption/KMS adapter, OpenTelemetry, and Sentry with content capture disabled.
+- The selected Egyptian SMS SDK/API behind `SmsOtpSender`; provider types never escape the integration class.
+- PostgreSQL, Laravel encryption/KMS adapter, Prometheus, Laravel Telescope (local), and Sentry with content capture disabled.
 - deptrac/deptrac, Larastan/PHPStan, and Pest/PHPUnit for boundary and behavior enforcement.
 
 ### Flutter patient mobile
@@ -113,7 +112,7 @@ Versions are selected and locked under Phase 00 policy.
 
 - React, TypeScript, TanStack Query, Zod, MUI, i18next, the generated TypeScript client, Vitest, React Testing Library, MSW, WebdriverIO with `@wdio/electron-service` for packaged-app E2E, and axe-core.
 - Electron main owns device credentials, authenticated REST and Reverb connections, channel construction, reconnect/backoff/sequence tracking, and generic OS notification presentation. Preload exposes typed recipient-safe events, refetch signals, and bounded notification actions only.
-- If a bounded doctor thread cache is approved, it uses the Phase 05 reviewed main-owned utility-process encrypted SQLite adapter and key lifecycle in a purpose/retention-scoped store. Main authorizes its typed cache port; the renderer never receives a database or utility-process capability. No chat body, key, token, database/path primitive, or generic event channel reaches the renderer.
+- If a bounded doctor thread cache is approved, it uses the Phase 05 reviewed main-owned utility-process encrypted SQLite adapter and key lifecycle in a purpose/retention-scoped store. Main authorizes its typed cache capability; the renderer never receives a database or utility-process capability. No chat body, key, token, database/path primitive, or generic event channel reaches the renderer.
 
 Do not store FCM server credentials, Reverb secrets, or SMS credentials in clients. A device token is treated as sensitive metadata and never appears in logs. Electron desktop device credentials remain in main-process secure storage and never cross preload or enter renderer/Web Storage.
 
@@ -201,17 +200,17 @@ Indexes and constraints:
 
 ### Complete consultation and open chat
 
-1. CompleteConsultationCoordinator locks the encounter/appointment and validates the doctor and current state.
+1. CompleteConsultationService locks the encounter/appointment and validates the doctor and current state.
 2. It completes the encounter, revokes full-history access, advances the queue, and calls OpenPostVisitThread.
 3. Chat calculates writable_until from the injected completion timestamp and inserts the unique thread.
 4. The transaction inserts encounter-completed, chat-opened, and notification outbox records with minimal payloads.
 5. Commit makes the thread visible.
 6. Consumers create patient/doctor in-app intents and publish an opaque chat-opened realtime event.
-7. Duplicate coordinator or outbox delivery resolves through encounter uniqueness and event idempotency.
+7. Duplicate service invocation or outbox delivery resolves through encounter uniqueness and event idempotency.
 
 ### Send message
 
-1. Client submits thread ID, body, client_message_id, aggregate version, and Idempotency-Key.
+1. Client submits thread ID, body, client_message_id, record version, and Idempotency-Key.
 2. Laravel authenticates the device and loads participant/thread state server-side.
 3. Policy verifies exact participant membership and now less than writable_until.
 4. Validate normalized Unicode text, non-empty length, maximum bytes/code points, and prohibited control characters.
@@ -295,7 +294,7 @@ Stable errors include CHAT_NOT_PARTICIPANT, CHAT_READ_ONLY, CHAT_WINDOW_EXPIRED,
 - Keep chat/notification content out of logs, traces, metrics, events, crash reports, analytics, and support dashboards.
 - Enforce TLS, Reverb private-channel authorization, secret-manager provider credentials, webhook signature verification if delivery receipts are used, replay windows, and provider egress allowlists.
 - Electron uses a packaged local renderer, restrictive CSP, context isolation, renderer sandbox, no Node integration, sender-validated typed IPC, navigation/new-window/permission denial, safe external-link allowlists, and no remote content/webview. Renderer compromise cannot subscribe to an arbitrary channel or reach OS notification/storage/network credentials.
-- Define chat/message/delivery retention and legal hold with privacy/legal owners before production.
+- Define configurable chat/message/delivery retention and legal-hold behavior with privacy and security owners before production; record conservative assumptions and continue without legal sign-off.
 
 ## Test plan
 

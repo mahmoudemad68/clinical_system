@@ -86,6 +86,17 @@ final class ExportRedactionTest extends TestCase
             'note' => 'chest pain',
         ]);
 
+        $spans = $gateway->httpSpans();
+        $this->assertCount(1, $spans);
+        $this->assertSame('GET', $spans[0]['method']);
+        $this->assertSame('api.v1.health', $spans[0]['route']);
+        $this->assertSame('200', $spans[0]['status']);
+        $this->assertArrayNotHasKey('patient_id', $spans[0]);
+        $this->assertArrayNotHasKey('note', $spans[0]);
+
+        $serialized = json_encode($spans, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString('chest pain', $serialized);
+        $this->assertStringNotContainsString('0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c01', $serialized);
         $this->assertTrue($gateway->forceFlush());
     }
 }

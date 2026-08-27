@@ -11,7 +11,7 @@ Make PostgreSQL enforce the clinic platform's authoritative invariants under ret
 
 This skill owns the physical relational design, migration safety, database roles, constraints, indexes, isolation/locking strategy, idempotency/outbox/inbox persistence, query-plan evidence, reconciliation queries, retention mechanics, and database recovery compatibility.
 
-The active domain skill defines business meaning and allowed transitions. Laravel owns application coordination; realtime owns delivery; integrations own canonical sync semantics; AI owns Qdrant. This skill translates approved invariants into PostgreSQL and proves they hold. Do not introduce a schema-level workflow that bypasses the domain owner.
+The active business-area skill defines business meaning and allowed transitions. Laravel module services own workflow coordination; realtime owns delivery; integrations own canonical sync semantics; AI owns Qdrant. This skill translates approved invariants into PostgreSQL and proves they hold. Do not introduce a schema-level workflow that bypasses the owning module service.
 
 ## Required phase sources
 
@@ -26,16 +26,16 @@ Always read [Phase 00](../../../docs/phases/00_cross_cutting_architecture_and_de
 - Use PostgreSQL/PostGIS in implementation and integration tests. SQLite cannot validate the required locking, partial/exclusion indexes, geography, constraints, or transaction behavior.
 - Use UUIDv7 identifiers, `timestamptz` for instants, `date` for date-only facts, IANA time-zone identifiers for scheduling intent, `bigint` smallest-unit quantities, and `bigint` integer-minor-unit money with currency. Never use binary floating point for stock or finance.
 - Model filtered, joined, authorized, or invariant-bearing facts as typed relational columns. Use JSONB only for bounded extensible metadata with a documented schema and size limit.
-- Every mutable aggregate that can lose concurrent updates uses a version/compare-and-set condition. A preflight application check is not a concurrency guarantee.
-- Enforce identity and scope with foreign keys, unique/partial unique constraints, checks, and exclusion constraints where applicable. Repository predicates must include the authorized tenant/branch even when IDs are globally unique.
+- Every mutable record or workflow that can lose concurrent updates uses a version/compare-and-set condition. A preflight service check is not a concurrency guarantee.
+- Enforce identity and scope with foreign keys, unique/partial unique constraints, checks, and exclusion constraints where applicable. Eloquent/query-builder predicates must include the authorized tenant/branch even when IDs are globally unique.
 - Strong consistency covers access grants, appointments, encounters, prescriptions, payments, invoices, movements, receipts, returns, and refunds. Notifications, analytics, search projections, caches, external mirrors, and AI indexes are eventual and repairable.
-- Insert authoritative changes, audit references, idempotency state, and outbox rows in one transaction. Outbox claiming may use `FOR UPDATE SKIP LOCKED`; interactive domain commands must use the locking strategy specified by their phase.
-- Acquire multiple rows in a deterministic stable-ID order. Bound deadlock/serialization retries around the entire idempotent coordinator, not an arbitrary inner statement.
+- Insert authoritative changes, audit references, idempotency state, and outbox rows in one transaction. Outbox claiming may use `FOR UPDATE SKIP LOCKED`; interactive module service calls must use the locking strategy specified by their phase.
+- Acquire multiple rows in a deterministic stable-ID order. Bound deadlock/serialization retries around the entire idempotent coordinating service call, not an arbitrary inner statement.
 - Least-privilege application, migration, reporting, backup, and AI-adjacent roles remain separate. FastAPI has no Core database credential or network path.
 
-## Domain-critical database invariants
+## Business-critical database invariants
 
-- Booking uniqueness and consultation access must survive concurrent requests; only the approved coordinator creates/revokes the access grant.
+- Booking uniqueness and consultation access must survive concurrent requests; only the approved coordinating service creates/revokes the access grant.
 - Completed clinical facts and published prescription versions are immutable. Corrections/amendments append history rather than overwriting exposed content.
 - Post-visit chat has one thread per completed encounter, deterministic per-thread ordinals, retry uniqueness by client message ID, and a server-authored `writable_until`; authorization checks the timestamp even if the expiry job is late.
 - Catalog packaging conversions are exact positive integers to one smallest tracked unit. Referenced catalog rows retire rather than delete or change identity.
@@ -47,7 +47,7 @@ Always read [Phase 00](../../../docs/phases/00_cross_cutting_architecture_and_de
 
 ## Migration and query workflow
 
-1. Read the active phase and inspect current migrations, schema, constraints, repository queries, data volume assumptions, and production compatibility window.
+1. Read the active phase and inspect current migrations, schema, constraints, Eloquent/query-builder queries, data volume assumptions, and production compatibility window.
 2. Write the invariant and expected concurrent interleaving before choosing an isolation/locking mechanism. Prefer a database constraint plus a clear conflict mapping over application-only checks.
 3. Design tables, keys, checks, foreign keys, unique/partial/exclusion constraints, and indexes together. Every index must name the query/order/filter it serves; avoid speculative indexes and premature partitioning.
 4. Implement changes as expand -> deploy compatible code -> resumable bounded backfill -> validate -> switch reads/writes -> contract later. Use lock/statement timeouts and avoid unbounded rewrites on high-volume tables.
@@ -60,9 +60,9 @@ Always read [Phase 00](../../../docs/phases/00_cross_cutting_architecture_and_de
 Provide evidence using the repository's discovered commands and a real supported PostgreSQL/PostGIS version:
 
 - migrate a clean database, upgrade a prior compatible schema, run the backfill twice, and exercise mixed old/new application versions where rollout requires it;
-- prove constraints with negative fixtures and concurrent sessions, including duplicate booking, stale aggregate version, duplicate idempotency key, chat ordinal, FEFO oversell, receipt race, over-return/refund, wrong branch mode, and sync-generation promotion as applicable;
-- force deadlock/serialization failure and an unknown client outcome; the whole coordinator retries/reconciles without partial writes or duplicate effects;
-- roll back an uncommitted coordinator and show no orphan audit, idempotency success, outbox, invoice, movement, receipt, or access-grant row;
+- prove constraints with negative fixtures and concurrent sessions, including duplicate booking, stale record version, duplicate idempotency key, chat ordinal, FEFO oversell, receipt race, over-return/refund, wrong branch mode, and sync-generation promotion as applicable;
+- force deadlock/serialization failure and an unknown client outcome; the whole coordinating service call retries/reconciles without partial writes or duplicate effects;
+- roll back an uncommitted coordinating service call and show no orphan audit, idempotency success, outbox, invoice, movement, receipt, or access-grant row;
 - run `EXPLAIN (ANALYZE, BUFFERS)` or the repository-approved equivalent on production-shaped synthetic queries and retain bounded plan/latency evidence without PHI;
 - flush Redis and restart workers; PostgreSQL truth and reconciliation remain correct;
 - verify application/migration/reporting/backup credentials cannot exceed their documented grants and FastAPI cannot connect;

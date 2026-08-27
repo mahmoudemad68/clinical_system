@@ -49,9 +49,6 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://qdrant:6333"
     qdrant_api_key: SecretStr = SecretStr("")
 
-    otel_enabled: bool = True
-    otel_endpoint: str = "http://otel-collector:4318"
-
     @field_validator("internal_token")
     @classmethod
     def _reject_empty_token_outside_local(
