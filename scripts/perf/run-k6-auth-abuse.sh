@@ -18,6 +18,11 @@ HOST_UID="$(id -u)"
 HOST_GID="$(id -g)"
 LOGIN_IP_LIMIT="${AUTH_LOGIN_PER_IP_PER_MINUTE:-8}"
 
+if [[ -z "${K6_INVALID_PASSWORD:-}" ]]; then
+  K6_INVALID_PASSWORD="$(python3 -c 'import secrets; print("K6inv." + secrets.token_urlsafe(24) + ".9a")')"
+fi
+export K6_INVALID_PASSWORD
+
 mkdir -p "$EVIDENCE_DIR" "$LOG_DIR"
 : >"$LOG_DIR/api-a.log"
 : >"$LOG_DIR/api-b.log"
@@ -181,11 +186,12 @@ docker compose -f "$COMPOSE_FILE" --profile core exec -T redis redis-cli -n 3 FL
 
 login_status() {
   local url="$1"
-  curl -sS -o /dev/null -w '%{http_code}' \
-    -H 'Accept: application/json' \
-    -H 'Content-Type: application/json' \
-    -X POST "$url/api/v1/auth/login" \
-    --data '{"phone":"01000000000","password":"","client_class":"patient_mobile","platform":"android","device_label":"k6"}'
+  python3 -c 'import json,os; print(json.dumps({"phone":"01000000000","password":os.environ["K6_INVALID_PASSWORD"],"client_class":"patient_mobile","platform":"android","device_label":"k6"}))' \
+    | curl -sS -o /dev/null -w '%{http_code}' \
+      -H 'Accept: application/json' \
+      -H 'Content-Type: application/json' \
+      -X POST "$url/api/v1/auth/login" \
+      --data-binary @-
 }
 
 echo "==> Proving rate-limit counters are shared across API processes"
@@ -219,6 +225,7 @@ docker run --rm \
   --network "$NETWORK" \
   -v "$ROOT:/workspace" \
   -e CLINIC_API_BASE_URLS=http://${API_A}:8080,http://${API_B}:8080 \
+  -e K6_INVALID_PASSWORD \
   -v "$LOG_DIR/out:/out" \
   -e CLINIC_K6_SUMMARY=/out/g-01-20-k6-raw.json \
   "$K6_IMAGE" \
@@ -226,7 +233,16 @@ docker run --rm \
   | tee "$LOG_DIR/k6.stdout"
 K6_EXIT=${PIPESTATUS[0]}
 set -e
+
+file_has_runtime_password() {
+  python3 -c 'import os,sys; p=os.environ.get("K6_INVALID_PASSWORD",""); sys.exit(0 if p and p in open(sys.argv[1], errors="replace").read() else 1)' "$1"
+}
+
 if [[ -f "$LOG_DIR/out/g-01-20-k6-raw.json" ]]; then
+  if file_has_runtime_password "$LOG_DIR/out/g-01-20-k6-raw.json"; then
+    echo "refusing to copy k6 raw output that contains the runtime invalid password" >&2
+    exit 1
+  fi
   cp "$LOG_DIR/out/g-01-20-k6-raw.json" "$RAW_OUT"
 fi
 
@@ -238,7 +254,7 @@ HEAD_SHA="$(git -C "$ROOT" rev-parse HEAD)"
 NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 python3 - "$JSON_OUT" "$MD_OUT" "$RAW_OUT" "$HEAD_SHA" "$NOW" "$K6_VERSION" "$RATE_DRIVER" "$REDIS_DBSIZE" "$K6_EXIT" "$share_ok" "$LOG_DIR" "$LOGIN_IP_LIMIT" "$IMAGE" "$K6_IMAGE" <<'PY'
-import json, pathlib, re, sys
+import json, os, pathlib, re, sys
 
 (
     json_path, md_path, raw_path, head, now, k6_version, rate_driver,
@@ -279,7 +295,6 @@ if not raw.get("http_reqs") and export:
     }
 
 canaries = [
-    "",
     "k6InvalidRefreshToken",
     "RecoveredHorse12",
     "246801",
@@ -290,10 +305,12 @@ canaries = [
     "not-a-real-password",
     "correct-horse-battery",
 ]
+runtime_password = os.environ.get("K6_INVALID_PASSWORD", "")
 scan_files = [
     pathlib.Path(log_dir) / "k6.stdout",
     pathlib.Path(log_dir) / "api-a.log",
     pathlib.Path(log_dir) / "api-b.log",
+    pathlib.Path(log_dir) / "share-proof.txt",
     pathlib.Path(raw_path),
 ]
 leaks = []
@@ -304,6 +321,8 @@ for path in scan_files:
     for canary in canaries:
         if canary in text:
             leaks.append({"file": path.name, "canary": canary})
+    if runtime_password and runtime_password in text:
+        leaks.append({"file": path.name, "canary": "runtime_invalid_password"})
 
 counts = raw.get("counts_429") or {}
 latency = raw.get("latency_ms") or {}
@@ -424,8 +443,6 @@ evidence = {
     },
 }
 
-pathlib.Path(json_path).write_text(json.dumps(evidence, indent=2) + "\n")
-
 rows = "\n".join(
     f"| {name} | {value} |" for name, value in abuse_429.items()
 )
@@ -502,11 +519,17 @@ PASS requires shared Redis 429s across both API processes, k6 thresholds,
 zero 5xx, zero below-threshold 429s, 429s in every abuse scenario, Retry-After
 on 429s, and no canaries in k6 output or API logs.
 """
+json_text = json.dumps(evidence, indent=2) + "\n"
+if runtime_password and (runtime_password in json_text or runtime_password in md):
+    print("refusing to write evidence that contains the runtime invalid password", file=sys.stderr)
+    sys.exit(1)
+pathlib.Path(json_path).write_text(json_text)
 pathlib.Path(md_path).write_text(md)
 print(md)
 if result == "FAIL":
     sys.exit(1)
 PY
 
+unset K6_INVALID_PASSWORD
 chown "${HOST_UID}:${HOST_GID}" "$JSON_OUT" "$MD_OUT" "$RAW_OUT" 2>/dev/null || true
 echo "==> G-01-20 evidence written to $JSON_OUT"

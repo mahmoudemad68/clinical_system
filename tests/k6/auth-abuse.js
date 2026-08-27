@@ -15,6 +15,13 @@ const BASES = String(__ENV.CLINIC_API_BASE_URLS || __ENV.CLINIC_API_BASE_URL || 
   .map((item) => item.trim())
   .filter((item) => item !== '');
 
+const INVALID_PASSWORD = String(__ENV.K6_INVALID_PASSWORD || '').trim();
+if (INVALID_PASSWORD === '') {
+  throw new Error(
+    'K6_INVALID_PASSWORD is required. Generate it at runtime via scripts/perf/run-k6-auth-abuse.sh; do not commit a password.',
+  );
+}
+
 const CHALLENGE = '01900000-0000-7000-8000-00000000c0e1';
 const MFA_CHALLENGE = '01900000-0000-7000-8000-00000000c0e2';
 const RECOVERY_CHALLENGE = '01900000-0000-7000-8000-00000000c0e3';
@@ -167,7 +174,7 @@ function record(res, abuseCounter) {
 function loginBody() {
   return JSON.stringify({
     phone: '01000000000',
-    password: '',
+    password: INVALID_PASSWORD,
     client_class: 'patient_mobile',
     platform: 'android',
     device_label: 'k6',

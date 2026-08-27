@@ -14,10 +14,14 @@ is missing on a `429`.
 bash scripts/perf/run-k6-auth-abuse.sh
 ```
 
-Direct k6 (already-running Redis-backed API):
+Direct k6 (already-running Redis-backed API) requires a runtime-generated
+invalid password. Do not commit one:
 
 ```bash
+K6_INVALID_PASSWORD="$(python3 -c 'import secrets; print("K6inv." + secrets.token_urlsafe(24) + ".9a")')"
+export K6_INVALID_PASSWORD
 k6 run tests/k6/auth-abuse.js
+unset K6_INVALID_PASSWORD
 ```
 
 Required live API configuration: `AUTH_RATE_LIMIT_STORE=ratelimit`,
