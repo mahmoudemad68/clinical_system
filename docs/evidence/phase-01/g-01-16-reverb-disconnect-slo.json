@@ -13,7 +13,7 @@
   "p99_seconds": 0.044737,
   "max_seconds": 0.131135,
   "ci_green_sha": "14259cf8dd6e6fb3a7452251cc248f479223d0cb",
-  "candidate_sha": "14259cf8dd6e6fb3a7452251cc248f479223d0cb",
+  "candidate_sha": "2ebda6e6318860da5906b695af4ead7ac33601d2",
   "command": "bash scripts/perf/run-reverb-disconnect-slo.sh",
   "image": "clinic-php-pgsql:local",
   "runtime": {

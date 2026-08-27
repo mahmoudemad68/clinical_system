@@ -3,7 +3,7 @@
 - **Gate:** G-01-16
 - **Result:** PASS
 - **CI-green SHA (PR #3, not merged):** `14259cf8dd6e6fb3a7452251cc248f479223d0cb`
-- **Candidate SHA:** `14259cf8dd6e6fb3a7452251cc248f479223d0cb` (updated to the implementation commit after local commit)
+- **Candidate SHA:** `2ebda6e6318860da5906b695af4ead7ac33601d2`
 - **Recorded:** 2026-08-27T12:51:00Z
 - **Sample size:** 100
 - **Timeouts:** 0
