@@ -143,7 +143,7 @@ Tests
 | Metrics                      | Prometheus + Grafana                   |
 | Logs                         | Loki or equivalent                     |
 | Error tracking               | Sentry                                 |
-| Tracing                      | OpenTelemetry                          |
+| Tracing                      | Laravel Telescope (local) + W3C `traceparent` echo |
 | CI/CD                        | GitHub Actions                         |
 
 Laravel Octane يسمح بتشغيل Laravel على long-lived workers بدل bootstrap كامل لكل request، وFrankenPHP مدعوم رسميًا بواسطة Octane. ([Laravel][3])

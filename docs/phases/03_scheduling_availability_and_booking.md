@@ -35,7 +35,7 @@ The observable outcome is that one and only one actor can acquire a contested sl
 - No review creation; Phase 08 consumes completed appointments for review eligibility.
 - No reminder delivery; Phase 09 consumes durable events.
 
-## Module ownership and SOLID boundaries
+## Laravel module ownership and services
 
 ### `Scheduling`
 
@@ -62,12 +62,12 @@ GetPatientAppointments
 GetDoctorDayAppointments
 ```
 
-### Ports
+### Module services and external integrations
 
 ```text
-DoctorDirectoryPort       # approved doctor/location/visibility from Phase 02
-PatientRegistryPort       # patient handle and authorized exact-match/create command
-MembershipPort            # secretary scope
+DoctorDirectoryService       # approved doctor/location/visibility from Phase 02
+PatientRegistryService       # patient handle and authorized exact-match/create command
+MembershipService            # secretary scope
 Clock
 TransactionRunner
 AvailabilityCache
@@ -80,11 +80,11 @@ Scheduling returns available intervals and explanations; Appointments owns the t
 
 - PostgreSQL/PostGIS with `tstzrange`, GiST indexes, exclusion constraints where applicable, row locks, and transaction retry policy.
 - Laravel cache/Redis for short-TTL availability results and stampede protection only.
-- A small application-owned recurrence implementation for the limited V1 weekly rules; adopt an RFC recurrence package only after an ADR proves the need and DST behavior.
+- A small `AvailabilityService` recurrence implementation for the limited V1 weekly rules; adopt an RFC recurrence package only after an ADR proves the need and DST behavior.
 - `brick/money` for immutable EGP price snapshots using minor units.
-- Carbon/Laravel time APIs behind an injected `Clock`; domain tests do not call system time directly.
+- Carbon/Laravel time APIs behind an injected `Clock`; service tests do not call system time directly.
 - Flutter patient mobile uses the generated Dart client, Riverpod, `intl`, calendar/date controls, and secure idempotency-key persistence for an in-flight booking intent.
-- Electron doctor/clinic-staff desktop uses React, TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, and the generated TypeScript client. Its sandboxed renderer calls typed schedule/appointment ports through preload; main owns credentials and transport but no scheduling rule.
+- Electron doctor/clinic-staff desktop uses React, TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, and the generated TypeScript client. Its sandboxed renderer calls typed schedule/appointment capabilities through preload; main owns credentials and transport but no scheduling rule.
 - Pest/PHPUnit, PostgreSQL concurrency harness, Hypothesis/property tests where a language boundary benefits, browser-admin Playwright, Flutter patient-mobile integration tests, Electron main/preload/renderer tests plus WebdriverIO with `@wdio/electron-service` packaged-app E2E, and k6.
 
 ## Data model and migrations
@@ -177,7 +177,7 @@ created_at / updated_at
 
 ### `appointment_status_events`
 
-Append-only: appointment, from/to status, actor, reason, source, occurred time, expected aggregate version, request/correlation IDs. Unique `(appointment_id, resulting_version)`.
+Append-only: appointment, from/to status, actor, reason, source, occurred time, expected record version, request/correlation IDs. Unique `(appointment_id, resulting_version)`.
 
 ### Optional `appointment_slot_claims`
 
@@ -278,7 +278,7 @@ POST   /appointments/{id}/reschedule
 POST   /clinic-locations/{location_id}/walk-in-appointments
 ```
 
-- Mutations require aggregate version where stale updates matter and idempotency keys for booking/reschedule/cancel/walk-in.
+- Mutations require record version where stale updates matter and idempotency keys for booking/reschedule/cancel/walk-in.
 - Availability accepts a bounded local date/date range and returns UTC/RFC3339 instants, display timezone, expiry, and signed opaque slot token.
 - Patient cannot supply `patient_id`; doctor/secretary cannot supply a clinic outside active membership.
 - Safe `404` hides inaccessible appointment/resource existence. `409 SLOT_UNAVAILABLE`, `409 VERSION_CONFLICT`, and `422 SCHEDULE_CONFLICT` are stable codes.
@@ -359,7 +359,7 @@ Jobs:
 
 - OpenAPI/generated Dart patient-mobile and TypeScript Electron/admin client compatibility for schedules, availability, booking, cancellation, reschedule, and walk-in.
 - Time/money/slot-token/error schemas; event compatibility and sensitive-field denial.
-- Clock, cache, directory, patient-registry, membership, and outbox adapters pass owned port contracts.
+- Clock, cache, directory, patient-registry, membership, and outbox integrations pass their focused service or provider-interface contracts.
 
 ### End-to-end tests
 
@@ -425,6 +425,6 @@ outbox_age_seconds{event_group=appointments}
 
 ## Deliverables
 
-- `Scheduling` and `Appointments` modules, ports, migrations, policies, OpenAPI, and events.
+- `Scheduling` and `Appointments` modules with controllers, Form Requests, services, models, optional backed enums, migrations, policies, OpenAPI, and events.
 - Doctor schedule/type editors, patient availability/booking flow, and staff walk-in flow.
 - Concurrency/load/security suites, time-model ADR, dashboards, alerts, and runbooks.

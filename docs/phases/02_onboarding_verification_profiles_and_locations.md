@@ -23,7 +23,7 @@ The observable outcome is that approved synthetic actors can reach only their pr
 
 - Phase 01 account, phone verification, identity protection, sessions, capabilities, profile-link port, and privileged MFA gates pass.
 - Private S3-compatible storage, signed upload, malware scanning adapter, outbox, audit, and redaction foundations from Phase 00 are available.
-- Product/legal defines required doctor and pharmacy documents, allowed rejection reasons, retention, reviewer qualifications, and appeal/re-submission rules as configuration—not hard-coded assumptions.
+- Product, privacy, and security owners define required doctor and pharmacy documents, allowed rejection reasons, retention, reviewer qualifications, and appeal/re-submission rules as configurable project policy—not hard-coded assumptions. Optional legal advice may refine the policy but does not block work.
 - An ADR defines whether Egyptian National ID validation includes an official check algorithm; until approved, validate the agreed canonical 14-digit format without claiming government verification.
 
 ## Non-goals
@@ -34,7 +34,7 @@ The observable outcome is that approved synthetic actors can reach only their pr
 - No complex admin-role designer, branch transfer, multi-country behavior, or public verification-document URL.
 - No automated external government/syndicate/license verification unless separately contracted and approved.
 
-## Module ownership and SOLID boundaries
+## Laravel module ownership and services
 
 ### `Patients`
 
@@ -46,7 +46,7 @@ CreateUnlinkedPatientProfile
 AttachVerifiedAccount
 GetOwnPatientProfile
 UpdateOwnDemographics
-ResolvePatientHandle          # narrow server-to-server port
+ResolvePatientHandle          # narrow method on PatientRegistryService
 ```
 
 `Patients` never reads encounter, prescription, lab, or clinical tables. “Patient cannot edit clinical data” does not prohibit correction of approved demographic fields; every allowed field and provenance is explicit.
@@ -65,22 +65,22 @@ Owns clinic locations and clinic-staff memberships. Phase 03 owns schedule/appoi
 
 ### `Verification`
 
-Owns verification cases, requirements, document references, reviewer assignment, decisions, reasons, re-submission, and audit projection. It depends on `VerificationDocumentStore`, `MalwareScanner`, and applicant ports; it cannot query clinical modules.
+Owns verification cases, requirements, document references, reviewer assignment, decisions, reasons, re-submission, and audit projection. Its `VerificationService` uses `VerificationDocumentService`, `MalwareScanner`, and applicant module services; it cannot query clinical modules.
 
 ### `Admin`
 
-Owns the verification work queue UI/query, but decision commands call `Verification`. Admin DTOs contain only application/profile/legal-document fields approved for verification. They must not contain medical-record joins or generic patient lookup.
+Owns the verification work queue UI/query, but decision controllers call `VerificationService`. Admin DTOs contain only profile and verification-document fields allowed for the workflow. They must not contain medical-record joins or generic patient lookup.
 
 Dependency rule:
 
 ```text
-Patients/Doctors/Pharmacies/Clinics -> Identity/Access public ports
-Verification -> applicant + document ports
-Admin -> Verification application API
+Patients/Doctors/Pharmacies/Clinics -> Identity/Access public services
+VerificationService -> applicant module services + VerificationDocumentService
+Admin controller -> VerificationService
 No module -> another module's Eloquent model/table
 ```
 
-Ports are split by action (`StoreVerificationObject`, `ReadVerificationObject`, `ScanVerificationObject`, `PublishVerificationDecision`) so a reviewer cannot accidentally acquire object-administration or clinical permissions.
+Keep methods purpose-specific (`storeVerificationObject`, `readVerificationObject`, `scanVerificationObject`, `publishVerificationDecision`) on narrowly scoped services so a reviewer cannot accidentally acquire object-administration or clinical permissions. External object storage and scanner implementations may use small provider interfaces.
 
 ## Packages and platform capabilities
 
@@ -313,7 +313,7 @@ DELETE /clinic-locations/{id}/memberships/{membership_id}
 - Collection endpoints use cursor pagination and projection-specific resources.
 - Verification decision and onboarding submission require idempotency keys and optimistic case/profile version.
 - Upload requests specify requirement code, expected size, and declared media type; server returns an opaque upload ID and signed target, never an object key.
-- Patient exact-match lookup is not a public/general endpoint. It is an internal application port invoked only by approved registration/walk-in commands.
+- Patient exact-match lookup is not a public/general endpoint. It is an internal `PatientRegistryService` method invoked only by approved registration/walk-in services.
 
 ## Events and jobs
 
@@ -396,7 +396,7 @@ Jobs:
 
 - OpenAPI/generated Dart patient-mobile and TypeScript Electron/admin clients for onboarding, upload, decision, profile, location, and membership contracts.
 - Electron file-dialog/upload bridge contracts reject unknown operations/fields, forged senders, stale handles, wrong purpose, traversal/symlink swaps, oversized files, cancellation races, and responses containing raw paths or credentials.
-- Every patient-registry, verification-document, scanner, applicant, geocoder/map-link, and event adapter passes owned port contracts.
+- Every patient-registry, verification-document, scanner, applicant, geocoder/map-link, and event integration passes its focused service or provider-interface contract.
 - Current and previous compatible event versions deserialize without sensitive fields.
 
 ### End-to-end tests
@@ -461,7 +461,7 @@ location_changes_total{type,result}
 - Existing-profile claim meets the approved assurance policy and never returns candidate existence to the client.
 - Cross-organization, cross-branch, cross-clinic, self-review, mass-assignment, and status-forgery suites pass.
 - Profile/location API p95 targets are met on representative data and PostGIS queries use expected indexes.
-- Threat-model, data-retention, document-requirement, reviewer-separation, and profile-correction policies have product/security/privacy/legal approval.
+- Threat-model, data-retention, document-requirement, reviewer-separation, and profile-correction policies have documented product/security/privacy evidence. Missing legal sign-off never blocks phase completion.
 - No Critical or unaccepted exploitable High finding remains.
 
 ## Deliverables

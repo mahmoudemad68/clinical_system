@@ -16,7 +16,7 @@ The model may propose a tool call, but it never owns authorization, tenant/branc
 - Section 70, lines 2195-2213: PostgreSQL medication search remains the catalog lookup authority.
 - Sections 76-77, lines 2336-2386: pharmacy knowledge content and the mandatory split between RAG knowledge and live inventory tools.
 - Sections 79-83, lines 2403-2503: hybrid retrieval, reranking, chunking, and active document versions.
-- Sections 94-98, lines 2765-2878: AI isolation, provider port, traceability, prompt-injection defense, and PostgreSQL conversation storage.
+- Sections 94-98, lines 2765-2878: AI isolation, provider integration, traceability, prompt-injection defense, and PostgreSQL conversation storage.
 - Section 107, lines 3081-3108: replay protection for accepted AI runs and any future side-effecting tools.
 - Sections 117, 120, 122-125, lines 3346-3535: private services, auditing/redaction/privacy, and Qdrant security/scaling.
 - Sections 132-133 and 140-143, lines 3640-3693 and 3835-3915: AI latency/concurrency, separated workers, health, and monitoring.
@@ -28,7 +28,7 @@ The model may propose a tool call, but it never owns authorization, tenant/branc
 - Phases 10-13 provide approved pharmacy organizations, branch memberships, medication identities/packaging, ledger-derived balances, batches, FEFO, purchasing, and POS invariants.
 - Phase 14 provides normalized medication resolution and search aliases.
 - Phase 15 defines native versus integrated pharmacy sources and freshness semantics.
-- Phase 16 provides the isolated AI runtime, pharmacy collection, ingestion/versioning, hybrid retrieval, provider ports, trace records, and evaluation harness.
+- Phase 16 provides the isolated AI runtime, pharmacy collection, ingestion/versioning, hybrid retrieval, provider integrations, trace records, and evaluation harness.
 - Pharmacy and clinical reviewers approve the V1 knowledge taxonomy, response limitations, and evaluation governance.
 
 ## Non-goals
@@ -41,7 +41,7 @@ The model may propose a tool call, but it never owns authorization, tenant/branc
 - No arbitrary SQL, URLs, file access, shell/code execution, or open-ended plugin/tool registry.
 - No silent answer when required live inventory data is stale or unavailable.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Ownership
 
@@ -68,7 +68,7 @@ FastAPI pharmacy_assistant
 
 FastAPI cannot connect to core PostgreSQL. It asks Laravel to execute a named, versioned tool with typed arguments and a short-lived opaque execution grant. Laravel reloads current membership and state and authorizes again immediately before every tool execution.
 
-### Ports and capability registry
+### Services and capability registry
 
 ```text
 PharmacyAiAccessPolicy
@@ -87,8 +87,8 @@ PharmacyKnowledgeRetriever
 
 PharmacyLlmProvider
 AiOutputPolicy
-AiRunRepository
-AiToolInvocationRepository
+Eloquent models: AiRun, AiToolInvocation
+PharmacyAiService
 ```
 
 V1 registry capabilities are intentionally small:
@@ -101,13 +101,13 @@ V1 registry capabilities are intentionally small:
 
 The registry defines typed schema, side-effect class, maximum rows/output bytes, deadline, rate/cost class, allowed roles, audit fields, and safe errors. Unknown tools fail closed. Tool results are data; they cannot add tools or permissions.
 
-SOLID application:
+Laravel service design:
 
 - **Single responsibility:** intent proposal, authorization, medication resolution, inventory read, retrieval, answer validation, and persistence are separate components.
 - **Open/closed:** a new read capability requires a new reviewed registry entry/adapter rather than changes to a god tool.
 - **Liskov substitution:** native and integrated inventory readers pass identical availability/freshness contracts.
-- **Interface segregation:** AI receives read interfaces only; POS and inventory command ports are absent from its dependency graph.
-- **Dependency inversion:** domain/application layers own the interfaces; Eloquent, Qdrant, provider SDK, and HTTP adapters implement them.
+- **Interface segregation:** AI receives read services only; POS and inventory write services are absent from its dependency graph.
+- **Conventional services:** Laravel AI services use owning-module read services and Eloquent for AI-owned records; Qdrant, provider SDK, and HTTP integrations use focused classes or small replaceable-provider interfaces.
 
 ## Packages and runtime components
 
@@ -115,8 +115,8 @@ Versions are pinned through Phase 00.
 
 ### Laravel/PHP
 
-- Existing Laravel/PostgreSQL/PostGIS, Sanctum, audit, outbox, Horizon, OpenTelemetry, and AI internal-client packages.
-- Existing medication normalization, exact decimal quantity/unit value objects, and UUIDv7 infrastructure.
+- Existing Laravel/PostgreSQL/PostGIS, Sanctum, audit, outbox, Horizon, Prometheus, Laravel Telescope (local), and AI internal-client packages.
+- Existing medication normalization, backed unit enums, exact validated decimal strings/integers, and UUIDv7 infrastructure.
 - JSON Schema/OpenAPI validation for capability inputs and outputs; avoid runtime evaluation or reflection-based execution of model content.
 
 ### Python/FastAPI
@@ -259,7 +259,7 @@ This endpoint is private workload-to-workload only. The tool registry resolves t
 - `ai.pharmacy_run_succeeded.v1`, `ai.pharmacy_run_failed.v1`, and `ai.tool_invocation_denied.v1` contain safe IDs, tool/version, status, latency, and error class only.
 - Membership/branch revocation closes or disables affected active conversations.
 - Retention, stale-run reconciliation, and evaluation-regression jobs are bounded/idempotent.
-- No AI event mutates inventory. Inventory changes continue exclusively through existing domain commands/events.
+- No AI event mutates inventory. Inventory changes continue exclusively through `InventoryService` and its Laravel events.
 
 ## Pharmacy desktop work
 
@@ -269,7 +269,7 @@ This endpoint is private workload-to-workload only. The tool registry resolves t
 - Display degraded/stale/permission-denied states without replacing the normal inventory/POS UI.
 - Provide stop/retry controls; do not persist hidden tool payloads or unrestricted conversation context locally.
 - Treat rendered AI text as hostile and sanitize/disable active Markdown, HTML, and external navigation. Every main handler validates the sender frame, typed schema, size, deadline, active session/branch, and requested capability.
-- Localized Arabic/English messages must retain medication/unit precision; quantities and packaging use domain formatting rather than model-generated conversions.
+- Localized Arabic/English messages must retain medication/unit precision; quantities and packaging use the module's formatting service rather than model-generated conversions.
 
 ## Security and privacy controls
 
@@ -279,7 +279,7 @@ This endpoint is private workload-to-workload only. The tool registry resolves t
 - Defend against direct/indirect prompt injection, cross-tenant requests, tool-name/argument injection, excessive tool loops, denial-of-wallet, malformed Unicode, unsafe Markdown/links, and inventory inference across branches.
 - Do not send patient, prescription, medical-record, national-ID, owner phone, or employee personal data to Qdrant/provider.
 - Audit access/denials without logging questions, answers, stock payloads, tokens, or knowledge text. Metrics use bounded tool/version/status labels only.
-- Provider contracts and data retention/residency require privacy/legal review. Pharmacy/clinical content requires qualified local review; the engineering team does not infer regulatory approval.
+- Provider contracts and data retention/residency require documented privacy/security configuration with conservative defaults. Pharmacy/clinical content requires qualified local review; optional legal advice does not block engineering completion, and the team does not claim regulatory approval.
 
 ## Test plan
 
@@ -323,7 +323,7 @@ This endpoint is private workload-to-workload only. The tool registry resolves t
 - Prompt-injection corpora attempt cross-tenant extraction, tool override, loop amplification, fake inventory, unsafe links, and secret disclosure; deterministic controls prevent them.
 - Direct tool endpoint, forged grant, branch-ID tampering, role revocation, replay, response substitution, and Qdrant-public-access tests deny.
 - Hostile AI/knowledge text in the renderer cannot obtain Node/Electron, navigate externally without policy, access credentials/local storage, or invoke scanner/file/shell/print/update/native capabilities.
-- Pharmacy domain regression suite still proves FEFO, expired-sale prevention, cancellation reversal, partial receive, refund uniqueness, and connector idempotency.
+- Pharmacy module regression suite still proves FEFO, expired-sale prevention, cancellation reversal, partial receive, refund uniqueness, and connector idempotency.
 - Versioned evaluation measures retrieval Recall@K/MRR/relevance, groundedness, hallucination, tool selection/argument correctness, refusal, latency, and cost; pharmacy/clinical reviewers approve promotion thresholds.
 
 ## Observability, migration, and rollout

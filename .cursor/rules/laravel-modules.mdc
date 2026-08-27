@@ -1,0 +1,15 @@
+---
+description: Use conventional nwidart Laravel modules with controllers, services, models, and optional enums; do not add DDD layers
+alwaysApply: true
+---
+
+# Laravel Modules
+
+- The Laravel Core uses `nwidart/laravel-modules` and top-level `Modules/<Name>/` modules. Install the Laravel-13-compatible release with `composer require nwidart/laravel-modules` and keep Composer's module merge plugin enabled.
+- Generate modules and module-owned files with `php artisan module:*` commands when an appropriate generator exists. Do not create a second custom module loader under `app/Modules`.
+- Keep each module conventional and easy to navigate: `app/Http/Controllers`, `app/Http/Requests`, `app/Http/Resources`, `app/Models`, `app/Services`, `app/Policies`, `app/Jobs`, `app/Events`, `app/Listeners`, `app/Providers`, and `app/Enums` when needed, plus module-owned `routes`, `database`, `resources`, `config`, and `tests` folders.
+- Controllers authenticate/authorize, validate through Form Requests, call a module service, and return an Inertia response or API Resource. Put business workflows, transaction boundaries, idempotency, and coordination in descriptive service classes.
+- Use Eloquent models, relationships, scopes, casts, policies, events, jobs, notifications, and Laravel service-container bindings directly. Introduce an interface under `app/Contracts` only for a genuinely replaceable external provider or shared boundary.
+- Use PHP backed enums for stable finite sets such as statuses, types, roles, channels, or reasons when they improve validation and casts. Do not create an enum for open-ended or database-configured values.
+- Do not create or extend `Domain`, `Application`, or `Infrastructure` layers, command/query buses, handler-per-action trees, aggregates, repositories wrapping ordinary Eloquent access, DDD value-object trees, or `*Port` abstractions. Existing DDD-shaped code in a touched module should be moved incrementally into the conventional folders without changing behavior.
+- A module owns its tables and write workflows. Cross-module work calls a descriptive public module service; a service may coordinate one database transaction across module services. Events/jobs are for post-commit side effects, not for writes that must be atomic.

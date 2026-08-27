@@ -1,6 +1,6 @@
 ---
 name: clinic-realtime-jobs-delivery
-description: Implement Laravel Reverb, Horizon, Redis/outbox consumers, Firebase push, Laravel Database Notifications, chat delivery, schedulers, retries, and provider adapters for clinic workflows. Use for post-commit asynchronous/realtime delivery, not Python AI workers or authoritative domain transitions.
+description: Implement Laravel Reverb, Horizon, Redis/outbox consumers, Firebase push, Laravel Database Notifications, chat delivery, schedulers, retries, and provider integrations for clinic workflows. Use for post-commit asynchronous/realtime delivery, not Python AI workers or authoritative business transitions.
 ---
 
 # Clinic Realtime Jobs Delivery
@@ -11,7 +11,7 @@ Deliver committed clinic events reliably without turning realtime, queues, cache
 
 This skill owns Laravel-side transactional-outbox consumers, Horizon queues, Redis queue coordination, Reverb private channels, notification intents and attempts, Firebase push plus Laravel Database Notifications, SMS adapters, schedules, retry/dead-letter/repair behavior, and delivery observability.
 
-The originating domain owns its state transition and event meaning. PostgreSQL owns durable claim/idempotency constraints. Chat owns thread/message truth in Laravel; Reverb only signals that authorized clients should fetch current data. Analytics and search projections own their derived records. Python AI workers and their queue are explicitly outside this skill.
+The originating module owns its state transition and event meaning. PostgreSQL owns durable claim/idempotency constraints. Chat owns thread/message truth in Laravel; Reverb only signals that authorized clients should fetch current data. Analytics and search projections own their derived records. Python AI workers and their queue are explicitly outside this skill.
 
 Never make an appointment, access grant, encounter, prescription, stock balance, invoice, payment, refund, or external mirror correct by hoping a later job runs.
 
@@ -29,7 +29,7 @@ Primary sources are [Phase 04](../../../docs/phases/04_realtime_queue_and_consul
 
 ## Queue and event boundaries
 
-- Domain changes and outbox rows commit atomically in PostgreSQL. A dispatcher/consumer begins only after commit; never broadcast or call a provider from an open business transaction.
+- Business changes and outbox rows commit atomically in PostgreSQL. A dispatcher/consumer begins only after commit; never broadcast or call a provider from an open business transaction.
 - Laravel Horizon owns only Laravel/PHP job classes. Use named lanes such as `critical`, `notifications`, `files`, `integrations`, `analytics`, `reports`, `backups`, and Laravel-side AI orchestration according to Phase 00.
 - Python receives an authenticated, versioned JSON command over the approved internal API/protocol and enqueues it through an AI-owned typed `TaskQueue`. It uses a separate namespace/instance, worker library, schema, retry budget, and dead-letter path. Neither runtime deserializes or acknowledges the other's payload.
 - Event payloads contain stable IDs, schema version, minimal safe facts, correlation/causation IDs, and no clinical document, chat body, lab result, national ID, credential, raw integration row, or AI prompt/output.
@@ -52,7 +52,7 @@ Primary sources are [Phase 04](../../../docs/phases/04_realtime_queue_and_consul
 ## Implementation workflow
 
 1. Read the originating and consuming phase contracts. Identify the authoritative committed record, event schema, intended effect identity, deadline, classification, and acceptable delay.
-2. Confirm the producer writes the outbox in its existing business transaction. If the originating invariant depends on the consumer succeeding, route the work back to an application coordinator instead of adding a job.
+2. Confirm the producer writes the outbox in its existing business transaction. If the originating invariant depends on the consumer succeeding, route the work back to a coordinating module service instead of adding a job.
 3. Implement a small consumer that loads current state, claims an idempotent effect, invokes one narrow adapter, normalizes the result, and records success/retry/permanent/dead-letter status.
 4. Define adapter timeouts, retryable status set, maximum attempts/deadline, jitter, concurrency, rate limit, cancellation, circuit/bulkhead behavior where supported, and operator repair procedure.
 5. For Reverb, implement channel authorization, sanitized/versioned payload, reconnect snapshot, ordering/version handling, and backpressure limits together.

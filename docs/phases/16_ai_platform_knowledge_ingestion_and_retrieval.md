@@ -8,7 +8,7 @@ Deliver the isolated AI platform on which Doctor, Pharmacy, and Patient AI phase
 - A separately deployed FastAPI service with no Core PostgreSQL credentials.
 - A typed internal command boundary and Python-owned durable worker queue, separate from Laravel Horizon.
 - Quarantine-to-clean document ingestion, parsing/OCR, structure-aware chunking, BGE-M3 dense/sparse embeddings, Qdrant staging, version activation, hybrid retrieval, reranking, and rebuild.
-- Provider, embedding, reranking, parser, retrieval, deterministic tool-policy, budget, trace, and evaluation ports.
+- Provider, embedding, reranking, parser, retrieval, deterministic tool-policy, budget, trace, and evaluation services or genuine external-provider interfaces.
 - Default-deny Qdrant tenant/scope filters and prompt-injection/poisoning defenses.
 
 This phase exposes internal platform contracts and evaluation tooling, not patient/doctor/pharmacy AI user features. AI/Qdrant/provider failure must leave every Core workflow healthy.
@@ -31,7 +31,7 @@ This phase exposes internal platform contracts and evaluation tooling, not patie
 - Phase 00 provides service/container layout, internal-service authentication, OpenAPI/events, outbox, secrets, telemetry, CI, data classification, and the rule that Python never consumes Horizon serialization.
 - Phase 07 provides private S3, quarantine/clean states, malware scan, hash, verified text/PDF/image metadata, and sandboxed extraction primitives.
 - Phase 10 provides medication/pharmacy knowledge identity and governance inputs.
-- Legal/privacy approve source licenses, retention, residency, external-provider processing terms, training-use policy, deletion, breach terms, and cross-border transfer before any regulated production data is sent externally.
+- Privacy and security owners document source licenses, retention, residency, external-provider processing terms, training-use policy, deletion, breach terms, and cross-border handling as configurable project policy before any regulated production data is sent externally. Use conservative defaults and keep external regulated-data transfer disabled until that configuration exists; legal sign-off is not required.
 - Clinical/pharmacy owners approve KB provenance, review, activation, rollback, and evaluation datasets.
 - Infrastructure approves AI-owned Redis/broker isolation, Qdrant network/storage, model artifact provenance, GPU quotas, and rebuild/runbooks.
 
@@ -45,7 +45,7 @@ This phase exposes internal platform contracts and evaluation tooling, not patie
 - No automatic promotion of doctor-private knowledge to shared.
 - No unreviewed model/prompt/retrieval/config fallback or silent provider substitution.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### System ownership
 
@@ -81,19 +81,19 @@ FastAPI has no Core database user, connection string, ORM, or shared Eloquent sc
       -> Laravel Horizon dispatch job
       -> POST authenticated typed command to FastAPI
       -> FastAPI validates/idempotently accepts
-      -> AI-owned TaskQueue port
+      -> AI-owned TaskQueue interface
       -> dedicated Python broker/Redis + Dramatiq worker
       -> Qdrant/model/parser adapters
       -> signed callback to Laravel
 
 Horizon owns PHP jobs only. Python workers never deserialize, acknowledge, inspect, or share a consumer group with Laravel job payloads. Use a dedicated Redis instance or at minimum separate endpoint/ACL/namespace, persistence policy, quotas, and monitoring approved by operations.
 
-### Ports
+### Module services and external integrations
 
 Laravel-owned:
 
-    KnowledgeDocumentRepository
-    KnowledgeVersionRepository
+    Eloquent models: KnowledgeDocument, KnowledgeVersion, AiTask
+    KnowledgeDocumentService
     KnowledgeAccessPolicy
     AiTaskDispatcher
       submit(command, idempotency_key, deadline)
@@ -144,7 +144,7 @@ FastAPI-owned:
 
 - ToolPolicy defaults to no permitted tools in Phase 16. Later phases register named typed tools; provider/model output never executes a call directly.
 - Provider-specific tool-call, response, model, exception, and token types remain inside adapters.
-- Document parsing, chunking, embedding, indexing, activation, retrieval, and evaluation are independent explicit handlers.
+- Document parsing, chunking, embedding, indexing, activation, retrieval, and evaluation are independent explicit services or bounded workflow stages.
 - No general LangChain/LangGraph/autonomous-agent framework is introduced; bounded workflows remain visible and testable.
 
 ## Packages and runtime components
@@ -155,7 +155,7 @@ Versions/models are evaluated and pinned by digest/lockfile; floating model revi
 
 - Laravel 13 HTTP client or ADR-approved PSR-18 client with connection/read deadlines, cancellation, mTLS/workload identity, and typed adapter errors.
 - Horizon for Laravel dispatch/callback reconciliation only.
-- PostgreSQL, private S3/Flysystem, audit/outbox, OpenTelemetry, Sentry with prompt/content capture disabled.
+- PostgreSQL, private S3/Flysystem, audit/outbox, Prometheus, Sentry with prompt/content capture disabled.
 - deptrac/deptrac, Larastan/PHPStan, Pest/PHPUnit, and contract-test tooling.
 
 ### Python/FastAPI
@@ -169,7 +169,7 @@ Versions/models are evaluated and pinned by digest/lockfile; floating model revi
 - torch/transformers required by the pinned inference path; separate GPU worker image/pool from FastAPI API.
 - pypdf, pdfplumber, python-magic, and Pillow with decompression limits for approved formats.
 - Tesseract/OCRmyPDF or an ADR-approved OCR service in a sandboxed worker after license/SBOM review.
-- structlog with central redaction, OpenTelemetry FastAPI/HTTPX instrumentation, prometheus-client, and Sentry SDK with sensitive capture off.
+- structlog with central redaction, FastAPI prometheus-client, and Sentry SDK with sensitive capture off.
 - pytest, pytest-asyncio, respx, Hypothesis, testcontainers, ruff, mypy/Pyright, bandit, pip-audit, Semgrep, and retrieval metric tooling such as ir-measures or ranx.
 
 Do not install unstructured or other broad parser/model bundles without a measured need, license review, attack-surface review, and image-size/SBOM impact.
@@ -293,7 +293,7 @@ Every point payload:
 9. Parser/model/provider artifacts and configs are versioned; silent fallback is prohibited.
 10. Every task, page/batch, point, callback, and activation is idempotent and deadline/budget bounded.
 11. Clinical-document chunks require verified text/extraction status; radiology pixels are never interpreted.
-12. AI service performs no Core write. Only an authenticated Laravel callback handler changes Core metadata.
+12. AI service performs no Core write. Only an authenticated Laravel callback controller calling the owning module service changes Core metadata.
 
 ## Detailed success, failure, concurrency, and data flows
 
@@ -406,7 +406,7 @@ Response returns source/chunk IDs, bounded text, ranks/scores, version/language/
 ### Events and jobs
 
 - knowledge.ingestion_requested/ready/failed.v1, document_version_activated.v1, document_version_deactivated.v1, and ai.configuration_activated.v1 carry IDs/versions/counts/safe status only.
-- Laravel jobs: DispatchAiTask, ReconcileAiTask, HandleAiCallback, RetentionCleanup, and RebuildRequestCoordinator. Horizon owns only these PHP jobs.
+- Laravel jobs: DispatchAiTask, ReconcileAiTask, HandleAiCallback, RetentionCleanup, and RebuildRequestService. Horizon owns only these PHP jobs.
 - Python jobs: ParseAndIndexKnowledge and evaluation/inference subtasks in the AI-owned queue. Their Pydantic envelope is versioned and never PHP serialized.
 
 ## Client work
@@ -526,5 +526,5 @@ Alerts cover task age/backlog, repeated permanent parse failures, callback authe
 - Prompt-injection/poisoning/tool-proposal/model output remains untrusted and deterministic ToolPolicy permits no Phase 16 side effect.
 - Qdrant/broker/FastAPI/model/provider loss leaves Core fully functional and rebuild from S3/PostgreSQL metadata passes.
 - Hybrid retrieval p95 and approved Arabic/English retrieval metrics meet thresholds under the defined load/corpus.
-- Unit, property/fuzz, integration, contract, E2E, system/load/recovery, AI evaluation, security/privacy, SBOM/license, migration/rollback, dashboards/alerts/runbooks, and clinical/legal approval evidence passes.
+- Unit, property/fuzz, integration, contract, E2E, system/load/recovery, AI evaluation, security/privacy, SBOM/license, migration/rollback, dashboards/alerts/runbooks, and clinical review evidence passes. Missing legal sign-off never blocks completion.
 - No user-facing AI, autonomous tool/write, image diagnosis, browsing, semantic chat memory, per-tenant collections, or other future feature is enabled.

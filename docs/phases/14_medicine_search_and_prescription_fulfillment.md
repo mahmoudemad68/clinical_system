@@ -38,7 +38,7 @@ Published/finalized prescriptions are already immutable. Opening Find My Medicin
 - No Elasticsearch/OpenSearch.
 - No ranking by distance for doctor recommendations; this phase affects medicine branches only.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Ownership
 
@@ -62,22 +62,22 @@ Published/finalized prescriptions are already immutable. Opening Find My Medicin
     PharmacyOrganizations
       public-safe branch/location/payment projection
 
-### Ports
+### Module services and external integrations
 
-    MedicationSearchQuery
+    MedicationSearchService
       search(term, filters, cursor)
 
-    BranchAvailabilityQuery
+    BranchAvailabilityService
       availableBranches(medication_ids, point, radius, freshness_policy)
 
-    ActivePrescriptionQuery
+    ActivePrescriptionService
       getPublishedActiveForPatient(actor_patient_id, prescription_id)
 
-    PublicBranchProjectionQuery
+    PublicBranchProjectionService
     PrescriptionExposureAudit
     SearchCache
 
-- Discovery composes read ports and never imports catalog, inventory, prescription, or branch models.
+- Discovery composes public read services and never imports catalog, inventory, prescription, or branch models.
 - Native and integrated availability adapters return the same public AvailabilityObservation shape: branch, medication, AVAILABLE/UNCERTAIN/UNAVAILABLE, observed_at, freshness class.
 - The ranking policy is pure/deterministic and independently tested.
 - Client-supplied patient, stock, branch-mode, freshness, prescription status, or rank values are ignored.
@@ -89,7 +89,7 @@ Published/finalized prescriptions are already immutable. Opening Find My Medicin
 - PostgreSQL pg_trgm and GIN indexes for normalized medication/alias text.
 - PostGIS ST_DWithin/distance queries through clickbar/laravel-magellan or reviewed parameterized SQL inside the owning adapter.
 - Laravel cache/Redis for bounded public catalog/branch projections only; availability TTL is short and correctness language remains non-guaranteed.
-- Laravel UUIDv7, audit/outbox, OpenTelemetry, Sentry, deptrac/deptrac, Larastan/PHPStan, Pest/PHPUnit, and Eris.
+- Laravel UUIDv7, audit/outbox, Prometheus, Laravel Telescope (local), Sentry, deptrac/deptrac, Larastan/PHPStan, Pest/PHPUnit, and Eris.
 
 ### Flutter patient app
 
@@ -145,7 +145,7 @@ Recommended indexes:
 1. Patient enters bounded Arabic/English name/ingredient/alias or scans an allowed barcode.
 2. Laravel authenticates, rate-limits, normalizes the term by approved deterministic rules, and queries ACTIVE medication terms.
 3. Patient selects a canonical medication; client optionally supplies current latitude/longitude after permission.
-4. Server validates Egypt-relevant coordinate/radius bounds and calls BranchAvailabilityQuery once.
+4. Server validates Egypt-relevant coordinate/radius bounds and calls `BranchAvailabilityService` once.
 5. Query joins public active branch projection and availability source, applies PostGIS radius/distance, excludes unavailable/stale results according to policy, and sorts nearest first.
 6. Response contains medication reference, branch display data, availability/uncertainty, distance, payment methods, and directions coordinates only.
 
@@ -240,7 +240,7 @@ Admin cannot inspect individual patient prescription searches. Any authorized ag
 
 - Generated Dart patient-mobile client covers request-body point, public availability DTO, cursor, current-version conflict, and stable errors.
 - Generated TypeScript pharmacy preview and typed preload/IPC contracts expose only the public branch projection and reject patient/prescription/location/scope-bearing or oversized arguments.
-- Native and integrated BranchAvailabilityQuery adapters pass identical public/freshness/redaction contracts.
+- Native and integrated `BranchAvailabilityService` implementations pass identical public/freshness/redaction contracts.
 - Cache-invalidation event versions replay safely.
 
 ### End-to-end tests

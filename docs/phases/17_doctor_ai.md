@@ -29,7 +29,7 @@ AI, Qdrant, embedding, reranking, or model-provider failure must not impair cons
 - Phase 05 supplies encounters, contextual doctor access, audit identities, and explicit doctor-authored note commands.
 - Phase 06 supplies prescription boundaries; AI cannot call its finalization or mutation commands.
 - Phase 07 supplies scanned/text document extraction and verified file metadata.
-- Phase 16 supplies versioned knowledge ingestion, hybrid retrieval, reranking, Qdrant tenant filters, provider ports, prompt versions, evaluation fixtures, and the isolated FastAPI runtime.
+- Phase 16 supplies versioned knowledge ingestion, hybrid retrieval, reranking, Qdrant tenant filters, provider integrations, prompt versions, evaluation fixtures, and the isolated FastAPI runtime.
 - Phase 01/02 guarantees that only an approved doctor account with active specialty membership reaches this feature.
 - A clinical owner has approved the initial specialty taxonomy, refusal policy, and evaluation dataset governance.
 
@@ -44,7 +44,7 @@ AI, Qdrant, embedding, reranking, or model-provider failure must not impair cons
 - No citations required in the doctor UI for V1, but internal source traceability is mandatory.
 - No semantic long-term chat memory in Qdrant; conversations remain in PostgreSQL.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Module ownership
 
@@ -67,11 +67,11 @@ Qdrant
   owns rebuildable vectors only; it owns no authorization or medical truth
 ```
 
-The Laravel AI module may query Clinical and KnowledgeBase only through public query ports. It must not import their Eloquent models or infer access from client-supplied IDs. FastAPI receives a short-lived, signed internal request containing an already minimized context envelope and opaque authorization snapshot ID; it receives no broad database credentials.
+The Laravel AI module may query Clinical and KnowledgeBase only through their public module services. It must not import their Eloquent models or infer access from client-supplied IDs. FastAPI receives a short-lived, signed internal request containing an already minimized context envelope and opaque authorization snapshot ID; it receives no broad database credentials.
 
-### Owned ports
+### Module services
 
-Application/domain-owned interfaces are deliberately narrow:
+Laravel module services and genuinely replaceable provider interfaces are deliberately narrow:
 
 ```text
 DoctorAiAccessPolicy
@@ -95,18 +95,17 @@ ClinicalLlmProvider
   generateStructured(request, deadline, cancellation)
   streamStructured(request, deadline, cancellation)
 
-AiRunRepository
-AiConversationRepository
-AiTraceRepository
+Eloquent models: AiRun, AiConversation, AiTrace
+DoctorAiService
 AiBudgetPolicy
 AiOutputPolicy
 ```
 
-- **Single responsibility:** access, context assembly, retrieval, generation, output validation, persistence, and clinical copying are separate handlers.
+- **Single responsibility:** access, context assembly, retrieval, generation, output validation, persistence, and clinical copying are separate module service methods or focused services.
 - **Open/closed:** another LLM, embedding model, reranker, or parser is an adapter that passes the same contract suite.
 - **Liskov substitution:** fake, external, and self-hosted providers return the same typed success/error categories and honor deadlines/cancellation.
 - **Interface segregation:** the doctor assistant does not receive pharmacy inventory, booking, prescription-write, or admin capabilities.
-- **Dependency inversion:** provider SDKs, Qdrant, HTTP, Eloquent, and telemetry remain outside domain/application logic.
+- **Conventional services:** Laravel services may use Eloquent directly inside the owning module; provider SDKs, Qdrant, HTTP, and telemetry stay in focused integration classes or small provider interfaces.
 
 ## Packages and runtime components
 
@@ -114,7 +113,7 @@ Versions are selected and locked under Phase 00 policy.
 
 ### Laravel/PHP
 
-- Existing Laravel, Sanctum, Horizon, Reverb, PostgreSQL, outbox, audit, OpenTelemetry, and Sentry foundations.
+- Existing Laravel, Sanctum, Horizon, Reverb, PostgreSQL, outbox, audit, Prometheus, Laravel Telescope (local), and Sentry foundations.
 - Symfony UID/Laravel UUIDv7 support for run/conversation IDs.
 - Laravel HTTP client or an ADR-approved PSR-18 client for the internal FastAPI adapter with connection/read deadlines and mTLS/service credentials.
 - Pest/PHPUnit, Laravel database fakes only at unit boundaries, and real PostgreSQL/Redis in integration tests.
@@ -123,7 +122,7 @@ Versions are selected and locked under Phase 00 policy.
 
 - `fastapi`, Pydantic v2, `pydantic-settings`, `httpx`, and the provider/Qdrant adapters established in Phase 16.
 - `qdrant-client` only inside the retrieval infrastructure adapter.
-- OpenTelemetry FastAPI/HTTPX instrumentation and Sentry with prompt/response capture disabled.
+- FastAPI prometheus-client metrics and Sentry with prompt/response capture disabled.
 - `pytest`, `pytest-asyncio`, `respx`, and Hypothesis for schema, adversarial, timeout, and provider-contract tests.
 - Do not introduce a general autonomous-agent framework. The workflow is a bounded, explicit state machine.
 
@@ -240,7 +239,7 @@ Recommended indexes:
 
 1. Doctor selects text and chooses `Copy to notes`.
 2. The desktop displays the exact text in an editable confirmation form; no background copy occurs.
-3. Client calls the Clinical module command with encounter ID, run ID, edited text, aggregate version, and a fresh idempotency key.
+3. Client calls the Clinical module service with encounter ID, run ID, edited text, record version, and a fresh idempotency key.
 4. Clinical policy re-authorizes the doctor and active/owned encounter independently of the AI run.
 5. The command validates size/content constraints, writes a normal doctor-authored note with provenance metadata, audit event, and outbox event in one transaction.
 6. A stale encounter version, completed encounter, or revoked access returns `409/403`; the AI module cannot override it.
@@ -307,7 +306,7 @@ Stable error codes include `DOCTOR_NOT_APPROVED`, `AI_SCOPE_DENIED`, `ENCOUNTER_
 - Authorize at conversation creation, every run, context read, pre-delivery, stream subscription, cancellation, history read, and copy-to-note action.
 - Derive doctor, specialty, patient, encounter, and Qdrant filters exclusively from server state.
 - Use separate least-privilege service identities for Laravel-to-FastAPI, FastAPI-to-Qdrant, and provider access; rotate and audit them.
-- Minimize/pseudonymize context before it crosses the AI boundary. Provider data retention, residency, training-use opt-out, deletion, and breach terms require privacy/legal approval before production.
+- Minimize/pseudonymize context before it crosses the AI boundary. Provider data retention, residency, training-use opt-out, deletion, and breach terms require documented privacy/security configuration before production; use conservative defaults and continue without legal sign-off.
 - Encrypt message content at rest and apply explicit retention. Do not index conversations or raw patient context into Qdrant.
 - Enforce prompt, retrieved-chunk, output, token, time, concurrency, and cost limits. Treat output as untrusted Markdown/text and render with links/HTML disabled or sanitized.
 - Prevent SSRF by having no arbitrary fetch tool; object retrieval uses validated internal IDs and private storage adapters only.

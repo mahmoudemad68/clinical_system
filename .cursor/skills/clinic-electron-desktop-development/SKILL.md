@@ -43,15 +43,15 @@ If the user **explicitly** requires a native desktop app, keep Laravel as the au
 
 ## Process and dependency model
 
-Use this inward flow:
+Use this flow:
 
 ```text
-Inertia page -> Laravel controller / form request -> application command/query
-             -> policy + domain + PostgreSQL
+Inertia page -> Laravel controller / form request -> module service
+             -> policy + Eloquent models + PostgreSQL
 ```
 
 - Pages receive only authorized props. They have no direct access to tokens, database keys, arbitrary paths, shell, processes, or provider SDKs.
-- Do not put domain state transitions in React hooks or page components.
+- Do not put business state transitions in React hooks or page components.
 - Realtime events (Reverb) are versioned hints. Detect gaps, reload authoritative server state, and never perform a clinical or financial transition from a broadcast.
 - Prefer Inertia visits/partial reloads over a parallel SPA fetch client. Keep `/api/v1` for programmatic contracts.
 
@@ -71,14 +71,14 @@ Inertia page -> Laravel controller / form request -> application command/query
 ## Implementation workflow
 
 1. Identify the application, owning phase, user intent, server contract, data classification, and acceptance gate.
-2. Define Inertia page, controller, form request, and application-port ownership before coding.
+2. Define the Inertia page, controller, Form Request, owning module service, models, and policy before coding.
 3. Write allowed, denied, stale, duplicate, timeout, cancellation, reconnect, accessibility, and session-expiry cases.
 4. Implement the smallest typed capability end to end. Re-validate authorization in Laravel even when the page already constrained the UI.
 5. Preserve one idempotency key for one user intent and reconcile ambiguous outcomes through the server. Never silently retry an unknown write with a new key.
 6. Add redacted telemetry through the approved client abstraction with bounded attributes and no user-entered or classified content.
 7. Run focused Pest tests, affected doctor/pharmacy suites, and a production Vite/Inertia build.
 
-If a needed backend contract, domain rule, security exception, or release action is not already authorized, stop at a concrete proposal and hand it to its owner rather than embedding a UI workaround.
+If a needed backend contract, business rule, security exception, or release action is not already authorized, stop at a concrete proposal and hand it to its owner rather than embedding a UI workaround.
 
 ## Verification
 
@@ -90,4 +90,4 @@ Verify at minimum:
 - security tests proving XSS cannot widen privileges, arbitrary navigation is denied, and secrets/classified data are absent from browser stores and artifacts;
 - no standalone Electron/Vite app, hidden automatic write, or enabled V1 exclusion entered the UI.
 
-The architecture skill owns boundary decisions, domain skills own behavior, test engineering owns shared harness/evidence mechanics, security assurance independently validates controls, observability owns SLO conclusions, and production/DR owns release mutation and approval.
+The architecture skill owns boundary decisions, business-area skills own behavior, test engineering owns shared harness/evidence mechanics, security assurance independently validates controls, observability owns SLO conclusions, and production/DR owns release mutation and approval.

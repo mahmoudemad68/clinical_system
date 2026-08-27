@@ -25,7 +25,7 @@ The observable outcome is that queue state remains correct under concurrency/rec
 ## Entry criteria and dependencies
 
 - Phase 03 appointment/status/version/idempotency contracts, active doctor/location/membership policies, and outbox are operational.
-- Phase 01 contextual grant port exists. The production `Start Consultation` feature remains disabled until Phase 05 supplies `EncounterLifecyclePort` and the cross-module atomicity test passes.
+- Phase 01 contextual grant port exists. The production `Start Consultation` feature remains disabled until Phase 05 supplies `EncounterService` and the cross-module atomicity test passes.
 - Product/clinical approves queue order/tie-breaking, early/late check-in windows, no-show cutoff, doctor override reasons, maximum consultation/grant duration, and unresolved recovery.
 - ADR-004 (or repository-equivalent) records: check-in eligibility only; start grants access; end revokes; timeout suspends access without fabricating clinical completion.
 
@@ -37,7 +37,7 @@ The observable outcome is that queue state remains correct under concurrency/rec
 - No emergency specialist chat, teleconsultation, multi-doctor group encounter, automatic clinical completion, or AI queue decisions.
 - No notification delivery implementation; emit durable events for Phase 09.
 
-## Module ownership and SOLID boundaries
+## Laravel module ownership and services
 
 ### `Queue`
 
@@ -55,7 +55,7 @@ ProjectDelay
 
 ### `ConsultationControl`
 
-Owns operational consultation sessions and coordinates start/end across module ports. It owns no clinical fields.
+Owns operational consultation sessions and coordinates start/end through public module services. It owns no clinical fields.
 
 ```text
 StartConsultation
@@ -65,26 +65,26 @@ ResumeUnresolvedConsultation
 GetCurrentConsultation
 ```
 
-### Required ports
+### Required module services
 
 ```text
-AppointmentLifecyclePort     # Phase 03
-EncounterLifecyclePort       # implemented by Phase 05
-ContextualAccessPort         # Phase 01
-MembershipPort               # Phase 02
+AppointmentService     # Phase 03
+EncounterService       # implemented by Phase 05
+ContextualAccessService         # Phase 01
+MembershipService               # Phase 02
 RealtimePublisher
 OutboxPublisher
 Clock
 TransactionRunner
 ```
 
-The orchestration handler uses one PostgreSQL transaction because the modular monolith shares one database. Ports participate in the caller's unit of work and must not commit independently. Realtime/push/chat side effects occur only from outbox events after commit.
+The coordinating `ConsultationService` uses one PostgreSQL transaction because the modular monolith shares one database. Called module services participate in that transaction and must not commit independently. Realtime/push/chat side effects occur only from outbox events after commit.
 
 ### Dependency rules
 
-- `Queue` may read safe appointment scheduling snapshots through a port, never appointment Eloquent models.
-- `ConsultationControl` passes opaque appointment/patient/doctor/location handles to `EncounterLifecyclePort`; it does not inspect clinical tables.
-- Realtime adapters serialize projection DTOs defined by the owning application layer; they never publish domain models.
+- `Queue` may read safe appointment scheduling snapshots through `AppointmentService`, never appointment Eloquent models directly.
+- `ConsultationControl` passes opaque appointment/patient/doctor/location handles to `EncounterService`; it does not inspect clinical tables.
+- Realtime integrations serialize projection DTOs defined by the owning module service; they never publish Eloquent models.
 - Clients display state but cannot propose arbitrary queue positions, doctor IDs, patient IDs, access scopes, or status transitions.
 
 ## Packages and platform capabilities
@@ -200,7 +200,7 @@ No encounter and no clinical grant is created. Duplicate same-intent check-in re
 2. Reauthenticate/step up if the approved sensitive-action policy requires it; resolve assigned doctor, location, patient, and membership server-side.
 3. Lock in canonical order: doctor-current guard, appointment, queue entry, existing session/grant.
 4. Validate no active consultation, appointment/queue state, assigned doctor/location, non-suspended identities, and queue selection/override policy.
-5. Call `EncounterLifecyclePort.start()` in the same database transaction; it creates the encounter anchor and returns its ID.
+5. Call `EncounterService.start()` in the same database transaction; it creates the encounter anchor and returns its ID.
 6. Create `consultation_session=active`, transition appointment to `in_consultation`, queue to `current`, and create one active contextual grant for cross-doctor history.
 7. Append status/access/audit records and outbox `ConsultationStarted`/`QueueChanged` events.
 8. Commit. Only then broadcast current-patient and patient-position projections.
@@ -211,7 +211,7 @@ If any clinical/access/queue write fails, all changes roll back and no access ex
 
 1. Assigned doctor submits idempotency key and current consultation/encounter versions while online.
 2. Lock session, appointment, queue, encounter, and grant.
-3. Ask `EncounterLifecyclePort.canComplete/finalize`; missing required clinical decisions return `422` without changing operational state.
+3. Ask `EncounterService.canComplete/finalize`; missing required clinical decisions return `422` without changing operational state.
 4. On success, finalize encounter, complete session/appointment/queue, revoke grant, clear current guard, and append status/access/audit/outbox records in one transaction.
 5. After commit, publish minimal events for realtime, notifications, analytics, and Phase 09 chat opening.
 6. Duplicate retry returns the completed result; different payload/version returns conflict.
@@ -263,7 +263,7 @@ GET  /realtime/authorize
 - Staff queue response contains operational name/basic booking fields allowed by §14, never diagnosis, medications, allergies, labs, prescription, notes, or history.
 - `409 ACTIVE_CONSULTATION_EXISTS`, `409 STALE_QUEUE`, `422 NOT_CHECKIN_ELIGIBLE`, and `423 CONSULTATION_ACCESS_SUSPENDED` are stable safe codes.
 
-## Realtime events, domain events, and jobs
+## Realtime events, Laravel events, and jobs
 
 Private channels follow source-plan shape:
 
@@ -355,7 +355,7 @@ Jobs:
 
 - OpenAPI/generated Dart patient-mobile and TypeScript Electron/admin clients for queue/consultation endpoints and stable errors/idempotency/version requirements.
 - Event schemas plus recipient projection schemas; no clinical fields in operational events.
-- Appointment, encounter, contextual-access, realtime, clock, and transaction adapters pass owned port contracts.
+- Appointment, encounter, contextual-access, realtime, clock, and transaction integrations pass their focused service or provider-interface contracts.
 
 ### End-to-end tests
 

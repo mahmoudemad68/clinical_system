@@ -26,7 +26,7 @@ The observable outcome is that every file remains quarantined until validation a
 - Phase 06 versioned document-rendering patterns may be reused, but lab/file persistence does not depend on prescription functionality.
 - Private S3-compatible storage has versioning, encryption, no-public-access policy, separate credentials, lifecycle/backup controls, and signed URL support.
 - Security approves malware-scanner and parser isolation; clinical/product approves lab lifecycle, catalog/free-text policy, report/referral required fields, document visibility, and correction semantics.
-- Privacy/legal defines file/report retention, access-event retention, patient-supplied-content handling, and deletion/legal-hold behavior.
+- Project privacy and security configuration defines file/report retention, access-event retention, patient-supplied-content handling, and deletion/legal-hold behavior using conservative reversible defaults. Optional legal advice may refine it without blocking implementation.
 
 ## Non-goals
 
@@ -35,7 +35,7 @@ The observable outcome is that every file remains quarantined until validation a
 - No AI-generated medical report/referral and no admin access to patient document contents.
 - No arbitrary office document, archive, executable, audio, or video upload; V1 supports approved PDF and image formats only.
 
-## Module ownership and SOLID boundaries
+## Laravel module ownership and services
 
 ### `Labs`
 
@@ -64,7 +64,7 @@ QuarantineFile
 RetireFile
 ```
 
-It depends on narrow ports: `ObjectStore`, `ObjectInspector`, `MalwareScanner`, `FileHasher`, `Clock`, `Audit`, and `Outbox`. No caller receives an S3 object key.
+Its `MedicalFileService` uses focused object-store, inspection, malware-scan, hash, clock, audit, and outbox services. Use small interfaces only for replaceable external providers. No caller receives an S3 object key.
 
 ### `ClinicalDocuments`
 
@@ -80,18 +80,18 @@ RenderClinicalDocument
 
 ### Boundary rules
 
-- Labs and ClinicalDocuments reference `encounter_id` through Phase 05 ports and never infer authority from a client patient ID.
-- MedicalFiles does not decide clinical visibility itself; the owning resource supplies a typed `FileAccessPurpose` and MedicalFiles revalidates through an owner policy port before download.
-- Future AI ingestion consumes only an `AvailableClinicalDocumentPort` with current authorization/version/status; Phase 07 never pushes automatically to Qdrant.
-- Rendering is an adapter. Domain/application code owns document content/version/exposure rules.
+- Labs and ClinicalDocuments reference `encounter_id` through Phase 05 module services and never infer authority from a client patient ID.
+- MedicalFiles does not decide clinical visibility itself; the owning resource supplies a typed `FileAccessPurpose` enum and MedicalFiles revalidates through the owner's policy service before download.
+- Future AI ingestion consumes only an `AvailableClinicalDocumentService` with current authorization/version/status; Phase 07 never pushes automatically to Qdrant.
+- Rendering is an integration detail. The owning module service owns document content/version/exposure rules.
 
 ## Packages and platform capabilities
 
-- Laravel filesystem/S3 adapter, queues/Horizon, policies, PostgreSQL, outbox, idempotency, audit, and OpenTelemetry from Phase 00.
+- Laravel filesystem/S3 adapter, queues/Horizon, policies, PostgreSQL, outbox, idempotency, audit, Prometheus, and Laravel Telescope (local) from Phase 00.
 - A maintained libmagic-compatible signature detector behind `ObjectInspector`; declared MIME alone is never trusted.
 - A network or local malware scanner behind `MalwareScanner` (for example ClamAV in isolated deployment) with explicit timeout/error classes and fail-closed policy.
 - Bounded PDF/image metadata parsers selected/pinned after security review; no general-purpose conversion inside API workers.
-- The Phase 06 reviewed server-side PDF rendering port/template controls for report/sick-leave/referral artifacts.
+- The Phase 06 reviewed server-side PDF rendering service and template controls for report/sick-leave/referral artifacts.
 - Flutter patient mobile uses a secure file/image picker and generated Dart API client. Selected local files are removed from application temp storage promptly after completion/cancel.
 - Electron doctor/clinic-staff desktop uses React, TypeScript, TanStack Query, React Hook Form, Zod, MUI, i18next, the generated TypeScript API client, and main-process adapters for file selection, credentialed upload/download, safe viewing, printing, and bounded temporary files.
 - Pest/PHPUnit, S3-emulator integration tests, malicious-file corpus, Flutter patient-mobile integration tests, browser-admin Playwright, Electron main/preload/renderer tests plus WebdriverIO with `@wdio/electron-service` packaged-app E2E, and storage-policy/DAST tests.
@@ -393,7 +393,7 @@ Jobs:
 
 - OpenAPI/generated Dart patient-mobile and TypeScript Electron/admin clients for lab/file/document workflows, processing states, safe errors, and download behavior.
 - Electron main/preload contracts reject forged senders, arbitrary paths/URLs/content, wrong-purpose/stale handles, traversal/symlink swaps, oversized responses, unsupported file types, and payloads containing credentials or raw object keys.
-- Object store, inspector, scanner, hasher, encounter authorization, renderer, audit, and future AI document ports pass owned contracts.
+- Object store, inspector, scanner, hasher, encounter authorization, renderer, audit, and future AI document integrations pass their focused service or provider-interface contracts.
 - Event schemas reject clinical/file content and remain compatible.
 
 ### End-to-end tests
@@ -444,7 +444,7 @@ file_reconciliation_mismatches_total{type}
 1. Create lab/file/document schemas and private storage prefixes/policies using synthetic files; validate policy from public/internal network positions.
 2. Enable lab request creation, then upload intents with processing but no release; inspect scanner metrics/corpus results.
 3. Enable availability/download for a controlled cohort only after fail-closed and access-log tests pass.
-4. Enable physical-delivery and review transitions, then clinical documents/rendering after template clinical/legal approval.
+4. Enable physical-delivery and review transitions, then clinical documents/rendering after versioned clinical/content review and tests; legal approval is not required.
 5. Keep future AI ingestion flag off; no existing file is indexed automatically when later phases deploy without explicit migration/job approval.
 6. Rollback disables new uploads/renders/transitions, preserves objects/metadata/audit, and forward-recovers processing jobs. Never make quarantine public to work around an outage.
 
@@ -457,7 +457,7 @@ file_reconciliation_mismatches_total{type}
 - Report/sick-leave/referral final/corrected versions are immutable, exact-template/hash bound, and limited to the doctor's own encounter context.
 - Scanner/S3/renderer outages recover without duplicate attachments, lost committed state, or core clinical outage.
 - Restored S3/PostgreSQL data reconcile available files and version hashes within the approved RPO/RTO evidence.
-- Clinical/security/privacy/legal approve file types/limits, retention, templates, correction/display rules, and threat delta.
+- Clinical, security, and privacy evidence covers file types/limits, retention, templates, correction/display rules, and threat delta. Missing legal sign-off never blocks completion.
 - No Critical or unaccepted exploitable High finding remains.
 
 ## Deliverables

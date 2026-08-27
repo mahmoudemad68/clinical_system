@@ -24,7 +24,7 @@ For core medical data, the initial target is **RPO ≤5 minutes and RTO ≤60 mi
 ## Entry criteria and dependencies
 
 - Phases 00-21 have passed functional, authorization, reconciliation, performance, failure-isolation, observability, and production-like staging gates.
-- Phase 22 supplies the signed-candidate assurance manifest and approved security/privacy/legal/clinical/pharmacy release recommendation with no blocking finding/condition.
+- Phase 22 supplies the signed-candidate assurance manifest, security/privacy/clinical/pharmacy evidence, and documented non-blocking compliance assumptions with no technical or safety release blocker. Legal sign-off is not required.
 - Business/operations approve final RPO/RTO, maintenance, availability/error-budget, data-retention, backup-location, and incident escalation requirements. If they change the initial targets, an ADR and plan/product approval are required.
 - Production accounts, domains, network, KMS/secret manager, registry, database, Redis, S3, Qdrant, monitoring, providers, app signing, DNS/LB, and on-call ownership are provisioned through reviewed infrastructure/configuration.
 - Restore/failover drills target isolated owned environments and synthetic or approved encrypted backup data handling; no destructive production drill occurs without separate change authorization.
@@ -39,7 +39,7 @@ For core medical data, the initial target is **RPO ≤5 minutes and RTO ≤60 mi
 - No online payment, emergency specialist chat, medication alternatives/reservation, branch transfer, supplier automation, adherence, image diagnosis, multi-country, or complex admin roles.
 - No production launch based on verbal/manual assurances without reproducible evidence and accountable sign-off.
 
-## Recovery tiers, ownership, and SOLID boundaries
+## Recovery tiers and service ownership
 
 ### Source and recovery ownership
 
@@ -75,7 +75,7 @@ Encrypted client local data
 
 Exact non-core recovery objectives are documented per runbook and approved before release; they cannot silently expand the core RTO.
 
-### Ports and ownership
+### Services and ownership
 
 ```text
 BackupCatalog
@@ -96,7 +96,7 @@ FeatureFlagController
 - **Open/closed:** managed backup or object-store providers implement stable backup/restore contracts.
 - **Liskov substitution:** adapters report the same typed point, integrity, encryption, retention, restore, cancellation, and failure semantics.
 - **Interface segregation:** backup credentials cannot mutate live application data; app credentials cannot delete isolated backups; deployment cannot decrypt evidence unnecessarily.
-- **Dependency inversion:** recovery/release workflows own interfaces; cloud/managed-service/CLI/API implementations are adapters.
+- **Focused integrations:** recovery/release services own their workflow; cloud/managed-service/CLI/API providers use small purpose-specific interfaces where substitution is required.
 
 ## Packages, infrastructure, and operational tools
 
@@ -106,8 +106,8 @@ Versions/images are pinned and included in release/restore evidence.
 - Native PostgreSQL integrity/reconciliation utilities and application-level invariant queries; PgBouncer is bypassed where administrative restore tooling requires direct controlled access.
 - S3-compatible versioning, encryption/KMS, object lock/immutability where approved, lifecycle, replication/copy to logically isolated storage, inventory/checksum, and private access logs.
 - Qdrant snapshot/restore APIs plus Phase 16 deterministic re-ingestion tooling from original documents/metadata.
-- Redis HA/persistence configuration where operationally useful, while PostgreSQL outbox/domain data remains the recovery guarantee.
-- GitHub Actions/approved deployment orchestrator, signed container registry, SBOM/provenance verification, infrastructure-as-code, secret manager/KMS, Prometheus/Grafana/Loki/OpenTelemetry/Sentry.
+- Redis HA/persistence configuration where operationally useful, while PostgreSQL outbox/business data remains the recovery guarantee.
+- GitHub Actions/approved deployment orchestrator, signed container registry, SBOM/provenance verification, infrastructure-as-code, secret manager/KMS, Prometheus/Grafana/Loki/Sentry. Laravel Telescope is local-only.
 - k6 smoke/load checks, scripted reconciliation, controlled DNS/LB/failover tooling, and an encrypted access-controlled release evidence store.
 
 ## Persistent schemas, catalogs, and invariants
@@ -215,7 +215,7 @@ Indexes:
 3. Restore base backup, replay WAL to target, verify database starts, migrations/schema versions match, and application uses least-privilege restore credentials.
 4. Restore/attach required S3 originals and validate object metadata/hash references.
 5. Bring up core services, run `/live` then `/ready`, authentication canaries, and read-only smoke tests.
-6. Run domain reconciliation: patients/national-ID uniqueness, encounter/access state, appointment exclusivity/status, prescription version/amendment chain, lab/file references, invoice/payment/refund chain, stock ledger/batch/balance, audit hash chain, outbox/idempotency, notification/job states.
+6. Run business-data reconciliation: patients/national-ID uniqueness, encounter/access state, appointment exclusivity/status, prescription version/amendment chain, lab/file references, invoice/payment/refund chain, stock ledger/batch/balance, audit hash chain, outbox/idempotency, notification/job states.
 7. Exercise selected safe mutations with synthetic accounts and verify outbox/realtime/queue replay exactly once in effect.
 8. Measure actual RPO from requested/latest valid source commit to recovered point and RTO from declaration/restore start according to the approved SLO definition.
 9. Store signed evidence, destroy/trash isolated restored sensitive artifacts per policy, and close findings only after retest.
@@ -225,7 +225,7 @@ Indexes:
 1. Detect primary unavailability through quorum/managed control plane, not a single app timeout.
 2. Fence old primary/write path before promoting standby; one writable primary invariant is mandatory.
 3. Update service discovery/pools, verify replication/recovery state, then admit bounded write traffic.
-4. Ambiguous in-flight writes resolve through idempotency/audit/domain reconciliation; clients never blind-retry non-idempotent operations.
+4. Ambiguous in-flight writes resolve through idempotency, audit, and business-data reconciliation; clients never blind-retry non-idempotent operations.
 5. Rebuild standby/redundancy and investigate data gap. A failback is a separately rehearsed change, not an automatic oscillation.
 
 ### 5. Qdrant loss or corruption
@@ -247,7 +247,7 @@ Indexes:
 
 ### 7. Local-draft recovery boundary
 
-- Doctor encrypted drafts may help a single doctor resume transient work after server recovery but are not accepted as disaster truth automatically. The user reviews/syncs through normal authorization, aggregate version, idempotency, and conflict UI.
+- Doctor encrypted drafts may help a single doctor resume transient work after server recovery but are not accepted as disaster truth automatically. The user reviews/syncs through normal authorization, record version, idempotency, and conflict UI.
 - Pharmacy offline cache cannot recreate sales or stock; no unacknowledged offline sale exists in V1.
 - Patient/client caches refresh from server and never overwrite recovered state.
 
@@ -256,7 +256,7 @@ Indexes:
 ### 1. Freeze and approve the candidate
 
 1. Pin source commit, signed image/app artifacts, SBOM/provenance, OpenAPI/events/tools, migrations, infrastructure/config, feature flags, model/prompt/rule/KB versions, and evidence manifest.
-2. Verify Phase 22 security/privacy/legal/clinical/pharmacy approvals and Phase 21 SLO/load/recovery-under-stress evidence refer to that candidate.
+2. Verify Phase 22 security/privacy/clinical/pharmacy evidence, non-blocking compliance assumptions, and Phase 21 SLO/load/recovery-under-stress evidence refer to that candidate.
 3. Confirm support/on-call, incident/status communication, vendor contacts, dashboards/alerts/runbooks, backup health, recent passing restore drill, rollback/forward-fix path, and change window.
 4. Produce explicit go/no-go with accountable approvers; missing evidence is no-go.
 
@@ -288,8 +288,8 @@ Indexes:
 - Application/config regression with compatible schema: stop expansion, disable feature/canary, drain, redeploy prior signed image/config, smoke/reconcile.
 - Expand migration problem before use: stop and follow its tested safe rollback where no new dependency exists.
 - Data already written in new shape: prefer compatible forward fix/dual-read/backfill; never restore whole database and lose valid writes merely to undo code.
-- Security/secret incident: contain feature/network, revoke/rotate credentials/artifacts, preserve evidence, deploy corrected candidate, execute notification decisions through qualified incident/legal process.
-- Ambiguous clinical/financial writes: resolve by idempotency/audit/domain reconciliation before retrying.
+- Security/secret incident: contain feature/network, revoke/rotate credentials/artifacts, preserve evidence, deploy corrected candidate, and execute notification decisions through the documented incident/privacy process. Optional legal advice may inform the decision without blocking technical containment or recovery.
+- Ambiguous clinical/financial writes: resolve by idempotency, audit, and business-data reconciliation before retrying.
 
 ### 6. Handover and stabilization
 
@@ -336,7 +336,7 @@ Admin `/api/v1/admin/system-health` may expose only reviewed safe fields such as
 - Break-glass access is time-bound, reason/ticket/approval-linked, monitored, and reviewed afterward; it does not grant routine admin clinical browsing.
 - Deployment verifies artifact signature/provenance/SBOM, exact digest, vulnerability policy, secret/config source, and environment identity.
 - Production logs/traces/backups/release evidence preserve existing redaction and retention. Restore does not reactivate expired sessions/tokens/URLs without policy reconciliation.
-- Incident communication and regulatory/data-subject notification decisions are made by qualified privacy/legal/clinical/pharmacy owners; engineering runbooks supply facts and evidence, not legal conclusions.
+- Incident communication and data-subject notification decisions are made by accountable privacy, operations, clinical, and pharmacy owners using documented configurable policy; engineering runbooks supply facts and evidence, not legal conclusions. Optional legal advice is advisory and non-blocking.
 
 ## Test and drill plan
 
@@ -374,7 +374,7 @@ Admin `/api/v1/admin/system-health` may expose only reviewed safe fields such as
 
 ### System disaster-recovery tests and drills
 
-- Full core PITR plus S3 recovery, domain reconciliation, safe synthetic mutations, RPO/RTO measurement, cleanup, and evidence.
+- Full core PITR plus S3 recovery, business-data reconciliation, safe synthetic mutations, RPO/RTO measurement, cleanup, and evidence.
 - Primary failover/fencing/ambiguous-write reconciliation and rebuilt redundancy.
 - Qdrant total loss followed by snapshot and from-source rebuild paths.
 - Redis cache/queue/realtime loss, worker death, outbox replay, reconnect storm, and analytics rebuild.
@@ -426,12 +426,12 @@ The release is accepted only when all of the following have evidence against the
 - 3-2-1, encryption/key recovery, continuous WAL, daily/weekly/monthly retention, isolated copy, integrity checks, and scheduled recurring restore drills operate.
 - Qdrant loss/rebuild and Redis loss/replay do not break or lose core truth; AI failure does not make core unavailable.
 - Phase 21 p95/load/WebSocket/AI-concurrency/stress/recovery targets pass on the final or demonstrably equivalent topology.
-- No critical security finding and no Phase 22 release-blocking high/privacy/legal/clinical/pharmacy condition remains.
+- No critical security finding and no Phase 22 release-blocking high/privacy/security/clinical/pharmacy condition remains; missing legal review is never such a condition.
 - AI safety/evaluation/tenant/tool/clinical review passes for every enabled AI cohort; AI remains optional/read-recommend with deterministic patient/tool controls.
 - Monitoring, alerts, on-call, incident/rollback/failover/rebuild runbooks, audit, secret rotation, and backup/restore ownership are operational.
 - Staging is production-like and contains no raw production medical data; production artifacts are signed/locked/SBOM-verified and secrets come only from the approved manager.
 - All future feature flags are off: `online_payments`, `emergency_chat`, `drug_alternatives`, `branch_transfers`, `patient_adherence`, `medical_imaging_ai`, `supplier_api_integration`, and `multi_country`; reservation and complex admin roles are absent.
-- Qualified product, engineering, QA, operations, security/privacy, legal, clinical, and pharmacy owners issue the final go/no-go and accept only their scoped decisions.
+- Product, engineering, QA, operations, security/privacy, clinical, and pharmacy owners issue the final evidence-based go/no-go and accept only their scoped decisions. Legal sign-off is not required.
 
 ## Acceptance and exit gate
 

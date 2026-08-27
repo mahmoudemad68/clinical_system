@@ -19,7 +19,7 @@ This phase delivers no clinical feature. Its observable outcome is that a minima
 
 - `plan.md` is accepted as the V1 product/architecture source.
 - Engineering agrees that production infrastructure sizing is a benchmark hypothesis, not a guarantee.
-- Product identifies one accountable owner for clinical, pharmacy, privacy/legal, security, and operations approvals.
+- Product identifies accountable clinical, pharmacy, privacy, security, and operations contacts. Legal approval is not an entry criterion or implementation dependency.
 
 ## Non-goals
 
@@ -49,13 +49,13 @@ Flutter patient mobile     Electron doctor/pharmacy     React admin web
                               |
                        FastAPI AI service
                               |
-                      Qdrant + model ports
+                      Qdrant + model integrations
 ```
 
 - The Laravel process owns authentication, authorization, operational state, medical state, financial state, tenant scoping, and tool authorization.
 - FastAPI may read only the minimum authorized context provided through an internal service contract. It cannot connect as a broad application user or mutate core tables.
 - Clients never connect directly to PostgreSQL, Redis, S3, Qdrant, or provider APIs.
-- Direct module-to-module table writes are prohibited. A module calls a public application port or consumes a published domain/integration event.
+- Direct module-to-module table writes are prohibited. A module calls a public service on the owning module or consumes a published Laravel/integration event.
 
 ### Repository layout
 
@@ -115,92 +115,79 @@ Flutter workspace management uses Melos for the patient mobile app and its share
 
 ### Laravel module layout
 
-Each business module follows the same inward dependency direction:
+Use `nwidart/laravel-modules` with its top-level `Modules/` directory. Each business module is a conventional mini Laravel application:
 
 ```text
 Modules/<Name>/
-  Domain/
-    Entities/
-    ValueObjects/
-    Rules/
+  app/
+    Enums/                  # optional backed enums for finite states/types/reasons
     Events/
-    Exceptions/
-    Contracts/              # repository/provider ports owned by the domain
-  Application/
-    Commands/
-    Queries/
-    Handlers/
-    DTOs/
-  Infrastructure/
-    Persistence/
-    Providers/
+    Http/
+      Controllers/
+      Requests/
+      Resources/
+    Jobs/
     Listeners/
-  Http/
-    Controllers/
-    Requests/
-    Resources/
-    Routes/
-  Policies/
-  Jobs/
-  Tests/
+    Models/
+    Policies/
+    Providers/
+    Services/
+    Contracts/              # only genuinely replaceable external dependencies
+  config/
+  database/
+    factories/
+    migrations/
+    seeders/
+  resources/
+  routes/
+  tests/
+  composer.json
+  module.json
 ```
 
-Dependency rule:
-
-```text
-HTTP / Infrastructure / Jobs -> Application -> Domain
-Domain -> PHP standard library only
-```
-
-- Controllers authenticate, validate transport input, create a command/query, invoke one handler, and map the result. They contain no business transitions.
-- Application handlers coordinate transactions and ports. They do not format HTTP responses or call facades hidden from tests.
-- Domain objects enforce invariants and expose intent-revealing transitions.
-- Infrastructure implements ports for Eloquent/PostgreSQL, Redis, S3, FCM, SMS, Reverb, and other providers.
+- Controllers authenticate/authorize, use Form Requests, call one descriptive module service method, and map the result through an API Resource, redirect, or Inertia response. They contain no multi-step business workflow.
+- Services coordinate business rules, Eloquent models, transactions, idempotency, cross-module calls, and post-commit work.
+- Models own relationships, casts, scopes, and small model-local behavior. Use PHP backed enums for stable finite states, types, channels, roles, or reasons when they make validation and casts clearer.
+- External SDK/provider code lives in a descriptive service or integration class. Add an interface under `app/Contracts` only when the dependency is genuinely replaceable or has multiple implementations.
 - Policies receive a typed authorization context. They must not depend on a client-supplied role, tenant, doctor, patient, or scope identifier.
 - Jobs carry stable IDs and schema versions, reload current state, re-authorize where needed, and are idempotent.
 
-SOLID enforcement:
+Do not create or extend `Domain`, `Application`, or `Infrastructure` directories, command/query buses, handler-per-action trees, aggregates, generic repository wrappers around Eloquent, DDD value-object trees, or `*Port` types. Existing DDD-shaped code is migrated module by module into this layout as it is touched, preserving behavior and tests.
 
-- **Single responsibility:** each module/state machine owns one business capability; side effects are adapters.
-- **Open/closed:** providers and external pharmacy systems add adapters behind ports.
-- **Liskov substitution:** adapter contract tests must pass for every implementation, including fakes.
-- **Interface segregation:** separate `SendOtp`, `SendPush`, `StoreObject`, `ScanObject`, `GenerateText`, and `RetrieveKnowledge` ports; do not create a vendor “god service.”
-- **Dependency inversion:** application/domain code owns interfaces; framework/provider code depends on them.
-
-Use `deptrac/deptrac` (or an ADR-approved equivalent) in CI to reject forbidden imports, and architecture tests to reject access from one module's infrastructure namespace to another module's models/tables.
+Use architecture tests to reject the removed DDD directories, module dependency cycles, generic base repositories/services, and direct writes to another module's tables.
 
 ### Cross-module transaction coordination
 
-Critical workflows that span modules are not implemented as eventually consistent event chains. Booking, consultation start/end, prescription exposure, purchase receipt, POS sale/cancellation, and refund require one explicit application coordinator:
+Critical workflows that span modules are not implemented as eventually consistent event chains. Booking, consultation start/end, prescription exposure, purchase receipt, POS sale/cancellation, and refund require one explicit coordinating Laravel service:
 
-1. A coordinator owns the use-case contract and transaction boundary.
-2. It calls narrow module-owned command ports; it never imports another module's Eloquent model or updates another module's table directly.
-3. Every called port receives the same transaction context/unit of work and returns typed results, not framework models.
-4. Domain events are collected during the transaction and written to the outbox before commit.
+1. The coordinating service owns the use-case contract and `DB::transaction()` boundary.
+2. It calls descriptive public services in the participating modules; it never updates another module's table directly.
+3. Participating services share the same database transaction and return explicit result data rather than exposing query builders.
+4. Laravel events required after commit are represented in the transactional outbox before commit.
 5. External/realtime/notification/analytics work begins only after commit.
 6. Failure in any strong-consistency step rolls back the whole workflow; compensation is reserved for effects that cannot share the database transaction.
 
 Examples:
 
-- `BookAppointmentCoordinator`: Appointments owns availability/booking; Identity supplies the patient reference; the coordinator commits appointment, slot constraint, status event, audit, idempotency, and outbox atomically.
-- `StartConsultationCoordinator`: Queue validates checked-in eligibility; Clinical creates the encounter/access grant; Appointments changes state; the outbox carries the sanitized current-patient event.
-- `CompleteConsultationCoordinator`: Clinical finalizes the encounter and revokes access; Queue advances; Appointments completes; Chat records its future write window; outbox notifications are committed together.
-- `CompleteSaleCoordinator`: POS validates cart/payment intent; Inventory allocates FEFO and appends movements; the invoice/payment and outbox commit together.
+- `BookAppointmentService`: Appointments owns availability/booking; Identity supplies the patient reference; the service commits appointment, slot constraint, status event, audit, idempotency, and outbox atomically.
+- `StartConsultationService`: Queue validates checked-in eligibility; Clinical creates the encounter/access grant; Appointments changes state; the service commits the sanitized current-patient outbox event in the same transaction.
+- `CompleteConsultationService`: Clinical finalizes the encounter and revokes access; Queue advances; Appointments completes; Chat records its future write window; the service commits outbox notifications with those changes.
+- `CompleteSaleService`: POS validates cart/payment intent; Inventory allocates FEFO and appends movements; the service commits the invoice/payment and outbox together.
 
-Architecture tests must prove that only the approved coordinator uses the participating command ports and that integration-event handlers cannot perform a delayed write that is required for the originating invariant.
+Integration tests must prove that the coordinating service commits or rolls back all participating writes and that event listeners cannot perform a delayed write required for the originating invariant.
 
 ### Client architecture
 
-The Flutter patient-mobile app uses presentation, domain, and data layers:
+The Flutter patient-mobile app uses feature presentation, state, and data/integration layers:
 
 ```text
-presentation -> application/controller -> domain port <- repository -> API/local adapters
+presentation -> feature controller/state -> typed API/local data client
 ```
 
 - Riverpod provides dependency wiring and observable state in the patient app.
 - UI state is not the authority for permissions or final business state.
-- Repositories own caching, mapping, error normalization, and safe retry decisions.
-- Generated API DTOs stay at the network edge and map into client domain/view models.
+- Typed data clients own caching, mapping, error normalization, and safe retry decisions.
+- Generated API DTOs stay at the network edge and map into feature/view models.
 - Local mobile databases store the minimum needed, encrypt sensitive rows/database files, and expose sync state.
 
 Each Electron desktop app uses an explicit privilege boundary:
@@ -216,7 +203,7 @@ React renderer -> typed contextBridge capability -> preload -> main/utility adap
 - Production windows use `contextIsolation: true`, renderer sandboxing, a strict Content Security Policy, and deny-by-default navigation, new-window, permission, download, and external-protocol handlers.
 - Packaged assets load from a privileged standard-scheme custom application protocol with an exact origin rather than permissive `file://`; renderer sessions and caches cannot persist clinical data.
 - Preload exposes one TypeScript method per capability through `contextBridge`. IPC request/response schemas are size-bounded and validated; never expose `ipcRenderer`, arbitrary URLs/paths/channels/SQL, Node globals, or provider SDKs.
-- Main and optional utility processes implement narrow application-owned ports for device credentials, generated OpenAPI transport, realtime, encrypted drafts, files, printing, local notifications, and signed updates. They contain no clinical/pharmacy business-rule bypass.
+- Main and optional utility processes implement narrow typed clients/services for device credentials, generated OpenAPI transport, realtime, encrypted drafts, files, printing, local notifications, and signed updates. They contain no clinical/pharmacy business-rule bypass.
 - The doctor local outbox stores typed commands and explicit sync state. Pharmacy stock, POS, payment, and other authoritative mutations remain online-only.
 
 React renderers use feature folders with route/page, components, schema, query/mutation hooks, and generated API types. TanStack Query owns server state. Component state remains local unless a proven cross-route need exists. Pure components, design tokens, localization helpers, and generated contract mappings may be shared only through reviewed capability packages. Electron desktop and admin web authentication/transport adapters remain separate: desktop uses device-token capabilities outside the renderer, while admin uses HttpOnly cookies and CSRF. Authorization in every UI affects discoverability only; Laravel remains authoritative.
@@ -229,8 +216,8 @@ Every externally reachable mutation follows this order:
 2. Middleware assigns/validates a correlation ID and authenticates the session/device token.
 3. Route/request schema rejects malformed, unknown, oversized, or semantically invalid fields.
 4. The policy loads server-owned actor/resource/context and returns allow or a generic denial.
-5. The application handler checks the idempotency record when the operation is replayable.
-6. Domain objects validate the transition using current persisted version/state.
+5. The module service checks the idempotency record when the operation is replayable.
+6. The service and model validate the transition using current persisted version/state and any applicable backed enum.
 7. A bounded database transaction writes authoritative records, audit metadata, and any required outbox event.
 8. Commit succeeds or the entire critical change rolls back.
 9. The idempotency response is finalized without storing secrets/large clinical payloads.
@@ -278,7 +265,7 @@ payload minimal and classified
 
 Outbox processing logic:
 
-1. Insert the domain change and outbox row in one PostgreSQL transaction.
+1. Insert the business change and outbox row in one PostgreSQL transaction.
 2. A worker claims rows with `FOR UPDATE SKIP LOCKED` or an equivalent safe claim.
 3. Publish/handle using `event_id` as the consumer idempotency key.
 4. Record attempt count, next attempt, last safe error class, and processed timestamp.
@@ -294,7 +281,7 @@ Laravel Horizon consumes Laravel-owned Redis jobs only. Python workers must neve
 
 - Laravel lanes (`critical`, `notifications`, `files`, `integrations`, `analytics`, `reports`, `backups`, and Laravel-side AI orchestration) use Horizon and PHP job classes.
 - Laravel starts Python work through an authenticated, versioned internal HTTP command or an ADR-approved typed JSON message envelope carrying an idempotency key, deadline, schema version, and minimal object references.
-- FastAPI persists/queues that command through an AI-owned `TaskQueue` port. Its implementation may use a dedicated Redis namespace/instance and a Python-native worker library selected in Phase 16.
+- FastAPI persists/queues that request through an AI-owned `TaskQueue` interface. Its implementation may use a dedicated Redis namespace/instance and a Python-native worker library selected in Phase 16.
 - Python workers return status/result references through an authenticated callback or a polled internal resource. They never write Laravel core tables or consume PHP serialization.
 - Both sides retain independent retry budgets. A cross-boundary duplicate resolves through the same idempotency key, and a timeout is an unknown outcome to reconcile, not permission to create a second task.
 
@@ -315,7 +302,7 @@ Apply to booking, check-in, consultation completion, prescription finalization/a
 
 - PostgreSQL/PostGIS is authoritative; use relational columns for filtered/joined invariants and JSONB only for bounded extensible metadata.
 - IDs are UUIDv7 and public APIs never expose sequential identifiers.
-- Every mutable aggregate uses a version number or compare-and-set condition where stale writes could lose data.
+- Every mutable workflow record uses a version number or compare-and-set condition where stale writes could lose data.
 - Foreign keys, check constraints, unique/exclusion constraints, and transaction isolation enforce invariants even if application checks race.
 - Store instants in UTC and schedule intent with IANA time zone (`Africa/Cairo` initially).
 - Use `citext`/normalized values only where semantics are defined. Never locale-lowercase national IDs, barcodes, or opaque identifiers.
@@ -349,12 +336,13 @@ Versions are resolved during implementation against Laravel 13 and the current s
 ### Laravel/PHP baseline
 
 - `laravel/framework`, `laravel/sanctum`, `laravel/horizon`, `laravel/reverb`, `laravel/octane`, and FrankenPHP runtime.
+- `nwidart/laravel-modules` v13-compatible release, installed with `composer require nwidart/laravel-modules`; enable `wikimedia/composer-merge-plugin`, include `Modules/*/composer.json`, publish `config/modules.php`, and commit the lockfile/module status configuration.
 - `laravel/pennant` for server feature flags.
-- `brick/money` for money value objects; Symfony UID/Laravel UUIDv7 support for identifiers.
-- `deptrac/deptrac` and architecture tests for module dependency enforcement.
+- `brick/money` for exact money calculations; Symfony UID/Laravel UUIDv7 support for identifiers.
+- Architecture tests for module ownership, service boundaries, and rejection of the removed DDD directory layout.
 - Pest or PHPUnit as one repository-standard test runner; Laravel HTTP/database fakes; Mockery only at external boundaries.
 - Larastan/PHPStan for static analysis and Laravel Pint for formatting.
-- OpenTelemetry PHP SDK/instrumentation and Sentry Laravel SDK, configured with centralized redaction.
+- Laravel Telescope (local/non-production request inspection only) and Sentry Laravel SDK, configured with centralized redaction.
 
 ### Flutter mobile baseline
 
@@ -378,7 +366,7 @@ Versions are resolved during implementation against Laravel 13 and the current s
 - `contextBridge` exposes narrow typed capabilities backed by allowlisted `ipcMain` handlers. Zod validates IPC at both trust-boundary ends; raw Electron/Node modules never enter renderer feature code.
 - Electron `safeStorage` or an ADR-approved OS-keystore adapter wraps device credentials and database keys outside the renderer. Sensitive persistence fails closed if encryption is unavailable or Linux reports the insecure `basic_text` backend.
 - The Phase 05 encrypted database uses a pinned Node SQLite adapter built against approved SQLCipher or SQLite3MultipleCiphers only after native ABI, packaging, rotation, migration, recovery, and backup tests pass. Database access stays in main/utility infrastructure and exposes intent-named operations, not SQL.
-- Generated HTTP and Reverb clients execute behind main/utility ports using Electron networking or an approved nonpersistent session so system proxy/TLS behavior is preserved. Renderer TanStack Query functions call typed preload capabilities and never issue authenticated HTTP/WebSocket requests directly.
+- Generated HTTP and Reverb clients execute through main/utility services using Electron networking or an approved nonpersistent session so system proxy/TLS behavior is preserved. Renderer TanStack Query functions call typed preload capabilities and never issue authenticated HTTP/WebSocket requests directly.
 - `@electron/fuses` disables unused privileged runtime features before signing. Packaged artifacts receive CSP/navigation/permission/new-window checks, dependency/SBOM scans, signing/notarization, and installed-package smoke tests.
 - WebdriverIO with `@wdio/electron-service` is the default packaged-app E2E harness. Playwright's experimental Electron launcher may be used only after a pinned compatibility spike. Native dialogs, printing, keystore, encrypted database, installers, signing, and updates require deterministic main-process and installed-package tests on each supported OS regardless of UI harness.
 
@@ -390,7 +378,7 @@ Versions are resolved during implementation against Laravel 13 and the current s
 
 - FastAPI, Pydantic, `pydantic-settings`, HTTPX, and Uvicorn/Gunicorn-compatible deployment.
 - `pytest`, `pytest-asyncio`, `respx`, and Hypothesis.
-- Provider/Qdrant/model packages are added in Phase 16 behind owned ports.
+- Provider/Qdrant/model packages are added in Phase 16 behind small provider interfaces.
 
 ### Platform and assurance
 
@@ -398,29 +386,31 @@ Versions are resolved during implementation against Laravel 13 and the current s
 - PostgreSQL with PostGIS, PgBouncer where deployed, Redis, private S3 emulator for local tests, and Qdrant only for the AI profile.
 - k6 for API/WebSocket/load suites.
 - Gitleaks for secrets, Semgrep plus language-native SAST, dependency audits, Trivy for image/IaC scans, Syft-compatible SBOM, and OWASP ZAP for staged DAST.
-- Prometheus, Grafana, Loki-compatible structured logs, OpenTelemetry Collector, and Sentry.
+- Prometheus, Grafana, Loki-compatible structured logs, Laravel Telescope (local), and Sentry.
 
 ## Detailed implementation work
 
 ### 1. Record architecture and ownership
 
 1. Create ADRs for modular monolith + separate AI service, repository layout, API-first contracts, outbox, UUIDv7, local encryption, and data ownership.
-2. Create C4 context/container diagrams and one component diagram showing module dependency direction.
-3. Create a module catalog with owner, public commands/queries/events, tables, data classification, and prohibited dependencies.
+2. Create C4 context/container diagrams and one component diagram showing module service dependencies.
+3. Create a module catalog with owner, public services/events, tables, data classification, and prohibited direct writes.
 4. Define CODEOWNERS/review rules for clinical, pharmacy-financial, identity, infrastructure, and AI safety areas.
 5. Add an automated architecture check that fails on a known forbidden dependency fixture, then remove/disable only the fixture after proving the check.
 
 ### 2. Bootstrap runtime projects
 
-1. Inventory the current doctor/pharmacy Flutter scaffolds, shared-package imports, CI paths, application identifiers, signing placeholders, and any user-authored or local-data migration need. Record the disposition of every item before replacement; never silently delete a real desktop database.
-2. In one reviewed Phase 00 migration, remove `apps/doctor-desktop` and `apps/pharmacy-desktop` from the Dart/Melos workspace, keep `apps/patient-app` and patient-owned Flutter packages there, scaffold two independent Electron Forge/React/TypeScript apps at the same application paths, and add them plus reviewed `packages/typescript/*` packages to the root npm workspace. Do not leave two runtimes mixed inside either desktop app.
-3. Give doctor and pharmacy different application IDs, executable/product names, user-data directories, protocol schemes, encrypted-database namespaces, device-credential namespaces, IPC capability registries, installer metadata, and update channels. A shared pure TypeScript package must not collapse those security contexts.
-4. Update path-filtered CI, CODEOWNERS, generated-client destinations, workspace scripts, lockfiles, dependency-boundary rules, local Compose launch helpers, and evidence templates in the same migration. Prove only the patient app is selected by Flutter/Melos and both desktop apps are selected by npm/Electron jobs.
-5. Scaffold every remaining deployment unit without feature code. Electron health/version screens query main-owned typed capabilities; the renderer does not connect to the API directly.
-6. Add `/live`, `/ready`, build/version metadata, structured error handling, correlation IDs, and graceful shutdown to services.
-7. Ensure liveness checks only process health; readiness checks critical startup state without turning every optional dependency into a core outage.
-8. Demonstrate that AI/Qdrant readiness failure does not make Laravel core unready.
-9. Configure Octane workers to avoid request-scoped mutable state leaking across requests; add a regression test using two synthetic identities.
+1. In `apps/core-api`, run `composer require nwidart/laravel-modules`, enable the package's Composer merge plugin, include `Modules/*/composer.json`, publish `config/modules.php`, run `composer dump-autoload`, and verify `php artisan module:list`.
+2. Inventory the current DDD-shaped `app/Modules` code and define a behavior-preserving move into package-generated top-level modules. Do not maintain both layouts as permanent architectures.
+3. Inventory the current doctor/pharmacy Flutter scaffolds, shared-package imports, CI paths, application identifiers, signing placeholders, and any user-authored or local-data migration need. Record the disposition of every item before replacement; never silently delete a real desktop database.
+4. In one reviewed Phase 00 migration, remove `apps/doctor-desktop` and `apps/pharmacy-desktop` from the Dart/Melos workspace, keep `apps/patient-app` and patient-owned Flutter packages there, scaffold two independent Electron Forge/React/TypeScript apps at the same application paths, and add them plus reviewed `packages/typescript/*` packages to the root npm workspace. Do not leave two runtimes mixed inside either desktop app.
+5. Give doctor and pharmacy different application IDs, executable/product names, user-data directories, protocol schemes, encrypted-database namespaces, device-credential namespaces, IPC capability registries, installer metadata, and update channels. A shared pure TypeScript package must not collapse those security contexts.
+6. Update path-filtered CI, CODEOWNERS, generated-client destinations, workspace scripts, lockfiles, dependency-boundary rules, local Compose launch helpers, and evidence templates in the same migration. Prove only the patient app is selected by Flutter/Melos and both desktop apps are selected by npm/Electron jobs.
+7. Scaffold every remaining deployment unit without feature code. Electron health/version screens query main-owned typed capabilities; the renderer does not connect to the API directly.
+8. Add `/live`, `/ready`, build/version metadata, structured error handling, correlation IDs, and graceful shutdown to services.
+9. Ensure liveness checks only process health; readiness checks critical startup state without turning every optional dependency into a core outage.
+10. Demonstrate that AI/Qdrant readiness failure does not make Laravel core unready.
+11. Configure Octane workers to avoid request-scoped mutable state leaking across requests; add a regression test using two synthetic identities.
 
 ### 3. Establish contract workflow
 
@@ -503,14 +493,14 @@ Mandatory controls in this phase:
 - centralized redaction tested before telemetry export;
 - documented emergency credential rotation and artifact revocation.
 
-Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API platform, OWASP API Security guidance for object/function/property authorization and abuse resistance, and OWASP MASVS/MASTG for Flutter mobile releases. Use the NIST AI Risk Management Framework and its Generative AI Profile as an AI risk/evidence taxonomy from Phase 16 onward. These are engineering assurance baselines, not declarations of statutory compliance. Egyptian privacy, healthcare, pharmacy, electronic-prescription, retention, and cross-border-processing obligations require written decisions from qualified local legal, clinical, and pharmacy-regulatory reviewers.
+Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API platform, OWASP API Security guidance for object/function/property authorization and abuse resistance, and OWASP MASVS/MASTG for Flutter mobile releases. Use the NIST AI Risk Management Framework and its Generative AI Profile as an AI risk/evidence taxonomy from Phase 16 onward. These are engineering assurance baselines, not declarations of statutory compliance. Record Egyptian privacy, healthcare, pharmacy, electronic-prescription, retention, and cross-border-processing assumptions as conservative configurable project decisions; legal review is optional and never blocks implementation or phase completion.
 
 ## Test plan
 
 ### Unit tests
 
 - UUIDv7, money, quantity, Cairo time conversion/DST, pagination cursor, safe error mapping, canonical request hashing, retry classifier, and redaction functions.
-- Domain/application dependency tests prove inner layers do not import framework/provider code.
+- Architecture tests prove modules use the conventional controller/service/model layout and reject reintroduction of `Domain/Application/Infrastructure` trees.
 - Idempotency state logic handles same/different hashes, concurrent processing, expiry, and retryable failure.
 - Outbox retry schedule is capped, jittered, and distinguishes permanent failures.
 
@@ -520,14 +510,14 @@ Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API pla
 - S3-compatible store: private objects, encryption metadata, signed URL expiry, and denied anonymous access.
 - Reverb private-channel authorization scaffold and disconnect behavior.
 - FastAPI stub internal authentication, deadline propagation, and unavailability isolation.
-- OpenTelemetry export proves redaction and bounded attributes.
+- Redaction and bounded HTTP attributes are proven in-process (`ExportRedactionTest`); Telescope never ships on the production migration path.
 
 ### Contract tests
 
 - OpenAPI validation plus generated Dart patient-mobile and TypeScript desktop/admin clients against a running API.
 - Common error/status/envelope/cursor/time/money schemas.
 - Event consumers accept current and previous compatible event schemas and reject unknown incompatible versions safely.
-- Every fake/provider adapter passes its owned port contract.
+- Every fake/provider integration passes its owned interface contract.
 
 ### End-to-end tests
 
@@ -550,7 +540,7 @@ Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API pla
 
 - SAST, dependency, image, IaC, license, SBOM, and secret scans enforce blocking severity policy.
 - DAST smoke checks TLS, headers, CORS, error leakage, method handling, and size limits.
-- Attempt direct access to database, Redis, S3, Qdrant, and internal AI ports from the public network segment; all fail.
+- Attempt direct access to database, Redis, S3, Qdrant, and internal AI services from the public network segment; all fail.
 - Send national ID, token, password, prescription-like text, and lab-like content canaries; none appears in logs/traces/errors.
 - Fuzz common schemas/cursors/identifiers and prove bounded CPU/memory and safe rejection.
 - Inject a deliberate renderer import of Node/Electron and a generic preload IPC method; dependency/capability checks must reject both. From a renderer XSS fixture, attempts to read tokens/keys, navigate, open a window/protocol, request a permission, reach the filesystem/shell, or invoke an unregistered/oversized IPC operation all fail safely.
@@ -566,7 +556,7 @@ Maintain versioned verification mappings to OWASP ASVS 5.0.0 for the web/API pla
 - Outbox and idempotency reference flows pass concurrency/replay tests.
 - Health/readiness, structured redacted telemetry, dashboards, and runbooks operate.
 - AI/Qdrant/Redis failure-isolation system tests pass.
-- Threat model and data classification have security/privacy approval.
+- Threat model and data classification have repeatable security/privacy evidence; legal approval is not required.
 - Every test category above has automated evidence; manual-only evidence has an owner and repeatable script/checklist.
 - No V1-excluded feature is functionally enabled.
 

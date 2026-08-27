@@ -23,7 +23,7 @@ The ledger is authoritative for stock changes. A balance is a rebuildable, trans
 - Phase 10 provides active medication references, exact packaging-to-smallest-unit conversion, organizations/branches, strict roles/capabilities, and operating modes.
 - Phase 00 provides transaction/idempotency/outbox/audit conventions, PostgreSQL, Horizon, observability, and security test harnesses.
 - Pharmacy owners approve low-stock and expiry threshold defaults and who may adjust stock.
-- Legal/accounting owners approve required retention for movement, cost, reason, and actor records.
+- Accounting and product owners document configurable retention for movement, cost, reason, and actor records. Legal approval is not required to implement or complete the phase.
 
 ## Non-goals
 
@@ -34,7 +34,7 @@ The ledger is authoritative for stock changes. A balance is a rebuildable, trans
 - No branch-to-branch transfer movement type in V1.
 - No price exposure to patients.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Ownership
 
@@ -49,18 +49,18 @@ The ledger is authoritative for stock changes. A balance is a rebuildable, trans
       branch status, operating mode, actor capability
 
     Purchasing and POS
-      future coordinators invoke Inventory command ports
+      future coordinating services invoke InventoryService methods
       inside shared PostgreSQL transactions
 
-### Ports
+### Module services and external integrations
 
-    InventoryCommandPort
+    InventoryService
       registerBatch(command, transaction_context)
       appendMovement(command, transaction_context)
       allocateFefo(command, transaction_context)
       reverseMovements(command, transaction_context)
 
-    InventoryQueryPort
+    InventoryQueryService
       availableByMedication(branch_id, medication_ids)
       batchBalances(branch_id, medication_id)
 
@@ -68,24 +68,23 @@ The ledger is authoritative for stock changes. A balance is a rebuildable, trans
       require(branch_context, capability, native_mode)
 
     StockAlertPolicy
-    StockMovementRepository
-    StockBalanceRepository
+    Eloquent models: StockBatch, StockMovement, StockBalance, StockAlert
     Clock
 
 - Inventory owns movement semantics; callers cannot insert signed quantities or movement types directly.
 - Allocation returns batch-level movement drafts bound to the same transaction, not mutable batch models.
 - The low-stock/expiry evaluators are pure policies. Jobs only select candidates and apply idempotent state transitions.
-- A future integrated mirror implements InventoryAvailabilityQuery separately; it never writes native ledger tables.
+- A future integrated mirror supplies a separate `InventoryAvailabilityService`; it never writes native ledger tables.
 
 ## Packages and runtime components
 
-- Laravel 13, PostgreSQL, Horizon, Redis, outbox, audit, OpenTelemetry, and Sentry foundations.
+- Laravel 13, PostgreSQL, Horizon, Redis, outbox, audit, Prometheus, Laravel Telescope (local), and Sentry foundations.
 - brick/money for batch unit cost in integer minor units/currency.
 - Laravel UUIDv7/Symfony UID and injected clock.
 - deptrac/deptrac, Larastan/PHPStan, Pest/PHPUnit, and Eris for movement/allocation property tests.
 - Pharmacy Electron desktop uses React/TypeScript, TanStack Query, Zod, MUI, i18next, and an OpenAPI-generated TypeScript client behind a typed preload/main capability boundary. An approved encrypted catalog cache runs through a main-owned SQLite adapter, optionally executed in a utility process after the OS/ABI spike, and never in the renderer; stock remains online and server-authoritative.
 
-No event-sourcing package is required. The immutable movement table and explicit domain services implement the needed ledger without introducing a second framework.
+No event-sourcing package is required. The immutable movement table and explicit Laravel module services implement the needed ledger without introducing a second framework.
 
 ## Persistent schemas, invariants, and indexes
 
@@ -184,12 +183,12 @@ Constraints and indexes:
 
 ### FEFO allocation
 
-1. POS coordinator sends branch, medication, required smallest-unit quantity, transaction context, and authorized branch context.
+1. The POS coordinating service sends branch, medication, required smallest-unit quantity, transaction context, and authorized branch context.
 2. Inventory selects eligible batch balances ordered by FEFO and locks them using deterministic row order.
 3. If total is insufficient, return INSUFFICIENT_STOCK without movements.
 4. Allocate from each locked batch until satisfied.
 5. Append one SALE movement per allocation and decrement each balance atomically.
-6. Return immutable allocation/movement IDs to the POS coordinator; invoice and movement records commit or roll back together.
+6. Return immutable allocation/movement IDs to the POS coordinating service; invoice and movement records commit or roll back together.
 
 Concurrent sales cannot oversell because each rechecks locked balances. Redis locks, if used, are only a contention optimization.
 
@@ -206,7 +205,7 @@ Low-stock evaluation sums eligible balances after each committed relevant moveme
 
 ### Failure behavior
 
-- Deadlock/serialization failure: roll back completely and retry the whole idempotent coordinator within a small bounded budget.
+- Deadlock/serialization failure: roll back completely and retry the whole idempotent coordinating service call within a small bounded budget.
 - Balance/ledger mismatch: fail closed for new stock writes on the affected branch/medication, emit a high-priority operations alert, and run read-only reconciliation.
 - Redis/Horizon unavailable: sales/receipts remain correct in PostgreSQL; alerts may be delayed.
 - Catalog retired after stock exists: keep history/visibility, deny normal new receipt, and require governed disposal/adjustment.
@@ -221,7 +220,7 @@ Low-stock evaluation sums eligible balances after each committed relevant moveme
     POST /api/v1/pharmacy/branches/{branch_id}/inventory/adjustments
     GET  /api/v1/pharmacy/branches/{branch_id}/stock-alerts?cursor=...
 
-FEFO allocation, batch receipt, sale, and reversal are internal command ports used by Phase 12/13 coordinators rather than public generic movement endpoints.
+FEFO allocation, batch receipt, sale, and reversal are focused `InventoryService` methods used by Phase 12/13 coordinating services rather than public generic movement endpoints.
 
 Stable errors include BRANCH_MODE_READ_ONLY, INVENTORY_ACCESS_DENIED, MEDICATION_NOT_ACTIVE, PACKAGING_VERSION_CONFLICT, BATCH_EXPIRED, BATCH_QUARANTINED, INSUFFICIENT_STOCK, NEGATIVE_STOCK_FORBIDDEN, LEDGER_VERSION_CONFLICT, DUPLICATE_STOCK_SOURCE, and INVENTORY_RECONCILIATION_REQUIRED.
 
@@ -255,7 +254,7 @@ Aggregate branch summaries are separate scoped queries; one branch's staff canno
 
 ## Security and privacy controls
 
-- Enforce branch capability and NATIVE mode at API, application port, and transactional recheck.
+- Enforce branch capability and NATIVE mode in the Form Request/policy, module service, and transactional recheck.
 - Require MFA/step-up for high-impact adjustment/disposal/configuration according to approved role policy.
 - Protect against BOLA/BFLA, mass assignment of branch/type/delta/source, and forged reversal references.
 - Bound quantities, conversions, batch strings, alert thresholds, query pages, and export sizes; reject integer overflow.
@@ -284,7 +283,7 @@ Aggregate branch summaries are separate scoped queries; one branch's staff canno
 
 - Generated TypeScript pharmacy client covers quantities, money, cursors, versions, and stable conflicts.
 - Typed preload/IPC contracts cover stock reads, barcode resolution, branch changes, and reconnect events; validation rejects unregistered channels, stale branch context, unknown fields, and oversized payloads.
-- InventoryCommandPort contract passes for production and in-memory test adapters; the integrated-mode adapter remains read-only.
+- InventoryService contract passes for production and in-memory test adapters; the integrated-mode adapter remains read-only.
 - Event replay/version compatibility proves no consumer depends on free text.
 
 ### End-to-end tests
@@ -308,11 +307,11 @@ Metrics: movement count by bounded type, allocation latency/conflicts/insufficie
 
 Rollout:
 
-1. Expand tables/constraints and deploy read-disabled ports.
+1. Expand tables/constraints and deploy read services behind disabled feature flags.
 2. Seed synthetic medication/branch/batch fixtures and prove reconciliation.
 3. Enable read-only inventory for an allowlisted NATIVE branch.
 4. Import opening stock through audited OPENING movements, compare signed source totals, then enable adjustments.
-5. Enable write ports only after Phase 12/13 coordinators pass atomicity tests.
+5. Enable write services only after Phase 12/13 coordinating services pass atomicity tests.
 6. Rollback disables writes while preserving ledger/read access; corrections use new movements, never destructive migrations.
 
 ## Acceptance and exit gate

@@ -94,9 +94,11 @@ return [
     | Telemetry redaction
     |--------------------------------------------------------------------------
     |
-    | Redaction runs before export in every environment. Disabling it is not a
-    | supported configuration; the flag exists so a test can assert it is on.
+    | Redaction runs before a payload is treated as having left the process.
+    | Disabling it is not a supported configuration; the flag exists so a test
+    | can assert it is on.
     |
+    | Request inspection in local is Laravel Telescope, not a trace exporter.
     | In strict mode a leaked canary raises instead of being silently dropped,
     | so a redaction gap fails a test rather than reaching a log. Strict mode is
     | off in production: there, failing closed on the log path would turn a
@@ -106,8 +108,6 @@ return [
     'telemetry' => [
         'redaction_enabled' => (bool) env('TELEMETRY_REDACTION_ENABLED', true),
         'redaction_strict' => (bool) env('TELEMETRY_REDACTION_STRICT', false),
-        'otel_enabled' => (bool) env('OTEL_ENABLED', false),
-        'otlp_endpoint' => (string) env('OTEL_EXPORTER_OTLP_ENDPOINT', ''),
     ],
 
     /*

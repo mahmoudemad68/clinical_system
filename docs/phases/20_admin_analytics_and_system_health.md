@@ -21,10 +21,10 @@ The phase also surfaces unresolved old appointments for operational follow-up wi
 ## Entry criteria and dependencies
 
 - Phase 00 provides outbox/event envelopes, audit, scheduler/queues, telemetry, data classification, health conventions, and admin session security.
-- Phases 02-19 publish stable domain events or safe query projections for onboarding, appointments, pharmacy, search, notifications, and AI.
+- Phases 02-19 publish stable Laravel events or safe read projections for onboarding, appointments, pharmacy, search, notifications, and AI.
 - Phase 03 provides canonical appointment states and scheduling timestamps. This phase owns the derived daily unresolved-detection job/projection; it does not rewrite the Phase 03 state machine.
 - Phase 21 will prove scale/SLO behavior; this phase must expose the metrics and freshness needed for that proof.
-- This phase defines an optional `BackupStatusProjection` port and ships a null adapter that reports `UNKNOWN / not configured`. Phase 23 later supplies the real safe projection after backup and restore evidence exists; Phase 20 has no forward runtime or delivery dependency on Phase 23.
+- This phase defines an optional `BackupStatusService` and ships a null implementation that reports `UNKNOWN / not configured`. Phase 23 later supplies the real safe projection after backup and restore evidence exists; Phase 20 has no forward runtime or delivery dependency on Phase 23.
 - Product, privacy, security, operations, and clinical owners approve the allowed metric/dimension catalog before production data flows.
 
 ## Non-goals
@@ -37,12 +37,12 @@ The phase also surfaces unresolved old appointments for operational follow-up wi
 - No guarantee that health is current when a collector is stale; the UI must show `UNKNOWN/STALE` rather than infer healthy.
 - No infrastructure control plane: admins cannot restart services, run queries, rotate secrets, or trigger deployments from this dashboard.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Ownership
 
 ```text
-Source domain modules
+Source modules
   own operational truth and publish minimal versioned events
 
 Analytics module
@@ -59,34 +59,34 @@ React admin
   owns presentation/filter URL state; it is never an authorization or calculation authority
 ```
 
-Analytics consumers may use published events or reviewed read-model ports. They must not import source-domain Eloquent models or scan raw clinical tables. Health collectors query internal health/metrics adapters with least-privilege credentials; an admin HTTP request does not synchronously fan out to every dependency.
+Analytics consumers may use published events or reviewed public read services. They must not import another module's Eloquent models or scan raw clinical tables. Health collectors query internal health/metrics integrations with least-privilege credentials; an admin HTTP request does not synchronously fan out to every dependency.
 
-### Ports
+### Module services and external integrations
 
 ```text
 AnalyticsEventConsumer
 AnalyticsFactMapper
-AnalyticsAggregateRepository
-AnalyticsWatermarkRepository
+AnalyticsAggregationService
+Eloquent models: AnalyticsFact, AnalyticsDailyMetric, AnalyticsWatermark
 AnalyticsRebuilder
 
 OperationalCountReader
 UnresolvedAppointmentReader
-BackupStatusProjection
+BackupStatusService
   latestSafeStatus() -> configured status or UNKNOWN_NOT_CONFIGURED
 AiUsageSummaryReader
 
 ComponentHealthProbe
 MetricsBackendReader
-SystemHealthSnapshotRepository
+SystemHealthSnapshotService
 RunbookCatalog
 ```
 
 - **Single responsibility:** fact mapping, aggregation, health collection, authorization, and presentation are separate.
 - **Open/closed:** a new approved metric or component is a versioned mapper/probe, not a change to a universal query switch.
 - **Liskov substitution:** Prometheus/managed-metrics/local adapters return the same typed value/freshness/error contract.
-- **Interface segregation:** admin analytics receives aggregate/read-model ports only, never medical-record or stock repository interfaces.
-- **Dependency inversion:** application code owns metric/health contracts; SQL, Prometheus, Grafana, Redis, and HTTP are adapters.
+- **Interface segregation:** admin analytics receives aggregate/read services only, never medical-record or stock persistence abstractions.
+- **Conventional services:** owning Laravel services define metric/health behavior and use Eloquent/query builder directly; Prometheus, Grafana, Redis, and HTTP stay in focused integrations.
 
 ## Packages and runtime components
 
@@ -94,9 +94,9 @@ Versions are pinned under Phase 00.
 
 ### Laravel/PHP
 
-- Existing Laravel scheduler, Horizon, PostgreSQL, Redis, outbox, audit, OpenTelemetry, and Sentry infrastructure.
+- Existing Laravel scheduler, Horizon, PostgreSQL, Redis, outbox, audit, Prometheus, Laravel Telescope (local), and Sentry infrastructure.
 - PostgreSQL aggregate tables and ordinary SQL/query builder; do not add an OLAP platform before measured need.
-- Prometheus/OpenTelemetry metrics reader adapter only if the deployment exposes an authenticated internal query API; never use browser credentials for it.
+- Prometheus metrics reader adapter only if the deployment exposes an authenticated internal query API; never use browser credentials for it.
 - Pest/PHPUnit with real PostgreSQL/Redis for event replay, late data, concurrency, and rebuild tests.
 
 ### React/TypeScript
@@ -107,7 +107,7 @@ Versions are pinned under Phase 00.
 
 ### Operations
 
-- Existing Prometheus, Grafana, Loki-compatible logs, OpenTelemetry Collector, and Sentry.
+- Existing Prometheus, Grafana, Loki-compatible logs, Laravel Telescope (local), and Sentry.
 - Grafana remains the engineering operations console; the admin dashboard exposes only a simplified reviewed projection.
 
 ## Persistent schemas, invariants, and indexes
@@ -304,7 +304,7 @@ Approved events include identifiers and non-sensitive state changes such as prof
 ### Integration tests
 
 - Real PostgreSQL/Redis/outbox verifies atomic dedupe/aggregate update, duplicate workers, crash/replay, late events, correction events, rebuild swap, and reconciliation.
-- Source-domain fixtures prove no analytics query joins clinical tables or stock balances.
+- Source-module fixtures prove no analytics query joins clinical tables or stock balances.
 - Health adapters test dependency timeout, stale snapshot, Redis loss, DB/read replica lag, queue backlog, AI/Qdrant outage, the null/real backup-status adapters, and metrics-backend failure.
 - Admin cookie/CSRF/MFA/session expiration and audit records use real policy/database integration.
 

@@ -41,7 +41,7 @@ Phase 15 implements connector synchronization, but the mode and authorization in
 - No free-form package fractions or floating-point conversion.
 - No Elasticsearch/OpenSearch.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Module ownership
 
@@ -53,39 +53,38 @@ Phase 15 implements connector synchronization, but the mode and authorization in
       organization, branch, location, operating mode,
       memberships, roles, capabilities, payment-method settings
 
-    Admin application facade
-      authenticated catalog approval and pharmacy verification commands;
+    Admin controllers and services
+      authenticated catalog approval and pharmacy verification actions;
       owns no catalog/branch tables
 
     Future consumers
       Inventory, Purchasing, POS, Search, Integration, and AI
-      use stable read/command ports and never edit catalog tables directly
+      use stable public module services and never edit catalog tables directly
 
-### Owned ports
+### Module services
 
-    MedicationReferenceQuery
+    MedicationReferenceService
       getActive(medication_id)
       resolveByBarcode(barcode)
       resolveByNormalizedTerm(term, cursor)
 
-    PackagingQuery
+    PackagingService
       smallestUnit(medication_id)
       conversionToSmallest(medication_id, packaging_id)
 
-    CatalogAdministration
+    CatalogAdministrationService
       createDraft(command)
       publish(command)
       retire(command)
 
-    BranchAuthorization
+    BranchAuthorizationService
       requireCapability(actor_id, branch_id, capability)
 
-    BranchOperatingModeQuery
+    BranchOperatingModeService
       getMode(branch_id)
       requireNativeWrite(branch_id, operation)
 
-    PharmacyMembershipRepository
-    MedicationRepository
+    Eloquent models: PharmacyMembership, Medication, Packaging, PharmacyBranch
 
 - Catalog DTOs expose stable IDs and approved reference data, never Eloquent models.
 - The medication catalog has no dependency on inventory quantity, sales, prescriptions, or AI.
@@ -121,14 +120,14 @@ Versions are locked under Phase 00.
 - deptrac/deptrac and Larastan/PHPStan for boundary enforcement.
 - Pest/PHPUnit and Eris/Hypothesis-style property generation for packaging/search normalization invariants.
 
-Use native explicit enums/value objects for medication lifecycle, packaging unit, branch mode, and capabilities. Do not add a generic state-machine or broad role package merely to encode these rules.
+Use backed enums for medication lifecycle, packaging unit, branch mode, and capabilities where the values are finite. Keep exact ratios/quantities as validated integers or decimal strings. Do not add DDD value-object trees, a generic state-machine, or a broad role package merely to encode these rules.
 
 ### Clients
 
 - Pharmacy desktop uses Electron, React, TypeScript, TanStack Query, React Router, React Hook Form, Zod, MUI, i18next, and an OpenAPI-generated TypeScript client.
 - Its React renderer has no Node.js, Electron, token/key, database, filesystem, shell, printing, or updater access. It calls narrow typed capabilities exposed by a context-isolated preload; validated main-process handlers own API/realtime and native-adapter authorization, optionally delegating blocking work to a utility process where the target-OS/ABI spike supports it.
 - Admin remains a browser React application using TanStack Query, React Hook Form, Zod, MUI, generated OpenAPI types/client, i18next, Vitest, MSW, and Playwright.
-- Barcode input is an adapter abstraction. Keyboard-wedge events may stay in the renderer; camera/native scanner access crosses a purpose-specific preload/main capability and never enters catalog domain code.
+- Barcode input is an integration detail. Keyboard-wedge events may stay in the renderer; camera/native scanner access crosses a purpose-specific preload/main capability and never enters catalog business services.
 
 ## Persistent schemas, invariants, and indexes
 
@@ -248,7 +247,7 @@ Indexes and constraints:
 
 1. Admin submits a draft with source/provenance, names, form, ingredient, barcode, aliases, and packaging tree.
 2. Request validation normalizes search fields without changing display values.
-3. Domain validates exact conversion graph, one smallest unit, no cycles, positive ratios, and barcode rules.
+3. `CatalogService` validates the exact conversion graph, one smallest unit, no cycles, positive ratios, and barcode rules.
 4. Draft is inserted without becoming visible to prescribing/inventory/search.
 5. A different or explicitly authorized approver performs step-up authentication and reviews provenance.
 6. Publish transaction locks the draft, revalidates uniqueness/version, sets ACTIVE, writes audit and catalog-medication-published outbox event, and commits.
@@ -266,12 +265,12 @@ Retirement never rewrites prescriptions, invoices, or stock history. The transac
 2. Load active organization membership and exact branch role/capability.
 3. Verify branch/organization active status.
 4. For stock-changing operations, require operating_mode NATIVE and the operation capability.
-5. Pass an immutable BranchAuthorizationContext to the target application command.
+5. Pass an immutable `BranchAuthorizationContext` DTO to the target module service action.
 6. Target module rechecks the context/version in its transaction.
 
 ### Change branch mode
 
-Mode transition is disabled until Phase 15 supplies its reconciliation workflow. When enabled, a coordinator must block new writes, ensure no in-flight sale/receipt/sync, reconcile the selected source, atomically change mode/version, rotate connector credentials as needed, and audit. Direct PATCH of operating_mode is prohibited.
+Mode transition is disabled until Phase 15 supplies its reconciliation workflow. When enabled, `BranchModeTransitionService` must block new writes, ensure no in-flight sale/receipt/sync, reconcile the selected source, atomically change mode/version, rotate connector credentials as needed, and audit. Direct PATCH of `operating_mode` is prohibited.
 
 ## API, event, and job contracts
 
@@ -312,7 +311,7 @@ Stable errors include MEDICATION_NOT_ACTIVE, CATALOG_VERSION_CONFLICT, BARCODE_C
 
 ### Pharmacy Electron desktop (React + TypeScript)
 
-- Branch selector is server-scoped; switching clears branch-specific repositories/caches and refetches capabilities.
+- Branch selector is server-scoped; switching clears branch-specific query caches and refetches capabilities.
 - UI hides unauthorized actions and visibly marks INTEGRATED branches read-only for native stock workflows, while server denial remains authoritative.
 - Barcode scanner input maps to the catalog reference API and never constructs SQL/search expressions.
 - Renderer code consumes generated TypeScript DTOs through a typed preload facade. It never receives device credentials, SQL access, arbitrary filesystem paths, raw IPC primitives, or reusable authorization material.
@@ -348,7 +347,7 @@ Stable errors include MEDICATION_NOT_ACTIVE, CATALOG_VERSION_CONFLICT, BARCODE_C
 
 - Generated TypeScript Electron/admin clients cover lifecycle, packaging, cursor, money/reference, and stable denial/conflict shapes.
 - Preload capability declarations and IPC request/response schemas are versioned contracts; tests reject unknown channels, fields, sender frames, oversized payloads, and incompatible responses.
-- MedicationReferenceQuery and BranchAuthorization fakes/adapters pass substitutability suites.
+- `MedicationReferenceService` and `BranchAuthorizationService` tests cover alternate provider implementations and deny/fail-safe semantics.
 - Event current/previous schema replay does not require display names or sensitive membership data.
 
 ### End-to-end tests
@@ -384,7 +383,7 @@ Rollout:
 - Approved catalog entries have stable IDs, provenance, exact integer packaging, and deterministic Arabic/English/barcode search.
 - Referenced entries retire without deletion or historical mutation.
 - Cross-organization and cross-branch access tests disclose or mutate zero unauthorized records.
-- Every stock-changing port denies INTEGRATED mode and every connector write denies NATIVE mode.
+- Every stock-changing service denies INTEGRATED mode and every connector write service denies NATIVE mode.
 - Role/capability, catalog approval, mode-version, audit, outbox, migration, generated-client, accessibility, and observability evidence passes.
 - Production-shaped catalog search and branch queries meet agreed Phase 21 targets.
 - No alternatives, reservation, branch transfer, supplier API, multi-country behavior, or other future feature is enabled.

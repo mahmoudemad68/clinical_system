@@ -5,14 +5,14 @@ description: Implement or review this clinic project's raw upload-through-clean-
 
 # Clinic Secure Files
 
-Treat every uploaded byte, filename, parser result, object reference, and signed URL as hostile until a purpose-bound workflow proves otherwise. Own the byte-trust boundary; domain owners still decide who may request, attach, review, retain, or retire a file.
+Treat every uploaded byte, filename, parser result, object reference, and signed URL as hostile until a purpose-bound workflow proves otherwise. Own the byte-trust boundary; owning modules still decide who may request, attach, review, retain, or retire a file.
 
 ## Read the required sources
 
 Read completely before changing file behavior:
 
 - [Roadmap invariants and evidence policy](../../../docs/phases/README.md)
-- [Cross-cutting storage, ports, security, and delivery contract](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
+- [Cross-cutting storage, services, security, and delivery contract](../../../docs/phases/00_cross_cutting_architecture_and_delivery_contract.md)
 - The active file-owning phase: [Phase 02 verification documents](../../../docs/phases/02_onboarding_verification_profiles_and_locations.md), [Phase 07 medical/lab files](../../../docs/phases/07_labs_files_reports_and_referrals.md), or [Phase 16 knowledge ingestion](../../../docs/phases/16_ai_platform_knowledge_ingestion_and_retrieval.md)
 
 Read [Phase 22 assurance](../../../docs/phases/22_security_privacy_and_compliance_validation.md) for a security-review or release-evidence task and [Phase 23 recovery](../../../docs/phases/23_disaster_recovery_release_and_production.md) for backup/restore interactions. Inspect current object-store policies, metadata schema, upload contracts, scanner/parser adapters, jobs/outbox, access policies, retention decisions, tests, and local changes.
@@ -24,11 +24,11 @@ Own:
 - opaque upload intent, quarantine object, validation/scan, promotion/availability, rejection, retirement, and cleanup mechanics;
 - detected type/signature, size/checksum/hash, immutable object-version metadata, processing provenance, and safe reason codes;
 - private S3-compatible adapters, short-lived purpose-bound upload/download grants, and file access audit events;
-- malware-scanner, file-type, PDF/image parser, text extraction, and OCR ports with fail-safe behavior;
+- malware-scanner, file-type, PDF/image parser, text extraction, and OCR services or replaceable-provider interfaces with fail-safe behavior;
 - sandbox/resource/network limits, replay/idempotency, orphan reconciliation, and file-pipeline telemetry;
-- clean source handoff to verification, clinical, and AI-ingestion domains.
+- clean source handoff to verification, clinical, and AI-ingestion modules.
 
-The requesting domain owns actor/resource eligibility, allowed purpose, lifecycle attachment, clinical interpretation, reviewer workflow, retention/legal hold, and patient/admin presentation. PostgreSQL consistency owns metadata constraints and transactions. Realtime/jobs owns durable dispatch/retry mechanics. Production/DR owns bucket provisioning, KMS, backup, and restore. Security/privacy independently tests this boundary.
+The requesting module owns actor/resource eligibility, allowed purpose, lifecycle attachment, clinical interpretation, reviewer workflow, retention/legal hold, and patient/admin presentation. PostgreSQL consistency owns metadata constraints and transactions. Realtime/jobs owns durable dispatch/retry mechanics. Production/DR owns bucket provisioning, KMS, backup, and restore. Security/privacy independently tests this boundary.
 
 Never let the file subsystem decide medical validity, approve a doctor/pharmacy, activate knowledge content, diagnose an image, or infer a legal retention period.
 
@@ -47,17 +47,17 @@ Never let the file subsystem decide medical validity, approve a doctor/pharmacy,
 11. V1 accepts only the formats explicitly allowed by the owning phase. Arbitrary archives, office macros, executables, audio/video, active PDF content, and medical-image diagnosis remain rejected or disabled.
 12. AI ingestion accepts only a `CLEAN`/`AVAILABLE` source file with matching hash and provenance. Extracted text is untrusted content, Qdrant is rebuildable, and upload/parse success does not mean a document is approved or active.
 
-## SOLID ports and state model
+## Laravel services and state model
 
-Use narrow capability ports such as:
+Use focused services and use a small interface only for a genuinely replaceable external provider:
 
 ```text
 UploadIntentAuthorizer        QuarantineObjectStore
-ObjectObservationPort        FileSignatureValidator
+ObjectObservationService     FileSignatureValidator
 MalwareScanner               DocumentSafetyValidator
 CleanObjectPromoter          SignedObjectAccess
 TextExtractor / OcrEngine    FileAccessAuditWriter
-FileProcessingRepository     Clock / Outbox
+FileProcessingService        Clock / Outbox
 ```
 
 Adapters must preserve typed denial, unavailable, retryable, permanent-rejection, timeout, cancellation, and checksum-mismatch semantics. A permissive substitute is not Liskov-compatible.

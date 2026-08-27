@@ -1,6 +1,6 @@
 ---
 name: clinic-flutter-development
-description: Implement or refactor this clinic project's patient UI as Inertia.js pages inside the Laravel app. Use for patient presentation, generated/Inertia props, localization, accessibility, notifications, and tests; not for a standalone Flutter app, doctor/pharmacy UI, admin UI, Laravel domain rules, or AI service orchestration unless the user explicitly requires a native mobile client.
+description: Implement or refactor this clinic project's patient UI as Inertia.js pages inside the Laravel app. Use for patient presentation, generated/Inertia props, localization, accessibility, notifications, and tests; not for a standalone Flutter app, doctor/pharmacy UI, admin UI, Laravel business rules, or AI service orchestration unless the user explicitly requires a native mobile client.
 ---
 
 # Clinic Patient UI Development
@@ -69,12 +69,12 @@ If the user **explicitly** requires Android/iOS, keep Laravel as the authority a
 1. Identify the owning phase, patient journey, server contract, authorization assumptions, and acceptance gate.
 2. Inspect existing Inertia page/controller patterns. Preserve valid conventions.
 3. Define success plus denied, stale, duplicate-tap, timeout, cancellation, reconnect, localization, and accessibility behavior.
-4. Keep presentation dependent on authorized Laravel props/controllers. Domain transitions stay in application handlers.
+4. Keep presentation dependent on authorized Laravel props/controllers. Business transitions stay in the owning module service.
 5. Validate server data before presentation, preserve exact structured values, sanitize restricted markup, and map stable errors deliberately.
 6. Add redacted telemetry through the approved client abstraction with bounded attributes and no personal, clinical, location, or free-text content.
 7. Run focused Pest tests, affected patient suites, and a production Vite/Inertia build.
 
-If implementation requires an unauthorized backend contract or domain-rule change, stop at a concrete proposal and hand it to the owning module rather than embedding a UI workaround.
+If implementation requires an unauthorized backend contract or business-rule change, stop at a concrete proposal and hand it to the owning module rather than embedding a UI workaround.
 
 ## Verification
 

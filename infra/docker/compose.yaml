@@ -172,18 +172,8 @@ services:
       - no-new-privileges:true
 
   # ------------------------------------------------------------ observability
-
-  otel-collector:
-    <<: [*restart, *logging]
-    profiles: [observability, full]
-    image: otel/opentelemetry-collector-contrib:0.130.0
-    command: ["--config=/etc/otel/config.yaml"]
-    volumes:
-      - ../monitoring/otel-collector.yaml:/etc/otel/config.yaml:ro
-    ports:
-      - "127.0.0.1:4317:4317"   # OTLP gRPC
-      - "127.0.0.1:4318:4318"   # OTLP HTTP
-      - "127.0.0.1:8889:8889"   # Prometheus scrape of collector-exported metrics
+  # Request inspection is Laravel Telescope (local Core API only). Metrics
+  # are scraped from each service's /metrics. There is no OpenTelemetry collector.
 
   prometheus:
     <<: [*restart, *logging]

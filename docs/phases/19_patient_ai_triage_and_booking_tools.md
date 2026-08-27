@@ -26,9 +26,9 @@ The LLM is advisory and untrusted. It cannot suppress a deterministic red flag, 
 - Phase 01 provides authenticated patient profiles/device sessions and patient-safe authorization.
 - Phases 02-03 provide verified doctors, specialties, locations, appointment types, schedules, availability, atomic booking, idempotency, and payment-at-clinic state.
 - Phase 08 provides Patient Home, manual doctor discovery, localization, current location handling, and directions.
-- Phase 16 provides isolated AI runtime, patient-safe collection/versioning, provider/retrieval ports, trace records, and evaluation harness.
+- Phase 16 provides isolated AI runtime, patient-safe collection/versioning, provider/retrieval services and integrations, trace records, and evaluation harness.
 - Qualified medical reviewers own the red-flag rule set, specialty taxonomy, urgency taxonomy, question limits, patient wording, and versioned promotion thresholds.
-- Privacy/legal review has defined provider-processing, retention, age/consent, and escalation-content requirements for the intended Egyptian launch context.
+- Project privacy/security configuration defines provider-processing, retention, age/consent, and escalation-content requirements for the intended Egyptian launch context. Conservative defaults remain configurable, and legal sign-off is not required.
 
 ## Non-goals
 
@@ -41,7 +41,7 @@ The LLM is advisory and untrusted. It cannot suppress a deterministic red flag, 
 - No autonomous browser, external search, URL fetch, shell/code/SQL, or general-purpose tool use.
 - No symptom conversation automatically becoming part of the clinical record.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Ownership
 
@@ -64,12 +64,12 @@ Qualified clinical governance
   owns red-flag content, thresholds, validation datasets and release sign-off
 ```
 
-FastAPI never receives booking credentials, database access, an unrestricted patient record, or a generic core tool endpoint. Laravel evaluates all safety rules and executes all core queries/commands.
+FastAPI never receives booking credentials, database access, an unrestricted patient record, or a generic core tool endpoint. Laravel evaluates all safety rules and executes all Core reads and actions through module services.
 
-### Ports and command boundaries
+### Module services and action boundaries
 
 ```text
-TriageRuleRepository
+TriageRuleService
   activeApprovedVersion(locale, country)
 
 DeterministicTriageEngine
@@ -82,24 +82,24 @@ PatientKnowledgeRetriever
 TriageLlmProvider
 TriageOutputPolicy
 
-DoctorDiscoveryQuery
+DoctorDiscoveryService
   findBySpecialty(specialty_id, location?, filters)
 
-AppointmentAvailabilityQuery
+AppointmentAvailabilityService
   getSlots(doctor_id, location_id, type_id, date_window)
 
 BookingProposalService
   createExactProposal(patient_id, slot_identity, price_version)
 
-ConfirmedBookingCommand
+ConfirmedBookingService
   book(patient_id, proposal_id, human_confirmation_proof, idempotency_key)
 ```
 
-- **Single responsibility:** deterministic safety classification, dynamic questions, LLM composition, doctor search, proposal creation, and booking are independent handlers.
+- **Single responsibility:** deterministic safety classification, dynamic questions, LLM composition, doctor search, proposal creation, and booking are independent focused services or service methods.
 - **Open/closed:** new provider/rule storage adapters do not change booking or safety state machines.
 - **Liskov substitution:** provider fakes and adapters obey the same typed refusal/timeout/invalid-output semantics.
-- **Interface segregation:** AI has query/proposal ports only; the human-confirmed booking handler is unreachable without a core-issued proof.
-- **Dependency inversion:** clinical rules and booking commands own interfaces; provider SDK, HTTP, persistence, and model code are adapters.
+- **Interface segregation:** AI has read/proposal services only; the human-confirmed booking service is unreachable without a Core-issued proof.
+- **Conventional services:** clinical rules and booking actions live in Laravel module services; provider SDK/HTTP integrations use focused classes or small interfaces, while the owning module uses Eloquent directly.
 
 ## Packages and runtime components
 
@@ -107,8 +107,8 @@ Versions are pinned under Phase 00.
 
 ### Laravel/PHP
 
-- Existing Laravel, Sanctum, PostgreSQL/PostGIS, outbox, Horizon, Reverb, audit, rate limiting, idempotency, OpenTelemetry, and Sentry baseline.
-- Domain state machine and rule evaluation use plain typed PHP/value objects and versioned immutable data; do not add a dynamic executable rules engine.
+- Existing Laravel, Sanctum, PostgreSQL/PostGIS, outbox, Horizon, Reverb, audit, rate limiting, idempotency, Prometheus, Laravel Telescope (local), and Sentry baseline.
+- `PatientTriageService` uses backed enums, typed DTOs, and versioned immutable snapshots for state and rule evaluation; do not add DDD value-object trees or a dynamic executable rules engine.
 - Existing UUIDv7, clock, Cairo time, normalized specialty, money, and booking lock/constraint utilities.
 
 ### Python/FastAPI
@@ -259,7 +259,7 @@ Indexes and constraints:
 
 1. Patient explicitly taps “Find doctors for this specialty.”
 2. Laravel reads the validated specialty ID from the current result; the client/model cannot replace it without returning to manual search.
-3. `DoctorDiscoveryQuery` returns approved doctors with location/type/price/availability/rating/distance under normal authorization and pagination.
+3. `DoctorDiscoveryService` returns approved doctors with location/type/price/availability/rating/distance under normal authorization and pagination.
 4. Ranking is earliest availability then rating descending. Distance is included only for display/tie-independent information.
 5. Patient selects doctor, location, appointment type, and a slot returned by the server.
 6. Availability is recomputed and a short-lived exact `booking_proposal` is stored with schedule/price version.
@@ -307,7 +307,7 @@ Stable errors include `TRIAGE_SESSION_EXPIRED`, `TRIAGE_VERSION_CONFLICT`, `TRIA
 
 ### AI tool boundary
 
-FastAPI can propose only `find_doctors.v1` and `get_slots.v1` read requests using canonical specialty/selection references supplied by Laravel. Laravel replaces all actor/scope/location authorization context and executes normal queries. `book_slot.v1`, if represented in the AI protocol, is a **proposal handoff only** and cannot execute `ConfirmedBookingCommand`; the public human-confirmed appointment endpoint is the sole mutation path.
+FastAPI can propose only `find_doctors.v1` and `get_slots.v1` read requests using canonical specialty/selection references supplied by Laravel. Laravel replaces all actor/scope/location authorization context and executes normal service reads. `book_slot.v1`, if represented in the AI protocol, is a **proposal handoff only** and cannot execute `ConfirmedBookingService`; the public human-confirmed appointment endpoint is the sole mutation path.
 
 ### Events and jobs
 
@@ -337,7 +337,7 @@ FastAPI can propose only `find_doctors.v1` and `get_slots.v1` read requests usin
 - Deterministic rule and output policy versions are immutable, signed/hashed, clinically approved, audited, and rollback-capable. Prompts cannot override them.
 - Render output as sanitized plain text/restricted Markdown; disable arbitrary HTML, scripts, remote images, and unvalidated links.
 - Prevent prompt injection, fabricated emergencies, unsafe de-escalation, model/tool scope expansion, denial-of-wallet, output poisoning, and confirmation-token theft/replay.
-- Provider-processing/residency/retention and patient consent wording require qualified privacy/legal validation. Clinical rules and wording require qualified medical validation; engineering evidence is not a legal or clinical approval.
+- Provider-processing/residency/retention and patient consent wording require documented privacy/security decisions with conservative defaults. Clinical rules and wording require qualified medical validation; optional legal advice does not block engineering work, and engineering evidence is not a legal or clinical approval.
 
 ## Test plan
 
@@ -407,5 +407,5 @@ FastAPI can propose only `find_doctors.v1` and `get_slots.v1` read requests usin
 - Cross-patient, prompt/tool injection, proof replay/theft, unsafe output, denial-of-wallet, provider/Qdrant outage, and saturation tests fail safely with zero unauthorized disclosure or state mutation.
 - Approved datasets meet clinician-signed red-flag, false-emergency, routing, grounding, refusal, latency, and booking-tool thresholds in Arabic and English.
 - Manual doctor search/booking remains available and within SLO when every AI dependency is down.
-- Privacy/legal/clinical approvals, retention/consent, dashboards/alerts/runbooks, migrations/rollback, accessibility/localization, and all test evidence are complete.
+- Privacy/security/clinical evidence, retention/consent configuration, dashboards/alerts/runbooks, migrations/rollback, accessibility/localization, and all test evidence are complete. Missing legal sign-off never blocks phase completion.
 - Emergency chat, adherence, alternatives, reservation, imaging diagnosis, payment, and all other V1-excluded features remain disabled.

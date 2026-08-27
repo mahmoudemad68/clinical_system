@@ -98,8 +98,6 @@ parameters:
         - type: classLike
           value: ^Sentry\\.*
         - type: classLike
-          value: ^OpenTelemetry\\.*
-        - type: classLike
           value: ^Monolog\\.*
         - type: classLike
           value: ^GuzzleHttp\\.*

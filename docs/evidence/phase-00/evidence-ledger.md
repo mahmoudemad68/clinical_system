@@ -116,7 +116,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
-| G-07-01 | Propagate traceparent, request/correlation/causation IDs, pseudonymous actor, service/version without PHI | observability | `AssignCorrelationId`; `InstrumentHttp`; `./vendor/bin/pest --filter MetricsAndTraceTest` | `PARTIAL` | Correlation IDs assigned and persisted. W3C `traceparent` is adopted when well-formed and echoed as `traceresponse`; hostile values are dropped. HTTP spans stay in-process (`InMemoryExporter`) in tests. OTLP HTTP/protobuf is wired behind `FailSafeSpanExporter` when `OTEL_ENABLED` is true; a live collector export has not been proven in this environment. |
+| G-07-01 | Propagate traceparent, request/correlation/causation IDs, pseudonymous actor, service/version without PHI | observability | `AssignCorrelationId`; `InstrumentHttp`; `./vendor/bin/pest --filter MetricsAndTraceTest` | `PARTIAL` | Correlation IDs assigned and persisted. W3C `traceparent` is adopted when well-formed and echoed as `traceresponse`; hostile values are dropped. HTTP attributes stay in-process (bounded allow-list). Request inspection is Laravel Telescope (local only). The OpenTelemetry SDK/collector is not used. |
 | G-07-02 | Instrument request rate/error/latency, DB pool and query latency, Redis errors, queue depth/age/failures, outbox backlog, Reverb connections, provider failures | observability | `GET /metrics`; `./vendor/bin/pest --filter MetricsAndTraceTest`; `FirebaseSendPushAdapterTest` | `PARTIAL` | Prometheus text now includes HTTP, readiness, outbox pending/dead-letter/age, `clinic_db_connections_*`, `clinic_db_query_duration_seconds_*`, `clinic_horizon_queue_depth`, and `clinic_redis_errors_total`. `clinic_reverb_connections` is exported as 0 (process-local Reverb count is not scraped). `clinic_provider_failures_total` is incremented with `error_class=push` when FCM throws; other provider adapters remain unused. |
 | G-07-03 | Bounded metric labels; never patient/doctor/appointment/file/prescription/free-text values | observability | `Classification::allowedAsMetricLabel()`; collector `attributes/bound_metric_labels` | `PASS` | Encoded in types and unit-tested, enforced again at the collector, which deletes `patient_id`, `doctor_id`, `appointment_id`, `prescription_id`, `file_id`, and `user_id` if they ever appear |
 | G-07-04 | Alerts with owner, severity, threshold, sustain period, runbook, false-positive review | observability | [alerts/platform.yaml](../../../infra/monitoring/alerts/platform.yaml) | `PARTIAL` | 10 rules, every one carrying owner, severity, sustain period, and a runbook link that resolves. 3 runbooks are written in full; 5 are honest stubs, because writing them needs operational experience the platform has not had yet. |
@@ -292,9 +292,9 @@ satisfied the comparison.
   proves runtime behaviour (G-02-10).
 - **Nothing in CI has ever run.** Nine jobs are written and YAML-valid; there is
   no GitHub remote.
-- **Redaction is proven on the in-process export path** (G-07-05). OTLP HTTP
-  export is wired behind a fail-safe exporter when `OTEL_ENABLED` is true;
-  a live collector round-trip has not been proven (G-07-01).
+- **Redaction is proven on the in-process export path** (G-07-05). Local
+  request inspection is Laravel Telescope. There is no OpenTelemetry collector
+  or OTLP export (G-07-01 stays PARTIAL: no distributed trace pipeline).
 - **`clinic_reporter` is limited to reporting views** on identity data in local
   `clinic_test` (`PostgresPrivilegeTest`). Production grant review is still
   outstanding.

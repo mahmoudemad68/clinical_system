@@ -25,7 +25,7 @@ Sale, inventory allocation, invoice, payment record, audit, and outbox commit in
 - Phase 11 supplies FEFO allocation, immutable movements, balances, reversals, and reconciliation.
 - Phase 12 supplies received stock and batch provenance.
 - Phase 00 supplies idempotency, transaction/outbox/audit, OpenAPI, telemetry, secrets, and test harnesses.
-- Pharmacy/legal/accounting owners approve discount, cancellation, return/restockability, refund, cash balancing, invoice numbering, and retention policy.
+- Pharmacy, accounting, and product owners document discount, cancellation, return/restockability, refund, cash balancing, invoice numbering, and retention policy. Legal approval is not required.
 - An approved external card terminal/process is selected. If none is approved, CARD remains disabled.
 
 ## Non-goals
@@ -37,7 +37,7 @@ Sale, inventory allocation, invoice, payment record, audit, and outbox commit in
 - No selling expired/quarantined/insufficient stock.
 - No POS writes for INTEGRATED branches.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Ownership
 
@@ -49,16 +49,16 @@ Sale, inventory allocation, invoice, payment record, audit, and outbox commit in
     Inventory module
       FEFO allocation and linked SALE/RETURN/INVOICE_CANCEL movements
 
-    CompleteSaleCoordinator
-    CancelInvoiceCoordinator
-    ProcessReturnRefundCoordinator
+    CompleteSaleService
+    CancelInvoiceService
+    ProcessReturnRefundService
       own shared transaction boundaries and idempotency
 
-    ExternalTerminalReferencePort
+    ExternalTerminalService
       validates/normalizes an already completed terminal result reference;
       performs no card capture and receives no PAN/CVV
 
-### Ports
+### Module services and external integrations
 
     SalesAuthorization
       requireSell(actor, branch)
@@ -69,26 +69,24 @@ Sale, inventory allocation, invoice, payment record, audit, and outbox commit in
       price(cart_line, branch_configuration)
       applyConfiguredDiscount(...)
 
-    InventoryCommandPort
+    InventoryService
       allocateFefo(...)
       reverseMovements(...)
       appendReturnMovement(...)
 
-    InvoiceRepository
-    ReturnRepository
-    PaymentRecordRepository
-    ExternalTerminalReferencePort
+    Eloquent models: Invoice, InvoiceItem, ReturnRecord, PaymentRecord
+    ExternalTerminalService
     TransactionManager
     IdempotencyStore
 
 - The client submits medication, package/quantity, and a permitted discount reference; the server computes authoritative totals.
 - Inventory owns batch choice and quantity mutation. POS stores immutable allocation/movement references.
-- Card and cash adapters implement distinct narrow contracts. A generic payment-provider object is not injected into domain code.
+- Card and cash integrations implement distinct narrow contracts. A generic payment-provider object is not injected into the sales service.
 - Events trigger receipts/analytics/notifications only after commit.
 
 ## Packages and runtime components
 
-- Laravel 13, PostgreSQL, Horizon, outbox, audit, OpenTelemetry, Sentry, and UUIDv7 foundations.
+- Laravel 13, PostgreSQL, Horizon, outbox, audit, Prometheus, Laravel Telescope (local), Sentry, and UUIDv7 foundations.
 - brick/money for all totals, discounts, refund amounts, and currency calculations.
 - A small internal external-terminal reference validator; no payment SDK is required for V1.
 - deptrac/deptrac, Larastan/PHPStan, Pest/PHPUnit, and Eris for money/allocation/refund property tests.
@@ -208,7 +206,7 @@ Constraints/indexes:
 ### Cancel invoice
 
 1. Authorized actor submits invoice version, reason, confirmation, and Idempotency-Key.
-2. Coordinator locks invoice, requires PAID and no incompatible prior return/refund, and rechecks branch/capability.
+2. `ProcessReturnRefundService` locks the invoice, requires PAID and no incompatible prior return/refund, and rechecks branch/capability.
 3. Inventory creates exactly linked INVOICE_CANCEL reverse movements for original SALE allocations.
 4. Payment is marked REVERSED; for CARD the platform records an external terminal VOIDED/REFUNDED reference supplied after the external action, never initiates it.
 5. Invoice becomes CANCELLED with audit/outbox in the same transaction.
@@ -241,7 +239,7 @@ Constraints/indexes:
     POST /api/v1/pharmacy/branches/{branch_id}/invoices/{invoice_id}/returns
     GET  /api/v1/pharmacy/branches/{branch_id}/returns/{return_id}
 
-All mutations require Idempotency-Key; cancellation/returns also require aggregate version.
+All mutations require Idempotency-Key; cancellation/returns also require record version.
 
 Accepted card JSON has only:
 
@@ -309,7 +307,7 @@ Owner sees authorized branch aggregates/invoices, never another organization. Ex
 
 - Generated TypeScript pharmacy client has no card-sensitive fields and covers money, versions, idempotency, and stable conflicts.
 - Preload/IPC contracts expose distinct sale, result-poll, print, encrypted-cart, and scanner capabilities; tests reject generic send/on bridges, unexpected sender frames, arbitrary paths/URLs, extra fields, and oversized receipt/cart payloads.
-- ExternalTerminalReferencePort fakes/production implementation share approved/reused/malformed semantics.
+- ExternalTerminalService fakes/production implementation share approved/reused/malformed semantics.
 - Events omit references/item free text and replay without duplicate notification/analytics.
 
 ### End-to-end tests

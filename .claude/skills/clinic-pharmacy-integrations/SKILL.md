@@ -46,7 +46,7 @@ For production work also read [Phase 21](../../../docs/phases/21_performance_sca
 - Bound deadlines, pages, total bytes, records, strings, IDs, cursors, versions, nesting, quantities, timestamps, decompression, retries, and concurrency. Quarantine malformed payload references and expose only safe error codes.
 - Connector jobs run on the Laravel Horizon `integrations` lane and carry IDs/configuration version/deadline, not credentials or raw pages. This is not a Python/AI queue.
 
-Use Laravel 13 HTTP client/Guzzle, isolated PDO drivers only for approved fixed DB adapters, PostgreSQL staging/mirror tables, Horizon, outbox, OpenTelemetry/Sentry redaction, `deptrac/deptrac`, Larastan/PHPStan, Pest/PHPUnit, Eris, and Testcontainers/Docker vendor fixtures. Pin selected adapters and drivers in lockfiles.
+Use Laravel 13 HTTP client/Guzzle, isolated PDO drivers only for approved fixed DB adapters, PostgreSQL staging/mirror tables, Horizon, outbox, Sentry redaction, `deptrac/deptrac`, Larastan/PHPStan, Pest/PHPUnit, Eris, and Testcontainers/Docker vendor fixtures. Pin selected adapters and drivers in lockfiles.
 
 ## Implementation workflow
 

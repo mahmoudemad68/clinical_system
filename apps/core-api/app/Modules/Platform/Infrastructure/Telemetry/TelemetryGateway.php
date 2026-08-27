@@ -6,33 +6,21 @@ namespace App\Modules\Platform\Infrastructure\Telemetry;
 
 use App\Modules\Platform\Domain\Contracts\Redactor;
 use App\Modules\Platform\Domain\Exceptions\RedactionFailure;
-use OpenTelemetry\API\Trace\SpanKind;
-use OpenTelemetry\API\Trace\TracerInterface;
-use OpenTelemetry\SDK\Trace\SpanExporter\InMemoryExporter;
-use OpenTelemetry\SDK\Trace\SpanExporterInterface;
-use OpenTelemetry\SDK\Trace\SpanProcessor\SimpleSpanProcessor;
-use OpenTelemetry\SDK\Trace\TracerProvider;
-use Throwable;
 
 /**
- * Process-local telemetry. Spans and export snapshots are redacted before they
- * leave this class. That is the G-07-05 boundary: a synthetic clinical-looking
- * payload is scrubbed here, not at the collector.
+ * Process-local telemetry. Request inspection is Telescope (local only).
+ * This class redacts payloads and records bounded HTTP attributes for metrics.
  *
- * HTTP spans carry only bounded attributes: method, route, status class,
- * request_id. Never patient, doctor, appointment, file, prescription, or
- * free-text values.
+ * HTTP attributes: method, route, status class, request_id. Never patient,
+ * doctor, appointment, file, prescription, or free-text values.
  */
 final class TelemetryGateway
 {
-    private readonly InMemoryExporter $memoryExporter;
-
-    private readonly TracerProvider $tracerProvider;
-
-    private readonly TracerInterface $tracer;
-
     /** @var list<array<string, mixed>> */
     private array $exportSnapshots = [];
+
+    /** @var list<array<string, scalar>> */
+    private array $httpSpans = [];
 
     public int $canaryDetections = 0;
 
@@ -41,38 +29,24 @@ final class TelemetryGateway
         private readonly bool $strict,
         private readonly string $serviceName = 'core-api',
         private readonly string $serviceVersion = '0.0.0-dev',
-        ?SpanExporterInterface $otlpExporter = null,
-    ) {
-        $this->memoryExporter = new InMemoryExporter;
-        $processors = [new SimpleSpanProcessor($this->memoryExporter)];
-
-        if ($otlpExporter !== null) {
-            $processors[] = new SimpleSpanProcessor($otlpExporter);
-        }
-
-        $this->tracerProvider = new TracerProvider($processors);
-        $this->tracer = $this->tracerProvider->getTracer($this->serviceName, $this->serviceVersion);
-    }
-
-    public function tracer(): TracerInterface
-    {
-        return $this->tracer;
-    }
+    ) {}
 
     /**
-     * Start an HTTP server span with a deny-listed attribute set.
+     * Record a deny-listed HTTP attribute set for metrics/tests.
      *
      * @param  array<string, scalar>  $attributes
      */
     public function startHttpSpan(string $name, array $attributes): void
     {
-        $safe = $this->bounded($attributes);
+        $this->httpSpans[] = $this->bounded($attributes);
+    }
 
-        $this->tracer->spanBuilder($name)
-            ->setSpanKind(SpanKind::KIND_SERVER)
-            ->setAttributes($safe)
-            ->startSpan()
-            ->end();
+    /**
+     * @return list<array<string, scalar>>
+     */
+    public function httpSpans(): array
+    {
+        return $this->httpSpans;
     }
 
     /**
@@ -123,11 +97,7 @@ final class TelemetryGateway
 
     public function forceFlush(): bool
     {
-        try {
-            return $this->tracerProvider->forceFlush();
-        } catch (Throwable) {
-            return false;
-        }
+        return true;
     }
 
     /**

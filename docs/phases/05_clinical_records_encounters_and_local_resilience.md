@@ -36,26 +36,26 @@ The observable outcome is that a doctor gains cross-doctor history only through 
 - No caregiver/proxy access or emergency break-glass until separately approved.
 - No Elasticsearch/Qdrant copy of structured medical truth.
 
-## Module ownership and SOLID boundaries
+## Laravel module ownership and services
 
 ### `Clinical`
 
 Owns encounters, encounter sections, diagnoses, clinical notes, longitudinal allergies/chronic conditions/current medications, authorship/provenance, completion/correction state, and clinical projections.
 
-Public ports:
+Public module services:
 
 ```text
-EncounterLifecyclePort
+EncounterService
   start(appointmentContext) -> EncounterHandle
   canComplete(encounterId, expectedVersion) -> CompletionAssessment
   finalize(encounterId, actor, expectedVersion)
 
-MedicalRecordQueryPort
+MedicalRecordService
   getCurrentVisitContext(actor, consultationId)
   getAuthorizedLongitudinalRecord(actor, patientId, context)
   getOwnHistoricalContributions(actor, patientId)
 
-ClinicalDraftPort
+ClinicalDraftService
   saveServerDraft
   applyDraftPatch
   resolveDraftConflict
@@ -72,26 +72,26 @@ doctor after completion -> read only entries authored/owned through that doctor'
 admin/secretary/pharmacy -> no clinical content
 ```
 
-The policy does not accept `doctor_id`, `patient_id`, appointment state, or grant scope from a request body. It joins/validates Phase 01 grant, Phase 03 appointment, Phase 04 session, and Clinical encounter state through typed ports.
+The policy does not accept `doctor_id`, `patient_id`, appointment state, or grant scope from a request body. It joins/validates Phase 01 grant, Phase 03 appointment, Phase 04 session, and Clinical encounter state through typed module services.
 
 ### Client/local boundaries
 
-The doctor Electron React renderer owns presentation and editable view state, not clinical business rules or privileged storage. Electron main owns and authorizes the narrow `DoctorDraftStore` capability, OS credential/key unwrap, authenticated transport, and outbox orchestration. Because `better-sqlite3-multiple-ciphers` is synchronous, a dedicated Electron utility process executes its blocking database adapter after the Phase 00/ADR 0010 compatibility spike proves the target OS/architecture matrix. A sandboxed preload exposes to the renderer only versioned typed draft/sync operations that terminate in main; main validates the actor, environment, encounter, operation, payload, and deadline before using a dedicated typed port to the utility process. Main spawns the utility, creates and retains the main side of its `MessageChannelMain` port, transfers only the utility side after a versioned ready handshake, and never transfers either port to a `WebContents`. The renderer never addresses or receives a port to that utility process. The API repository reauthorizes every read/write and owns conflict mapping. Local outbox records commands, not arbitrary server state or authorization claims.
+The doctor Electron React renderer owns presentation and editable view state, not clinical business rules or privileged storage. Electron main owns and authorizes the narrow `DoctorDraftStore` capability, OS credential/key unwrap, authenticated transport, and outbox orchestration. Because `better-sqlite3-multiple-ciphers` is synchronous, a dedicated Electron utility process executes its blocking database adapter after the Phase 00/ADR 0010 compatibility spike proves the target OS/architecture matrix. A sandboxed preload exposes to the renderer only versioned typed draft/sync operations that terminate in main; main validates the actor, environment, encounter, operation, payload, and deadline before using a dedicated typed channel to the utility process. Main spawns the utility, creates and retains the main side of its `MessageChannelMain` channel, transfers only the utility side after a versioned ready handshake, and never transfers either endpoint to a `WebContents`. The renderer never addresses or receives a channel to that utility process. The API module service reauthorizes every read/write and owns conflict mapping. Local outbox records actions, not arbitrary server state or authorization claims.
 
 ### Dependency enforcement
 
 ```text
-Clinical HTTP/Infrastructure -> Clinical Application -> Clinical Domain
-ConsultationControl -> EncounterLifecyclePort <- Clinical Application
-Clinical -> Identity/Access/Appointment context ports
-Prescriptions/Labs/Files later -> ClinicalEncounterReferencePort
+Clinical controller/Form Request -> ClinicalService -> Eloquent models/policies
+ConsultationControlService -> EncounterService
+ClinicalService -> Identity/Access/Appointment public services
+Prescriptions/Labs/Files later -> ClinicalEncounterReferenceService
 ```
 
-Use `deptrac/deptrac` plus architecture tests to reject framework imports in Domain and direct table/model access across modules.
+Use architecture tests to require the conventional Nwidart controller/service/model layout, reject legacy `Domain/Application/Infrastructure` trees, and prevent direct table/model access across modules.
 
 ## Packages and platform capabilities
 
-- Laravel/PostgreSQL transactions, policies, outbox, idempotency, UUIDv7, audit, and OpenTelemetry/Sentry redaction from Phase 00.
+- Laravel/PostgreSQL transactions, policies, outbox, idempotency, UUIDv7, audit, Prometheus, Laravel Telescope (local), and Sentry redaction from Phase 00.
 - `deptrac/deptrac` for PHP module dependency enforcement.
 - Electron main owns and authorizes `DoctorDraftStore`; renderer and preload cannot open or query the database, and the renderer cannot address the database utility process directly.
 - **Encrypted local database:** a reviewed, pinned `better-sqlite3-multiple-ciphers` adapter configured for the approved SQLite3MultipleCiphers/SQLCipher compatibility mode after the storage ADR. Its synchronous calls run only in a dedicated Electron utility process so they cannot block main's event loop, and the native module is rebuilt for the pinned Electron ABI through Electron Forge/`@electron/rebuild`.
@@ -121,7 +121,7 @@ created_at / updated_at
 
 - Partial/normal indexes `(patient_id, started_at desc)`, `(doctor_id, patient_id, started_at desc)`, `(doctor_id, status, started_at)`, and unique appointment.
 - Patient/doctor/location are immutable authoritative snapshots from the appointment at start.
-- “Voided” never deletes content; it requires an append-only reason/correction path approved by clinical/legal policy.
+- “Voided” never deletes content; it requires an append-only reason/correction path defined by the configured clinical correction and retention policy.
 
 ### `encounter_history`
 
@@ -155,7 +155,7 @@ Diagnosis is free text in V1; no mandatory ICD field. Corrections append a revis
 
 ### `clinical_notes`
 
-Separate private doctor note/encounter note types only if product/legal explicitly defines their visibility. Default V1 assumes patient-readable clinical record content unless a documented lawful purpose and access policy says otherwise. Store author, encounter, revision, supersedes, status, timestamps, and classification.
+Separate private doctor note/encounter note types only if product/privacy policy explicitly defines their visibility. Default V1 assumes patient-readable clinical record content unless a documented purpose and access policy says otherwise. Store author, encounter, revision, supersedes, status, timestamps, and classification.
 
 ### Longitudinal clinical facts
 
@@ -212,7 +212,7 @@ local_outbox
 ### Atomic encounter start
 
 1. Phase 04 locks appointment, queue, current-session guard, and grant state.
-2. `EncounterLifecyclePort.start` validates authoritative patient/doctor/location/appointment handles and absence of an encounter.
+2. `EncounterService.start` validates authoritative patient/doctor/location/appointment handles and absence of an encounter.
 3. Create `encounter=active` with immutable context; no clinical content is required yet.
 4. Phase 04 creates session/current state and matching contextual grant in the same transaction.
 5. Audit and outbox rows commit once. A duplicate idempotency key returns the same encounter.
@@ -269,7 +269,7 @@ Failure behavior:
 
 - Doctor's history query filters by `encounter.doctor_id=current_doctor` and returns only owned contributions.
 - Correction requires reason, expected latest revision, new append-only revision, author, timestamp, and audit. It cannot reopen broad cross-doctor history.
-- Patient sees corrected/current versions with provenance according to product/legal display policy.
+- Patient sees corrected/current versions with provenance according to the configured product/privacy display policy.
 
 ## API contracts
 
@@ -365,7 +365,7 @@ Jobs:
 ### Contract tests
 
 - OpenAPI/generated Dart patient-mobile and TypeScript Electron client compatibility for record, encounter, section, fact, correction, conflict, and own-history projections.
-- `EncounterLifecyclePort`, contextual access, patient/doctor directory, audit, local draft, encryption, and clock adapters pass owned contracts.
+- `EncounterService`, contextual access, patient/doctor directory, audit, local draft, encryption, and clock adapters pass owned contracts.
 - Electron preload-to-main and main-to-utility contracts reject forged sender/user/environment/encounter bindings, direct renderer-to-utility access, unknown operations/fields, oversized payloads, stale schema, raw SQL/path/key/token fields, spoofed/late utility responses, and incompatible responses.
 - Event schemas reject clinical text/identity fields and remain compatible.
 
@@ -412,7 +412,7 @@ clinical_audit_completeness_total{result}
 ## Migration and rollout
 
 1. Add clinical schemas, indexes, policies, and synthetic histories; validate query plans and backup/restore before feature enablement.
-2. Deploy `EncounterLifecyclePort` disabled, run Phase 04 atomic integration tests, then enable Start/End for a controlled clinic.
+2. Deploy `EncounterService` disabled, run Phase 04 atomic integration tests, then enable Start/End for a controlled clinic.
 3. Enable read-only current-record view before clinical writes; monitor access/audit correctness.
 4. Enable online drafts/entries, then Electron main-owned utility-process encrypted local drafts per target OS/architecture only after the compatibility/key-rotation ADR, utility-process/native-module spike, secure-provider checks, signed packaged build, native ABI tests, and both IPC-boundary security tests pass.
 5. Use expand/deploy/backfill/switch for every clinical schema change; never destructive rollback. Disable writes and forward-recover on incompatibility.
@@ -432,6 +432,6 @@ clinical_audit_completeness_total{result}
 
 ## Deliverables
 
-- `Clinical` module, encounter lifecycle port, schemas, policies, APIs, events, audit/reconciliation jobs, and patient/doctor projections.
+- `Clinical` module with controllers, Form Requests, services, models, backed status enums, schemas, policies, APIs, events, audit/reconciliation jobs, and patient/doctor projections.
 - Doctor encrypted local-draft/outbox implementation and conflict UI; patient read-only record UI.
 - Access matrix, native compatibility/key ADR, migration/retention evidence, layered tests, dashboards, alerts, and runbooks.

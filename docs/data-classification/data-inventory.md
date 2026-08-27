@@ -12,8 +12,9 @@ Retention owner column: the accountable human who decides the retention period.
 The Phase 00 entry criterion naming that owner is met:
 [accountable-owners.md](../governance/accountable-owners.md) (Mahmoud, 2026-08-26).
 Periods in this file are still **engineering defaults** until a retention
-schedule is written. `lawful_basis` is `OPEN_LEGAL_DECISION` wherever personal
-or sensitive data is processed: naming a privacy owner does not invent a basis.
+schedule is written. `lawful_basis` for personal/sensitive processing is
+`owner_approved_2026-08-27` (Mahmoud, privacy owner). That is an owner
+acceptance of the documented purpose, not an Egyptian PDPL article number.
 
 Deletion/purge procedure: [deletion-and-purge.md](deletion-and-purge.md).
 
@@ -151,14 +152,14 @@ Phase 00 status pages share only process liveness. No actor, tenant, host, check
 
 | Signal | Class | Contents | Retention | Notes |
 | --- | --- | --- | --- | --- |
-| Application log | internal | Correlation ID, event type, status, stable error class | 30 days (default) | `PatternRedactor` runs before export; OTel Collector scrubs again at the boundary |
-| Distributed trace | internal | `traceparent`, correlation ID, service, version, bounded attributes | 7 days (default) | Attribute deny-list plus value-pattern scrubbing in the collector |
+| Application log | internal | Correlation ID, event type, status, stable error class | 30 days (default) | `PatternRedactor` runs before a payload is treated as having left the process |
+| In-process HTTP attributes | internal | `traceparent` echo, correlation ID, service, version, bounded attributes | process lifetime | Allow-list only; Telescope is local request inspection |
 | Error report (Sentry) | internal | Exception class, stack, correlation ID | 90 days (default) | `send_default_pii` is off; message scrubbing applies |
 
 No log, trace, or error report may contain a raw national ID, credential,
 clinical note, prescription text, lab content, object key, or unrestricted
 prompt or response (invariant 18). This is enforced by `PatternRedactor`,
-verified by the canary suite, and scrubbed again at the collector.
+verified by the canary suite. There is no second collector-stage scrubber.
 
 ## Metrics
 
@@ -208,17 +209,18 @@ Private object storage is provisioned; no file type is defined until Phase 02.
 
 ## Phase 01 tables (identity and access)
 
-Engineering draft. Synthetic data only in tests. `lawful_basis` is never a
-self-approved Egyptian legal conclusion.
+Engineering draft. Synthetic data only in tests. `lawful_basis` is the privacy
+owner's acceptance of the documented purpose (`owner_approved_2026-08-27`).
+It is not a statutory citation.
 
 ### `users`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | internal | Actor identifier | app, worker (FK only) | until account erasure (OPEN legal) | at rest | Mahmoud | n/a |
-| `name` | personal | Display; never authorization input | app | as row | at rest | Mahmoud | OPEN_LEGAL_DECISION |
-| `phone_e164_encrypted` | personal | Contact / login | app | as row; rotate via KMS path | envelope | Mahmoud | OPEN_LEGAL_DECISION |
-| `phone_lookup_hmac` | personal | Blind lookup | app | as row | HMAC | Mahmoud | OPEN_LEGAL_DECISION |
+| `id` | internal | Actor identifier | app, worker (FK only) | until account erasure (owner-approved engineering procedure) | at rest | Mahmoud | n/a |
+| `name` | personal | Display; never authorization input | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `phone_e164_encrypted` | personal | Contact / login | app | as row; rotate via KMS path | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `phone_lookup_hmac` | personal | Blind lookup | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
 | `password_hash` | credential | Authentication | app | as row | Argon2id | Mahmoud | n/a |
 | `account_type`, `status`, `language`, `credential_version` | internal | Server-owned actor state | app | as row | at rest | Mahmoud | n/a |
 
@@ -227,8 +229,8 @@ self-approved Egyptian legal conclusion.
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `user_id` | internal | FK | app | as row | at rest | Mahmoud | n/a |
-| `national_id_encrypted` | sensitive | Recovery / later verification | app (audited decrypt) | until erasure (OPEN legal) | envelope | Mahmoud | OPEN_LEGAL_DECISION |
-| `national_id_lookup_hmac` | sensitive | Blind match | app | as row | HMAC | Mahmoud | OPEN_LEGAL_DECISION |
+| `national_id_encrypted` | sensitive | Recovery / later verification | app (audited decrypt) | until erasure (owner-approved engineering TTL) | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `national_id_lookup_hmac` | sensitive | Blind match | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
 
 ### `otp_requests`
 
@@ -236,10 +238,10 @@ self-approved Egyptian legal conclusion.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `id` | internal | Challenge id | app, worker | row TTL then delete | at rest | Mahmoud | n/a |
 | `purpose` | internal | registration / recovery / … | app | as row | at rest | Mahmoud | n/a |
-| `subject_lookup_hmac` | personal | Blind phone handle | app | as row | HMAC | Mahmoud | OPEN_LEGAL_DECISION |
+| `subject_lookup_hmac` | personal | Blind phone handle | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
 | `code_hash` | credential | Verify attempt | app | until row delete | HMAC | Mahmoud | n/a |
 | `code_ciphertext` | credential | Worker send only | worker | **NULL on consume/invalidate** | envelope | Mahmoud | n/a |
-| `destination_ciphertext` | personal | Worker send only | worker | **NULL on consume/invalidate** | envelope | Mahmoud | OPEN_LEGAL_DECISION |
+| `destination_ciphertext` | personal | Worker send only | worker | **NULL on consume/invalidate** | envelope | Mahmoud | owner_approved_2026-08-27 |
 | `attempts`, `max_attempts`, `expires_at`, `consumed_at`, `invalidated_at` | internal | Lifecycle | app | as row | at rest | Mahmoud | n/a |
 
 Engineering row TTL: 30 days after consume/invalidate, then `DELETE`.
@@ -272,7 +274,7 @@ Plaintext codes exist only in the enroll/rotate HTTP response, once.
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id`, `user_id`, `client_class`, `platform`, `device_label` | personal | Device record | app | until revoked + TTL | at rest | Mahmoud | OPEN_LEGAL_DECISION |
+| `id`, `user_id`, `client_class`, `platform`, `device_label` | personal | Device record | app | until revoked + TTL | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `refresh_token_hash`, `previous_refresh_token_hash`, `access_token_hash` | credential | Token binding | app | as row until delete | HMAC | Mahmoud | n/a |
 | `refresh_replay_ciphertext` | credential | Lost-response replay | app | TTL `refresh_replay_expires_at` then NULL | envelope | Mahmoud | n/a |
 | `refresh_replay_idempotency_hmac` | internal | Replay key binding | app | as ciphertext | HMAC | Mahmoud | n/a |
@@ -301,7 +303,7 @@ Revoked sessions are marked first, then deleted after the engineering TTL (90 da
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id`, `user_id`, `otp_id`, `status` | internal | Recovery state machine | app, operator | 90 days after terminal status | at rest | Mahmoud | OPEN_LEGAL_DECISION |
+| `id`, `user_id`, `otp_id`, `status` | internal | Recovery state machine | app, operator | 90 days after terminal status | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `new_password_hash` | credential | Proposed password | app | NULL after apply/reject | Argon2id | Mahmoud | n/a |
 | `cooling_off_until`, `applied_at` | internal | Cooling-off / apply | app | as row | at rest | Mahmoud | n/a |
 
@@ -320,7 +322,7 @@ tests may set 0).
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `event_name`, `object_*`, `actor_*` | internal | Append-only trail | app SELECT; insert via DEFINER function | OPEN legal (not deleted by prune) | at rest | Mahmoud | OPEN_LEGAL_DECISION |
+| `event_name`, `object_*`, `actor_*` | internal | Append-only trail | app SELECT; insert via DEFINER function | retained (not deleted by prune; owner-approved) | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `metadata` | internal | Reason codes / ids only | app | as row | at rest | Mahmoud | n/a |
 | `row_hash`, `previous_hash`, `chain_sequence` | internal | Tamper-evident chain | verifier | as row | at rest | Mahmoud | n/a |
 
@@ -340,17 +342,18 @@ Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
 
 ## Gaps (explicitly OPEN)
 
-1. **No retention period here is approved as a legal schedule.** Day counts are
-   engineering defaults. Clinical and financial retention in Egypt is a legal
-   question.
-2. **`lawful_basis` is `OPEN_LEGAL_DECISION` wherever personal/sensitive data
-   is processed.** Independent legal review is required. This inventory is not
-   that review.
-3. **Subject-erasure for production** is not an operator self-serve. Engineering
+1. **Day counts remain engineering defaults**, not a statutory retention
+   schedule. Clinical and financial retention in Egypt still needs a written
+   schedule if the product stores those records.
+2. **`lawful_basis` is `owner_approved_2026-08-27`** (Mahmoud, privacy owner)
+   for documented identity processing. That is owner acceptance of purpose, not
+   an Egyptian PDPL article number and not independent legal certification.
+3. **Subject-erasure for production** is not operator self-serve. Engineering
    purge jobs cover expired OTP/session ciphertext only
-   ([deletion-and-purge.md](deletion-and-purge.md)).
+   ([deletion-and-purge.md](deletion-and-purge.md)). A full rights workflow is
+   still unimplemented.
 4. **Audit-row erasure** is not implemented (append-only). A legal order would
    need a Phase 22/23 procedure.
 
-Tracked as G-05-02. **G-08-04 stays OPEN.** Independent review did not approve
-this inventory as a legal basis.
+Tracked as G-05-02. **G-08-04 stays OPEN** until independent retest; owner
+approval does not close that gate.

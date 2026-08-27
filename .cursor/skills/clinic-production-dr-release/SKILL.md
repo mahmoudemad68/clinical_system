@@ -76,7 +76,7 @@ This skill consumes health/SLO/security/AI/clinical evidence. It does not redefi
 
 1. Provision an isolated target from reviewed infrastructure/configuration with outbound side effects disabled.
 2. Restore the selected base/object artifacts and replay WAL to the declared point; verify manifests/checksums/key access before service startup.
-3. Start exact compatible images, run liveness/readiness, then domain reconciliation and safe synthetic smoke mutations.
+3. Start exact compatible images, run liveness/readiness, then business-data reconciliation and safe synthetic smoke mutations.
 4. Measure RPO/RTO using the approved definitions and record exact tools, versions, point, timings, artifacts, hashes, results, and cleanup.
 5. For failover, fence before promote, resolve ambiguous writes through idempotency/audit/reconciliation, restore redundancy, and treat failback as a separate approved change.
 
@@ -97,11 +97,11 @@ Do not mark complete without reproducible evidence for the applicable scope:
 - unit tests for backup/release states, retention selection, RPO/RTO calculation, manifest matching, flag exclusions, retry/cancellation, and release-gate aggregation;
 - provider/managed-service contract tests for recovery point, integrity, encryption, retention, restore, error, cancellation, and safe event/admin projection;
 - PostgreSQL base+WAL restore to a selected point; S3 version/delete-marker/checksum/access recovery; key recovery/rotation; Qdrant snapshot and from-source rebuild; Redis/outbox/realtime/analytics rebuild;
-- domain reconciliation for identity uniqueness, appointments/access/encounters, prescription versions, files/labs, ledger/batches/balances, invoices/payments/returns/refunds, audit chain, outbox/idempotency, and AI metadata;
+- business-data reconciliation for identity uniqueness, appointments/access/encounters, prescription versions, files/labs, ledger/batches/balances, invoices/payments/returns/refunds, audit chain, outbox/idempotency, and AI metadata;
 - failover fencing, ambiguous-write resolution, rebuilt standby, and separately rehearsed failback;
 - clean-environment deployment, mixed-version compatibility, migration lock/backfill behavior, canary/rolling drain, client reconnect compatibility, Laravel/Inertia asset smoke, and application rollback/forward fix;
 - restored environment isolation: no public/client traffic, real notification/provider egress, broad credentials, or leaked logs/evidence;
 - final/equivalent topology still satisfies Phase 21 p95/load/WebSocket/AI/stress/recovery evidence and Phase 22 has no release blocker;
-- every Phase 23 production definition-of-done item is linked to the exact candidate and signed by its accountable engineering, QA, operations, security/privacy, legal, clinical, pharmacy, product owner.
+- every Phase 23 production definition-of-done item is linked to the exact candidate and has accountable engineering, QA, operations, security/privacy, clinical, pharmacy, and product evidence. Legal sign-off is not required.
 
-The observability/performance skill designs and verifies cross-system signals/SLO evidence; this skill consumes them to act. AI evaluation governance supplies promotion evidence; this skill cannot lower thresholds. Security/privacy/clinical/legal reviewers retain independent approval authority.
+The observability/performance skill designs and verifies cross-system signals/SLO evidence; this skill consumes them to act. AI evaluation governance supplies promotion evidence; this skill cannot lower thresholds. Security/privacy and clinical/pharmacy reviewers retain their scoped authority. Legal review is advisory and never blocks release workflow completion.

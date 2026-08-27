@@ -16,9 +16,9 @@ This skill owns:
 - `Inventory`: batches, immutable movements, balances, FEFO allocation, adjustments/reversals, thresholds, and stock/expiry alerts;
 - `Purchasing`: suppliers, purchase orders, immutable goods receipts, and receipt coordination with Inventory;
 - `POS`: invoices, server-side totals, payment records, FEFO sale coordination, cancellation, returns, and refunds;
-- `MedicineDiscovery`: public-safe manual search and Find My Medicines aggregation across native or integrated availability ports.
+- `MedicineDiscovery`: public-safe manual search and Find My Medicines aggregation across native or integrated availability services.
 
-`PharmacyIntegrations` owns external connectors, mappings, staging generations, and mirrors. `Prescriptions` owns published prescription versions; this skill can read them only through an authorized port. AI consumes pharmacy ports but does not own pharmacy policy. Clients never decide branch scope, role, operating mode, price, stock, FEFO, returnability, or totals.
+`PharmacyIntegrations` owns external connectors, mappings, staging generations, and mirrors. `Prescriptions` owns published prescription versions; this skill can read them only through an authorized module service. AI consumes pharmacy read services but does not own pharmacy policy. Clients never decide branch scope, role, operating mode, price, stock, FEFO, returnability, or totals.
 
 ## Required phase sources
 
@@ -54,12 +54,12 @@ Use Laravel 13, PostgreSQL/PostGIS, the transactional outbox, `brick/money`, UUI
 - Balances never become negative and must reconcile to valid movements. Batch identity is fixed to one branch and medication.
 - FEFO considers positive, active, non-expired, non-quarantined balances and orders by expiry date, received time, then batch ID. Lock in that deterministic order inside the sale transaction; Redis is not the oversell defense.
 - A posted receipt is immutable. Omitted receipt quantity means the remaining outstanding amount after earlier receipts, not the original order quantity.
-- `ReceivePurchaseCoordinator` locks the PO/items, posts receipt/items, registers/reuses source-bound batches, appends `PURCHASE_RECEIVE` movements, advances PO totals/status, and writes audit/outbox in one transaction.
+- `ReceivePurchaseService` locks the PO/items, posts receipt/items, registers/reuses source-bound batches, appends `PURCHASE_RECEIVE` movements, advances PO totals/status, and writes audit/outbox in one transaction.
 
 ### POS, returns, and discovery
 
 - Prices, discounts, taxes if configured, line totals, and invoice totals are computed server-side in integer minor units and one currency. PAID invoice lines are immutable.
-- `CompleteSaleCoordinator` commits invoice, payment record, FEFO allocations/movements, audit, idempotency, and outbox together or nothing. Cancellation appends linked reversal movements once; it never deletes the sale.
+- `CompleteSaleService` commits invoice, payment record, FEFO allocations/movements, audit, idempotency, and outbox together or nothing. Cancellation appends linked reversal movements once; it never deletes the sale.
 - Cumulative valid returns cannot exceed sold quantity, and refunds cannot exceed eligible returned value or the original payment. Only governed RESTOCKABLE returns append positive movement to the eligible original batch.
 - CARD means an external terminal has already acted. Accept and store only an allowlisted opaque external reference, approved status, method, amount, currency, and time. Reject PAN/CVV-like input; never accept, log, persist, transmit, tokenize, authorize, capture, void, or refund card data.
 - Find My Medicines loads the authenticated patient's current published immutable prescription server-side. It records a `FIND_MEDICINES` access event but does not lock, unlock, or edit the prescription.
@@ -67,8 +67,8 @@ Use Laravel 13, PostgreSQL/PostGIS, the transactional outbox, `brick/money`, UUI
 
 ## Implementation workflow
 
-1. Read Phase 10 plus every downstream phase participating in the use case. Identify the aggregate owner, caller capability, branch mode, quantity/money units, and whether a cross-module coordinator is mandatory.
-2. Express the transition as domain value objects and intent-named ports. Do not expose Eloquent models or permit callers to supply signed movement deltas, movement types, totals, branch scope, or statuses.
+1. Read Phase 10 plus every downstream phase participating in the use case. Identify the owning module/service, caller capability, branch mode, quantity/money units, and whether a cross-module transaction service is mandatory.
+2. Implement the transition with module-owned Eloquent models, descriptive services, policies, Form Requests, and backed enums for finite states/types/reasons. Do not permit callers to supply signed movement deltas, movement types, totals, branch scope, or statuses.
 3. Put database-enforceable rules in constraints/indexes and race-sensitive work in one PostgreSQL transaction. Lock sources and affected rows in deterministic order; use version checks and scoped idempotency.
 4. Have Inventory return immutable allocation/movement references to Purchasing/POS through the shared transaction context. Audit and outbox commit with the authoritative records; alerts, printing, notifications, and analytics run after commit.
 5. Make unknown outcomes queryable by idempotency key, receipt number, invoice ID, or external terminal reference. A retry of the same intent returns the original result; same key/different request conflicts.
@@ -80,7 +80,7 @@ Use Laravel 13, PostgreSQL/PostGIS, the transactional outbox, `brick/money`, UUI
 Evidence must include the affected rule, API/port contract, and real PostgreSQL behavior:
 
 - property tests cover packaging trees, integer overflow, movement sequences, FEFO allocation, partial receipts, proportional refunds/rounding, duplicate/reordered commands, and invariant preservation;
-- concurrent sales cannot oversell; concurrent receipts cannot over-receive; concurrent returns cannot over-return/refund; one deadlock/serialization retry replays the whole idempotent coordinator;
+- concurrent sales cannot oversell; concurrent receipts cannot over-receive; concurrent returns cannot over-return/refund; one deadlock/serialization retry replays the whole idempotent service transaction;
 - ledger reconciliation proves balances equal valid movements, and a forced mismatch fails closed for affected writes and raises an observable alert;
 - wrong organization/branch/role, suspended membership, `INTEGRATED` native write, `NATIVE` connector write, stale mode version, retired medication, expired batch, and forged totals are denied;
 - sale/receipt/cancellation/refund rollback leaves no orphan invoice, receipt, batch, movement, balance, payment, audit, idempotency-success, or outbox record;
@@ -88,4 +88,4 @@ Evidence must include the affected rule, API/port contract, and real PostgreSQL 
 - patient search returns no price or quantity, excludes stale/invalid sources, does not mutate prescriptions, and remains deterministic under atomic mirror-generation changes;
 - production-shaped catalog, FEFO, invoice, and PostGIS search queries meet the measured Phase 21 target, with accessibility/localization and restore/reconciliation evidence.
 
-Report the module/aggregate owner, coordinator and transaction boundary, quantity/money representation, branch-mode checks, immutable records created, contracts/migrations, verification executed, and any pharmacy/regulatory decision still awaiting approval.
+Report the module/service owner, transaction boundary, quantity/money representation, branch-mode checks, immutable records created, contracts/migrations, verification executed, and any conservative pharmacy/regulatory assumption. Legal approval is never a completion blocker.

@@ -22,24 +22,24 @@ The observable outcome is that a synthetic patient, doctor, pharmacy user, secre
 ## Entry criteria and dependencies
 
 - Phase 00 contracts, correlation IDs, idempotency store, outbox, redaction, secret injection, synthetic data, and CI gates are operational.
-- Product, privacy/legal, security, and support owners approve the patient-profile claim and account-recovery policy before it is enabled.
+- Product, privacy, security, and support owners document the patient-profile claim and account-recovery policy before it is enabled. Legal sign-off is not required to implement, test, or complete the phase.
 - An ADR identifies the identity assurance levels required for patient registration, existing-profile claim, privileged enrollment, sensitive recovery, and emergency support.
 
 ## Non-goals
 
 - No clinical-record query or clinical write.
 - No doctor, pharmacy, clinic, or patient demographic onboarding beyond the minimum identity/link contract; Phase 02 owns profiles and verification.
-- No caregiver, guardian, minor, deceased-patient, or emergency break-glass access until a separately approved product/legal model exists.
+- No caregiver, guardian, minor, deceased-patient, or emergency break-glass access until a separately documented product/clinical model, security controls, and tests exist. Legal sign-off is not an implementation gate.
 - No social login, email OTP, passwordless login, patient mandatory MFA, or complex admin-role designer.
 - No client-side authorization decision and no production use of a development OTP bypass.
 
-## Module ownership and SOLID boundaries
+## Laravel module ownership and services
 
 ### `Auth` module
 
 Owns password credentials, login throttling, OTP challenges, MFA factors/recovery, device sessions, token rotation/revocation, admin browser sessions, CSRF integration, and authentication audit events.
 
-Public application ports:
+Public module services:
 
 ```text
 RegisterAccount
@@ -60,7 +60,7 @@ CompleteAccountRecovery
 
 Owns the central `User`, actor status, National ID canonicalization/protection service, account-to-profile link orchestration, and typed `ActorContext` returned to policies. It does not own doctor/patient/pharmacy profile fields.
 
-Public ports:
+Public module services:
 
 ```text
 ResolveActorContext
@@ -88,12 +88,13 @@ Later modules own their resource policies and register them through `Access`; `A
 ### Dependency direction
 
 ```text
-Auth HTTP -> Auth Application -> Auth Domain <- Sanctum/SMS/TOTP adapters
-Identity HTTP -> Identity Application -> Identity Domain <- encryption/profile ports
-Resource module policy -> Access policy contract <- authenticated ActorContext
+Auth controller/Form Request -> AuthService -> Eloquent models/policies
+Identity controller/Form Request -> IdentityService -> Eloquent models/policies
+Resource module policy -> AccessService <- authenticated ActorContext
+External SMS/TOTP/KMS integrations -> focused classes or small provider interfaces
 ```
 
-Single-purpose provider ports separate SMS delivery, password hashing, token generation, MFA verification, clock, random source, encryption, HMAC, and audit publication. Provider replacements must pass the same contract tests.
+Single-purpose services separate SMS delivery, password hashing, token generation, MFA verification, clock, random source, encryption, HMAC, and audit publication. Use a small interface only for a genuinely replaceable external provider, and require replacements to pass the same contract tests.
 
 ## Packages and platform capabilities
 
@@ -101,7 +102,7 @@ Single-purpose provider ports separate SMS delivery, password hashing, token gen
 - Laravel rate limiter backed by Redis; database constraints remain authoritative.
 - Laravel password hashing configured for Argon2id with calibrated parameters.
 - A security-reviewed RFC 6238 TOTP implementation behind `TotpVerifier`; package and version require an ADR and lockfile pin.
-- Laravel encryption only behind a versioned envelope-encryption adapter backed by the approved KMS/secret manager; do not call framework encryption helpers throughout domain code.
+- Laravel encryption is wrapped by a versioned module service backed by the approved KMS/secret manager; do not scatter encryption calls throughout controllers or models.
 - `brick/math` only if constant-width numeric parsing needs arbitrary-precision support; National ID remains a string, never an integer.
 - Pest/PHPUnit, Laravel HTTP/database tests, OpenAPI contract tests, k6 abuse scenarios, the Phase 00 SAST/SCA/secret tooling, and WebdriverIO with `@wdio/electron-service` for packaged doctor/pharmacy Electron E2E.
 - Flutter patient mobile uses `flutter_secure_storage`; bearer/refresh material is never copied into Drift or analytics.
@@ -197,7 +198,7 @@ linked_at / revoked_at
 unique(profile_type, profile_id) where link_status = active
 ```
 
-The polymorphic identifier is permitted only behind the typed registry ports. Each profile module also holds a relational reverse link or constraint that prevents duplicate active ownership.
+The polymorphic identifier is permitted only behind typed registry services. Each profile module also holds a relational reverse link or constraint that prevents duplicate active ownership.
 
 ### `contextual_access_grants`
 
@@ -217,7 +218,7 @@ version bigint
 created_at
 ```
 
-- Later consultation code may grant cross-doctor history only through this table/port.
+- Later consultation code may grant cross-doctor history only through this table and the owning access service.
 - Check-in alone must never create that grant. Phase 04 defines the triggering transition and Phase 05 consumes it.
 - Index the exact policy lookup tuple plus a partial active-grant index.
 
@@ -264,7 +265,7 @@ Failure behavior:
 3. A candidate already linked to the same account is an idempotent success.
 4. A candidate linked to another account becomes a non-disclosing `MANUAL_REVIEW_REQUIRED`; no takeover or second link occurs.
 5. An unlinked candidate proceeds through the approved proof policy. Matching National ID plus a newly verified phone is not automatically sufficient when the historical profile phone differs or is absent.
-6. The proof may require matching verified historical contact, reviewed identity evidence, or an operator workflow with separation of duties. The exact assurance decision is recorded by ADR/product/legal approval.
+6. The proof may require matching verified historical contact, reviewed identity evidence, or an operator workflow with separation of duties. Record the exact assurance decision in an ADR or project policy; legal approval is not required.
 7. Lock the profile candidate and unique link, attach one user, write audit/proof reference, and enqueue a generic security notification in one transaction.
 8. Only after commit may Phase 02 expose the linked profile projection. No clinical payload is part of the claim response.
 
@@ -396,7 +397,7 @@ Jobs:
 
 - OpenAPI security schemes, envelopes, validation/error codes, idempotency semantics, and generated Dart patient-mobile plus TypeScript Electron/admin clients.
 - Electron main/preload ports validate current and previous compatible payloads, reject unknown operations/fields/senders, propagate cancellation/deadlines, and never serialize credentials.
-- Every password, SMS, TOTP, encryption, HMAC, clock, and patient-registry adapter passes the owned port contract.
+- Every password, SMS, TOTP, encryption, HMAC, clock, and patient-registry integration passes its focused service or provider-interface contract.
 - Event schemas contain no raw destination, National ID, OTP, token, or MFA material and remain backward compatible.
 
 ### End-to-end tests
@@ -467,7 +468,7 @@ authorization_decisions_total{action_group,result,reason_code}
 
 ## Deliverables
 
-- `Auth`, `Identity`, and `Access` modules and public ports.
+- `Auth`, `Identity`, and `Access` modules with controllers, Form Requests, models, policies, and public services.
 - Identity/session/OTP/MFA/link/grant migrations and synthetic fixtures.
 - OpenAPI/event schemas and generated client updates.
 - Flutter patient-mobile authentication, Electron doctor/pharmacy desktop authentication, and React admin browser-session flows.

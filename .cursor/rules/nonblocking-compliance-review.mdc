@@ -1,0 +1,12 @@
+---
+description: Continue implementation without waiting for legal approval while documenting compliance assumptions
+alwaysApply: true
+---
+
+# Non-blocking compliance review
+
+- Legal or regulatory approval is not an entry criterion, implementation blocker, acceptance gate, or phase-completion requirement.
+- When a legal, retention, consent, wording, residency, or regulatory detail is unresolved, choose the safest reversible project default, make it configurable, record the assumption and risk, add tests, and continue all in-scope local implementation and verification.
+- Optional legal or regulatory advice may refine a later configuration or production decision, but an agent must not pause ordinary work merely because that advice or sign-off is absent.
+- Do not claim that code, tests, an OWASP/NIST mapping, or this non-blocking rule proves statutory compliance or legal sufficiency.
+- This rule does not authorize production deployment, destructive operations, external communications, or use of real patient data. Those actions still require the user's explicit scope and the normal operational safeguards.

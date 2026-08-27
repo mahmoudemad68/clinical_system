@@ -1,6 +1,6 @@
 ---
 name: clinic-observability-performance
-description: Instrument this clinic platform and execute or analyze k6 performance tests, OpenTelemetry, Prometheus/Grafana, health/readiness, query measurements, and capacity evidence. Use for SLOs, scaling, saturation, runtime tuning, and safe degradation; PostgreSQL index, query, schema, and migration changes belong to clinic-postgresql-consistency. Not for backup/failover execution or release control.
+description: Instrument this clinic platform and execute or analyze k6 performance tests, Prometheus/Grafana, Laravel Telescope, health/readiness, query measurements, and capacity evidence. Use for SLOs, scaling, saturation, runtime tuning, and safe degradation; PostgreSQL index, query, schema, and migration changes belong to clinic-postgresql-consistency. Not for backup/failover execution or release control.
 ---
 
 # Clinic Observability and Performance
@@ -24,7 +24,8 @@ Also read the owning feature phase's observability, failure, concurrency, indexe
 
 Own measurement and performance engineering:
 
-- OpenTelemetry context propagation and approved HTTP/DB/Redis/queue/Reverb/S3/Qdrant/AI/provider/client instrumentation, including Flutter mobile, Electron main/preload/renderer/IPC, and React admin browser boundaries;
+- W3C `traceparent` echo, Prometheus `/metrics`, and approved HTTP/DB/Redis/queue/Reverb/S3/Qdrant/AI/provider/client instrumentation, including Flutter mobile, Electron main/preload/renderer/IPC, and React admin browser boundaries;
+- **Laravel Telescope** for local/non-production request, query, job, and exception debugging; do not treat Telescope as the production SLO console;
 - bounded metric/log/trace/error schemas, central redaction, sampling, dashboards, alerts, SLI/SLO calculations, and health/readiness behavior;
 - k6 HTTP/WebSocket workload models, synthetic datasets, threshold evaluation, load/soak/stress/reconnect/fault experiments, and immutable result artifacts;
 - query/index/payload/cache/pool/backpressure analysis, capacity models, scale triggers, and before/after evidence;
@@ -77,8 +78,8 @@ Feature owners still implement business logic and local instrumentation calls. T
 
 Verify at minimum:
 
-- instrumentation unit tests for timing, status/error classification, context propagation, redaction, bounded labels, and telemetry exporter failure;
-- integration tests for DB/PgBouncer pools, Redis separation/loss, outbox/worker replay, Reverb multi-node/backpressure/reconnect, S3/provider timeouts, Qdrant/AI saturation, and collector backpressure;
+- instrumentation unit tests for timing, status/error classification, context propagation, redaction, and bounded labels;
+- integration tests for DB/PgBouncer pools, Redis separation/loss, outbox/worker replay, Reverb multi-node/backpressure/reconnect, S3/provider timeouts, Qdrant/AI saturation, and metrics scrape failure;
 - query-plan/index/cardinality assertions on representative data while retaining security predicates;
 - contract tests for `/live`/`/ready`, safe detailed health, realtime sequence, cache freshness, adapter timeouts, and versioned k6 result schema;
 - E2E critical journeys under load, including denied cases and ambiguous idempotent writes;

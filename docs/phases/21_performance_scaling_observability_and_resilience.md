@@ -79,7 +79,7 @@ Minimum steady-state load gate: at 500 RPS and the approved traffic mix, unexpec
 
 The architecture must permit, without a fundamental rewrite, 1M+ registered users, 50k connected clients, and thousands of RPS through stateless horizontal scaling and measured database evolution. It is not a V1 acceptance load unless separately funded and scheduled.
 
-## Architecture, ownership, and SOLID boundaries
+## Laravel module ownership and services
 
 ### Runtime topology and ownership
 
@@ -94,15 +94,15 @@ Laravel/API and queue workers
   -> queue Redis HA
   -> private managed S3
 
-all workloads -> OpenTelemetry Collector -> metrics/logs/traces/error tracking
+all workloads -> Prometheus /metrics scrape; local Core request inspection via Telescope; Sentry for errors
 ```
 
-Module/application code owns latency budgets, retry eligibility, cache semantics, and degradation contracts through narrow ports. Infrastructure adapters own pools, timeouts, circuit breakers, telemetry, and provider specifics.
+Module services own latency budgets, retry eligibility, cache semantics, and degradation behavior. Focused integrations own pools, timeouts, circuit breakers, telemetry, and provider specifics; use small interfaces only where a provider is genuinely replaceable.
 
 ```text
 Clock / Deadline / CancellationToken
-CachePort
-DistributedLockPort
+CacheService
+DistributedLockService
 QueuePublisher / OutboxConsumer
 RealtimePublisher
 DatabaseConnectionHealth
@@ -111,11 +111,11 @@ AiServiceHealth
 MetricsRecorder / TraceRecorder
 ```
 
-- **Single responsibility:** business handlers do not contain vendor metrics/scaling logic; adapters do not decide business consistency.
-- **Open/closed:** additional API/Reverb/worker nodes or provider adapters require configuration, not domain changes.
+- **Single responsibility:** business services do not contain vendor metrics/scaling logic; integrations do not decide business consistency.
+- **Open/closed:** additional API/Reverb/worker nodes or provider integrations require configuration, not business-service rewrites.
 - **Liskov substitution:** cache miss/outage, replica, object-store, and provider adapters honor the same correctness/error contract.
 - **Interface segregation:** optional AI/analytics/notification health never becomes a required core readiness dependency.
-- **Dependency inversion:** domain/application code uses owned ports and deterministic clocks/deadlines; framework globals are not hidden dependencies.
+- **Conventional services:** owning module services use deterministic clocks/deadlines and focused provider interfaces where substitution matters; avoid hidden framework globals in business workflows.
 
 ### Initial production benchmark topology
 
@@ -143,7 +143,7 @@ For a small launch cohort, use smaller resources while preserving deployment bou
 
 - Laravel Octane with FrankenPHP, Horizon, Reverb, Sanctum, PostgreSQL/PostGIS, and Redis clients already selected and locked.
 - PgBouncer in transaction/session mode only after compatibility tests for migrations, prepared statements, advisory locks, LISTEN/NOTIFY, and connection state.
-- Prometheus, Grafana, Loki-compatible logging, OpenTelemetry SDK/Collector, and Sentry with central redaction.
+- Prometheus, Grafana, Loki-compatible logging, Laravel Telescope (local), and Sentry with central redaction.
 - k6 for HTTP/WebSocket workload models, thresholds, scenarios, and machine-readable results.
 - PostgreSQL `pg_stat_statements`, `EXPLAIN (ANALYZE, BUFFERS)` in safe staging, slow-query telemetry, and connection/pool metrics.
 - Qdrant cluster/collection metrics, Redis/Horizon/Reverb metrics, object-store/provider metrics, and container/runtime resource metrics.
@@ -300,7 +300,7 @@ Workload models include cold/warm cache, typical/large tenant, slow client, reco
 
 - All clients display honest offline/degraded/pending/retry states and never infer success from a timeout.
 - Flutter Dio transport and TypeScript Electron/admin transports map `401`, `403/404`, `409`, `422`, `429`, safe `5xx`, timeout, and cancellation distinctly; retries obey method/idempotency/error classification and server `Retry-After`. Electron transport executes in main/utility and exposes only typed DTO operations/events through preload.
-- Realtime repositories resubscribe with jitter, detect sequence gaps, and reload authoritative state.
+- Realtime clients resubscribe with jitter, detect sequence gaps, and reload authoritative state.
 - Paginate/virtualize large lists, cancel superseded searches, debounce within product requirements, and cap parallel requests.
 - Track startup, frame/render, memory, network bytes, reconnect, and user-flow latency without collecting sensitive screen/input content.
 - Performance optimizations preserve Arabic/English, accessibility, exact money/quantity/time, and security behavior.
@@ -329,7 +329,7 @@ Workload models include cold/warm cache, typical/large tenant, slow client, reco
 - Reverb multi-node Redis Pub/Sub/private-channel/reconnect/backpressure behavior.
 - Real Electron main/preload/renderer integration measures bounded IPC latency/backpressure, stream cleanup, reconnect resync, SQLCipher/native-addon behavior, and main/utility failure recovery on every supported packaged OS/architecture.
 - Qdrant multi-node/RF behavior and AI service concurrency/load shedding without core pool starvation.
-- S3 slow/error/timeouts, provider timeouts/rate limits, and OpenTelemetry export/backpressure.
+- S3 slow/error/timeouts, provider timeouts/rate limits, and metrics scrape failure/backpressure.
 - Index/query-plan assertions use representative dataset cardinality and fail on major scanned-row/query-count regression.
 
 ### Contract tests
