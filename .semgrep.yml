@@ -18,15 +18,15 @@ rules:
       - pattern: Uuid::v4()
       - pattern: Illuminate\Support\Str::uuid()
 
-  - id: clinic-no-facades-in-domain
+  - id: clinic-no-facades-in-module-support
     languages: [php]
     severity: ERROR
     paths:
-      include: ['apps/core-api/app/Modules/*/Domain/**']
+      include: ['apps/core-api/Modules/*/app/Support/**', 'apps/core-api/Modules/*/app/Enums/**']
     message: >-
-      Domain code must not use a framework facade. It depends on PHP and
-      domain-owned interfaces only. deptrac enforces this too; this rule
-      catches it at review time with a clearer message.
+      Support types and enums must not use a framework facade. Persistence
+      and HTTP belong in services and controllers. deptrac enforces module
+      isolation; this rule catches facade use at review time.
     pattern-either:
       - pattern: DB::$METHOD(...)
       - pattern: Cache::$METHOD(...)
@@ -46,9 +46,10 @@ rules:
       - pattern: floatval($AMOUNT)
     paths:
       include:
-        - 'apps/core-api/app/Modules/*/Domain/**'
-        - 'apps/core-api/app/Modules/POS/**'
-        - 'apps/core-api/app/Modules/Inventory/**'
+        - 'apps/core-api/Modules/*/app/Support/**'
+        - 'apps/core-api/Modules/*/app/Enums/**'
+        - 'apps/core-api/Modules/POS/**'
+        - 'apps/core-api/Modules/Inventory/**'
 
   - id: clinic-no-sensitive-in-log
     languages: [php]
@@ -76,7 +77,7 @@ rules:
     languages: [php]
     severity: WARNING
     paths:
-      include: ['apps/core-api/app/Modules/*/Http/**']
+      include: ['apps/core-api/Modules/*/app/Http/**']
     message: >-
       No HTTP request may wait for PDF extraction, OCR, embeddings, push
       delivery, analytics, or an external API call (plan.md section 174).

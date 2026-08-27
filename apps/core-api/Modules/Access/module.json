@@ -1,0 +1,11 @@
+{
+    "name": "Access",
+    "alias": "access",
+    "description": "Clinic Access module",
+    "keywords": [],
+    "priority": 40,
+    "providers": [
+        "Modules\\Access\\Providers\\AccessServiceProvider"
+    ],
+    "files": []
+}

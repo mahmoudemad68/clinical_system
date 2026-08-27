@@ -2,20 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Modules\Auth\Http\Middleware\AuthenticateActor;
-use App\Modules\Auth\Http\Middleware\AuthenticateDevice;
-use App\Modules\Auth\Http\Middleware\DenyPendingBusinessAccess;
-use App\Modules\Auth\Http\Middleware\ValidateAlwaysCsrf;
-use App\Modules\Auth\Http\Middleware\ValidateCookieCsrf;
-use App\Modules\Platform\Http\Middleware\AssignCorrelationId;
-use App\Modules\Platform\Http\Middleware\EnforceIdempotency;
-use App\Modules\Platform\Http\Middleware\EnforceRequestBounds;
-use App\Modules\Platform\Http\Middleware\HandleInertiaRequests;
-use App\Modules\Platform\Http\Middleware\InstrumentHttp;
-use App\Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
-use App\Modules\Platform\Http\Middleware\ResolveLocale;
-use App\Modules\Platform\Http\Middleware\SecureResponseHeaders;
-use App\Modules\Platform\Http\Support\ExceptionRenderer;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
@@ -26,6 +12,20 @@ use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Modules\Auth\Http\Middleware\AuthenticateActor;
+use Modules\Auth\Http\Middleware\AuthenticateDevice;
+use Modules\Auth\Http\Middleware\DenyPendingBusinessAccess;
+use Modules\Auth\Http\Middleware\ValidateAlwaysCsrf;
+use Modules\Auth\Http\Middleware\ValidateCookieCsrf;
+use Modules\Platform\Http\Middleware\AssignCorrelationId;
+use Modules\Platform\Http\Middleware\EnforceIdempotency;
+use Modules\Platform\Http\Middleware\EnforceRequestBounds;
+use Modules\Platform\Http\Middleware\HandleInertiaRequests;
+use Modules\Platform\Http\Middleware\InstrumentHttp;
+use Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
+use Modules\Platform\Http\Middleware\ResolveLocale;
+use Modules\Platform\Http\Middleware\SecureResponseHeaders;
+use Modules\Platform\Http\Support\ExceptionRenderer;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Platform\Domain\Contracts\Redactor;
-use App\Modules\Platform\Domain\Exceptions\RedactionFailure;
-use App\Modules\Platform\Infrastructure\Telemetry\PatternRedactor;
-use App\Modules\Platform\Infrastructure\Telemetry\TelemetryGateway;
+use Modules\Platform\Contracts\Redactor;
+use Modules\Platform\Exceptions\RedactionFailure;
+use Modules\Platform\Services\Telemetry\PatternRedactor;
+use Modules\Platform\Services\Telemetry\TelemetryGateway;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

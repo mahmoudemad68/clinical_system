@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
-use App\Modules\Platform\Application\Outbox\OutboxConsumer;
-use App\Modules\Platform\Application\Outbox\RetryPolicy;
-use App\Modules\Platform\Domain\Contracts\Clock;
-use App\Modules\Platform\Infrastructure\Outbox\DiagnosticsRoundTripConsumer;
-use App\Modules\Platform\Infrastructure\Outbox\OutboxDispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Modules\Platform\Contracts\Clock;
+use Modules\Platform\Services\Outbox\DiagnosticsRoundTripConsumer;
+use Modules\Platform\Services\Outbox\OutboxConsumer;
+use Modules\Platform\Services\Outbox\OutboxDispatcher;
+use Modules\Platform\Services\Outbox\RetryPolicy;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Log\NullLogger;
 use RuntimeException;

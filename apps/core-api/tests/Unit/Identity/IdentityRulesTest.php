@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-use App\Modules\Access\Application\DefaultDenyAuthorizer;
-use App\Modules\Access\Domain\Contracts\GrantStore;
-use App\Modules\Access\Domain\ValueObjects\Capabilities;
-use App\Modules\Auth\Domain\Rules\PasswordPolicy;
-use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
-use App\Modules\Identity\Domain\ValueObjects\AccountType;
-use App\Modules\Identity\Domain\ValueObjects\ActorContext;
-use App\Modules\Identity\Domain\ValueObjects\AssuranceLevel;
-use App\Modules\Identity\Domain\ValueObjects\LanguagePreference;
-use App\Modules\Identity\Domain\ValueObjects\NationalId;
-use App\Modules\Identity\Domain\ValueObjects\PhoneE164;
-use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
+use Modules\Access\Contracts\GrantStore;
+use Modules\Access\Services\DefaultDenyAuthorizer;
+use Modules\Access\Support\Capabilities;
+use Modules\Auth\Rules\PasswordPolicy;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Enums\AccountType;
+use Modules\Identity\Enums\AssuranceLevel;
+use Modules\Identity\Enums\LanguagePreference;
+use Modules\Identity\Support\ActorContext;
+use Modules\Identity\Support\NationalId;
+use Modules\Identity\Support\PhoneE164;
+use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Support\Identifier;
 
 describe('phone canonicalization', function () {
     it('accepts western, arabic-indic, and separated egyptian mobiles', function (string $raw) {

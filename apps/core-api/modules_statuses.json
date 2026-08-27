@@ -1,0 +1,7 @@
+{
+    "Platform": true,
+    "Audit": true,
+    "Identity": true,
+    "Auth": true,
+    "Access": true
+}

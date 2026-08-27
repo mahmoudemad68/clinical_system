@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Platform\Application\Idempotency\CanonicalRequestHasher;
-use App\Modules\Platform\Application\Outbox\RetryPolicy;
-use App\Modules\Platform\Http\Responses\ErrorCode;
+use Modules\Platform\Http\Responses\ErrorCode;
+use Modules\Platform\Services\Idempotency\CanonicalRequestHasher;
+use Modules\Platform\Services\Outbox\RetryPolicy;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

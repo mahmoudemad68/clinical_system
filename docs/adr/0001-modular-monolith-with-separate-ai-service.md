@@ -28,10 +28,12 @@ Two independent pressures act on the same decision:
 ## Decision
 
 The core platform is a single Laravel deployment artifact containing internally
-separated modules under `apps/core-api/app/Modules/<Name>/`. Modules communicate
-through public application ports and published events, never through direct
-cross-module table writes. Cross-module workflows that require one transaction
-are implemented as explicit application coordinators (see ADR 0004).
+separated modules under `apps/core-api/Modules/<Name>/`, managed by
+`nwidart/laravel-modules`. Modules communicate through public module services
+and published events, never through direct cross-module table writes.
+Cross-module workflows that require one transaction are implemented as explicit
+coordinating services (see ADR 0004). First-party admin UI is Inertia.js inside
+`apps/core-api`; do not scaffold a sibling `apps/admin-web` SPA.
 
 The AI subsystem is a separate FastAPI deployment artifact at
 `apps/ai-service/`. It owns its own storage (Qdrant), its own queue, and its own
@@ -86,10 +88,10 @@ ADR with security and AI-safety approval.
 
 ## Verification
 
-- `deptrac` layer configuration in `apps/core-api/deptrac.yaml` fails on a
-  cross-module infrastructure import.
-- Architecture tests assert no module references another module's Eloquent
-  models or migrations.
+- `deptrac` module configuration in `apps/core-api/deptrac.yaml` fails on a
+  forbidden cross-module import, including Platform importing a business module.
+- Architecture tests assert the conventional `Modules/<Name>` layout, reject
+  `Domain/Application/Infrastructure` trees, and reject `app/Modules`.
 - The failure-isolation system test stops the AI service and asserts core
   `/ready` remains `200` while AI readiness reports degraded.
 - The AI service has no core database credential in any environment file.

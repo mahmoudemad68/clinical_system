@@ -38,16 +38,15 @@ creating duplicate effects.
 Events carry identifiers and required non-sensitive facts. They never carry
 whole patient, prescription, lab, or AI payloads.
 
-**Coordinators.** A cross-module workflow that requires one transaction is
-implemented as one named application coordinator that:
+**Coordinating services.** A cross-module workflow that requires one transaction
+is implemented as one named Laravel service that:
 
-1. owns the use-case contract and the transaction boundary;
-2. calls narrow module-owned command ports and never imports another module's
-   Eloquent model or writes another module's table;
-3. passes the same transaction context to every port and receives typed results,
-   not framework models;
-4. collects domain events during the transaction and writes them to the outbox
-   before commit;
+1. owns the use-case contract and the `DB::transaction()` boundary;
+2. calls descriptive public services on the participating modules and never
+   writes another module's table;
+3. shares the same database transaction and receives explicit result data,
+   not another module's query builder;
+4. writes outbox rows during the transaction and before commit;
 5. starts external, realtime, notification, and analytics work only after
    commit;
 6. rolls the whole workflow back on any strong-consistency failure. Compensation
@@ -68,7 +67,7 @@ implemented as one named application coordinator that:
   is the guarantee.
 - The outbox table is high-volume and needs retention and, eventually, a
   partitioning decision backed by measured volume.
-- Coordinators concentrate transaction knowledge; they need careful review.
+- Coordinating services concentrate transaction knowledge; they need careful review.
 
 ### Risks and their mitigations
 
@@ -77,7 +76,7 @@ implemented as one named application coordinator that:
 | Duplicate side effects on retry | Consumer idempotency keyed on `event_id`; the exactly-once-in-effect test forces duplicate delivery |
 | A worker dies mid-processing and rows stall | Lease expiry plus recovery by another worker; proven by the kill-a-worker system test |
 | Outbox backlog grows unnoticed | Backlog depth and oldest-unprocessed-age metrics with alerts and a runbook |
-| A module bypasses its coordinator | Architecture test asserts only the approved coordinator uses the participating command ports |
+| A module bypasses its coordinating service | Architecture test asserts only the approved service uses the participating module services |
 | An event handler performs a write the originating invariant needed | Architecture test rejects a delayed write required for the originating invariant |
 
 ## Alternatives considered

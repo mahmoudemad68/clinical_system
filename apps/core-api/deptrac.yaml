@@ -1,76 +1,46 @@
 # Module boundary enforcement (ADR 0001, ADR 0002).
 #
-# This file is the executable form of the dependency rule in
-# docs/architecture/c4-component-module-dependency.md:
-#
-#   HTTP / Infrastructure / Jobs  ->  Application  ->  Domain
-#   Domain  ->  PHP standard library and domain-owned interfaces only
-#
-# A convention that is not enforced decays. This is the enforcement.
+# Executable form of docs/architecture/c4-component-module-dependency.md:
+# a module may import Platform and the modules listed in its ruleset.
+# Platform is the shared kernel and must not import a business module.
+# Domain/Application/Infrastructure directories are rejected by architecture tests.
 
 parameters:
 
   paths:
-    - ./app
+    - ./Modules
 
   exclude_files:
     - '#.*test.*#i'
+    - '#.*/routes/.*#'
+    - '#.*/config/.*#'
 
   layers:
 
-    # ---------------------------------------------------------------- layers
-    # Layers are matched most-specific-first within each module.
-
-    - name: Domain
+    - name: Platform
       collectors:
         - type: directory
-          value: app/Modules/.*/Domain/.*
+          value: Modules/Platform/.*
 
-    - name: Application
+    - name: Audit
       collectors:
         - type: directory
-          value: app/Modules/.*/Application/.*
+          value: Modules/Audit/.*
 
-    # The composition root. A service provider assembles the object graph, so
-    # it legitimately names every layer — that is its entire job. It is carved
-    # out of Infrastructure rather than granted a blanket exception, so the
-    # exemption is exactly one directory wide and visible here.
-    #
-    # Nothing but wiring may live in these files. A business rule inside a
-    # provider would be invisible to every other rule in this ruleset.
-    - name: Composition
+    - name: Identity
       collectors:
         - type: directory
-          value: app/Modules/.*/Infrastructure/Providers/.*
+          value: Modules/Identity/.*
 
-    - name: Infrastructure
-      collectors:
-        - type: bool
-          must:
-            - type: directory
-              value: app/Modules/.*/Infrastructure/.*
-          must_not:
-            - type: directory
-              value: app/Modules/.*/Infrastructure/Providers/.*
-
-    - name: Http
+    - name: Auth
       collectors:
         - type: directory
-          value: app/Modules/[^/]+/Http/.*
+          value: Modules/Auth/.*
 
-    - name: Jobs
+    - name: Access
       collectors:
         - type: directory
-          value: app/Modules/.*/Jobs/.*
-
-    - name: Policies
-      collectors:
-        - type: directory
-          value: app/Modules/.*/Policies/.*
-
-    # ------------------------------------------------------------- framework
-    # Everything the Domain layer must not touch. Listing the framework as its
-    # own layer is what makes "Domain depends on nothing but PHP" checkable.
+          value: Modules/Access/.*
 
     - name: Framework
       collectors:
@@ -89,10 +59,6 @@ parameters:
 
     - name: Providers
       collectors:
-        # PSR interfaces are vendor-neutral abstractions, not provider SDKs.
-        # Depending on Psr\Log\LoggerInterface is dependency inversion working
-        # as intended: Infrastructure asks for an interface it does not own and
-        # cannot see the implementation behind it.
         - type: classLike
           value: ^Psr\\.*
         - type: classLike
@@ -108,10 +74,6 @@ parameters:
         - type: classLike
           value: ^OTPHP\\.*
 
-    # Value-object support libraries the Domain layer is permitted to use.
-    # symfony/uid is a pure value type with no framework coupling; brick/money
-    # is arithmetic. Both are deliberate, narrow exceptions rather than a
-    # blanket allowance for "Symfony" or "vendor code".
     - name: DomainSafeVendor
       collectors:
         - type: classLike
@@ -121,57 +83,39 @@ parameters:
 
   ruleset:
 
-    # The innermost layer. It may speak to PHP itself and to the two vetted
-    # value-object libraries, and to nothing else. In particular it may not
-    # reach Application, Infrastructure, Http, or any framework class.
-    Domain:
-      - DomainSafeVendor
-
-    # Coordinates transactions and ports. Knows the Domain. Does not know how
-    # anything is stored, served, or delivered.
-    Application:
-      - Domain
-      - DomainSafeVendor
-
-    # Implements domain-owned ports. May use the framework and provider SDKs;
-    # that is its entire purpose.
-    Infrastructure:
-      - Domain
-      - Application
+    Platform:
       - DomainSafeVendor
       - Framework
       - Providers
 
-    # Transport only: authenticate, validate, build one command, invoke one
-    # handler, map the result.
-    Http:
-      - Domain
-      - Application
+    Audit:
+      - Platform
       - DomainSafeVendor
       - Framework
+      - Providers
 
-    # Jobs carry stable IDs, reload current state, re-authorize, stay idempotent.
-    Jobs:
-      - Domain
-      - Application
+    Identity:
+      - Platform
+      - Auth
+      - Access
+      - Audit
       - DomainSafeVendor
       - Framework
+      - Providers
 
-    # Policies decide allow or generic denial from a typed authorization
-    # context. They read the Domain and never a client-supplied identifier.
-    Policies:
-      - Domain
-      - Application
+    Auth:
+      - Platform
+      - Identity
+      - Access
+      - Audit
+      - DomainSafeVendor
       - Framework
+      - Providers
 
-    # The composition root sees everything, because wiring is what it does.
-    Composition:
-      - Domain
-      - Application
-      - Infrastructure
-      - Http
-      - Jobs
-      - Policies
+    Access:
+      - Platform
+      - Identity
+      - Audit
       - DomainSafeVendor
       - Framework
       - Providers

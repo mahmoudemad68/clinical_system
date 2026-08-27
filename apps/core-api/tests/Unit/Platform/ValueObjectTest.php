@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
-use App\Modules\Platform\Domain\ValueObjects\Classification;
-use App\Modules\Platform\Domain\ValueObjects\CountryCode;
-use App\Modules\Platform\Domain\ValueObjects\Currency;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
-use App\Modules\Platform\Domain\ValueObjects\Money;
-use App\Modules\Platform\Domain\ValueObjects\Quantity;
-use App\Modules\Platform\Infrastructure\Identity\UuidV7Generator;
-use App\Modules\Platform\Infrastructure\Time\SystemClock;
 use DateTimeImmutable;
 use DateTimeZone;
+use Modules\Platform\Enums\Classification;
+use Modules\Platform\Enums\CountryCode;
+use Modules\Platform\Enums\Currency;
+use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Services\Identity\UuidV7Generator;
+use Modules\Platform\Services\Time\SystemClock;
+use Modules\Platform\Support\Identifier;
+use Modules\Platform\Support\Money;
+use Modules\Platform\Support\Quantity;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

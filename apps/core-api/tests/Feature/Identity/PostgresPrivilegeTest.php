@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use App\Modules\Audit\Domain\Contracts\AppendAuditEvent;
-use App\Modules\Audit\Domain\Contracts\VerifyAuditChain;
-use App\Modules\Platform\Domain\Contracts\TransactionContext;
-use App\Modules\Platform\Domain\Contracts\TransactionRunner;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Modules\Audit\Contracts\AppendAuditEvent;
+use Modules\Audit\Contracts\VerifyAuditChain;
+use Modules\Platform\Contracts\TransactionContext;
+use Modules\Platform\Contracts\TransactionRunner;
+use Modules\Platform\Support\Identifier;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);

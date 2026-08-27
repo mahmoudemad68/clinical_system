@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Modules\Auth\Http\Controllers\AdminSessionController;
-use App\Modules\Platform\Http\Controllers\PersonaStatusController;
 use Illuminate\Support\Facades\Route;
+use Modules\Auth\Http\Controllers\AdminSessionController;
+use Modules\Platform\Http\Controllers\PersonaStatusController;
 
 $personas = [
     'admin' => '/',

@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Models\User;
-use App\Modules\Identity\Domain\NationalIdProtector;
-use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
-use App\Modules\Identity\Domain\ValueObjects\AccountType;
-use App\Modules\Identity\Domain\ValueObjects\LanguagePreference;
-use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
-use App\Modules\Platform\Infrastructure\Persistence\BinaryColumn;
-use App\Modules\Platform\Infrastructure\Testing\SyntheticEgyptianData;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Enums\AccountType;
+use Modules\Identity\Enums\LanguagePreference;
+use Modules\Identity\Services\NationalIdProtector;
+use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Services\Persistence\BinaryColumn;
+use Modules\Platform\Services\Testing\SyntheticEgyptianData;
 
 /**
  * @extends Factory<User>

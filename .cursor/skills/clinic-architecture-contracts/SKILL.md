@@ -41,7 +41,7 @@ When the request names a numbered phase, that phase document is authoritative fo
 - FastAPI receives minimum authorized context through a typed internal contract. It has no Core PostgreSQL credentials, route to Core tables, or permission to mutate them.
 - PostgreSQL/PostGIS is authoritative. Redis supports cache, locks, queues, rate limits, and realtime only; an empty Redis must not erase business truth.
 - Clients never connect directly to PostgreSQL, Redis, S3, Qdrant, model providers, SMS/FCM, or external pharmacy sources.
-- First-party UI is **Inertia.js inside the Laravel codebase**. Do not create standalone frontend apps (`apps/admin-web`, `apps/patient-app`, `apps/doctor-desktop`, `apps/pharmacy-desktop`) unless the user explicitly requires a native/separate client.
+- First-party **admin** UI is Inertia.js inside `apps/core-api`. Do not scaffold `apps/admin-web`. Flutter patient mobile and Electron doctor/pharmacy desktops remain separate deployment units.
 - Persona folders stay distinct inside Laravel: patient pages (`clinic-flutter-development`), doctor/pharmacy pages (`clinic-electron-desktop-development`), and admin pages (`clinic-react-admin-development`). Shared React/TypeScript does not merge their authorization or data-exposure rules.
 - Push uses Firebase via `kreait/laravel-firebase`; stored notifications use Laravel Database Notifications. PHP tests use Pest. Laravel debugging uses Telescope.
 - Laravel modules live at top-level `Modules/<Name>/` and follow the package's normal mini-application structure. Core business code uses module-owned controllers, Form Requests, API Resources, models, services, policies, jobs, events/listeners, providers, and optional backed enums.

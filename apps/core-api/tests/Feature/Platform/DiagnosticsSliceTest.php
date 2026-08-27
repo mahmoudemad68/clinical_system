@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
-use App\Modules\Platform\Application\Idempotency\CanonicalRequestHasher;
-use App\Modules\Platform\Domain\ValueObjects\IdempotencyKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Modules\Platform\Services\Idempotency\CanonicalRequestHasher;
+use Modules\Platform\Support\IdempotencyKey;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 

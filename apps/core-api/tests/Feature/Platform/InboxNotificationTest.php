@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use App\Modules\Platform\Application\Notifications\DeliverUserVisibleNotification;
-use App\Modules\Platform\Application\Notifications\DeliverUserVisibleNotificationHandler;
-use App\Modules\Platform\Domain\Contracts\SendPush;
-use App\Modules\Platform\Infrastructure\Testing\RecordingSendPush;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Schema;
+use Modules\Platform\Contracts\SendPush;
+use Modules\Platform\Services\Notifications\DeliverUserVisibleNotification;
+use Modules\Platform\Services\Notifications\DeliverUserVisibleNotificationService;
+use Modules\Platform\Services\Testing\RecordingSendPush;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -20,7 +20,7 @@ describe('user-visible notifications', function () {
         $push = new RecordingSendPush;
         app()->instance(SendPush::class, $push);
 
-        $handler = app(DeliverUserVisibleNotificationHandler::class);
+        $handler = app(DeliverUserVisibleNotificationService::class);
         $handler->handle(new DeliverUserVisibleNotification(
             notifiableType: $user::class,
             notifiableId: (string) $user->id,
@@ -45,7 +45,7 @@ describe('user-visible notifications', function () {
         $user = User::factory()->create();
         app()->instance(SendPush::class, new RecordingSendPush(fail: true));
 
-        app(DeliverUserVisibleNotificationHandler::class)->handle(new DeliverUserVisibleNotification(
+        app(DeliverUserVisibleNotificationService::class)->handle(new DeliverUserVisibleNotification(
             notifiableType: $user::class,
             notifiableId: (string) $user->id,
             notificationType: 'generic',

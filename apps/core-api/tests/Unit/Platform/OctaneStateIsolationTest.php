@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Platform\Domain\Contracts\CorrelationScope;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
-use App\Modules\Platform\Infrastructure\Identity\UuidV7Generator;
-use App\Modules\Platform\Infrastructure\Transaction\CorrelationIdProvider;
+use Modules\Platform\Contracts\CorrelationScope;
+use Modules\Platform\Services\Identity\UuidV7Generator;
+use Modules\Platform\Services\Transaction\CorrelationIdProvider;
+use Modules\Platform\Support\Identifier;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

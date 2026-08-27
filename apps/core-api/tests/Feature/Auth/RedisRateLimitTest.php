@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Modules\Auth\Domain\Contracts\AuthenticationRateLimiter;
-use App\Modules\Platform\Domain\Exceptions\RateLimited;
 use Illuminate\Support\Facades\Redis;
+use Modules\Auth\Contracts\AuthenticationRateLimiter;
+use Modules\Platform\Exceptions\RateLimited;
 use Tests\TestCase;
 
 uses(TestCase::class);

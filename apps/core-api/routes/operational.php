@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Modules\Platform\Http\Controllers\OperationalController;
 use Illuminate\Support\Facades\Route;
+use Modules\Platform\Http\Controllers\OperationalController;
 
 /*
 |--------------------------------------------------------------------------

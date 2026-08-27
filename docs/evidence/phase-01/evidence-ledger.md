@@ -26,7 +26,7 @@ High `extract-zip` remain. Those do not block local Phase 01 implementation.
 
 | Gate | Requirement | Owner | Artifact / command | Result | Residual gap |
 | --- | --- | --- | --- | --- | --- |
-| G-01-01 | Auth/Identity/Access modules and public ports | laravel | `apps/core-api/app/Modules/{Auth,Identity,Access,Audit}` | `PARTIAL` | Public ports exist, including Access grants and `DisableIdentityCoordinator`. TOTP enrol HTTP is not in the Phase 01 API list; first admin uses `identity:bootstrap-admin`. Patient registry remains a stub until Phase 02. |
+| G-01-01 | Auth/Identity/Access modules and public ports | laravel | `apps/core-api/Modules/{Auth,Identity,Access,Audit}` | `PARTIAL` | Public services exist, including Access grants and `DisableIdentityService`. TOTP enrol HTTP is not in the Phase 01 API list; first admin uses `identity:bootstrap-admin`. Patient registry remains a stub until Phase 02. |
 | G-01-02 | Identity schema + constraints | postgresql | `2026_08_26_200000_create_identity_and_access_tables.php` applied via Pest `RefreshDatabase` on `clinic_test` | `PARTIAL` | Unique phone/NID HMACs, active grant unique index, audit `REVOKE UPDATE/DELETE`. Independent DBA review of production roles not done. |
 | G-01-03 | Assurance + claim ADR | architecture | [ADR 0011](../../adr/0011-identity-assurance-and-profile-claim.md) | `PASS` | Claim/recovery stay gated; production enablement needs owners. |
 | G-01-04 | TOTP package ADR + lock | architecture | [ADR 0012](../../adr/0012-totp-verifier-package.md); `spomky-labs/otphp` 11.5.0 | `PASS` | — |

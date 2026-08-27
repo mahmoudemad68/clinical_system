@@ -1,6 +1,6 @@
 <?php
 
-use App\Modules\Platform\Infrastructure\Telemetry\SentryBeforeSend;
+use Modules\Platform\Services\Telemetry\SentryBeforeSend;
 
 return [
     'dsn' => env('SENTRY_LARAVEL_DSN', env('SENTRY_DSN')),

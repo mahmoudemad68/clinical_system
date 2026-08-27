@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Modules\Auth\Domain\Contracts\AuthDirectory;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Illuminate\Support\Facades\Broadcast;
+use Modules\Auth\Contracts\AuthDirectory;
+use Modules\Platform\Support\Identifier;
 
 /*
 |--------------------------------------------------------------------------

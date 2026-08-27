@@ -3,27 +3,27 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use App\Modules\Access\Domain\Contracts\Authorize;
-use App\Modules\Access\Domain\Contracts\GrantContextualAccess;
-use App\Modules\Access\Domain\Contracts\ListEffectiveCapabilities;
-use App\Modules\Access\Domain\Contracts\RevokeContextualAccess;
-use App\Modules\Access\Domain\ValueObjects\Capabilities;
-use App\Modules\Identity\Application\DisableIdentityCoordinator;
-use App\Modules\Identity\Application\LinkVerifiedPatientAccount;
-use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
-use App\Modules\Identity\Domain\ValueObjects\AccountType;
-use App\Modules\Identity\Domain\ValueObjects\ActorContext;
-use App\Modules\Identity\Domain\ValueObjects\AssuranceLevel;
-use App\Modules\Identity\Domain\ValueObjects\LanguagePreference;
-use App\Modules\Platform\Domain\Contracts\Clock;
-use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
-use App\Modules\Platform\Domain\Exceptions\AuthorizationDenied;
-use App\Modules\Platform\Domain\Exceptions\FeatureUnavailable;
-use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Modules\Access\Contracts\Authorize;
+use Modules\Access\Contracts\GrantContextualAccess;
+use Modules\Access\Contracts\ListEffectiveCapabilities;
+use Modules\Access\Contracts\RevokeContextualAccess;
+use Modules\Access\Support\Capabilities;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Enums\AccountType;
+use Modules\Identity\Enums\AssuranceLevel;
+use Modules\Identity\Enums\LanguagePreference;
+use Modules\Identity\Services\DisableIdentityService;
+use Modules\Identity\Services\LinkVerifiedPatientAccount;
+use Modules\Identity\Support\ActorContext;
+use Modules\Platform\Contracts\Clock;
+use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Exceptions\AuthorizationDenied;
+use Modules\Platform\Exceptions\FeatureUnavailable;
+use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Support\Identifier;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -171,7 +171,7 @@ it('disables an identity and increments credential version', function () {
         'status' => AccountStatus::Active->value,
     ]);
 
-    app(DisableIdentityCoordinator::class)->handle(
+    app(DisableIdentityService::class)->handle(
         operatorActor(Identifier::fromTrusted((string) $admin->id)),
         Identifier::fromTrusted((string) $user->id),
         AccountStatus::Locked,
@@ -186,7 +186,7 @@ it('disables an identity and increments credential version', function () {
 it('rejects identity disable from a patient actor', function () {
     $user = User::factory()->create();
 
-    expect(fn () => app(DisableIdentityCoordinator::class)->handle(
+    expect(fn () => app(DisableIdentityService::class)->handle(
         syntheticActor(Identifier::fromTrusted((string) $user->id)),
         Identifier::fromTrusted((string) $user->id),
         AccountStatus::Locked,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Modules\Platform\Infrastructure\Persistence\BinaryColumn;
+use Modules\Platform\Services\Persistence\BinaryColumn;
 
 it('round-trips raw hmac bytes through the postgres hex bind format', function () {
     $raw = hash('sha256', 'synthetic-hmac-input', true);

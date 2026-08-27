@@ -59,7 +59,7 @@ return [
              *
              * 'composer' => [
              *      // Map the UPPERCASE token to your command class
-             *      'CUSTOM_KEY' => \App\Modules\Support\Replacements\CustomKey::class,
+             *      'CUSTOM_KEY' => \Modules\Support\Replacements\CustomKey::class,
              *      // You can still list built-in tokens by their names
              *      'LOWER_NAME',
              *      'STUDLY_NAME',
@@ -165,7 +165,7 @@ return [
             'provider' => ['path' => 'app/Providers', 'generate' => true],
             'repository' => ['path' => 'app/Repositories', 'generate' => false],
             'resource' => ['path' => 'app/Http/Resources', 'generate' => false],
-            'route-provider' => ['path' => 'app/Providers', 'generate' => true],
+            'route-provider' => ['path' => 'app/Providers', 'generate' => false],
             'rules' => ['path' => 'app/Rules', 'generate' => false],
             'services' => ['path' => 'app/Services', 'generate' => true],
             'scopes' => ['path' => 'app/Models/Scopes', 'generate' => false],

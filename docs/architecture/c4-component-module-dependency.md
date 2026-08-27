@@ -5,69 +5,54 @@ of dependencies, which is the rule `deptrac` enforces in CI. Source: phase file
 "Laravel module layout" and "Cross-module transaction coordination";
 `plan.md` sections 2 and 174.
 
-## Inward dependency rule
+## Conventional module shape
+
+Each business module lives at `apps/core-api/Modules/<Name>/` and is a
+conventional mini Laravel application managed by `nwidart/laravel-modules`.
 
 ```text
-HTTP / Infrastructure / Jobs  ->  Application  ->  Domain
-Domain  ->  PHP standard library and domain-owned interfaces only
+HTTP (controllers, Form Requests, Resources)
+  -> module Services
+  -> Eloquent models / policies / jobs / events
+External SDKs -> focused services or a small app/Contracts interface
 ```
 
-Nothing points inward-out. Domain never imports Application, Infrastructure,
-HTTP, Eloquent, Laravel facades, or any provider SDK.
+Controllers authenticate, validate, call one descriptive module service, and
+map the result. Services own workflows, transactions, idempotency, and
+cross-module calls. Do not reintroduce `Domain`, `Application`, or
+`Infrastructure` directories, handler-per-action trees, or `*Port` types.
 
 ```mermaid
 flowchart TB
     subgraph Module["Modules/&lt;Name&gt;"]
         direction TB
 
-        subgraph Edge["Outer layers"]
-            HTTP["Http/<br/>Controllers, Requests, Resources, Routes"]
-            Infra["Infrastructure/<br/>Persistence, Providers, Listeners"]
-            Jobs["Jobs/"]
-            Policies["Policies/"]
-        end
-
-        subgraph App["Application"]
-            Commands["Commands / Queries"]
-            Handlers["Handlers"]
-            DTOs["DTOs"]
-        end
-
-        subgraph Dom["Domain"]
-            Entities["Entities"]
-            VOs["ValueObjects"]
-            RulesN["Rules"]
-            Events["Events"]
-            Contracts["Contracts<br/>(ports owned by the domain)"]
-        end
+        HTTP["Http/<br/>Controllers, Requests, Resources"]
+        Services["Services/"]
+        Models["Models / Enums / Policies"]
+        Jobs["Jobs / Events / Listeners"]
+        Contracts["Contracts/<br/>replaceable providers only"]
     end
 
-    HTTP --> Commands
-    Jobs --> Commands
-    Policies --> Dom
-    Commands --> Handlers
-    Handlers --> Dom
-    Handlers --> Contracts
-    Infra -. implements .-> Contracts
-    Infra --> Dom
+    HTTP --> Services
+    Jobs --> Services
+    Services --> Models
+    Services --> Contracts
+    Services --> Jobs
 
-    style Dom fill:#e8f4ea,stroke:#2d6a4f
-    style App fill:#eef2fb,stroke:#3d5a99
-    style Edge fill:#faf0e6,stroke:#9c6644
+    style Services fill:#eef2fb,stroke:#3d5a99
+    style Models fill:#e8f4ea,stroke:#2d6a4f
+    style HTTP fill:#faf0e6,stroke:#9c6644
 ```
-
-The dotted edge is the dependency inversion: `Infrastructure` implements an
-interface that `Domain` owns, so the arrow of ownership points inward even
-though the runtime call goes outward.
 
 ## Layer responsibilities
 
-| Layer | Does | Does not |
+| Folder | Does | Does not |
 | --- | --- | --- |
-| `Http/` | Authenticate, validate transport input, build one command or query, invoke one handler, map the result | Contain business transitions or reach into Eloquent |
-| `Application/` | Coordinate the transaction and the ports, enforce idempotency | Format HTTP responses or call facades hidden from tests |
-| `Domain/` | Enforce invariants, expose intent-revealing transitions | Know about HTTP, the database, queues, or providers |
-| `Infrastructure/` | Implement domain-owned ports for Eloquent, Redis, S3, FCM, SMS, Reverb | Contain business rules |
+| `Http/` | Authenticate, validate transport input, call one module service, map the result | Contain multi-step business workflows |
+| `Services/` | Coordinate the transaction, Eloquent writes, idempotency, and cross-module calls | Format HTTP envelopes or call another module's tables |
+| `Models/` | Relationships, casts, scopes, small model-local behavior | Authorize from a client-supplied role or tenant id |
+| `Contracts/` | Narrow interfaces for a genuinely replaceable provider | A second architecture of ports wrapping ordinary Eloquent |
 | `Policies/` | Decide allow or generic denial from a typed authorization context | Trust a client-supplied role, tenant, doctor, patient, or scope identifier |
 | `Jobs/` | Carry stable IDs and schema versions, reload current state, re-authorize, stay idempotent | Assume state captured at dispatch is still valid |
 
@@ -76,51 +61,51 @@ though the runtime call goes outward.
 ```mermaid
 flowchart LR
     subgraph A["Module A"]
-        AH["Application handler"]
-        APort["Public command port"]
+        AS["Public service"]
     end
-    subgraph C["Coordinator"]
-        Coord["BookAppointmentCoordinator<br/>owns the transaction boundary"]
+    subgraph C["Coordinating service"]
+        Coord["BookAppointmentService<br/>owns DB::transaction()"]
     end
     subgraph B["Module B"]
-        BPort["Public command port"]
-        BDom["Domain"]
+        BS["Public service"]
+        BM["Models"]
     end
     Outbox[("outbox_events")]
 
-    Coord --> APort
-    Coord --> BPort
-    BPort --> BDom
+    Coord --> AS
+    Coord --> BS
+    BS --> BM
     Coord --> Outbox
-    Coord -. forbidden .-x BDom
+    Coord -. forbidden .-x BM
 
     style Outbox fill:#f3e8ee,stroke:#8b3a62
 ```
 
-A module reaches another module only through a public application port or a
+A module reaches another module only through a public module service or a
 published event. Direct module-to-module table writes are prohibited, and a
-coordinator never imports another module's Eloquent model.
+coordinating service never imports another module's persistence types.
 
-## Approved coordinators
+## Approved coordinating services
 
 Named in the phase file; each owns one transaction boundary.
 
-| Coordinator | Participating modules | Commits atomically |
+| Service | Participating modules | Commits atomically |
 | --- | --- | --- |
-| `BookAppointmentCoordinator` | Appointments (availability/booking), Identity (patient reference) | appointment, slot constraint, status event, audit, idempotency, outbox |
-| `StartConsultationCoordinator` | Queue (checked-in eligibility), Clinical (encounter + access grant), Appointments (state) | encounter, access grant, appointment state, sanitized current-patient outbox event |
-| `CompleteConsultationCoordinator` | Clinical (finalize + revoke access), Queue (advance), Appointments (complete), Chat (write window) | all of the above plus outbox notifications |
-| `CompleteSaleCoordinator` | POS (cart/payment intent), Inventory (FEFO allocation + movements) | invoice, payment, movements, outbox |
+| `BookAppointmentService` | Appointments (availability/booking), Identity (patient reference) | appointment, slot constraint, status event, audit, idempotency, outbox |
+| `StartConsultationService` | Queue (checked-in eligibility), Clinical (encounter + access grant), Appointments (state) | encounter, access grant, appointment state, sanitized current-patient outbox event |
+| `CompleteConsultationService` | Clinical (finalize + revoke access), Queue (advance), Appointments (complete), Chat (write window) | all of the above plus outbox notifications |
+| `CompleteSaleService` | POS (cart/payment intent), Inventory (FEFO allocation + movements) | invoice, payment, movements, outbox |
 
-Architecture tests must prove that only the approved coordinator uses the
-participating command ports, and that an integration-event handler cannot
+Architecture tests must prove that only the approved coordinating service uses
+the participating module services, and that an integration-event consumer cannot
 perform a delayed write that the originating invariant required.
 
 ## Enforcement
 
 | Rule | Enforced by |
 | --- | --- |
-| Domain imports no framework or provider code | `deptrac` layer rules + unit dependency test |
-| No cross-module infrastructure or model import | `deptrac` ruleset + architecture test |
-| Only the approved coordinator calls a participating port | Architecture test |
+| Platform does not import a business module | `deptrac` module rules + architecture test |
+| No cross-module model or persistence import from an outbox consumer | `deptrac` ruleset + architecture test |
+| DDD `Domain/Application/Infrastructure` trees do not return | Architecture test |
+| Only the approved coordinating service spans modules in one transaction | Architecture test allow-list |
 | A forbidden dependency actually fails the build | Deliberate fixture proven to fail, then removed (Phase 00 §1.5, gate G-01-05) |

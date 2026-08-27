@@ -1,6 +1,6 @@
 <?php
 
-use App\Modules\Platform\Infrastructure\Telemetry\RedactingLogTap;
+use Modules\Platform\Services\Telemetry\RedactingLogTap;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;

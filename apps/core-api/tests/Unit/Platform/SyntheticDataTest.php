@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Platform\Domain\ValueObjects\CountryCode;
-use App\Modules\Platform\Infrastructure\Telemetry\PatternRedactor;
-use App\Modules\Platform\Infrastructure\Testing\SyntheticEgyptianData;
+use Modules\Platform\Enums\CountryCode;
+use Modules\Platform\Services\Telemetry\PatternRedactor;
+use Modules\Platform\Services\Testing\SyntheticEgyptianData;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
