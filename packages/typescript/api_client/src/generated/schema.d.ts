@@ -819,6 +819,7 @@ export interface components {
             expires_in?: number;
             capabilities?: string[];
             assurance_level?: string;
+            password_must_change?: boolean;
         };
         RefreshResult: {
             access_token: string;
