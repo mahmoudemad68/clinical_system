@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Platform\Providers;
 
+use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\WorkerStarting as QueueWorkerStarting;
+use Illuminate\Queue\Events\WorkerStopping as QueueWorkerStopping;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -77,6 +82,7 @@ use Modules\Platform\Services\Pagination\HmacCursorSigner;
 use Modules\Platform\Services\Persistence\EloquentDiagnosticsRepository;
 use Modules\Platform\Services\Persistence\EloquentIdempotencyStore;
 use Modules\Platform\Services\Persistence\EloquentOutboxRecorder;
+use Modules\Platform\Services\Persistence\WorkerDatabaseIdentity;
 use Modules\Platform\Services\Status\PlatformStatusQuery;
 use Modules\Platform\Services\Telemetry\HttpInstrumentation;
 use Modules\Platform\Services\Telemetry\MetricsExposition;
@@ -101,6 +107,12 @@ final class PlatformServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(WorkerDatabaseIdentity::class);
+
+        $this->app->booting(function (): void {
+            $this->app->make(WorkerDatabaseIdentity::class)->activateIfConsoleWorkerProcess();
+        });
+
         $this->app->singleton(Clock::class, static fn (): Clock => new SystemClock(
             (string) config('app.business_timezone', 'Africa/Cairo'),
         ));
@@ -353,6 +365,7 @@ final class PlatformServiceProvider extends ServiceProvider
     {
         $this->loadTranslationsFrom(base_path('lang'), '');
 
+        $this->bindWorkerDatabaseIdentity();
         $this->resetRequestScopedStateBetweenOctaneRequests();
         $this->defineFeatureFlags();
         $this->auditFeatureChanges();
@@ -361,6 +374,37 @@ final class PlatformServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([OutboxWorkCommand::class, PlatformPruneCommand::class, CacheWarmCommand::class]);
         }
+    }
+
+    /**
+     * Queue/Horizon/outbox processes use clinic_worker; HTTP stays on pgsql.
+     *
+     * CommandStarting is not dispatched during Pest (Laravel skips Symfony
+     * command-event rerouting in unit tests), so OutboxWorkCommand also
+     * activates itself. Production `php artisan queue:work` is covered by argv
+     * at booting plus Queue WorkerStarting.
+     */
+    private function bindWorkerDatabaseIdentity(): void
+    {
+        Event::listen(CommandStarting::class, function (CommandStarting $event): void {
+            $this->app->make(WorkerDatabaseIdentity::class)->handleCommandStarting($event);
+        });
+
+        Event::listen(CommandFinished::class, function (CommandFinished $event): void {
+            $this->app->make(WorkerDatabaseIdentity::class)->handleCommandFinished($event);
+        });
+
+        Event::listen(QueueWorkerStarting::class, function (): void {
+            $this->app->make(WorkerDatabaseIdentity::class)->handleQueueWorkerStarting();
+        });
+
+        Event::listen(QueueWorkerStopping::class, function (): void {
+            $this->app->make(WorkerDatabaseIdentity::class)->handleQueueWorkerStopping();
+        });
+
+        Event::listen(JobProcessing::class, function (): void {
+            $this->app->make(WorkerDatabaseIdentity::class)->handleJobProcessing();
+        });
     }
 
     /**

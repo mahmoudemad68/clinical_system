@@ -55,10 +55,12 @@ it('keeps the worker off users and grants', function () {
     $users = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'users', 'SELECT') AS allowed");
     $grants = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'contextual_access_grants', 'UPDATE') AS allowed");
     $jobs = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'jobs', 'UPDATE') AS allowed");
+    $diagnostics = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'platform_diagnostics', 'UPDATE') AS allowed");
 
     expect((bool) $users->allowed)->toBeFalse()
         ->and((bool) $grants->allowed)->toBeFalse()
-        ->and((bool) $jobs->allowed)->toBeTrue();
+        ->and((bool) $jobs->allowed)->toBeTrue()
+        ->and((bool) $diagnostics->allowed)->toBeTrue();
 });
 
 it('gives the backup role select on identity tables without write', function () {

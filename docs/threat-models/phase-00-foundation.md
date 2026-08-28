@@ -56,8 +56,18 @@ session. Tokens never enter `localStorage`.
 | Denial of service | Worker or websocket exhaustion | Horizon workers; Reverb `max_connections` 500 and rate limiting on; client events denied | Measured revoke-to-socket-close SLO is an evidence item, not a legal SLA |
 | Tampering | Client forging a private channel name | `auth.session.{id}` authorizes the exact live session row; other channels deny | HTTP deny is authoritative if the socket lags |
 
-Workers consume the outbox and queues as `clinic_worker`. They have DML on
-`jobs`, `outbox_events`, and OTP delivery columns, not on `users` or grants.
+Workers consume the outbox (`outbox:work`) and Laravel/Horizon queues as
+PostgreSQL role `clinic_worker` on the `pgsql_worker` connection.
+`WorkerDatabaseIdentity` selects that connection when a worker process boots
+(`queue:work`, `horizon` / `horizon:work`, `outbox:work`) and refuses to run
+when `current_user` is the HTTP serving role (`clinic_app`) or the worker
+username is not `clinic_worker`. HTTP and Octane stay on `pgsql` /
+`clinic_app`. Pest HTTP tests still log in as `clinic_migrator` for schema
+convenience; they assert the default connection is not `pgsql_worker`.
+
+Workers have DML on `jobs`, `outbox_events`, `notifications`, and
+`platform_diagnostics`, plus OTP delivery column updates, not on `users` or
+grants.
 
 ## Boundary 4 — Core to PostgreSQL, Redis, object storage
 

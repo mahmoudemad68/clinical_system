@@ -6,6 +6,7 @@ namespace Modules\Platform\Console;
 
 use Illuminate\Console\Command;
 use Modules\Platform\Services\Outbox\OutboxDispatcher;
+use Modules\Platform\Services\Persistence\WorkerDatabaseIdentity;
 
 /**
  * Runs the outbox dispatcher.
@@ -30,7 +31,21 @@ final class OutboxWorkCommand extends Command
 
     private bool $shouldStop = false;
 
-    public function handle(OutboxDispatcher $dispatcher): int
+    public function handle(WorkerDatabaseIdentity $identity): int
+    {
+        // Resolve the dispatcher after the worker role is active. Method
+        // injection of OutboxDispatcher would capture clinic_app/migrator
+        // because Pest does not fire CommandStarting.
+        $identity->activate();
+
+        try {
+            return $this->dispatchUntilStopped($this->laravel->make(OutboxDispatcher::class));
+        } finally {
+            $identity->restore();
+        }
+    }
+
+    private function dispatchUntilStopped(OutboxDispatcher $dispatcher): int
     {
         $this->registerSignalHandlers();
 
