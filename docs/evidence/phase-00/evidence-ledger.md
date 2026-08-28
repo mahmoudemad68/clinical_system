@@ -14,7 +14,7 @@ prompts, object keys, or exploit payloads.
   Electron Forge 7.11.2 · Docker 29.7.2 · PostgreSQL 16 + PostGIS 3.4 · Redis 7
 - **Status:** Phase 00 is **OPEN**.
 
-**Gate totals — 47 gates: 30 PASS, 16 PARTIAL, 0 BLOCKED, 1 OPEN.**
+**Gate totals — 47 gates: 31 PASS, 15 PARTIAL, 0 BLOCKED, 1 OPEN.**
 
 Reproduce with `node scripts/evidence/count-gates.mjs`. The script matches only
 rows whose first cell is a gate id, and fails on a duplicate id or a mismatched
@@ -35,12 +35,12 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | --- | --- | --- |
 | G-01-01 / G-01-02 architecture | `PASS` | ADR 0010 accepted, Electron C4 component view present, ADRs 0002/0003 and both C4 diagrams reconciled to the Electron reality. No automated Mermaid render check. |
 | G-02-01 runtime bootstrap | `PASS` | **Done.** Both Flutter desktop scaffolds removed, Melos reduced to 12 packages (patient app + 11 Dart packages), two independent Electron Forge apps scaffolded at the same paths, added to npm workspaces with distinct app IDs and data roots. No mixed runtime remains — verified by `find` for `*.dart`/`pubspec.yaml` under either desktop. |
-| G-02-06 … G-02-09 desktop boundary | `PASS` / `PARTIAL` | See the dedicated gate rows. Inventory, workspace split, and namespace separation pass; the trust boundary is proven at source and behaviour level but not against a packaged artifact. |
-| G-02-10 packaged E2E | `PARTIAL` | Linux packaged Doctor+Pharmacy WebdriverIO 5/5 each with fuse inspection. Windows and macOS not executed. |
+| G-02-06 … G-02-09 desktop boundary | `PASS` / `PARTIAL` | See the dedicated gate rows. Inventory, workspace split, and namespace separation pass. Source/behavioural trust-boundary tests remain under G-02-09. Packaged-window proof is G-02-10. |
+| G-02-10 packaged E2E | `PASS` | Ubuntu, Windows, and macOS packaged Doctor+Pharmacy WebdriverIO on SHA `4a98fac6538546b52f6eff0c5ef98a9608714b90`, workflow `33155677159`. Signing/notarization remain Phase 23. |
 | G-03-02 generated clients | `PASS` | TypeScript generated into `packages/typescript/api_client`. Dart constants generated into `packages/flutter/api_client/lib/src/generated`. |
 | G-06-01 local encryption | `PARTIAL` | Linux Electron (Node + Electron 44 ABI) and Linux Dart sqlite3mc canary/rotation/wrong-key/fail-closed tests pass. Windows, macOS, Android, and iOS were not executed. No clinical local writes. See [g-06-01-local-encryption-spike.md](g-06-01-local-encryption-spike.md). |
 | G-06-02 / G-06-04 / G-06-05 | `PARTIAL` | Path filters, workspaces, and lockfiles updated; a `desktop` CI job exists. Forge artifacts are not built for any OS, no SBOM has been produced, and SF-001 remains open at high severity. |
-| Client contract / E2E / system rows | `OPEN` for Electron | Packaged and installed Electron journeys, native integration, signing/update, and rollback tests are outstanding. |
+| Client contract / E2E / system rows | packaged Electron `PASS` | Unsigned packaged WebdriverIO journeys are G-02-10 `PASS`. Native integration, signing/update, and rollback tests remain Phase 23. |
 
 ---
 
@@ -66,8 +66,8 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | G-02-06 | Desktop migration inventory recorded before replacement; no real desktop database silently deleted | desktop, architecture | [desktop-migration-inventory.md](desktop-migration-inventory.md) | `PASS` | Recorded before any file was removed. No `*.db`/`*.sqlite` existed, ADR 0006's encryption spike never closed so no build was permitted to write clinical content locally, and neither app was ever packaged. Safe to replace; no export/import plan required. |
 | G-02-07 | Dart/Melos workspace holds the patient app only; npm workspaces hold admin web and both Electron desktops | architecture, desktop | `melos bootstrap`; `npm ls --workspaces` | `PASS` | Melos bootstraps 12 packages (was 14): patient app plus 11 Dart packages, no desktop entries. npm workspaces resolve admin-web, both desktops, and 6 `packages/typescript/*`. No mixed runtime remains in either desktop app. |
 | G-02-08 | Doctor and pharmacy differ across every security-relevant namespace | desktop, security | `npm run desktop:test` | `PASS` | App ID, product/executable name, user-data directory, protocol scheme, asset scheme, encrypted-DB namespace, device-credential namespace, capability registry, and update channel all distinct, asserted per app including a check that neither config contains the sibling's identity. |
-| G-02-09 | Electron trust boundary: sandbox, context isolation, no Node in renderer, strict CSP, no generic IPC, validated sender, fuses | desktop, security | `npm run desktop:test` | `PARTIAL` | Behavioural sender-origin tests remain; they found a real defect (a credentialed URL `scheme://user:pass@-/` satisfied the origin comparison) which is now rejected. `GrantFileProtocolExtraPrivileges` disabled. Packaged-window Linux WebdriverIO plus binary fuse inspection is recorded under G-02-10 as PARTIAL (Windows/macOS not executed). |
-| G-02-10 | Packaged-artifact Electron E2E: WebdriverIO on the approved OS/architecture matrix, installed-package tests, and binary fuse inspection | desktop, test-engineering | [`g-02-10-packaged-electron-e2e.md`](g-02-10-packaged-electron-e2e.md); `npm run desktop:e2e` | `PARTIAL` | Linux: packaged `clinic-doctor` and `clinic-pharmacy` launched with WebdriverIO `@wdio/electron-service` (5 passing / 0 failing each). Custom origin, no `file://`, no Node in renderer, unsigned-in storage, navigation/`window.open` denial, EN→AR RTL, and binary fuse inspection all PASS. Windows and macOS were not executed and are not claimed. CI matrix exists; those cells stay NOT_RUN until a runner actually launches the binary. Signing/notarization remain Phase 23. |
+| G-02-09 | Electron trust boundary: sandbox, context isolation, no Node in renderer, strict CSP, no generic IPC, validated sender, fuses | desktop, security | `npm run desktop:test` | `PARTIAL` | Behavioural sender-origin tests remain; they found a real defect (a credentialed URL `scheme://user:pass@-/` satisfied the origin comparison) which is now rejected. `GrantFileProtocolExtraPrivileges` disabled. Packaged-window WebdriverIO plus binary fuse inspection is G-02-10 `PASS` (Ubuntu/Windows/macOS). |
+| G-02-10 | Packaged-artifact Electron E2E: WebdriverIO on the approved OS/architecture matrix, installed-package tests, and binary fuse inspection | desktop, test-engineering | [`g-02-10-packaged-electron-e2e.md`](g-02-10-packaged-electron-e2e.md); workflow [33155677159](https://github.com/mahmoudemad68/clinical_system/actions/runs/33155677159) | `PASS` | Candidate SHA `4a98fac6538546b52f6eff0c5ef98a9608714b90`. Ubuntu job `98797779682`, Windows job `98797779679`, macOS job `98797779637`: each packaged and launched both Clinic Doctor and Clinic Pharmacy, then passed `Packaged Doctor and Pharmacy WebdriverIO`. Custom `clinic-*-app://` origin, no `file://`, no Node in renderer, no auth tokens in renderer storage, hostile navigation denied, `window.open` denied, EN→AR RTL, fuse/security wire. Signing/notarization remain Phase 23. |
 
 ## 3. Contract workflow (Phase 00 §3)
 
@@ -145,7 +145,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | Integration | FastAPI stub internal auth, deadline propagation, unavailability isolation | `PASS` | pytest 15 passed: auth, deadline, extra-field rejection, PHP-serialize isolation, Hypothesis garbage bodies, staging refuses `DB_*` |
 | Contract | OpenAPI validation + generated clients against a running API | `PARTIAL` | Validation and TS/Dart generation pass; not yet run against a live API |
 | Contract | Event consumers accept current and previous compatible schemas | `PASS` | Dual-read v1+v2 on `platform.diagnostics_round_trip_recorded`; incompatible v99 dead-letters |
-| E2E | Four clients show core health/version in Arabic and English | `PARTIAL` | API `/api/v1/health` negotiates ar/en. First-party Inertia pages for all four personas render catalogue copy in ar/en with RTL. Flutter `HealthPanel` widget tests, admin-web `HealthPanel` tests, and Electron renderers expose locale switches. Linux packaged Electron locale/RTL is G-02-10 PARTIAL; Windows/macOS not executed. |
+| E2E | Four clients show core health/version in Arabic and English | `PARTIAL` | API `/api/v1/health` negotiates ar/en. First-party Inertia pages for all four personas render catalogue copy in ar/en with RTL. Flutter `HealthPanel` widget tests, admin-web `HealthPanel` tests, and Electron renderers expose locale switches. Packaged Electron locale/RTL is G-02-10 `PASS` on Ubuntu, Windows, and macOS. |
 | E2E | Committed synthetic event reaches a consumer exactly once despite forced duplicate delivery | `PARTIAL` | OutboxDispatcherTest covers exactly-once; packaged client E2E is not done |
 | System | Stop AI/Qdrant, flush Redis, kill a worker mid-outbox, roll a compatible schema change, graceful shutdown under load | `PARTIAL` | Redis flush PASS. AI isolation unit PASS. Kill-worker covered by lease recovery. Graceful shutdown under load is Phase 21 |
 | Security | SAST, dependency, image, IaC, license, SBOM, secret scans with blocking severity policy | `PARTIAL` | Policy and CI YAML exist; GitHub remote has never executed them |
@@ -238,14 +238,14 @@ the database actually did. Neither would have failed a happy-path test.
 | --- | --- | --- |
 | 1 | GitHub CODEOWNERS teams do not exist; branch protection cannot enforce review rules | Create the GitHub organization and teams, or map `@clinic/...` to real usernames. Humans are named in [accountable-owners.md](../../governance/accountable-owners.md). |
 | 2 | ADR 0006 encryption spike (G-06-01) | Linux canary/rotation/fail-closed evidence exists. Still needs Windows, macOS, Android, and iOS execution. Not waived. No client may store clinical content locally until closed. |
-| 3 | Packaged Electron E2E (G-02-10) | Linux packaged WebdriverIO + fuse inspection recorded. Windows and macOS still not executed. Not waived. |
+| 3 | Packaged Electron E2E (G-02-10) | **Closed as PASS** on SHA `4a98fac6538546b52f6eff0c5ef98a9608714b90`, workflow `33155677159` (Ubuntu `98797779682`, Windows `98797779679`, macOS `98797779637`). Both Doctor and Pharmacy packaged apps launched on each OS. Signing/notarization remain Phase 23. |
 | 4 | No staging environment | Infrastructure decision and budget |
 | 5 | SF-001: one high advisory (`extract-zip <= 2.0.1`) in the Electron build toolchain with no published fix. Blocks promotion, not merge | Security owner decision under ADR 0008: time-boxed merge exception with an expiry, a vendored patch, or a tooling change (which needs a compatibility ADR) |
 
 ## Honest summary
 
-**47 gates: 30 PASS, 16 PARTIAL, 0 BLOCKED, 1 OPEN** (reproduce with
-`node scripts/evidence/count-gates.mjs --expect PASS=30,PARTIAL=16,BLOCKED=0,OPEN=1`).
+**47 gates: 31 PASS, 15 PARTIAL, 0 BLOCKED, 1 OPEN** (reproduce with
+`node scripts/evidence/count-gates.mjs --expect PASS=31,PARTIAL=15,BLOCKED=0,OPEN=1`).
 
 All six deployment units build, lint, type-check, and test green:
 
@@ -286,12 +286,13 @@ satisfied the comparison.
 - **SF-001 remains open at high severity.** `extract-zip <= 2.0.1` has no
   published fix; 2.0.1 *is* the latest. High blocks promotion; merge needs a
   recorded, time-boxed exception from a security owner.
-- **The Electron trust boundary is proven on a Linux packaged artifact, not on Windows or macOS.**
-  Source and behavioural tests remain. G-02-10 is PARTIAL: Linux WebdriverIO
-  against Forge-packaged Doctor and Pharmacy binaries plus fuse inspection PASS.
-  Windows and macOS have not run.
-- **Nothing in CI has ever run.** Nine jobs are written and YAML-valid; there is
-  no GitHub remote.
+- **The Electron packaged-window matrix is G-02-10 PASS.** Ubuntu, Windows, and
+  macOS each packaged and launched Clinic Doctor and Clinic Pharmacy
+  (workflow `33155677159`). Source and behavioural tests remain under G-02-09.
+  Signing and notarization remain Phase 23.
+- **Packaged Electron E2E CI has run.** Workflow `33155677159` on SHA
+  `4a98fac6538546b52f6eff0c5ef98a9608714b90`. Other CI jobs stay on their own
+  gates (G-06-02 is still PARTIAL).
 - **Redaction is proven on the in-process export path** (G-07-05). Local
   request inspection is Laravel Telescope. There is no OpenTelemetry collector
   or OTLP export (G-07-01 stays PARTIAL: no distributed trace pipeline).
@@ -307,6 +308,7 @@ satisfied the comparison.
   five-platform G-06-01.
 
 Phase 00 must not be described as complete. Packaged Electron E2E (G-02-10)
-is PARTIAL: Linux packaged WebdriverIO ran; Windows and macOS have not.
-The local-encryption spike (G-06-01) is PARTIAL: Linux passed;
-the other four OS targets have not run. G-08-04 is OPEN and does not waive them.
+is PASS on Ubuntu, Windows, and macOS for SHA
+`4a98fac6538546b52f6eff0c5ef98a9608714b90`. The local-encryption spike
+(G-06-01) is PARTIAL: Linux passed; the other four OS targets have not run.
+G-08-04 is OPEN and does not waive remaining gates.

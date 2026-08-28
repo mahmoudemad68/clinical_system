@@ -1,34 +1,83 @@
 {
   "gate": "G-02-10",
-  "result": "PARTIAL",
-  "candidate_sha": "7e0df60b55598e6ad0e797794d4f6063b37f6bcc",
-  "recorded_at": "2026-08-27T17:12:59.561Z",
+  "result": "PASS",
+  "candidate_sha": "4a98fac6538546b52f6eff0c5ef98a9608714b90",
+  "recorded_at": "2026-08-28T08:40:00.000Z",
   "command": "node scripts/desktop/run-packaged-e2e.mjs",
-  "host": {
-    "platform": "linux",
-    "arch": "x64"
+  "workflow": {
+    "run_id": 33155677159,
+    "url": "https://github.com/mahmoudemad68/clinical_system/actions/runs/33155677159",
+    "head_sha": "4a98fac6538546b52f6eff0c5ef98a9608714b90"
   },
   "os_executed": [
-    "linux"
-  ],
-  "os_not_executed": [
+    "linux",
     "windows",
     "macos"
   ],
+  "os_not_executed": [],
   "os_matrix": {
     "linux": {
       "executed": true,
-      "result": "PASS"
+      "result": "PASS",
+      "runner": "ubuntu-latest",
+      "job_id": 98797779682,
+      "job_url": "https://github.com/mahmoudemad68/clinical_system/actions/runs/33155677159/job/98797779682",
+      "step": "Packaged Doctor and Pharmacy WebdriverIO",
+      "apps_launched": [
+        "doctor",
+        "pharmacy"
+      ],
+      "artifact": "g-02-10-ubuntu-latest"
     },
     "windows": {
-      "executed": false,
-      "result": "NOT_RUN"
+      "executed": true,
+      "result": "PASS",
+      "runner": "windows-latest",
+      "job_id": 98797779679,
+      "job_url": "https://github.com/mahmoudemad68/clinical_system/actions/runs/33155677159/job/98797779679",
+      "step": "Packaged Doctor and Pharmacy WebdriverIO",
+      "apps_launched": [
+        "doctor",
+        "pharmacy"
+      ],
+      "artifact": "g-02-10-windows-latest"
     },
     "macos": {
-      "executed": false,
-      "result": "NOT_RUN"
+      "executed": true,
+      "result": "PASS",
+      "runner": "macos-latest",
+      "job_id": 98797779637,
+      "job_url": "https://github.com/mahmoudemad68/clinical_system/actions/runs/33155677159/job/98797779637",
+      "step": "Packaged Doctor and Pharmacy WebdriverIO",
+      "apps_launched": [
+        "doctor",
+        "pharmacy"
+      ],
+      "artifact": "g-02-10-macos-latest"
     }
   },
+  "apps": [
+    {
+      "app": "doctor",
+      "productName": "Clinic Doctor",
+      "packagedOrigin": "clinic-doctor-app://-",
+      "launched_on": [
+        "linux",
+        "windows",
+        "macos"
+      ]
+    },
+    {
+      "app": "pharmacy",
+      "productName": "Clinic Pharmacy",
+      "packagedOrigin": "clinic-pharmacy-app://-",
+      "launched_on": [
+        "linux",
+        "windows",
+        "macos"
+      ]
+    }
+  ],
   "harness": {
     "runner": "@wdio/electron-service",
     "mode": "packaged-binary",
@@ -40,110 +89,18 @@
       "asar-inspect-only"
     ]
   },
-  "apps": [
-    {
-      "app": "doctor",
-      "productName": "Clinic Doctor",
-      "packagedOrigin": "clinic-doctor-app://-",
-      "binaryRelative": "apps/doctor-desktop/out/Clinic Doctor-linux-x64/clinic-doctor",
-      "binarySha256": "199529b21d6f5cb8bb5d3425952ffd11413df9336dafa54ae9ceb8ef3bc2cc92",
-      "asars": [
-        {
-          "path": "apps/doctor-desktop/out/Clinic Doctor-linux-x64/resources/app.asar",
-          "sha256": "d810414fa91d758f757619d5d49ef472dd04d81c20347f5b8c7148032eec06f6"
-        }
-      ],
-      "makers": [],
-      "make": {
-        "skipped": true,
-        "reason": "CLINIC_DESKTOP_SKIP_MAKE"
-      },
-      "sandbox": {
-        "skipped": false,
-        "helper": "/home/mahmoud/Desktop/clinic_project/apps/doctor-desktop/out/Clinic Doctor-linux-x64/chrome-sandbox",
-        "mode": "suid",
-        "suid": {
-          "configured": true,
-          "via": "already"
-        },
-        "apparmor": {
-          "skipped": false,
-          "profileName": "clinic-doctor-clinic-packaged-e2e",
-          "dest": "/etc/apparmor.d/clinic-doctor-clinic-packaged-e2e",
-          "via": "docker-chroot"
-        }
-      },
-      "fuses": {
-        "passed": true,
-        "observed": {
-          "RunAsNode": "DISABLE",
-          "EnableCookieEncryption": "ENABLE",
-          "EnableNodeOptionsEnvironmentVariable": "DISABLE",
-          "EnableNodeCliInspectArguments": "DISABLE",
-          "EnableEmbeddedAsarIntegrityValidation": "ENABLE",
-          "OnlyLoadAppFromAsar": "ENABLE",
-          "GrantFileProtocolExtraPrivileges": "DISABLE"
-        },
-        "failures": []
-      },
-      "wdio": {
-        "exitCode": 0,
-        "passing": 5,
-        "failing": 0,
-        "logRelative": "tests/desktop-e2e/logs/doctor-linux.log"
-      }
-    },
-    {
-      "app": "pharmacy",
-      "productName": "Clinic Pharmacy",
-      "packagedOrigin": "clinic-pharmacy-app://-",
-      "binaryRelative": "apps/pharmacy-desktop/out/Clinic Pharmacy-linux-x64/clinic-pharmacy",
-      "binarySha256": "199529b21d6f5cb8bb5d3425952ffd11413df9336dafa54ae9ceb8ef3bc2cc92",
-      "asars": [
-        {
-          "path": "apps/pharmacy-desktop/out/Clinic Pharmacy-linux-x64/resources/app.asar",
-          "sha256": "b1144c5b21a6088292542ffff4811791900fb673f1bff9f3ca34b8d0de78755a"
-        }
-      ],
-      "makers": [],
-      "make": {
-        "skipped": true,
-        "reason": "CLINIC_DESKTOP_SKIP_MAKE"
-      },
-      "sandbox": {
-        "skipped": false,
-        "helper": "/home/mahmoud/Desktop/clinic_project/apps/pharmacy-desktop/out/Clinic Pharmacy-linux-x64/chrome-sandbox",
-        "mode": "suid",
-        "suid": {
-          "configured": true,
-          "via": "already"
-        },
-        "apparmor": {
-          "skipped": false,
-          "profileName": "clinic-pharmacy-clinic-packaged-e2e",
-          "dest": "/etc/apparmor.d/clinic-pharmacy-clinic-packaged-e2e",
-          "via": "docker-chroot"
-        }
-      },
-      "fuses": {
-        "passed": true,
-        "observed": {
-          "RunAsNode": "DISABLE",
-          "EnableCookieEncryption": "ENABLE",
-          "EnableNodeOptionsEnvironmentVariable": "DISABLE",
-          "EnableNodeCliInspectArguments": "DISABLE",
-          "EnableEmbeddedAsarIntegrityValidation": "ENABLE",
-          "OnlyLoadAppFromAsar": "ENABLE",
-          "GrantFileProtocolExtraPrivileges": "DISABLE"
-        },
-        "failures": []
-      },
-      "wdio": {
-        "exitCode": 0,
-        "passing": 5,
-        "failing": 0,
-        "logRelative": "tests/desktop-e2e/logs/pharmacy-linux.log"
-      }
-    }
-  ]
+  "assertions": [
+    "custom clinic-*-app:// origin",
+    "no file:// fallback",
+    "no Node in renderer",
+    "no auth tokens in renderer storage",
+    "hostile navigation denied",
+    "window.open denied",
+    "EN to AR RTL",
+    "fuse/security wire including GrantFileProtocolExtraPrivileges=DISABLE"
+  ],
+  "residual": {
+    "signing_notarization": "Phase 23",
+    "phase_00": "OPEN"
+  }
 }
