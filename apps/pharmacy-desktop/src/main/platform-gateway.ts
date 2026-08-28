@@ -90,11 +90,14 @@ async function requestJson<T>(
     throw new Error('ORIGIN_REFUSED');
   }
 
-  const response = await net.fetch(target.toString(), {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  // exactOptionalPropertyTypes: omit `body` entirely when the request has none.
+  // Passing `body: undefined` is not assignable to RequestInit.
+  const response = await net.fetch(
+    target.toString(),
+    body === undefined
+      ? { method, headers }
+      : { method, headers, body: JSON.stringify(body) },
+  );
 
   if (response.status === 401 && allowRefresh && memoryRefresh !== null && path !== '/api/v1/auth/token/refresh' && path !== '/api/v1/auth/logout') {
     const rotated = await refreshTokens(locale);

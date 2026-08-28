@@ -109,16 +109,13 @@ function createWindow(): void {
   // Paint only when ready, so the user never sees an empty frame.
   window.once('ready-to-show', () => window.show());
 
-  window.webContents.on('console-message', (...args) => {
-    const event = args[0] as { message?: string; level?: number; lineNumber?: number; sourceId?: string } | number;
-    if (typeof event === 'object' && event !== null && 'message' in event) {
-      logPackagedProtocol(
-        `console level=${event.level ?? '?'} src=${event.sourceId ?? ''}:${event.lineNumber ?? ''} ${event.message ?? ''}`,
-      );
-      return;
-    }
-    const [, level, message, line, sourceId] = args as [unknown, number, string, number, string];
-    logPackagedProtocol(`console level=${level} src=${sourceId}:${line} ${message}`);
+  // Electron 44 emits Event<WebContentsConsoleMessageEventParams> as the first
+  // argument. Positional level/message/line/sourceId remain only as deprecated
+  // extras; the details object is the supported payload.
+  window.webContents.on('console-message', (details) => {
+    logPackagedProtocol(
+      `console level=${details.level} src=${details.sourceId}:${details.lineNumber} ${details.message}`,
+    );
   });
 
   // Register before loading: an IPC message can arrive as soon as the
