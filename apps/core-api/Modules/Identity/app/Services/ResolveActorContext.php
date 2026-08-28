@@ -124,7 +124,12 @@ final class ResolveActorContext
             $deviceId,
             $sessionId,
             [],
-            Capabilities::forActor($user->accountType->value, $assurance->satisfiesPrivilegedSession()),
+            Capabilities::forActor(
+                $user->accountType->value,
+                $assurance->satisfiesPrivilegedSession(),
+                $user->passwordMustChange,
+            ),
+            $user->passwordMustChange,
         );
     }
 }

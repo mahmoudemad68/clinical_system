@@ -32,10 +32,16 @@ final readonly class ActorContext
         public ?Identifier $sessionId,
         public array $profileLinkIds,
         public array $capabilities,
+        public bool $passwordMustChange = false,
     ) {}
 
     public function isPending(): bool
     {
         return $this->status === AccountStatus::PendingPhone;
+    }
+
+    public function requiresPasswordChange(): bool
+    {
+        return $this->passwordMustChange;
     }
 }

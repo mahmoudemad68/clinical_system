@@ -21,5 +21,6 @@ final readonly class UserAccount
         public int $credentialVersion,
         public bool $phoneVerified,
         public bool $bootstrapExempt,
+        public bool $passwordMustChange = false,
     ) {}
 }

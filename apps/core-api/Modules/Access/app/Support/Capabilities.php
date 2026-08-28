@@ -62,6 +62,16 @@ final class Capabilities
         self::CONTEXT_DELEGATE,
     ];
 
+    /**
+     * Capabilities available while a bootstrap password change is required.
+     *
+     * @var list<string>
+     */
+    public const PASSWORD_CHANGE_REQUIRED = [
+        self::PASSWORD_CHANGE,
+        self::SESSION_REVOKE_ALL,
+    ];
+
     /** Clinical, pharmacy-stock, and catalog capabilities are absent on purpose. */
     public static function isKnown(string $capability): bool
     {
@@ -81,8 +91,12 @@ final class Capabilities
     /**
      * @return list<string>
      */
-    public static function forActor(string $accountType, bool $privilegedAssurance): array
+    public static function forActor(string $accountType, bool $privilegedAssurance, bool $passwordMustChange = false): array
     {
+        if ($passwordMustChange) {
+            return self::PASSWORD_CHANGE_REQUIRED;
+        }
+
         if ($accountType === 'admin' && $privilegedAssurance) {
             return [...self::AUTHENTICATED_SELF, ...self::PRIVILEGED_OPERATOR];
         }

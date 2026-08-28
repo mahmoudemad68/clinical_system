@@ -43,6 +43,7 @@ class UserFactory extends Factory
             'phone_verified_at' => $now,
             'last_authenticated_at' => null,
             'bootstrap_exempt' => false,
+            'password_must_change' => false,
             'created_at' => $now,
             'updated_at' => $now,
         ];

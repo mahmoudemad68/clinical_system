@@ -16,6 +16,10 @@ final class ListEffectiveCapabilitiesService implements ListEffectiveCapabilitie
 
     public function forActor(ActorContext $actor, DateTimeImmutable $now): array
     {
+        if ($actor->passwordMustChange) {
+            return Capabilities::PASSWORD_CHANGE_REQUIRED;
+        }
+
         $fromGrants = $this->grants->activeCapabilities($actor->userId, $now);
         $knownGrants = array_values(array_filter(
             $fromGrants,

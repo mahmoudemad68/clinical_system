@@ -30,6 +30,13 @@ class User extends Authenticatable
 
     protected $hidden = ['password_hash', 'phone_e164_encrypted', 'phone_lookup_hmac'];
 
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'password_must_change' => false,
+    ];
+
     public function getAuthPassword(): string
     {
         return (string) $this->password_hash;
@@ -44,6 +51,7 @@ class User extends Authenticatable
             'phone_verified_at' => 'datetime',
             'last_authenticated_at' => 'datetime',
             'bootstrap_exempt' => 'boolean',
+            'password_must_change' => 'boolean',
             'credential_version' => 'integer',
         ];
     }

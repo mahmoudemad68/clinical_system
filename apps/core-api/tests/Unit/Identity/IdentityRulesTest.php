@@ -113,4 +113,27 @@ describe('default-deny authorizer', function () {
         expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::PASSWORD_CHANGE)->reasonCode)
             ->toBe('pending_restricted');
     });
+
+    it('restricts bootstrap admins that still must change password', function () {
+        $actor = new ActorContext(
+            Identifier::fromTrusted('0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c03'),
+            AccountType::Admin,
+            AccountStatus::Active,
+            LanguagePreference::English,
+            AssuranceLevel::Aal2Totp,
+            1,
+            null,
+            null,
+            [],
+            Capabilities::forActor('admin', true, true),
+            true,
+        );
+        $authorizer = new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class));
+
+        expect($authorizer->decide($actor, Capabilities::PASSWORD_CHANGE)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::IDENTITY_ME_READ)->allowed)->toBeFalse()
+            ->and($authorizer->decide($actor, Capabilities::IDENTITY_ME_READ)->reasonCode)->toBe('password_change_required');
+        expect($authorizer->decide($actor, Capabilities::ACCESS_GRANT_ISSUE)->allowed)->toBeFalse()
+            ->and($authorizer->decide($actor, Capabilities::ACCESS_GRANT_ISSUE)->reasonCode)->toBe('password_change_required');
+    });
 });

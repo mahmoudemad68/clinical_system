@@ -76,6 +76,11 @@ final class IssueAuthenticatedSession
         $sessionId = $this->ids->next();
         $deviceId = $this->ids->next();
         $issuedAssurance = $needsTotp ? AssuranceLevel::Aal2Totp : AssuranceLevel::Aal1Password;
+        $capabilities = Capabilities::forActor(
+            $user->accountType->value,
+            $issuedAssurance->satisfiesPrivilegedSession(),
+            $user->passwordMustChange,
+        );
 
         if ($class->usesCookieSession()) {
             $sessionHash = $this->credentials->hashToken('cookie:'.$sessionId->value);
@@ -110,8 +115,9 @@ final class IssueAuthenticatedSession
                 'session_id' => $sessionId->value,
                 'user_id' => $user->id->value,
                 'status' => $user->status->value,
-                'capabilities' => Capabilities::forActor($user->accountType->value, $issuedAssurance->satisfiesPrivilegedSession()),
+                'capabilities' => $capabilities,
                 'assurance_level' => $issuedAssurance->value,
+                'password_must_change' => $user->passwordMustChange,
             ];
         }
 
@@ -176,8 +182,9 @@ final class IssueAuthenticatedSession
             'access_token' => $access,
             'refresh_token' => $refresh,
             'expires_in' => $accessTtl,
-            'capabilities' => Capabilities::forActor($user->accountType->value, $issuedAssurance->satisfiesPrivilegedSession()),
+            'capabilities' => $capabilities,
             'assurance_level' => $issuedAssurance->value,
+            'password_must_change' => $user->passwordMustChange,
         ];
     }
 

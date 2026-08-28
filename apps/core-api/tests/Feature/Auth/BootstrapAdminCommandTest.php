@@ -136,6 +136,7 @@ describe('one-time bootstrap', function () {
 
         expect(bootstrapAdminVerifiedAt($userId))->toBeNull()
             ->and(is_file(bootstrapAdminUriPath()))->toBeTrue()
+            ->and((bool) DB::table('users')->where('id', $userId)->value('password_must_change'))->toBeTrue()
             ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_started')->count())->toBe(1)
             ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_confirmed')->count())->toBe(0)
             ->and(DB::table('users')->where('account_type', AccountType::Admin->value)->count())->toBe(1);
@@ -171,6 +172,7 @@ describe('interactive TOTP confirmation', function () {
             ->assertSuccessful();
 
         expect(bootstrapAdminVerifiedAt($userId))->not->toBeNull()
+            ->and((bool) DB::table('users')->where('id', $userId)->value('password_must_change'))->toBeTrue()
             ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_confirmed')->count())->toBe(1);
     });
 

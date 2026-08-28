@@ -47,6 +47,10 @@ final class DefaultDenyAuthorizer implements Authorize
             return AuthorizationDecision::deny('pending_restricted', $group);
         }
 
+        if ($actor->passwordMustChange && ! in_array($action, Capabilities::PASSWORD_CHANGE_REQUIRED, true)) {
+            return AuthorizationDecision::deny('password_change_required', $group);
+        }
+
         if ($this->requiresPrivilege($action)
             && ($actor->accountType->value !== 'admin' || ! $actor->assuranceLevel->satisfiesPrivilegedSession())) {
             return AuthorizationDecision::deny('insufficient_assurance', $group);

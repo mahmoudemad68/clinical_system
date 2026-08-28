@@ -104,6 +104,7 @@ final class BootstrapAdminCommand extends Command
                     1,
                     true,
                     true,
+                    true,
                 ),
                 $protector->encryptPhone($phone),
                 $protector->phoneHmac($phone),

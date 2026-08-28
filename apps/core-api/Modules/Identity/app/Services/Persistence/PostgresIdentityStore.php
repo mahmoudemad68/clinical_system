@@ -62,6 +62,7 @@ final class PostgresIdentityStore implements UserDirectory
                 'phone_verified_at' => $user->phoneVerified ? $now->format('Y-m-d H:i:s.uP') : null,
                 'last_authenticated_at' => null,
                 'bootstrap_exempt' => $user->bootstrapExempt,
+                'password_must_change' => $user->passwordMustChange,
                 'created_at' => $now->format('Y-m-d H:i:s.uP'),
                 'updated_at' => $now->format('Y-m-d H:i:s.uP'),
             ]);
@@ -102,6 +103,7 @@ final class PostgresIdentityStore implements UserDirectory
         $this->connection->table('users')->where('id', $userId->value)->update([
             'password_hash' => $hash,
             'credential_version' => $credentialVersion,
+            'password_must_change' => false,
             'updated_at' => $now->format('Y-m-d H:i:s.uP'),
         ]);
     }
@@ -150,6 +152,7 @@ final class PostgresIdentityStore implements UserDirectory
             (int) $row->credential_version,
             $row->phone_verified_at !== null,
             (bool) $row->bootstrap_exempt,
+            (bool) $row->password_must_change,
         );
     }
 }

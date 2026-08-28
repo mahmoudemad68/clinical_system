@@ -1586,6 +1586,8 @@ components:
         assurance_level:
           type: string
           maxLength: 32
+        password_must_change:
+          type: boolean
 
     RefreshResult:
       type: object

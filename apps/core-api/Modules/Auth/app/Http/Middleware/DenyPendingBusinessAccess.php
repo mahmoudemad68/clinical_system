@@ -12,7 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
- * Pending users may only hit the restricted identity surface.
+ * Restricted identity surface: pending-phone users, and bootstrap admins
+ * who still must replace the bootstrap password.
  */
 final class DenyPendingBusinessAccess
 {
@@ -27,11 +28,28 @@ final class DenyPendingBusinessAccess
         'api.v1.me.capabilities',
     ];
 
+    /** @var list<string> */
+    private const PASSWORD_CHANGE_REQUIRED = [
+        'api.v1.auth.password.change',
+        'api.v1.auth.logout',
+        'api.v1.auth.sessions.revoke-all',
+    ];
+
     public function handle(Request $request, Closure $next): Response
     {
         $actor = $request->attributes->get(ActorContext::class);
 
         if (! $actor instanceof ActorContext) {
+            return $next($request);
+        }
+
+        if ($actor->passwordMustChange) {
+            $name = $request->route()?->getName();
+
+            if (! is_string($name) || ! in_array($name, self::PASSWORD_CHANGE_REQUIRED, true)) {
+                throw new AccessDeniedHttpException;
+            }
+
             return $next($request);
         }
 
