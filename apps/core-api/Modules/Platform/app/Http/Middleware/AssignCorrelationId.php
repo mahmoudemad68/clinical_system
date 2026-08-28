@@ -42,6 +42,10 @@ final class AssignCorrelationId
 
         $response->headers->set('X-Request-Id', $correlationId->value);
 
+        if (config('octane.worker_probe')) {
+            $response->headers->set('X-Octane-Worker-Pid', (string) getmypid());
+        }
+
         return $response;
     }
 
