@@ -140,7 +140,9 @@ interface AuthDirectory
      */
     public function insertRecoveryCodes(array $rows): void;
 
-    public function consumeRecoveryCode(Identifier $id, DateTimeImmutable $now): void;
+    public function lockRecoveryCode(Identifier $userId, string $codeHash): ?stdClass;
+
+    public function consumeRecoveryCode(Identifier $id, DateTimeImmutable $now): bool;
 
     public function insertRecoveryRequest(
         Identifier $id,

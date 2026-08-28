@@ -505,11 +505,14 @@ final class PostgresAuthStore implements AuthDirectory
         return $row instanceof stdClass ? $row : null;
     }
 
-    public function consumeRecoveryCode(Identifier $id, DateTimeImmutable $now): void
+    public function consumeRecoveryCode(Identifier $id, DateTimeImmutable $now): bool
     {
-        $this->connection->table('mfa_recovery_codes')->where('id', $id->value)->update([
-            'consumed_at' => $now->format('Y-m-d H:i:s.uP'),
-        ]);
+        return $this->connection->table('mfa_recovery_codes')
+            ->where('id', $id->value)
+            ->whereNull('consumed_at')
+            ->update([
+                'consumed_at' => $now->format('Y-m-d H:i:s.uP'),
+            ]) === 1;
     }
 
     public function insertRecoveryRequest(

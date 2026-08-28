@@ -27,6 +27,7 @@ final class CompleteMfaService
         private readonly UserDirectory $identities,
         private readonly TotpVerifier $totp,
         private readonly NationalIdProtector $protector,
+        private readonly CredentialIssuer $credentials,
         private readonly IssueAuthenticatedSession $sessions,
         private readonly Clock $clock,
         private readonly AuthTelemetry $telemetry,
@@ -35,14 +36,40 @@ final class CompleteMfaService
     ) {}
 
     /**
+     * Mutually exclusive TOTP or recovery-code proof for MFA completion.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function proofRules(): array
+    {
+        return [
+            'code' => ['required_without:recovery_code', 'prohibits:recovery_code', 'string', 'size:6'],
+            'recovery_code' => ['required_without:code', 'prohibits:code', 'string', 'min:8', 'max:32'],
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
-    public function handle(string $challengeId, string $code, string $ipPrefix = '0.0.0.0'): array
+    public function handle(string $challengeId, ?string $totpCode, string $ipPrefix = '0.0.0.0', ?string $recoveryCode = null): array
     {
         $this->rates->hitMfa(strtolower(trim($challengeId)), $ipPrefix);
         $id = Identifier::fromString($challengeId);
+        $totpCode = is_string($totpCode) && $totpCode !== '' ? $totpCode : null;
+        $recoveryCode = is_string($recoveryCode) && $recoveryCode !== '' ? trim($recoveryCode) : null;
+        if ($recoveryCode === '') {
+            $recoveryCode = null;
+        }
 
-        $result = $this->transactions->run(function (TransactionContext $tx) use ($id, $code): array {
+        $result = $this->transactions->run(function (TransactionContext $tx) use ($id, $totpCode, $recoveryCode): array {
+            $usingTotp = $totpCode !== null;
+            $usingRecovery = $recoveryCode !== null;
+            if ($usingTotp === $usingRecovery) {
+                $this->telemetry->mfa(['result' => 'denied']);
+
+                return ['denied' => true];
+            }
+
             $challenge = $this->auth->lockMfaChallenge($id);
             $now = $this->clock->now();
 
@@ -64,6 +91,34 @@ final class CompleteMfaService
                 return ['denied' => true];
             }
 
+            if ($usingRecovery) {
+                $row = $this->auth->lockRecoveryCode(
+                    $user->id,
+                    $this->credentials->hashRecoveryCode((string) $recoveryCode),
+                );
+                if ($row === null || ! $this->auth->consumeRecoveryCode(Identifier::fromTrusted((string) $row->id), $now)) {
+                    $this->telemetry->mfa(['result' => 'denied']);
+
+                    return ['denied' => true];
+                }
+
+                $this->auth->consumeMfaChallenge($id, $now);
+                $this->telemetry->mfa(['result' => 'issued']);
+                $this->audit->append($tx, 'auth.mfa_recovery_code_consumed', 'mfa_recovery_code', Identifier::fromTrusted((string) $row->id), [
+                    'reason_code' => 'mfa_complete',
+                ], $user->id, 'user');
+
+                return ['denied' => false] + $this->sessions->issue(
+                    $tx,
+                    $user,
+                    (string) $challenge->client_class,
+                    (string) $challenge->platform,
+                    (string) $challenge->device_label,
+                    $now,
+                    AssuranceLevel::Aal2Totp,
+                );
+            }
+
             $secret = $this->protector->decryptSecret('mfa_secret', (string) $factor->secret_ciphertext);
             $this->audit->append($tx, 'auth.sensitive_decrypt', 'mfa_factor', Identifier::fromTrusted((string) $factor->id), [
                 'reason_code' => 'totp_verify',
@@ -71,7 +126,7 @@ final class CompleteMfaService
             ], $user->id, 'user');
             $totp = $this->totp->verify(
                 $secret,
-                $code,
+                (string) $totpCode,
                 $now,
                 $factor->last_used_counter !== null ? (int) $factor->last_used_counter : null,
             );

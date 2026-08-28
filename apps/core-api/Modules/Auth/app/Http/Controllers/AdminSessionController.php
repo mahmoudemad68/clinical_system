@@ -91,9 +91,7 @@ final class AdminSessionController
 
     public function verifyMfa(Request $request, CompleteMfaService $handler): RedirectResponse
     {
-        $data = ClosedJsonValidator::validate($request, [
-            'code' => ['required', 'string', 'size:6'],
-        ]);
+        $data = ClosedJsonValidator::validate($request, CompleteMfaService::proofRules());
 
         $challengeId = $request->session()->get('mfa_challenge_id');
         if (! is_string($challengeId)) {
@@ -101,7 +99,12 @@ final class AdminSessionController
         }
 
         try {
-            $payload = $handler->handle($challengeId, $data['code'], $this->ipPrefix($request));
+            $payload = $handler->handle(
+                $challengeId,
+                isset($data['code']) ? (string) $data['code'] : null,
+                $this->ipPrefix($request),
+                isset($data['recovery_code']) ? (string) $data['recovery_code'] : null,
+            );
         } catch (InvalidValueObject) {
             return back()->withErrors(['code' => __('auth.mfa_failed')]);
         }

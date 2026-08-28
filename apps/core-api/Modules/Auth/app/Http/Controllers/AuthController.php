@@ -126,11 +126,14 @@ final class AuthController
 
     public function verifyMfa(Request $request, CompleteMfaService $handler, string $id): JsonResponse
     {
-        $data = ClosedJsonValidator::validate($request, [
-            'code' => ['required', 'string', 'size:6'],
-        ]);
+        $data = ClosedJsonValidator::validate($request, CompleteMfaService::proofRules());
 
-        $payload = $handler->handle($id, $data['code'], $this->ipPrefix($request));
+        $payload = $handler->handle(
+            $id,
+            isset($data['code']) ? (string) $data['code'] : null,
+            $this->ipPrefix($request),
+            isset($data['recovery_code']) ? (string) $data['recovery_code'] : null,
+        );
         $this->establishAdminCookie($request, $payload);
 
         return Envelope::ok($payload, $this->requestId($request));

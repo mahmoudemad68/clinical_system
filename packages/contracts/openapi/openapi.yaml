@@ -477,7 +477,7 @@ paths:
     post:
       tags: [auth]
       operationId: verifyMfaChallenge
-      summary: Complete a TOTP challenge
+      summary: Complete a TOTP or recovery-code MFA challenge
       security: []
       parameters:
         - name: id
@@ -492,7 +492,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MfaVerifyRequest'
+              $ref: '#/components/schemas/MfaChallengeVerifyRequest'
       responses:
         '200':
           description: Privileged session issued.
@@ -1435,6 +1435,25 @@ components:
         code:
           type: string
           pattern: '^[0-9]{6}$'
+
+    MfaChallengeVerifyRequest:
+      description: Exactly one of TOTP `code` or a single unused `recovery_code`. Never both.
+      oneOf:
+        - type: object
+          required: [code]
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+              pattern: '^[0-9]{6}$'
+        - type: object
+          required: [recovery_code]
+          additionalProperties: false
+          properties:
+            recovery_code:
+              type: string
+              minLength: 8
+              maxLength: 32
 
     MfaEnrollResult:
       type: object

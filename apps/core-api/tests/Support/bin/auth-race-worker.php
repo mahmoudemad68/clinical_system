@@ -71,6 +71,14 @@ if ($op === 'refresh') {
         'password' => (string) ($payload['password'] ?? ''),
     ];
     $headers['HTTP_IDEMPOTENCY_KEY'] = (string) ($payload['idempotency_key'] ?? '');
+} elseif ($op === 'mfa_verify') {
+    $uri = '/api/v1/auth/mfa/challenges/'.rawurlencode((string) ($payload['challenge_id'] ?? '')).'/verify';
+    if (isset($payload['recovery_code'])) {
+        $body['recovery_code'] = (string) $payload['recovery_code'];
+    }
+    if (isset($payload['code'])) {
+        $body['code'] = (string) $payload['code'];
+    }
 } else {
     fwrite(STDOUT, json_encode(['ok' => false, 'error' => 'unknown_op', 'status' => 0]));
     exit(1);
