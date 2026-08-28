@@ -2,10 +2,11 @@
 
 - **Gate:** G-01-18
 - **Result:** PASS
-- **Candidate SHA:** `9296d9c98ba9d7be2e7e8b9ff01d9c9e6cddbf8b`
-- **Recorded:** 2026-08-28T12:35:36Z
+- **Candidate SHA:** `d27e2b3c1d74319b1f6f404bc0ab8c236749f780`
+- **Recorded:** 2026-08-28T12:44:41Z
 - **Leakage failures:** 0
 - **Worker reuse proven:** True
+- **Checkout:** clean detached git worktree `/tmp/clinic-g0118-d27e2b3` at exactly `d27e2b3c1d74319b1f6f404bc0ab8c236749f780` (`git status`: nothing to commit, working tree clean). Not measured from the dirty primary worktree.
 
 This is live authenticated HTTP against long-lived Laravel Octane workers.
 It is not `php artisan serve`, not Pest kernel `$this->getJson`, not a mock,
@@ -33,7 +34,7 @@ Verified here: actor identity (`user_id`, `account_type`, `status`, `language`, 
 - Command: `php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=8080 --workers=1 --max-requests=10000`
 - Workers: 1
 - Max requests before recycle: 10000
-- Worker PIDs observed: `[2395]`
+- Worker PIDs observed: `[2401]`
 - `octane:status`:
 
 ```
@@ -45,8 +46,8 @@ Verified here: actor identity (`user_id`, `account_type`, `status`, `language`, 
 
 - **A:** synthetic patient, language `en`, assurance `aal1_password`, extra capability `access.context.delegate`, device session
 - **B:** synthetic doctor, language `ar`, assurance `aal2_totp`, no extra grant, device session after TOTP
-- User A id: `01a0485d-e72f-76ce-8187-0a141d444c3c`
-- User B id: `01a0485d-e72f-779e-8187-0a141d7a4ce1`
+- User A id: `01a04865-c844-7b43-8de1-d02c97d61893`
+- User B id: `01a04865-c844-7cd7-8de1-d02c987dc887`
 - Sequence: login A (password) then login B (password+TOTP); alternate GET /api/v1/me and /api/v1/me/capabilities; then concurrent paired GET /api/v1/me
 
 ## Request counts

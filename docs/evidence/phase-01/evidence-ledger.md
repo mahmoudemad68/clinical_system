@@ -45,7 +45,7 @@ Those do not block local Phase 01 implementation.
 | G-01-15 | Electron main-process credentials | electron | `npm run desktop:test` | `PARTIAL` | Doctor and pharmacy Vitest trust-boundary tests pass. Phase 00 G-02-10 is PASS: packaged Doctor and Pharmacy launched on Ubuntu, Windows, and macOS (workflow `33155677159`). G-01-15 stays the identity-phase credential gate, not a phase close. |
 | G-01-16 | Session revoke vs realtime SLO | realtime | [`g-01-16-reverb-disconnect-slo.md`](g-01-16-reverb-disconnect-slo.md); `bash scripts/perf/run-reverb-disconnect-slo.sh` | `PASS` | Local live Reverb: 100 samples, max 0.131s / p99 0.045s vs 5s SLO, 0 timeouts. HTTP deny remains authoritative. Not a production SLO proof. Phase 01 stays OPEN. |
 | G-01-17 | Redaction of identity canaries | security | OTP outbox payload test; Phase 00 redactor unit tests | `PARTIAL` | Outbox payload omits phone/NID/code. Log/Sentry/Horizon sweep not executed. |
-| G-01-18 | Octane alternating identity | test | [`g-01-18-octane-alternating-identity.md`](g-01-18-octane-alternating-identity.md); `bash scripts/perf/run-octane-alternating-identity.sh` | `PASS` | Live FrankenPHP Octane `--workers=1`: 50 alternating iterations + 20 concurrent paired GET `/me` (244 authenticated GETs), 0 leakage failures, single reused worker PID. Not a production SLO proof. Phase 01 stays OPEN. |
+| G-01-18 | Octane alternating identity | test | [`g-01-18-octane-alternating-identity.md`](g-01-18-octane-alternating-identity.md); `bash scripts/perf/run-octane-alternating-identity.sh` | `PASS` | Live FrankenPHP Octane `--workers=1` from exact SHA `d27e2b3c1d74319b1f6f404bc0ab8c236749f780`: 50 alternating iterations + 20 concurrent paired GET `/me` (244 authenticated GETs), 0 leakage failures, worker PID 2401 reused. Not a production SLO proof. Phase 01 stays OPEN. |
 | G-01-19 | Threat model + inventory + runbooks + alerts | security | `docs/threat-models/phase-01-identity.md`; inventory; identity runbooks; `infra/monitoring/alerts/platform.yaml` | `PARTIAL` | Engineering draft; not independently reviewed. |
 | G-01-20 | k6 abuse harness | test | [`g-01-20-k6-auth-abuse.md`](g-01-20-k6-auth-abuse.md); `bash scripts/perf/run-k6-auth-abuse.sh` | `PASS` | Live dual FrankenPHP processes, Redis `ratelimit` DB 3. Shared 429 across processes; 429s on login/OTP request/resend/verify/refresh/MFA/recovery; below-threshold 401/200 with zero 429s; Retry-After present; 0 5xx; no canaries. Not a production capacity/SLO proof. Phase 01 stays OPEN. |
 | G-01-21 | No Critical/unaccepted High | security | [independent-phase-00-phase-01-review-2026-08-26.md](../security-review/independent-phase-00-phase-01-review-2026-08-26.md) | `OPEN` | Independent review: **DO NOT APPROVE**. ISR remediations are in code; this implementer cannot close the gate. SF-001 High remains with a time-boxed merge exception that still blocks promotion. Assessor/remediator separation is lost. |
@@ -111,6 +111,14 @@ Phase 01 remains OPEN. G-01-21 stays OPEN.
 | --- | --- |
 | `bash scripts/perf/run-octane-alternating-identity.sh` | Live FrankenPHP Octane `--workers=1 --max-requests=10000`. Pest `--group=octane-isolation` against the live server (not kernel HTTP). 50 alternating iterations + 20 concurrent paired GET `/api/v1/me`, 244 authenticated GETs, 0 leakage failures, one reused worker PID. **PASS**. |
 | `vendor/bin/pint --dirty` | passed |
+
+## Verification log (2026-08-28, G-01-18 exact-SHA rebind)
+
+Measured from a clean detached worktree at `d27e2b3c1d74319b1f6f404bc0ab8c236749f780` (`git status`: working tree clean). Not the dirty primary worktree.
+
+| Command | Result |
+| --- | --- |
+| `bash scripts/perf/run-octane-alternating-identity.sh` | `candidate_sha` `d27e2b3c1d74319b1f6f404bc0ab8c236749f780`. FrankenPHP Octane `--workers=1`, worker PID **2401** reused across 244 authenticated GETs. 50 alternating iterations + 20 concurrent paired GET `/me`. 0 leakage failures. **PASS**. |
 
 Phase 01 remains OPEN. G-01-21 stays OPEN.
 
