@@ -21,7 +21,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { APPS, findPackagedBinary, listPackagedArtifacts } from './packaged-app-paths.mjs';
+import { APPS, findPackagedBinary, listPackagedArtifacts, stageLinuxPackagedAppForLaunch } from './packaged-app-paths.mjs';
 import { configurePackagedLinuxSandbox, releasePackagedLinuxSandboxForRebuild } from './configure-packaged-linux-sandbox.mjs';
 import { inspectPackagedFuses } from './inspect-packaged-fuses.mjs';
 
@@ -240,10 +240,20 @@ for (const appKey of ['doctor', 'pharmacy']) {
     throw new Error(`No packaged binary found for ${appKey}. Forge package did not produce an executable.`);
   }
 
+  const staged = stageLinuxPackagedAppForLaunch(artifacts.binary, appKey);
+  const launchBinary = staged.binary;
+  if (staged.staged) {
+    console.log(`==> Staged ${appKey} for launch at ${launchBinary} (Forge output path contains a space)`);
+  }
+
   let sandbox = { skipped: true, mode: 'n/a' };
   if (process.platform === 'linux') {
     console.log(`==> Configuring packaged chrome-sandbox for ${appKey}`);
-    sandbox = configurePackagedLinuxSandbox(artifacts.binary);
+    sandbox = {
+      ...configurePackagedLinuxSandbox(launchBinary),
+      staged: staged.staged,
+      stagedDir: staged.stagedDir ?? null,
+    };
   }
 
   console.log(`==> Inspecting fuses for ${appKey}`);
@@ -256,7 +266,7 @@ for (const appKey of ['doctor', 'pharmacy']) {
   console.log(`==> WebdriverIO packaged runtime for ${appKey}`);
   let wdio;
   try {
-    wdio = runWdio(appKey, artifacts.binary, userDataDir);
+    wdio = runWdio(appKey, launchBinary, userDataDir);
   } finally {
     rmSync(userDataDir, { recursive: true, force: true });
   }

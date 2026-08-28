@@ -421,16 +421,53 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
-      - run: npm ci
-      - run: npm ci --prefix tests/desktop-e2e
+      - name: Install workspace dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${RUNNER_OS}" = Windows ]; then
+            # Root `npm ci` on windows-latest (job 98607821468) failed after a
+            # full extract (~99s, 3517 log lines) before packaged E2E ran.
+            # The same lockfile `npm ci` succeeded on ubuntu/macOS (~16s).
+            # The only required hasInstallScript package is msw 2.15.0, whose
+            # postinstall is `node -e "import(...).catch(() => void 0)"` —
+            # cmd.exe lifecycle scripts break on `() =>`. Packaged E2E does
+            # not need that worker copy; Forge rebuilds natives at package.
+            npm ci --ignore-scripts
+            node node_modules/electron/install.js
+          else
+            npm ci
+          fi
+
+      - name: Install packaged E2E runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${RUNNER_OS}" = Windows ]; then
+            npm ci --ignore-scripts --prefix tests/desktop-e2e
+          else
+            npm ci --prefix tests/desktop-e2e
+          fi
+
       - run: npm run contracts:generate:ts
+        shell: bash
 
       - name: Linux runtime libraries for packaged Chromium
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libnss3 libnspr4 libatk-bridge2.0-0 libatk1.0-0 libgtk-3-0 libgbm1 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libcups2 libasound2t64 \
-            || sudo apt-get install -y xvfb libnss3 libnspr4 libatk-bridge2.0-0 libatk1.0-0 libgtk-3-0 libgbm1 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libcups2 libasound2
+          sudo apt-get install -y xvfb fonts-liberation libnss3 libnspr4 \
+            libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libgtk-3-0 \
+            libgbm1 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+            libxrandr2 libxfixes3 libxext6 libxi6 libx11-xcb1 libxcb-dri3-0 \
+            libxshmfence1 libxss1 libxtst6 libpango-1.0-0 libpangocairo-1.0-0 \
+            libcairo2 libcups2 libasound2t64 \
+            || sudo apt-get install -y xvfb fonts-liberation libnss3 libnspr4 \
+            libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libgtk-3-0 \
+            libgbm1 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+            libxrandr2 libxfixes3 libxext6 libxi6 libx11-xcb1 libxcb-dri3-0 \
+            libxshmfence1 libxss1 libxtst6 libpango-1.0-0 libpangocairo-1.0-0 \
+            libcairo2 libcups2 libasound2
 
       - name: Packaged Doctor and Pharmacy WebdriverIO
         shell: bash

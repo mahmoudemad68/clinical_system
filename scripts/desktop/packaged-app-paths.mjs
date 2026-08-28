@@ -5,8 +5,8 @@
  * Packaged E2E must launch these files, never `electron` from node_modules
  * or the Webpack/Vite dev server.
  */
-import { existsSync, readdirSync, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 
 export const APPS = {
   doctor: {
@@ -47,6 +47,9 @@ function walkFiles(dir, acc = []) {
       continue;
     }
     if (stat.isDirectory()) {
+      if (entry.endsWith('-linux-e2e')) {
+        continue;
+      }
       walkFiles(full, acc);
     } else {
       acc.push(full);
@@ -111,4 +114,56 @@ export function chromeSandboxPath(binaryPath) {
     return null;
   }
   return join(dirname(binaryPath), 'chrome-sandbox');
+}
+
+/**
+ * Copy a Linux Forge directory whose path contains a space to a space-free
+ * launch directory.
+ *
+ * Electron still aborts SUID chrome-sandbox with `LaunchProcess: failed to
+ * execvp` when the helper path contains a space (electron/electron#44414).
+ * Forge `packagerConfig.name` stays the product name so macOS `.app` layout
+ * is unchanged. Stage onto the same filesystem as Forge `out/` (not /tmp,
+ * which is often nosuid) so the SUID helper remains effective.
+ */
+export function stageLinuxPackagedAppForLaunch(binaryPath, appKey) {
+  if (process.platform !== 'linux' || !binaryPath) {
+    return {
+      binary: binaryPath,
+      staged: false,
+      reason: process.platform === 'linux' ? 'missing-binary' : 'not-linux',
+    };
+  }
+
+  const appDir = dirname(binaryPath);
+  if (!appDir.includes(' ')) {
+    return { binary: binaryPath, staged: false, reason: 'path-has-no-space', sourceDir: appDir };
+  }
+
+  if (!existsSync(binaryPath)) {
+    throw new Error(`Cannot stage missing packaged binary at ${binaryPath}`);
+  }
+
+  const app = APPS[appKey];
+  if (!app) {
+    throw new Error(`Unknown desktop app ${appKey}`);
+  }
+
+  const stagedDir = join(dirname(appDir), `${app.executableName}-linux-e2e`);
+  rmSync(stagedDir, { recursive: true, force: true });
+  mkdirSync(dirname(stagedDir), { recursive: true });
+  cpSync(appDir, stagedDir, { recursive: true, verbatimSymlinks: true });
+
+  const stagedBinary = join(stagedDir, basename(binaryPath));
+  if (!existsSync(stagedBinary)) {
+    throw new Error(`Staged packaged binary missing at ${stagedBinary}`);
+  }
+  chmodSync(stagedBinary, 0o755);
+
+  return {
+    binary: stagedBinary,
+    staged: true,
+    sourceDir: appDir,
+    stagedDir,
+  };
 }
