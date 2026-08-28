@@ -28,12 +28,12 @@ use Modules\Platform\Support\Identifier;
  * One-time audited bootstrap. Disabled after the first admin exists unless
  * IDENTITY_BOOTSTRAP_ENABLED remains true in a non-production environment.
  *
- * Step 1 creates an unverified TOTP factor. Step 2 (`--confirm --totp-code`)
- * proves possession before the factor becomes usable.
+ * Step 1 creates an unverified TOTP factor. Step 2 (`--confirm`) prompts for a
+ * hidden TOTP and proves possession before the factor becomes usable.
  */
 final class BootstrapAdminCommand extends Command
 {
-    protected $signature = 'identity:bootstrap-admin {phone} {--name=Bootstrap Admin} {--confirm} {--totp-code=}';
+    protected $signature = 'identity:bootstrap-admin {phone} {--name=Bootstrap Admin} {--confirm}';
 
     protected $description = 'Create the first admin identity. Requires a confirmed TOTP enrollment.';
 
@@ -136,7 +136,7 @@ final class BootstrapAdminCommand extends Command
         }
         file_put_contents($path, $totp->provisioningUri($secret, 'admin'));
         chmod($path, 0600);
-        $this->info('Admin created with an unverified TOTP factor. The provisioning URI was written to a private file; confirm with --confirm --totp-code, then delete that file and disable bootstrap.');
+        $this->info('Admin created with an unverified TOTP factor. The provisioning URI was written to a private file; confirm with --confirm, then delete that file and disable bootstrap.');
 
         return self::SUCCESS;
     }
@@ -151,9 +151,9 @@ final class BootstrapAdminCommand extends Command
         AppendAuditEvent $audit,
         PhoneE164 $phone,
     ): int {
-        $code = (string) $this->option('totp-code');
+        $code = (string) $this->secret('Confirmation TOTP');
         if ($code === '') {
-            $this->error('Confirmation requires --totp-code.');
+            $this->error('A confirmation TOTP is required.');
 
             return self::FAILURE;
         }
