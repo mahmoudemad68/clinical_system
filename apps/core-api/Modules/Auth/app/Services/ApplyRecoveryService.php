@@ -43,6 +43,19 @@ final class ApplyRecoveryService
         return $this->transactions->run(function (TransactionContext $tx) use ($operator, $requestId): string {
             $row = $this->auth->lockRecoveryRequest($requestId);
             $now = $this->clock->now();
+
+            if ($operator !== null) {
+                $decision = $this->authorizer->decide(
+                    $operator,
+                    Capabilities::RECOVERY_APPLY,
+                    'recovery_request',
+                    $requestId,
+                );
+                if (! $decision->allowed) {
+                    throw new AuthorizationDenied;
+                }
+            }
+
             if ($row === null || $row->applied_at !== null) {
                 throw new InvalidValueObject('The recovery request cannot be applied.');
             }
@@ -50,10 +63,6 @@ final class ApplyRecoveryService
             $status = (string) $row->status;
             if ($status === 'manual_review') {
                 if ($operator === null) {
-                    throw new AuthorizationDenied;
-                }
-                $decision = $this->authorizer->decide($operator, Capabilities::RECOVERY_APPLY, 'recovery_request', $requestId);
-                if (! $decision->allowed) {
                     throw new AuthorizationDenied;
                 }
             } elseif ($status === 'cooling_off') {
