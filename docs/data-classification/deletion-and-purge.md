@@ -38,6 +38,11 @@ must remain for a short integrity window (consumed OTP id referenced by
    identity store.
 5. Telescope tables are local-only and must not exist in staging/production
    schemas.
+6. Framework tables `jobs`, `job_batches`, `failed_jobs`, `cache`,
+   `cache_locks`, and `sessions` are **not** pruned by `auth:prune-expired` or
+   `platform:prune`. Laravel may delete completed database-queue `jobs` rows
+   and lottery-sweep expired database `sessions`. There is no approved legal
+   retention period for those tables.
 
 ## Lawful basis
 

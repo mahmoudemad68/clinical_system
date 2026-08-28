@@ -18,6 +18,39 @@ acceptance of the documented purpose, not an Egyptian PDPL article number.
 
 Deletion/purge procedure: [deletion-and-purge.md](deletion-and-purge.md).
 
+## Live PostgreSQL relations (Phase 00/01)
+
+Reconciled to committed Core migrations under
+`apps/core-api/database/migrations/` plus PostGIS `CREATE EXTENSION` in
+`infra/docker/postgres/initdb/01-roles-and-extensions.sql`. Laravel Modules
+under `Modules/` currently ship no additional table migrations.
+
+**Live product/framework tables:** `users`, `sessions`, `cache`, `cache_locks`,
+`jobs`, `job_batches`, `failed_jobs`, `outbox_events`, `idempotency_keys`,
+`platform_diagnostics`, `features`, `platform_config_audits`, `notifications`,
+`identity_national_ids`, `user_devices`, `otp_requests`, `mfa_factors`,
+`mfa_recovery_codes`, `mfa_challenges`, `auth_sessions`,
+`identity_profile_links`, `contextual_access_grants`, `audit_events`,
+`auth_refresh_consumptions`, `recovery_requests`.
+
+**Laravel catalog (not created by an application `Schema::create`):**
+`migrations`.
+
+**Reporting views (not tables):** `reporting.account_status_counts`,
+`reporting.session_kind_counts`, `reporting.audit_event_name_counts`.
+
+**PostGIS catalog:** `spatial_ref_sys` (EPSG parameters). PostGIS also exposes
+catalog views such as `geometry_columns` and `geography_columns`; those are
+extension metadata, not clinic product data.
+
+**Not live:** `password_reset_tokens` is created in the Laravel stub migration
+and **dropped** in `2026_08_26_200000_create_identity_and_access_tables.php`.
+It is recreated only on that migration's `down()`. Do not treat it as a current
+holding.
+
+**Local-only (not on the production migration path):** Telescope tables
+documented below.
+
 ---
 
 ## Tables
@@ -117,6 +150,172 @@ Laravel Database Notifications inbox. This is the source of truth for a user-vis
 | `read_at` | internal | Inbox read state | app | as row | at rest | Mahmoud |
 | `created_at` / `updated_at` | internal | Lifecycle | app | as row | at rest | Mahmoud |
 
+### `jobs`
+
+Laravel database queue table (`config/queue.php` `connections.database.table`,
+default `jobs`). Config default `QUEUE_CONNECTION=database`. Local Compose
+(`infra/environments/local.env`) sets `QUEUE_CONNECTION=redis`; phpunit uses
+`sync`. Horizon consumes Redis, not this table, when the Redis connection is
+selected. The table remains in the live schema either way.
+
+**Writer.** `clinic_app` enqueue; `clinic_worker` claim/update/delete (table DML
+plus `jobs_id_seq` USAGE). **Readers.** Same roles; operators via Artisan.
+`clinic_reporter` is revoked.
+
+**PII / sensitive / credential.** `payload` is a serialized PHP job. Jobs must
+not serialize secrets, tokens, National IDs, or PHI (outbox/classification
+rules). That invariant is not a proof that a given row is clean: treat
+`payload` as **possibly personal or security-relevant**. No envelope encryption
+of the column.
+
+**Retention / deletion.** Successful database-driver jobs are deleted by the
+Laravel worker when the job completes. There is no clinic `platform:prune` or
+scheduled `queue:prune-*` for leftover rows. Legal retention period:
+**pending**.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Queue row identity | app, worker | until job deleted | at rest (volume) | Mahmoud |
+| `queue` | internal | Lane name | app, worker | as row | at rest | Mahmoud |
+| `payload` | varies | Serialized job class and data | app, worker | as row | at rest (not enveloped) | Mahmoud |
+| `attempts` | internal | Delivery attempts | app, worker | as row | at rest | Mahmoud |
+| `reserved_at`, `available_at`, `created_at` | internal | Lease and schedule (unix timestamps) | app, worker | as row | at rest | Mahmoud |
+
+`lawful_basis` for a payload that identifies a person: **pending** (not a PDPL
+article; not covered by a written legal schedule).
+
+### `job_batches`
+
+Laravel job-batch metadata (`config/queue.php` `batching.table` = `job_batches`).
+
+**Writer / readers.** `clinic_app` and `clinic_worker` DML. Reporter revoked.
+
+**PII / sensitive / credential.** `name`, `options`, and `failed_job_ids` are
+operational metadata. Do not assume `options` is free of identifiers.
+
+**Retention / deletion.** Rows remain after the batch finishes unless an
+operator prunes them. No clinic prune job. Legal retention: **pending**.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Batch identity | app, worker | until operator prune | at rest | Mahmoud |
+| `name` | internal | Batch label | app, worker | as row | at rest | Mahmoud |
+| `total_jobs`, `pending_jobs`, `failed_jobs` | internal | Progress counters | app, worker | as row | at rest | Mahmoud |
+| `failed_job_ids` | internal | Serialized failed member ids | app, worker | as row | at rest | Mahmoud |
+| `options` | varies | Batch options blob | app, worker | as row | at rest | Mahmoud |
+| `cancelled_at`, `created_at`, `finished_at` | internal | Lifecycle (unix timestamps) | app, worker | as row | at rest | Mahmoud |
+
+### `failed_jobs`
+
+Laravel failed-job log (`config/queue.php` `failed.table` = `failed_jobs`,
+driver default `database-uuids`). Failed jobs are written here even when the
+primary queue transport is Redis, unless `QUEUE_FAILED_DRIVER` is changed.
+
+**Writer / readers.** `clinic_app` and `clinic_worker` DML (`failed_jobs_id_seq`
+USAGE for the worker). Operators read via `queue:failed` / Horizon UI against
+this table when the database failed driver is used.
+
+**PII / sensitive / credential.** `payload` is the serialized job.
+`exception` is a `longText` stack and message. **Do not assume either column is
+free of personal, clinical, or security data** (SQL bindings, identifiers,
+request fragments). There is no redaction job on this table.
+
+**Retention / deletion.** No scheduled `queue:prune-failed`. Not covered by
+`auth:prune-expired` or `platform:prune`. Legal retention: **pending**.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Row identity | app, worker, operator | until operator prune | at rest | Mahmoud |
+| `uuid` | internal | Failed-job UUID | app, worker, operator | as row | at rest | Mahmoud |
+| `connection`, `queue` | internal | Which connection and lane failed | app, worker, operator | as row | at rest | Mahmoud |
+| `payload` | varies | Serialized job at failure | app, worker, operator | as row | at rest (not enveloped) | Mahmoud |
+| `exception` | varies | Exception message and stack; may contain sensitive fragments | app, worker, operator | as row | at rest (not enveloped) | Mahmoud |
+| `failed_at` | internal | When it failed | app, worker, operator | as row | at rest | Mahmoud |
+
+`lawful_basis` if a payload or exception identifies a person: **pending**.
+
+### `cache`
+
+Laravel database cache store (`config/cache.php` store `database`, table
+default `cache`). Config default `CACHE_STORE=database`. Local Compose uses
+`CACHE_STORE=redis`; phpunit uses `array`. Auth rate-limit counters use Redis
+database index 3 (`ratelimit`) and are **not** this table (see Caches).
+
+**Writer / readers.** `clinic_app` DML. `clinic_worker` is revoked on this
+table.
+
+**PII / sensitive / credential.** `value` is a serialized cache blob.
+Classification follows the key (documented prefixes in Caches are
+`public`/`internal`). PHI is not cached by default (ADR 0007 /
+classification policy). Treat an undocumented key as **not proven clean**.
+
+**Retention / deletion.** `expiration` is a unix timestamp; Laravel's database
+cache garbage-collects expired rows on access lottery. No clinic prune job.
+Legal retention: **pending** (transient operational data; no statutory period
+recorded).
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `key` | internal | Cache key | app | until expiry / delete | at rest | Mahmoud |
+| `value` | varies | Serialized cache payload | app | as row | at rest (not enveloped) | Mahmoud |
+| `expiration` | internal | Unix expiry | app | as row | at rest | Mahmoud |
+
+### `cache_locks`
+
+Laravel cache atomic locks (`cache_locks`). Same driver/lifecycle as `cache`.
+
+**Writer / readers.** `clinic_app` DML. Worker revoked.
+
+**PII / sensitive / credential.** `owner` is a lock token string, not an
+identity record. Still operational security metadata.
+
+**Retention / deletion.** Expired locks are released by the cache driver. No
+clinic prune job. Legal retention: **pending**.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `key` | internal | Lock name | app | until lock released / expired | at rest | Mahmoud |
+| `owner` | internal | Lock owner token | app | as row | at rest | Mahmoud |
+| `expiration` | internal | Unix expiry | app | as row | at rest | Mahmoud |
+
+### `sessions`
+
+Laravel framework session store (`config/session.php` `table` default
+`sessions`). Distinct from `auth_sessions` (normalized identity sessions).
+Created in `0001_01_01_000000`; `user_id` was changed from bigint to nullable
+UUID in the identity expand. Config default `SESSION_DRIVER=database`. Local
+Compose uses Redis; phpunit uses `array`. `SESSION_ENCRYPT` defaults to
+**false**. Cookie encryption, when enabled, is not the same as encrypting this
+row's `payload`.
+
+**Writer / readers.** `clinic_app` DML. `clinic_worker` revoked.
+
+**PII / sensitive / credential.** **Yes, may contain personal and security
+data:** `user_id` (nullable UUID), `ip_address`, `user_agent`, and `payload`
+(serialized session: CSRF, flash, login state, and whatever the application
+puts in the session). Do not treat `payload` as free of personal or security
+data.
+
+**Retention / deletion.** Idle lifetime is `SESSION_LIFETIME` (default 120
+minutes) — an engineering config, not a legal retention period. Database-driver
+lottery `[2, 100]` may delete expired rows when that driver is used. Not
+covered by `auth:prune-expired` (that command prunes `auth_sessions` /
+OTP ciphertext). Legal retention and subject-erasure: **pending**.
+
+`lawful_basis` for `user_id` / `ip_address` / `user_agent` / `payload`:
+**pending**. The 2026-08-27 owner acceptance records identity-table purposes; it
+is not a PDPL article and is not treated here as covering framework session
+payloads.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Session id (cookie value) | app | until lottery / expiry / logout | at rest | Mahmoud |
+| `user_id` | personal | Nullable UUID of the logged-in user | app | as row | at rest | Mahmoud |
+| `ip_address` | personal | Client address (varchar 45, nullable) | app | as row | at rest | Mahmoud |
+| `user_agent` | personal | Client User-Agent (nullable text) | app | as row | at rest | Mahmoud |
+| `payload` | varies | Serialized session body; may include personal or security data | app | as row | at rest; `SESSION_ENCRYPT` default false | Mahmoud |
+| `last_activity` | internal | Last-activity unix timestamp (indexed) | app | as row | at rest | Mahmoud |
+
 ### Telescope tables (`telescope_entries`, `telescope_entries_tags`, `telescope_monitoring`)
 
 Local debugging only. Migrations live under `database/telescope/` and are loaded when `APP_ENV=local`. They are **not** on the production migration path and must not exist in staging or production schemas. `content` can hold request/query snapshots, so the tables are treated as credential-capable even though they are never a product inbox.
@@ -125,6 +324,50 @@ Local debugging only. Migrations live under `database/telescope/` and are loaded
 | --- | --- | --- | --- | --- | --- | --- |
 | `content` | credential | Local request/query debug snapshot | local operator | local prune | at rest (developer volume) | engineering (local only) |
 | remaining columns | internal | Indexing and display for the local UI | local operator | local prune | at rest | engineering (local only) |
+
+### `migrations`
+
+Laravel schema-history catalog. Created by the migrator, not by an application
+`Schema::create` in this repository.
+
+**Writer / readers.** `clinic_migrator` during `php artisan migrate`. Serving
+roles do not own this table as a product store.
+
+**PII / sensitive / credential.** No. Filenames and batch numbers only.
+
+**Retention / deletion.** Lifetime of the schema. No product prune.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| `migration` | internal | Migration filename | migrator | life of schema | at rest | Mahmoud |
+| `batch` | internal | Applied batch number | migrator | as row | at rest | Mahmoud |
+
+### `spatial_ref_sys`
+
+PostGIS EPSG spatial-reference catalog, created by `CREATE EXTENSION postgis`
+in `infra/docker/postgres/initdb/01-roles-and-extensions.sql`. Not a clinic
+product table.
+
+**Writer.** Extension install / PostGIS, not application DML.
+
+**PII / sensitive / credential.** No. Public geodetic parameters.
+
+**Retention / deletion.** Lifetime of the PostGIS extension. No clinic prune.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| SRID / auth / proj4 columns (PostGIS catalog) | public | Coordinate-system definitions | PostGIS, spatial queries | extension lifetime | at rest | platform-architecture |
+
+### Reporting views (`reporting.*`)
+
+Created in `2026_08_26_210000_harden_identity_privileges_and_session_integrity.php`.
+These are views, not stored tables. `clinic_reporter` has `SELECT` only.
+
+| View | Class | Purpose | Read by | Stored retention | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `reporting.account_status_counts` | internal | `account_type`, `status`, `count(*)` from `users` | reporter | none (computed) | Aggregates only; no names, phones, or National IDs in the view definition |
+| `reporting.session_kind_counts` | internal | `session_kind`, `count(*)` of non-revoked `auth_sessions` | reporter | none (computed) | Counts, not session hashes or user ids |
+| `reporting.audit_event_name_counts` | internal | `event_name`, truncated day, `count(*)` from `audit_events` | reporter | none (computed) | Event-name counts, not metadata payloads |
 
 ---
 
@@ -196,6 +439,10 @@ Auth counters live in Redis database index 3 (`ratelimit` store). They are not
 identity truth and must not contain phones, codes, or tokens as key material
 (HMACs and opaque ids only). An empty Redis after restart degrades to a cache
 miss; PostgreSQL remains authoritative (G-04-06).
+
+The PostgreSQL `cache` / `cache_locks` tables are the Laravel `database` cache
+store (see Tables). They are empty when `CACHE_STORE` is Redis or `array`, but
+they remain live schema objects.
 
 ## Files
 
@@ -291,6 +538,44 @@ Plaintext codes exist only in the enroll/rotate HTTP response, once.
 
 Revoked sessions are marked first, then deleted after the engineering TTL (90 days). That is not a legal medical-record period.
 
+### `identity_profile_links`
+
+Phase 01 identity-to-profile binding
+(`2026_08_26_200000_create_identity_and_access_tables.php`). Polymorphic
+`profile_type` is constrained to `patient`, `doctor`, `clinic_staff`,
+`pharmacy_membership`; `link_status` to `pending`, `active`, `revoked`,
+`disputed`. Partial unique index on `(profile_type, profile_id)` where
+`link_status = 'active'`. `ON DELETE CASCADE` from `users`.
+
+**Writer.** Identity module owns the table. `clinic_app` has table DML;
+`clinic_worker` is revoked. `FEATURE_IDENTITY_PROFILE_CLAIM` defaults to
+**false**. No PHP service currently inserts rows; `ResolveActorContext` passes
+empty link ids. `MeQuery` would expose link ids if rows existed.
+
+**PII / sensitive / credential.** **Personal identity-linking data:** `user_id`
+plus `profile_type`/`profile_id` binds a person to a later patient/doctor/staff
+/membership profile. `proof_reference` is a nullable UUID (opaque pointer, not
+the proof document). Not a credential store.
+
+**Retention / deletion.** No clinic prune job. User-row `DELETE` would cascade;
+subject-erasure is **not** implemented as an operator workflow. Legal retention
+period: **pending**.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Link row identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `user_id` | personal | Which identity is linked | app | as row; CASCADE if user deleted | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `profile_type` | personal | Kind of profile bound to the user | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `profile_id` | personal | Target profile UUID | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `link_status` | internal | pending / active / revoked / disputed | app | as row | at rest | Mahmoud | n/a |
+| `assurance_level` | internal | Recorded assurance at link time | app | as row | at rest | Mahmoud | n/a |
+| `proof_reference` | internal | Optional UUID pointing at a proof artifact (not the artifact) | app | as row | at rest | Mahmoud | n/a |
+| `linked_at`, `revoked_at` | internal | Link lifecycle | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+`owner_approved_2026-08-27` is owner acceptance of documented identity
+processing, not an Egyptian PDPL article.
+
 ### `auth_refresh_consumptions`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
@@ -334,9 +619,15 @@ Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
 | --- | --- | --- | --- | --- | --- |
 | `auth.otp_delivery_requested` | 1 | internal | challenge id / handle only | OTP worker | 7 days |
 | `auth.session_revoked` | 1 | internal | session/user ids, reason | disconnect consumer | 7 days |
+| `auth.credential_version_changed` | 1 | internal | user id, credential_version, reason_code | later projections | 7 days |
 | `access.grant_issued` / `access.grant_revoked` | 1 | internal | identifiers | later projections | 7 days |
+| `identity.account_registered` | 1 | personal | user id, status, locale | later projections | 7 days |
+| `identity.phone_verified` | 1 | personal | user id, verified_at | later projections | 7 days |
+| `identity.status_changed` | 1 | personal | user id, old/new status, reason_code | later projections | 7 days |
+| `identity.profile_linked` | 1 | personal | user_id, profile_type, profile_id, assurance_level | later projections | 7 days |
 
-`credential` classification is rejected by the outbox CHECK.
+`credential` classification is rejected by the outbox CHECK. Event retention
+above is the outbox `PROCESSED` engineering default, not a legal schedule.
 
 ---
 
@@ -354,6 +645,14 @@ Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
    still unimplemented.
 4. **Audit-row erasure** is not implemented (append-only). A legal order would
    need a Phase 22/23 procedure.
+5. **Framework operational tables** (`jobs`, `job_batches`, `failed_jobs`,
+   `cache`, `cache_locks`, `sessions`) have no clinic prune job and no approved
+   legal retention period. Laravel worker deletion of completed `jobs` rows and
+   session lottery sweeps are engineering behavior only. `lawful_basis` for
+   session IP/user-agent/payload and for `failed_jobs.exception` / job payloads
+   that may identify a person is **pending**.
+6. **`identity_profile_links` retention / erasure period** is **pending**. The
+   table is inventoried; no writer currently populates it.
 
 Tracked as G-05-02. **G-08-04 stays OPEN** until independent retest; owner
 approval does not close that gate.
