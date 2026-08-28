@@ -406,26 +406,50 @@ verified by the canary suite. There is no second collector-stage scrubber.
 
 ## Metrics
 
-Every Phase 00 metric is `internal` and carries only bounded labels:
-`service`, `version`, `method`, `route`, `status`, `status_class`, `check`,
-`queue`, `error_class`, `connection`, `rule`, `le`.
+Every metric is `internal`. Label **keys** are allowlisted in
+`PlatformMetrics::ALLOWED_LABELS`. Forbidden keys (`patient_id`, `doctor_id`,
+`appointment_id`, `prescription_id`, `file_id`, `user_id`) throw. Values are
+bounded enums/classes from code, not phones, tokens, or names.
 
-Families exported by `/metrics`:
+Always-present labels on rendered samples: `service`, `version`.
 
-- `clinic_http_responses_total`, `clinic_http_request_duration_seconds`
-- `clinic_readiness_status`, `clinic_dependency_status`
-- `clinic_outbox_pending_total`, `clinic_outbox_dead_letter_total`, `clinic_outbox_oldest_pending_age_seconds`
-- `clinic_db_connections_in_use`, `clinic_db_connections_limit`
-- `clinic_db_query_duration_seconds_bucket|_sum|_count`
-- `clinic_horizon_queue_depth`
-- `clinic_redis_errors_total`
-- `clinic_reverb_connections` (0 until the Reverb process exports a live count)
-- `clinic_provider_failures_total` (`error_class=push` from the Firebase adapter; other providers still unused)
-- `clinic_redaction_canary_total`
+### Phase 00 families
+
+| Family | Type | Labels actually set | Personal/sensitive values? |
+| --- | --- | --- | --- |
+| `clinic_http_responses_total` | counter | `method`, `route`, `status`, `status_class` | No |
+| `clinic_http_request_duration_seconds` | gauge | `method`, `route`, `status_class` | No |
+| `clinic_readiness_status` | gauge | none beyond service/version | No |
+| `clinic_dependency_status` | gauge | `check` | No |
+| `clinic_outbox_pending_total` / `clinic_outbox_dead_letter_total` / `clinic_outbox_oldest_pending_age_seconds` | gauge | none | No |
+| `clinic_db_connections_in_use` / `clinic_db_connections_limit` | gauge | none | No |
+| `clinic_db_query_duration_seconds_bucket` | counter | `le` | No |
+| `clinic_db_query_duration_seconds_sum` / `_count` | counter | none | No |
+| `clinic_horizon_queue_depth` | gauge | `queue` | No |
+| `clinic_redis_errors_total` | counter | `connection` | No |
+| `clinic_reverb_connections` | gauge | none (exported as 0 until Reverb counts) | No |
+| `clinic_provider_failures_total` | counter | `error_class` (`push` from Firebase adapter) | No |
+| `clinic_redaction_canary_total` | counter | `rule` | No |
+
+### Phase 01 auth/identity families
+
+Registered on `PlatformMetrics`. Call sites inspected 2026-08-28.
+
+| Family | Type | Labels / values actually emitted | Callers | Personal/sensitive values? |
+| --- | --- | --- | --- | --- |
+| `clinic_auth_attempts_total` | counter | `result` (`unknown`/`denied`/`issued`/`mfa_required`/`refresh_reuse`/`revoked`), `method` (`password`/`refresh`/`session`), `actor_class` (`patient`/`doctor`/`pharmacy`/`secretary`/`admin`/`unknown`) | `AuthenticatePasswordService`, `RefreshDeviceSessionService`, `SessionRevokedConsumer` | No. `actor_class` is `AccountType::value` or `unknown`, never a user id |
+| `clinic_otp_requests_total` | counter | `purpose` (otp purpose string), `result` (`sent`/`provider_disabled`) | `OtpDeliveryConsumer` only. `AuthTelemetry::otp()` has no other production caller | No. Purpose is `registration`/`recovery`/… |
+| `clinic_mfa_challenges_total` | counter | `result` (`expired`/`denied`/`issued`) | `CompleteMfaService` | No |
+| `clinic_authorization_decisions_total` | counter | *(family registered)* | `AuthTelemetry::authorization()` has **no production caller** as of this inventory | n/a until emitted |
+| `clinic_profile_claims_total` | counter | `result` (`manual_review`), `assurance_level` (`aal1`) | `LinkVerifiedPatientAccount` | No |
+| `clinic_otp_delivery_age_seconds` | gauge | `purpose` | `OtpDeliveryConsumer`; value is age in seconds | No |
+| `clinic_session_revocation_latency_seconds` | gauge | `client_class` (`unknown`) | `SessionRevokedConsumer` | No |
+| `clinic_active_sessions` | gauge | `client_class` (`all`) | `auth:prune-expired` | No. Count only |
+| `clinic_auth_latency_seconds` | gauge | *(family registered)* | **no production `set`/`increment` caller** | n/a until emitted |
 
 **No metric may be labelled** with a patient, doctor, appointment, file,
-prescription, user, or free-text value. The collector deletes those keys if they
-ever appear, and `Classification::allowedAsMetricLabel()` encodes the rule.
+prescription, user, or free-text value. `Classification::allowedAsMetricLabel()`
+encodes the rule; `PlatformMetrics::assertLabels()` enforces the allowlist.
 
 ## Caches
 
@@ -448,9 +472,11 @@ they remain live schema objects.
 
 | Type | Class | Store | Retention | Notes |
 | --- | --- | --- | --- | --- |
-| *(none in Phase 00)* | — | — | — | — |
+| Flutter `TokenStore` envelope | credential | OS secure storage via `ClinicSecureStorage` (`flutter_secure_storage`) | until `TokenStore.clear()` (logout / fail-closed wipe) | Key `auth.envelope.v1` holds JSON `{version, access, refresh}`. Legacy `auth.access` / `auth.refresh` are deleted after envelope write. Values must not go to Drift, analytics, or crash reports. Android `migrateWithBackup: false`; iOS/macOS `this_device` + `synchronizable: false`. |
+| Electron device token vault | credential | Main-process file `{userData}/{namespace}.bin` wrapped with `safeStorage.encryptString` | until `clearDeviceTokens()` | Doctor namespace `eg.clinic.doctor.device`; pharmacy `eg.clinic.pharmacy.device`. Payload is JSON `{access, refresh}` then base64 before OS wrap. Persist is refused when `assessLocalEncryption()` disallows (Linux `basic_text` / unknown backend). Renderer must not import this module. |
+| Phase 02 object files | — | private object storage | — | No product file type is defined until Phase 02. |
 
-Private object storage is provisioned; no file type is defined until Phase 02.
+Private object storage is provisioned; S3 object types remain Phase 02.
 
 ---
 
@@ -462,51 +488,87 @@ It is not a statutory citation.
 
 ### `users`
 
+**Writer.** Identity module via `clinic_app`. Worker has no table DML.
+
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `id` | internal | Actor identifier | app, worker (FK only) | until account erasure (owner-approved engineering procedure) | at rest | Mahmoud | n/a |
 | `name` | personal | Display; never authorization input | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `phone_e164_encrypted` | personal | Contact / login | app | as row; rotate via KMS path | envelope | Mahmoud | owner_approved_2026-08-27 |
 | `phone_lookup_hmac` | personal | Blind lookup | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `phone_key_version` | internal | Envelope key version for the phone columns | app | as row | at rest | Mahmoud | n/a |
 | `password_hash` | credential | Authentication | app | as row | Argon2id | Mahmoud | n/a |
-| `account_type`, `status`, `language`, `credential_version` | internal | Server-owned actor state | app | as row | at rest | Mahmoud | n/a |
+| `account_type` | internal | Server-owned actor class (`patient`/`doctor`/`pharmacy`/`secretary`/`admin`) | app | as row | at rest | Mahmoud | n/a |
+| `status` | internal | Server-owned account state | app | as row | at rest | Mahmoud | n/a |
+| `language` | internal | `ar` or `en` | app | as row | at rest | Mahmoud | n/a |
+| `credential_version` | internal | Session invalidation generation | app | as row | at rest | Mahmoud | n/a |
+| `phone_verified_at` | internal | When phone OTP completed; required for `active` unless `bootstrap_exempt` | app | as row | at rest | Mahmoud | n/a |
+| `last_authenticated_at` | internal | Last successful authentication timestamp | app | as row | at rest | Mahmoud | n/a |
+| `bootstrap_exempt` | internal | Allows `active` without `phone_verified_at` for bootstrap identities | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
 ### `identity_national_ids`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `user_id` | internal | FK | app | as row | at rest | Mahmoud | n/a |
+| `id` | internal | Row identity | app | as row | at rest | Mahmoud | n/a |
+| `user_id` | internal | FK to `users` (CASCADE) | app | as row | at rest | Mahmoud | n/a |
 | `national_id_encrypted` | sensitive | Recovery / later verification | app (audited decrypt) | until erasure (owner-approved engineering TTL) | envelope | Mahmoud | owner_approved_2026-08-27 |
 | `national_id_lookup_hmac` | sensitive | Blind match | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `key_version` | internal | Envelope/HMAC key version | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
 ### `otp_requests`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `id` | internal | Challenge id | app, worker | row TTL then delete | at rest | Mahmoud | n/a |
-| `purpose` | internal | registration / recovery / … | app | as row | at rest | Mahmoud | n/a |
+| `purpose` | internal | `registration` / `phone_change` / `recovery` / `profile_claim` | app | as row | at rest | Mahmoud | n/a |
 | `subject_lookup_hmac` | personal | Blind phone handle | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
 | `code_hash` | credential | Verify attempt | app | until row delete | HMAC | Mahmoud | n/a |
-| `code_ciphertext` | credential | Worker send only | worker | **NULL on consume/invalidate** | envelope | Mahmoud | n/a |
-| `destination_ciphertext` | personal | Worker send only | worker | **NULL on consume/invalidate** | envelope | Mahmoud | owner_approved_2026-08-27 |
-| `attempts`, `max_attempts`, `expires_at`, `consumed_at`, `invalidated_at` | internal | Lifecycle | app | as row | at rest | Mahmoud | n/a |
+| `code_ciphertext` | credential | Worker send only | worker | **NULL on consume/invalidate**; `auth:prune-expired` also NULLs leftover ciphertext | envelope | Mahmoud | n/a |
+| `attempts` | internal | Verify tries | app | as row | at rest | Mahmoud | n/a |
+| `max_attempts` | internal | Cap | app | as row | at rest | Mahmoud | n/a |
+| `expires_at` | internal | Challenge expiry | app | as row | at rest | Mahmoud | n/a |
+| `consumed_at` | internal | Successful consume | app | as row | at rest | Mahmoud | n/a |
+| `invalidated_at` | internal | Expire / replace | app | as row | at rest | Mahmoud | n/a |
+| `requested_ip_prefix` | personal | Truncated requester IP (nullable) | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `device_fingerprint_hmac` | personal | Blind device fingerprint (nullable) | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `provider_message_reference` | internal | Provider message id after send (nullable) | app, worker | as row | at rest | Mahmoud | n/a |
+| `locale` | internal | OTP language | worker | as row | at rest | Mahmoud | n/a |
+| `destination_ciphertext` | personal | Worker send only | worker | **NULL on consume/invalidate**; prune NULLs leftover | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `key_version` | internal | Envelope key version | app, worker | as row | at rest | Mahmoud | n/a |
+| `delivery_status` | internal | `pending` / `sent` / `retryable` / `failed` | app, worker | as row | at rest | Mahmoud | n/a |
+| `created_at` | internal | Row created | app | as row | at rest | Mahmoud | n/a |
 
-Engineering row TTL: 30 days after consume/invalidate, then `DELETE`.
+Engineering row TTL: `IDENTITY_OTP_ROW_DAYS` (default 30) after consume/invalidate, then `DELETE` when ciphertext is already NULL. Not a legal period.
 
 ### `mfa_factors`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id`, `user_id`, `factor_type` | internal | Factor identity | app | until disabled + purge | at rest | Mahmoud | n/a |
+| `id` | internal | Factor identity | app | until disabled + purge | at rest | Mahmoud | n/a |
+| `user_id` | internal | FK to `users` | app | as row | at rest | Mahmoud | n/a |
+| `factor_type` | internal | `totp` only in V1 | app | as row | at rest | Mahmoud | n/a |
 | `secret_ciphertext` | credential | TOTP secret | app (audited decrypt) | tombstone on disable | envelope | Mahmoud | n/a |
-| `verified_at`, `disabled_at`, `last_used_counter` | internal | Lifecycle | app | as row | at rest | Mahmoud | n/a |
+| `key_version` | internal | Envelope key version | app | as row | at rest | Mahmoud | n/a |
+| `last_used_counter` | internal | TOTP counter | app | as row | at rest | Mahmoud | n/a |
+| `last_used_at` | internal | Last successful TOTP | app | as row | at rest | Mahmoud | n/a |
+| `verified_at` | internal | When the factor was confirmed | app | as row | at rest | Mahmoud | n/a |
+| `disabled_at` | internal | Disable timestamp | app | as row | at rest | Mahmoud | n/a |
+| `disabled_by` | internal | Actor who disabled (nullable UUID) | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
 ### `mfa_recovery_codes`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Code row | app | until parent delete | at rest | Mahmoud | n/a |
+| `user_id` | internal | FK | app | as row | at rest | Mahmoud | n/a |
+| `factor_id` | internal | Parent factor (CASCADE) | app | as row | at rest | Mahmoud | n/a |
 | `code_hash` | credential | One-time backup | app | delete unused on rotate/disable | HMAC | Mahmoud | n/a |
 | `consumed_at` | internal | Single use | app | as row until parent delete | at rest | Mahmoud | n/a |
+| `created_at` | internal | Issued at | app | as row | at rest | Mahmoud | n/a |
 
 Plaintext codes exist only in the enroll/rotate HTTP response, once.
 
@@ -514,29 +576,68 @@ Plaintext codes exist only in the enroll/rotate HTTP response, once.
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id`, `user_id`, `client_class`, `platform`, `device_label` | internal | In-flight MFA | app | 24h then delete | at rest | Mahmoud | n/a |
-| `expires_at`, `consumed_at`, `attempts` | internal | Lifecycle | app | as row | at rest | Mahmoud | n/a |
+| `id` | internal | Challenge id | app | `auth:prune-expired` deletes when `expires_at` is older than 1 day | at rest | Mahmoud | n/a |
+| `user_id` | internal | Which user must complete MFA | app | as row | at rest | Mahmoud | n/a |
+| `client_class` | internal | Client class string | app | as row | at rest | Mahmoud | n/a |
+| `platform` | internal | Device platform | app | as row | at rest | Mahmoud | n/a |
+| `device_label` | personal | Client-supplied device label | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `expires_at` | internal | Challenge expiry | app | as row | at rest | Mahmoud | n/a |
+| `consumed_at` | internal | Completed at | app | as row | at rest | Mahmoud | n/a |
+| `attempts` | internal | Verify tries | app | as row | at rest | Mahmoud | n/a |
+| `created_at` | internal | Issued at | app | as row | at rest | Mahmoud | n/a |
 
 ### `user_devices`
 
+There is no `client_class` column on this table (that field lives on `mfa_challenges`). Access tokens are bound as `token_hash`, not `access_token_hash`.
+
+**Writer.** Auth module via `clinic_app`. On device revoke, hashes and `push_token_ciphertext` are NULLed.
+
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id`, `user_id`, `client_class`, `platform`, `device_label` | personal | Device record | app | until revoked + TTL | at rest | Mahmoud | owner_approved_2026-08-27 |
-| `refresh_token_hash`, `previous_refresh_token_hash`, `access_token_hash` | credential | Token binding | app | as row until delete | HMAC | Mahmoud | n/a |
-| `refresh_replay_ciphertext` | credential | Lost-response replay | app | TTL `refresh_replay_expires_at` then NULL | envelope | Mahmoud | n/a |
-| `refresh_replay_idempotency_hmac` | internal | Replay key binding | app | as ciphertext | HMAC | Mahmoud | n/a |
-| `revoked_at`, `expires_at` | internal | Lifecycle | app | as row | at rest | Mahmoud | n/a |
+| `id` | internal | Device row | app | until revoked + later erase (no device-row prune job) | at rest | Mahmoud | n/a |
+| `user_id` | personal | Which identity owns the device | app | as row; CASCADE if user deleted | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `platform` | internal | `android`/`ios`/`windows`/`macos`/`linux`/`web` | app | as row | at rest | Mahmoud | n/a |
+| `device_label` | personal | Client-supplied device label | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `token_hash` | credential | Access-token bind (nullable; unique while active) | app | NULL on revoke | HMAC | Mahmoud | n/a |
+| `refresh_token_hash` | credential | Current refresh bind | app | NULL on revoke | HMAC | Mahmoud | n/a |
+| `previous_refresh_token_hash` | credential | Prior generation for lost-response | app | NULL on revoke | HMAC | Mahmoud | n/a |
+| `refresh_family_id` | internal | Refresh family UUID | app | as row | at rest | Mahmoud | n/a |
+| `refresh_generation` | internal | Family generation | app | as row | at rest | Mahmoud | n/a |
+| `credential_version` | internal | Copied from user at issue | app | as row | at rest | Mahmoud | n/a |
+| `last_seen_at` | internal | Last use | app | as row | at rest | Mahmoud | n/a |
+| `expires_at` | internal | Access expiry | app | as row | at rest | Mahmoud | n/a |
+| `refresh_expires_at` | internal | Refresh expiry | app | as row | at rest | Mahmoud | n/a |
+| `revoked_at` | internal | Revoke timestamp | app | as row | at rest | Mahmoud | n/a |
+| `revoked_reason` | internal | Reason code | app | as row | at rest | Mahmoud | n/a |
+| `push_token_ciphertext` | credential | FCM device token envelope (nullable; currently written NULL at issue) | app | NULL on revoke | envelope | Mahmoud | n/a |
+| `created_ip_prefix` | personal | Truncated IP at device create (nullable; currently written NULL at issue) | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `refresh_replay_ciphertext` | credential | Lost-response replay envelope | app | TTL `refresh_replay_expires_at` then NULL via prune | envelope | Mahmoud | n/a |
+| `refresh_replay_idempotency_hmac` | internal | Replay key binding | app | NULLed with ciphertext | HMAC | Mahmoud | n/a |
+| `refresh_replay_expires_at` | internal | Replay envelope expiry | app | NULLed with ciphertext | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
 ### `auth_sessions`
 
+**Writer.** Auth module via `clinic_app`. Distinct from Laravel `sessions`.
+
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id`, `user_id`, `device_id`, `session_kind` | internal | Session row | app | revoked row TTL then delete | at rest | Mahmoud | n/a |
-| `session_hash` / access hash | credential | Cookie or bearer bind | app | as row until delete | HMAC | Mahmoud | n/a |
+| `id` | internal | Session row | app | revoked row TTL then delete | at rest | Mahmoud | n/a |
+| `user_id` | internal | FK to `users` | app | as row | at rest | Mahmoud | n/a |
+| `device_id` | internal | FK to `user_devices` (nullable for admin cookie) | app | as row | at rest | Mahmoud | n/a |
+| `session_kind` | internal | `device` or `admin_cookie` | app | as row | at rest | Mahmoud | n/a |
+| `session_hash` | credential | Cookie or bearer bind (unique) | app | as row until delete | HMAC | Mahmoud | n/a |
 | `assurance_level` | internal | AAL recorded server-side | app | as row | at rest | Mahmoud | n/a |
-| `absolute_expires_at`, `revoked_at`, `revoked_reason` | internal | Lifetime | app | as row | at rest | Mahmoud | n/a |
+| `csrf_established` | internal | Admin cookie CSRF handshake | app | as row | at rest | Mahmoud | n/a |
+| `idle_expires_at` | internal | Idle timeout (nullable) | app | as row | at rest | Mahmoud | n/a |
+| `absolute_expires_at` | internal | Hard expiry | app | as row | at rest | Mahmoud | n/a |
+| `credential_version` | internal | Copied from user at issue | app | as row | at rest | Mahmoud | n/a |
+| `revoked_at` | internal | Revoke timestamp | app | as row until DELETE | at rest | Mahmoud | n/a |
+| `revoked_reason` | internal | Reason code | app | as row | at rest | Mahmoud | n/a |
+| `last_seen_at` | internal | Last request | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
-Revoked sessions are marked first, then deleted after the engineering TTL (90 days). That is not a legal medical-record period.
+Expired live sessions are marked `revoked_at` first (`revoked_reason=expired`). Rows with `revoked_at` older than `IDENTITY_REVOKED_SESSION_DAYS` (default 90) are `DELETE`d by `auth:prune-expired`. That is an engineering TTL, not a legal medical-record period.
 
 ### `identity_profile_links`
 
@@ -580,17 +681,23 @@ processing, not an Egyptian PDPL article.
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `family_id`, `generation` | internal | Refresh family ledger | app | with family | at rest | Mahmoud | n/a |
+| `family_id` | internal | Refresh family ledger | app | with family | at rest | Mahmoud | n/a |
 | `token_hash` | credential | Consumed refresh HMAC | app | with family | HMAC | Mahmoud | n/a |
+| `generation` | internal | Family generation | app | with family | at rest | Mahmoud | n/a |
 | `consumed_at` | internal | When the generation was retired | app | as row | at rest | Mahmoud | n/a |
 
 ### `recovery_requests`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id`, `user_id`, `otp_id`, `status` | internal | Recovery state machine | app, operator | 90 days after terminal status | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `id` | internal | Recovery id | app, operator | 90 days after terminal status (engineering default; no prune job yet) | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `user_id` | internal | FK to `users` | app, operator | as row | at rest | Mahmoud | n/a |
+| `otp_id` | internal | Challenge that authorized recovery | app | as row | at rest | Mahmoud | n/a |
+| `status` | internal | `cooling_off` / `manual_review` / `applied` / `rejected` / `expired` | app, operator | as row | at rest | Mahmoud | n/a |
 | `new_password_hash` | credential | Proposed password | app | NULL after apply/reject | Argon2id | Mahmoud | n/a |
-| `cooling_off_until`, `applied_at` | internal | Cooling-off / apply | app | as row | at rest | Mahmoud | n/a |
+| `cooling_off_until` | internal | Patient cooling-off deadline | app | as row | at rest | Mahmoud | n/a |
+| `applied_at` | internal | When applied | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
 Privileged recoveries stay `manual_review` until an AAL2 operator applies.
 Patient cooling-off uses `IDENTITY_RECOVERY_COOLING_OFF_SECONDS` (default 86400;
@@ -598,18 +705,41 @@ tests may set 0).
 
 ### `contextual_access_grants`
 
+**Writer.** Access module via `clinic_app`. No clinic prune job.
+
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| capability, resource, context ids | internal | Resource-scoped grant | app | until revoked + TTL | at rest | Mahmoud | n/a |
-| `issued_by_id` | internal | Initiator, never client-supplied | app | as row | at rest | Mahmoud | n/a |
+| `id` | internal | Grant identity | app | until revoked; no TTL delete job | at rest | Mahmoud | n/a |
+| `actor_user_id` | internal | Grantee (FK `users`) | app | as row | at rest | Mahmoud | n/a |
+| `capability` | internal | Action string | app | as row | at rest | Mahmoud | n/a |
+| `resource_type` | internal | Resource class | app | as row | at rest | Mahmoud | n/a |
+| `resource_id` | internal | Resource UUID | app | as row | at rest | Mahmoud | n/a |
+| `context_type` | internal | Context class | app | as row | at rest | Mahmoud | n/a |
+| `context_id` | internal | Context UUID | app | as row | at rest | Mahmoud | n/a |
+| `valid_from` | internal | Not-before (nullable) | app | as row | at rest | Mahmoud | n/a |
+| `valid_until` | internal | Not-after (nullable) | app | as row | at rest | Mahmoud | n/a |
+| `revoked_at` | internal | Revoke timestamp | app | as row | at rest | Mahmoud | n/a |
+| `reason_code` | internal | Why issued/revoked | app | as row | at rest | Mahmoud | n/a |
+| `issued_by_type` | internal | Initiator kind (never client-supplied) | app | as row | at rest | Mahmoud | n/a |
+| `issued_by_id` | internal | Initiator UUID | app | as row | at rest | Mahmoud | n/a |
+| `version` | internal | Optimistic version | app | as row | at rest | Mahmoud | n/a |
+| `created_at` | internal | Issued at | app | as row | at rest | Mahmoud | n/a |
 
 ### `audit_events`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `event_name`, `object_*`, `actor_*` | internal | Append-only trail | app SELECT; insert via DEFINER function | retained (not deleted by prune; owner-approved) | at rest | Mahmoud | owner_approved_2026-08-27 |
-| `metadata` | internal | Reason codes / ids only | app | as row | at rest | Mahmoud | n/a |
-| `row_hash`, `previous_hash`, `chain_sequence` | internal | Tamper-evident chain | verifier | as row | at rest | Mahmoud | n/a |
+| `id` | internal | Event row | app SELECT; insert via DEFINER function | retained (not deleted by prune) | at rest | Mahmoud | n/a |
+| `event_name` | internal | Stable event name | app SELECT | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `actor_id` | internal | Actor UUID (nullable) | app SELECT | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `actor_type` | internal | Actor kind (nullable) | app SELECT | as row | at rest | Mahmoud | n/a |
+| `object_type` | internal | Object class | app SELECT | as row | at rest | Mahmoud | n/a |
+| `object_id` | internal | Object UUID | app SELECT | as row | at rest | Mahmoud | n/a |
+| `metadata` | internal | Reason codes / ids only | app SELECT | as row | at rest | Mahmoud | n/a |
+| `previous_hash` | internal | Prior chain hash | verifier | as row | at rest | Mahmoud | n/a |
+| `row_hash` | internal | This row hash | verifier | as row | at rest | Mahmoud | n/a |
+| `occurred_at` | internal | Event time | app SELECT | as row | at rest | Mahmoud | n/a |
+| `chain_sequence` | internal | Serialized chain position | verifier | as row | at rest | Mahmoud | n/a |
 
 Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
 
@@ -631,6 +761,17 @@ above is the outbox `PROCESSED` engineering default, not a legal schedule.
 
 ---
 
+## ISR-013 technical vs external
+
+**Technical (this inventory + prune tests): PASS** for the original
+schema/field/event/metric/cache/queue/log/file inventory and for implemented
+`auth:prune-expired` ciphertext NULL / session DELETE behaviour.
+
+**External / legal / production (not claimed):** Egyptian PDPL article numbers,
+qualified-reviewer lawful basis, statutory retention schedule, operator
+data-subject erasure/export, backup/replica/search/telemetry wipe propagation,
+and production promotion. **G-08-04 stays OPEN.**
+
 ## Gaps (explicitly OPEN)
 
 1. **Day counts remain engineering defaults**, not a statutory retention
@@ -639,18 +780,18 @@ above is the outbox `PROCESSED` engineering default, not a legal schedule.
 2. **`lawful_basis` is `owner_approved_2026-08-27`** (Mahmoud, privacy owner)
    for documented identity processing. That is owner acceptance of purpose, not
    an Egyptian PDPL article number and not independent legal certification.
+   Framework session IP/UA/payload and job/`failed_jobs` content that may
+   identify a person remain **pending**.
 3. **Subject-erasure for production** is not operator self-serve. Engineering
-   purge jobs cover expired OTP/session ciphertext only
-   ([deletion-and-purge.md](deletion-and-purge.md)). A full rights workflow is
-   still unimplemented.
+   purge jobs cover expired OTP/session ciphertext and eligible session
+   `DELETE` ([deletion-and-purge.md](deletion-and-purge.md)). A full rights
+   workflow is still unimplemented. Account close/lock/suspend remains
+   `DisableIdentityService` and was not redesigned for this inventory.
 4. **Audit-row erasure** is not implemented (append-only). A legal order would
    need a Phase 22/23 procedure.
 5. **Framework operational tables** (`jobs`, `job_batches`, `failed_jobs`,
    `cache`, `cache_locks`, `sessions`) have no clinic prune job and no approved
-   legal retention period. Laravel worker deletion of completed `jobs` rows and
-   session lottery sweeps are engineering behavior only. `lawful_basis` for
-   session IP/user-agent/payload and for `failed_jobs.exception` / job payloads
-   that may identify a person is **pending**.
+   legal retention period.
 6. **`identity_profile_links` retention / erasure period** is **pending**. The
    table is inventoried; no writer currently populates it.
 
