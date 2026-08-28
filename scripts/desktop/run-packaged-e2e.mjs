@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { APPS, findPackagedBinary, listPackagedArtifacts, stageLinuxPackagedAppForLaunch } from './packaged-app-paths.mjs';
 import { configurePackagedLinuxSandbox, releasePackagedLinuxSandboxForRebuild } from './configure-packaged-linux-sandbox.mjs';
 import { inspectPackagedFuses } from './inspect-packaged-fuses.mjs';
+import { runNpm } from './npm-spawn.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..');
@@ -32,16 +33,13 @@ const e2eDir = join(repoRoot, 'tests', 'desktop-e2e');
 const skipPackage = process.env.CLINIC_DESKTOP_SKIP_PACKAGE === '1';
 const skipMake = process.env.CLINIC_DESKTOP_SKIP_MAKE === '1';
 
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+function runNpmInRepo(npmArgs, options = {}) {
+  const { result } = runNpm(npmArgs, {
     cwd: repoRoot,
     stdio: 'inherit',
     env: process.env,
     ...options,
   });
-  if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(' ')} failed with status ${result.status ?? 'null'}`);
-  }
   return result;
 }
 
@@ -84,7 +82,7 @@ function packageApp(appKey) {
     console.log(`Skipping package for ${appKey}; using ${existing}`);
     return { skipped: true };
   }
-  run('npm', ['run', 'package', `--workspace=${APPS[appKey].workspace}`]);
+  runNpmInRepo(['run', 'package', `--workspace=${APPS[appKey].workspace}`]);
   return { skipped: false };
 }
 
@@ -92,21 +90,30 @@ function makeApp(appKey) {
   if (skipMake) {
     return { skipped: true, reason: 'CLINIC_DESKTOP_SKIP_MAKE' };
   }
-  const result = spawnSync('npm', ['run', 'make', `--workspace=${APPS[appKey].workspace}`], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    env: process.env,
-  });
+  const { result, described } = runNpm(
+    ['run', 'make', `--workspace=${APPS[appKey].workspace}`],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: process.env,
+      throwOnFailure: false,
+    },
+  );
+  if (!described.ok) {
+    console.warn(`==> make ${appKey}: ${described.message}`);
+  }
   return {
     skipped: false,
     status: result.status,
-    ok: result.status === 0,
+    ok: described.ok,
+    spawnKind: described.kind,
+    spawnError: described.ok ? null : described.message,
   };
 }
 
 function ensureE2eDeps() {
   if (!existsSync(join(e2eDir, 'node_modules', '@wdio', 'cli'))) {
-    run('npm', ['ci', '--prefix', e2eDir]);
+    runNpmInRepo(['ci', '--prefix', e2eDir]);
   }
 }
 
@@ -131,15 +138,20 @@ function runWdio(appKey, binary, userDataDir) {
     { cwd: e2eDir, encoding: 'utf8', env },
   );
 
-  const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
+  const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}${
+    result.error
+      ? `\nFailed to spawn WebdriverIO (${result.error.code ?? 'spawn-error'}): ${result.error.message}\n`
+      : ''
+  }`;
   writeFileSync(logPath, output);
   process.stdout.write(output);
   const counts = parseWdioCounts(output);
   return {
-    exitCode: result.status ?? 1,
+    exitCode: result.error ? 1 : (result.status ?? 1),
     passing: counts.passing,
     failing: counts.failing,
     logRelative: logPath.slice(repoRoot.length + 1),
+    spawnError: result.error ? `${result.error.code ?? 'spawn-error'}: ${result.error.message}` : null,
   };
 }
 
