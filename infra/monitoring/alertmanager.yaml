@@ -1,0 +1,35 @@
+# Alertmanager routing contract.
+#
+# Receiver endpoints (Slack, PagerDuty, email webhooks) are environment-managed
+# and must never be committed. Production injects webhook_configs / pagerduty_configs
+# onto the named receivers below.
+#
+# Routing is label-based. Critical security alerts — including
+# AuditChainVerificationFailed and AuditChainVerificationStale — match
+# severity=critical AND owner=security and go to receiver `security-critical`.
+# That is the same path as RedactionCanaryDetected and RefreshTokenReuse.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default
+  group_by: [alertname, severity, owner]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: security-critical
+      matchers:
+        - severity = critical
+        - owner = security
+    - receiver: platform-critical
+      matchers:
+        - severity = critical
+
+receivers:
+  - name: default
+  - name: security-critical
+  - name: platform-critical
+
+inhibit_rules: []

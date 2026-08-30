@@ -84,6 +84,7 @@ use Modules\Platform\Services\Persistence\EloquentIdempotencyStore;
 use Modules\Platform\Services\Persistence\EloquentOutboxRecorder;
 use Modules\Platform\Services\Persistence\WorkerDatabaseIdentity;
 use Modules\Platform\Services\Status\PlatformStatusQuery;
+use Modules\Platform\Services\Telemetry\AuditChainVerificationTelemetry;
 use Modules\Platform\Services\Telemetry\HttpInstrumentation;
 use Modules\Platform\Services\Telemetry\MetricsExposition;
 use Modules\Platform\Services\Telemetry\MetricsRenderer;
@@ -147,6 +148,7 @@ final class PlatformServiceProvider extends ServiceProvider
             (string) config('app.version', '0.0.0-dev'),
         ));
 
+        $this->app->singleton(AuditChainVerificationTelemetry::class);
         $this->app->singleton(MetricsRenderer::class);
         $this->app->singleton(MetricsExposition::class, static fn ($app): MetricsExposition => $app->make(MetricsRenderer::class));
 

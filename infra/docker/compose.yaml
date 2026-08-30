@@ -225,6 +225,19 @@ services:
       - prometheus-data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"
+    depends_on:
+      - alertmanager
+
+  alertmanager:
+    <<: [*restart, *logging]
+    profiles: [observability, full]
+    image: prom/alertmanager:v0.28.1
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yaml
+    volumes:
+      - ../monitoring/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml:ro
+    ports:
+      - "127.0.0.1:9093:9093"
 
   grafana:
     <<: [*restart, *logging]

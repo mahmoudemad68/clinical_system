@@ -168,6 +168,31 @@ final class PlatformMetrics
             'type' => 'gauge',
             'samples' => [],
         ];
+        $this->families['clinic_audit_chain_verification_ok'] = [
+            'help' => '1 if the last audit-chain verification passed, 0 if it failed. Ignore unless last_run > 0.',
+            'type' => 'gauge',
+            'samples' => [],
+        ];
+        $this->families['clinic_audit_chain_verification_last_run_timestamp_seconds'] = [
+            'help' => 'Unix timestamp of the last audit-chain verification execution. 0 if never run.',
+            'type' => 'gauge',
+            'samples' => [],
+        ];
+        $this->families['clinic_audit_chain_verification_last_success_timestamp_seconds'] = [
+            'help' => 'Unix timestamp of the last successful audit-chain verification. 0 if never succeeded.',
+            'type' => 'gauge',
+            'samples' => [],
+        ];
+        $this->families['clinic_audit_chain_verification_failures_total'] = [
+            'help' => 'Count of failed audit-chain verification executions. Monotonic; success does not reset it.',
+            'type' => 'counter',
+            'samples' => [],
+        ];
+        $this->families['clinic_audit_chain_verification_staleness_seconds'] = [
+            'help' => 'Seconds since the last audit-chain verification execution. 0 if never run.',
+            'type' => 'gauge',
+            'samples' => [],
+        ];
 
         foreach (self::QUERY_BUCKETS as $le) {
             $this->add('clinic_db_query_duration_seconds_bucket', ['le' => $le], 0.0, false);

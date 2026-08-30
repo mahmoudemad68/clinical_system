@@ -1,8 +1,8 @@
 # Audit chain external checkpoint
 
-Manual / security control. Dedicated alert routing for verification failure is
-**not** implemented yet (remaining ISR-008 gap). This runbook covers the signed
-checkpoint itself.
+Operations for signed checkpoints. Verification failure pages through
+[`audit-chain-verification`](audit-chain-verification.md)
+(`AuditChainVerificationFailed` / `AuditChainVerificationStale`).
 
 See [ADR 0015](../adr/0015-audit-chain-external-checkpoint.md).
 
@@ -81,4 +81,3 @@ checkpoint of the current tip.
 - Store the private key in a migration, table, or SQL function.
 - Log private keys, secret files, or raw signatures.
 - Claim a local test disk is production-immutable.
-- Implement alert routing from this runbook; that is a separate control.

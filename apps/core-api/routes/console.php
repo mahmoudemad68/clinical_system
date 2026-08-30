@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -9,7 +10,14 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('auth:prune-expired')->hourly();
-Schedule::command('audit:verify-chain')->everyFifteenMinutes();
+Schedule::command('audit:verify-chain')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->evenInMaintenanceMode()
+    ->onFailure(static function (): void {
+        Log::critical('scheduled audit:verify-chain failed');
+    });
 Schedule::command('audit:checkpoint-chain')
     ->hourly()
     ->withoutOverlapping()

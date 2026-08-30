@@ -23,6 +23,10 @@ it('exports alert family names without an envelope', function () {
         ->and($body)->toContain('clinic_db_connections_limit')
         ->and($body)->toContain('clinic_horizon_queue_depth')
         ->and($body)->toContain('clinic_db_query_duration_seconds_bucket')
+        ->and($body)->toContain('clinic_audit_chain_verification_ok')
+        ->and($body)->toContain('clinic_audit_chain_verification_last_success_timestamp_seconds')
+        ->and($body)->toContain('clinic_audit_chain_verification_failures_total')
+        ->and($body)->toContain('clinic_audit_chain_verification_staleness_seconds')
         ->and($body)->not->toContain('patient_id');
 });
 

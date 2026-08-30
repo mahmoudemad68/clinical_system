@@ -26,7 +26,8 @@ opens with "restart the service" teaches people to restart before understanding.
 | [identity-key-rotation](identity-key-rotation.md) | Configuration / `/ready` | critical |
 | [disputed-profile-link](disputed-profile-link.md) | Manual; claim flag off | warning |
 | [refresh-reuse](refresh-reuse.md) | `RefreshTokenReuse` | critical |
-| [audit-chain-checkpoint](audit-chain-checkpoint.md) | Manual / `audit:verify-chain` checkpoint failure | critical |
+| [audit-chain-checkpoint](audit-chain-checkpoint.md) | Manual / checkpoint operations | critical |
+| [audit-chain-verification](audit-chain-verification.md) | `AuditChainVerificationFailed`, `AuditChainVerificationStale` | critical |
 
 ## Standing rules
 

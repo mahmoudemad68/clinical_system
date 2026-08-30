@@ -161,6 +161,42 @@ groups:
             enumeration attempt.
           runbook: docs/runbooks/authorization-denials.md
 
+      # ISR-008: verification is scheduled every 15 minutes. Current health is
+      # clinic_audit_chain_verification_ok (ignore unless last_run > 0).
+      # Failures_total is historical and must not be the only signal.
+      # last_run == 0 is not a failed chain; silence uses staleness_seconds.
+      - alert: AuditChainVerificationFailed
+        expr: clinic_audit_chain_verification_ok == 0 and clinic_audit_chain_verification_last_run_timestamp_seconds > 0
+        for: 1m
+        labels:
+          severity: critical
+          owner: security
+          component: audit
+        annotations:
+          summary: Audit chain verification is failing
+          description: >-
+            The scheduled verifier reported a failed in-database hash chain or
+            a failed external checkpoint check. Treat as a possible
+            database-owner rewrite. Capture evidence before any repair.
+            Do not rewrite audit_events or mint a checkpoint to silence this.
+          runbook: docs/runbooks/audit-chain-verification.md
+
+      # Three 15-minute cycles (45m) plus a short sustain. One delayed
+      # scheduler tick must not page.
+      - alert: AuditChainVerificationStale
+        expr: clinic_audit_chain_verification_staleness_seconds > 2700
+        for: 2m
+        labels:
+          severity: critical
+          owner: security
+          component: audit
+        annotations:
+          summary: Audit chain verifier has gone silent
+          description: >-
+            No verification execution has completed for more than 45 minutes.
+            The chain may be intact; the control that watches it is not running.
+          runbook: docs/runbooks/audit-chain-verification.md
+
   - name: identity-auth
     rules:
 
@@ -207,3 +243,4 @@ groups:
           summary: Repeated privileged MFA failures
           description: May be stuffing against TOTP. Privileged sessions must not issue at AAL1.
           runbook: docs/runbooks/mfa-recovery.md
+

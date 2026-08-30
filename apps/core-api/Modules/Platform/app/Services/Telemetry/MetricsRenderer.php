@@ -38,6 +38,7 @@ final class MetricsRenderer implements MetricsExposition
         private readonly Clock $clock,
         private readonly TelemetryGateway $telemetry,
         private readonly RedisFactory $redis,
+        private readonly AuditChainVerificationTelemetry $auditChain,
     ) {}
 
     public function render(): string
@@ -57,6 +58,7 @@ final class MetricsRenderer implements MetricsExposition
         $this->scrapeOutbox();
         $this->scrapeDatabasePool();
         $this->scrapeHorizon();
+        $this->scrapeAuditChain();
         $this->metrics->set('clinic_reverb_connections', 0.0);
         $this->metrics->set('clinic_redaction_canary_total', (float) $this->telemetry->canaryDetections, ['rule' => 'export']);
 
@@ -146,5 +148,15 @@ final class MetricsRenderer implements MetricsExposition
                 $this->metrics->set('clinic_horizon_queue_depth', 0.0, ['queue' => $lane]);
             }
         }
+    }
+
+    private function scrapeAuditChain(): void
+    {
+        $snapshot = $this->auditChain->snapshot();
+        $this->metrics->set('clinic_audit_chain_verification_ok', (float) $snapshot['ok']);
+        $this->metrics->set('clinic_audit_chain_verification_last_run_timestamp_seconds', (float) $snapshot['last_run']);
+        $this->metrics->set('clinic_audit_chain_verification_last_success_timestamp_seconds', (float) $snapshot['last_success']);
+        $this->metrics->set('clinic_audit_chain_verification_failures_total', (float) $snapshot['failures']);
+        $this->metrics->set('clinic_audit_chain_verification_staleness_seconds', (float) $snapshot['staleness']);
     }
 }
