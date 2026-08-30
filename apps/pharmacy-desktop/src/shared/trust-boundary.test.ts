@@ -371,3 +371,47 @@ describe('Clinic Pharmacy — application identity', () => {
     expect(BRIDGE_CONTRACT_VERSION).toBe(1);
   });
 });
+
+describe('Clinic Pharmacy — packaged API origin trust boundary', () => {
+  it('bakes the allowlist at compile time from a Pharmacy-only build env', () => {
+    const allowlist = readCode('src/main/packaged-api-allowlist.ts');
+    const webpackMain = readCode('webpack.main.config.ts');
+    const gateway = readCode('src/main/platform-gateway.ts');
+    const origin = readCode('src/main/api-origin.ts');
+
+    expect(allowlist).toContain('__CLINIC_PACKAGED_API_ALLOWED_ORIGINS__');
+    expect(allowlist).not.toContain('process.env');
+    expect(allowlist).not.toContain('CLINIC_API_BASE_URL');
+    expect(allowlist).not.toContain('CLINIC_API_ALLOWED_ORIGINS');
+
+    expect(webpackMain).toContain('DefinePlugin');
+    expect(webpackMain).toContain('CLINIC_PHARMACY_PACKAGED_API_ALLOWED_ORIGINS');
+    expect(webpackMain).not.toContain('CLINIC_API_BASE_URL');
+    expect(webpackMain).not.toContain('CLINIC_API_ALLOWED_ORIGINS');
+    expect(webpackMain).not.toContain('CLINIC_DOCTOR_PACKAGED_API_ALLOWED_ORIGINS');
+
+    expect(gateway).toContain('PACKAGED_API_ALLOWED_ORIGINS');
+    expect(gateway).toContain("process.env['CLINIC_API_BASE_URL']");
+    expect(gateway).not.toContain('CLINIC_PHARMACY_PACKAGED_API_ALLOWED_ORIGINS');
+    expect(gateway).not.toContain('CLINIC_API_ALLOWED_ORIGINS');
+
+    expect(origin).toContain('url.origin');
+    expect(origin).not.toContain('endsWith(');
+    expect(origin).not.toMatch(/hostname\s*\.\s*includes\(/);
+  });
+
+  it('clears the refresh Idempotency-Key only after durable token replacement', () => {
+    const refresh = readCode('src/main/token-refresh.ts');
+    const gateway = readCode('src/main/platform-gateway.ts');
+
+    const persistAt = refresh.indexOf('input.persist(tokens)');
+    const rememberAt = refresh.indexOf('input.remember(tokens)');
+    const clearAfterPersist = refresh.indexOf('this.key = null', persistAt);
+
+    expect(persistAt).toBeGreaterThan(-1);
+    expect(rememberAt).toBeGreaterThan(persistAt);
+    expect(clearAfterPersist).toBeGreaterThan(rememberAt);
+    expect(gateway).toContain('tokenRefresh.run');
+    expect(gateway).toContain('persist: persistDeviceTokens');
+  });
+});

@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  define: {
+    __CLINIC_PACKAGED_API_ALLOWED_ORIGINS__: JSON.stringify([]),
+  },
   test: {
     globals: true,
 

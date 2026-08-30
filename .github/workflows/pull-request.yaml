@@ -477,6 +477,10 @@ jobs:
           # Installers/signing stay Phase 23. This job packages and launches the
           # unsigned Forge binaries. Make is best-effort locally, not the gate.
           CLINIC_DESKTOP_SKIP_MAKE: '1'
+          # RFC 2606 example origins, baked at package time only. Not production
+          # hosts. Runtime CLINIC_API_BASE_URL cannot enlarge this list.
+          CLINIC_DOCTOR_PACKAGED_API_ALLOWED_ORIGINS: 'https://api.example.com'
+          CLINIC_PHARMACY_PACKAGED_API_ALLOWED_ORIGINS: 'https://pharmacy.example.com'
         run: node scripts/desktop/run-packaged-e2e.mjs
 
       - name: Upload packaged E2E logs

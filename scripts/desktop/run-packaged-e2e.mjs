@@ -82,7 +82,24 @@ function packageApp(appKey) {
     console.log(`Skipping package for ${appKey}; using ${existing}`);
     return { skipped: true };
   }
-  runNpmInRepo(['run', 'package', `--workspace=${APPS[appKey].workspace}`]);
+  const bake =
+    appKey === 'doctor'
+      ? {
+          env: 'CLINIC_DOCTOR_PACKAGED_API_ALLOWED_ORIGINS',
+          origin: 'https://api.example.com',
+        }
+      : {
+          env: 'CLINIC_PHARMACY_PACKAGED_API_ALLOWED_ORIGINS',
+          origin: 'https://pharmacy.example.com',
+        };
+  runNpmInRepo(['run', 'package', `--workspace=${APPS[appKey].workspace}`], {
+    env: {
+      ...process.env,
+      [bake.env]: process.env[bake.env] && String(process.env[bake.env]).trim() !== ''
+        ? process.env[bake.env]
+        : bake.origin,
+    },
+  });
   return { skipped: false };
 }
 
