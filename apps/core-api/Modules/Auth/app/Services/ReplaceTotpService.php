@@ -36,6 +36,7 @@ final class ReplaceTotpService
         private readonly IdentityGenerator $ids,
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
+        private readonly RecordSessionRevokedEvents $sessionRevoked,
     ) {}
 
     /**
@@ -164,7 +165,8 @@ final class ReplaceTotpService
             }
 
             $this->auth->updateSessionAssurance($sessionId, AssuranceLevel::Aal2Totp->value, $now);
-            $this->auth->revokeOtherSessions($actor->userId, $sessionId, 'mfa_replace', $now);
+            $affected = $this->auth->revokeOtherSessions($actor->userId, $sessionId, 'mfa_replace', $now);
+            $this->sessionRevoked->onto($tx, $actor->userId, $affected, 'mfa_replace', $now);
             if ($actor->deviceId !== null) {
                 $this->auth->revokeOtherDevices($actor->userId, $actor->deviceId, 'mfa_replace', $now);
             } else {

@@ -6,6 +6,7 @@ namespace Modules\Auth\Services\Persistence;
 
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Query\Builder;
 use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Support\Identifier;
@@ -408,41 +409,87 @@ final class PostgresAuthStore implements AuthDirectory
         ]);
     }
 
-    public function revokeSessionsForDevice(Identifier $deviceId, string $reason, DateTimeImmutable $now): void
+    public function revokeSessionsForDevice(Identifier $deviceId, string $reason, DateTimeImmutable $now): array
     {
-        $this->connection->table('auth_sessions')
-            ->where('device_id', $deviceId->value)
-            ->whereNull('revoked_at')
-            ->update([
-                'revoked_at' => $now->format('Y-m-d H:i:s.uP'),
-                'revoked_reason' => $reason,
-                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
-            ]);
+        return $this->revokeMatchingSessions(
+            fn ($query) => $query->where('device_id', $deviceId->value),
+            $reason,
+            $now,
+        );
     }
 
-    public function revokeAllSessions(Identifier $userId, string $reason, DateTimeImmutable $now): void
+    public function revokeAllSessions(Identifier $userId, string $reason, DateTimeImmutable $now): array
     {
-        $this->connection->table('auth_sessions')
-            ->where('user_id', $userId->value)
-            ->whereNull('revoked_at')
-            ->update([
-                'revoked_at' => $now->format('Y-m-d H:i:s.uP'),
-                'revoked_reason' => $reason,
-                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
-            ]);
+        return $this->revokeMatchingSessions(
+            fn ($query) => $query->where('user_id', $userId->value),
+            $reason,
+            $now,
+        );
     }
 
-    public function revokeOtherSessions(Identifier $userId, Identifier $keepSessionId, string $reason, DateTimeImmutable $now): void
+    public function revokeOtherSessions(Identifier $userId, Identifier $keepSessionId, string $reason, DateTimeImmutable $now): array
     {
+        return $this->revokeMatchingSessions(
+            fn ($query) => $query
+                ->where('user_id', $userId->value)
+                ->where('id', '!=', $keepSessionId->value),
+            $reason,
+            $now,
+        );
+    }
+
+    public function revokeSessionsForRefreshFamily(string $familyId, string $reason, DateTimeImmutable $now): array
+    {
+        $ids = array_values(array_map(
+            static fn (mixed $id): string => (string) $id,
+            $this->connection->table('auth_sessions')
+                ->join('user_devices', 'user_devices.id', '=', 'auth_sessions.device_id')
+                ->where('user_devices.refresh_family_id', $familyId)
+                ->whereNull('auth_sessions.revoked_at')
+                ->pluck('auth_sessions.id')
+                ->all(),
+        ));
+
+        return $this->markSessionsRevoked($ids, $reason, $now);
+    }
+
+    /**
+     * @param  callable(Builder): mixed  $constrain
+     * @return list<string>
+     */
+    private function revokeMatchingSessions(callable $constrain, string $reason, DateTimeImmutable $now): array
+    {
+        $query = $this->connection->table('auth_sessions')->whereNull('revoked_at');
+        $constrain($query);
+        $ids = array_values(array_map(
+            static fn (mixed $id): string => (string) $id,
+            $query->pluck('id')->all(),
+        ));
+
+        return $this->markSessionsRevoked($ids, $reason, $now);
+    }
+
+    /**
+     * @param  list<string>  $ids
+     * @return list<string>
+     */
+    private function markSessionsRevoked(array $ids, string $reason, DateTimeImmutable $now): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $stamp = $now->format('Y-m-d H:i:s.uP');
         $this->connection->table('auth_sessions')
-            ->where('user_id', $userId->value)
-            ->where('id', '!=', $keepSessionId->value)
+            ->whereIn('id', $ids)
             ->whereNull('revoked_at')
             ->update([
-                'revoked_at' => $now->format('Y-m-d H:i:s.uP'),
+                'revoked_at' => $stamp,
                 'revoked_reason' => $reason,
-                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+                'updated_at' => $stamp,
             ]);
+
+        return $ids;
     }
 
     public function revokeOtherDevices(Identifier $userId, Identifier $keepDeviceId, string $reason, DateTimeImmutable $now): void

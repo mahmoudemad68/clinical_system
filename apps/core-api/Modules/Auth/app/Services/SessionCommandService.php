@@ -30,6 +30,7 @@ final class SessionCommandService
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
         private readonly Authorize $authorize,
+        private readonly RecordSessionRevokedEvents $sessionRevoked,
     ) {}
 
     /**
@@ -85,21 +86,30 @@ final class SessionCommandService
                 $this->auth->lockSession($sessionId);
             }
 
+            $affected = [];
             if ($sessionId !== null) {
                 $this->auth->revokeSession($sessionId, 'user_logout', $now);
+                $affected[] = $sessionId->value;
             }
             if ($deviceId !== null) {
                 $this->auth->revokeDevice($deviceId, 'user_logout', $now);
-                $this->auth->revokeSessionsForDevice($deviceId, 'user_logout', $now);
+                $affected = [...$affected, ...$this->auth->revokeSessionsForDevice($deviceId, 'user_logout', $now)];
             }
 
-            $eventId = $sessionId ?? $deviceId;
-            if ($eventId === null) {
+            if ($affected === []) {
                 throw new AuthenticationFailed;
             }
 
-            $tx->recordEvent(new SessionRevoked($actor->userId, $eventId, 'user_logout', $now));
-            $this->audit->append($tx, 'auth.session_revoked', 'auth_session', $eventId, ['reason_code' => 'user_logout'], $actor->userId, 'user');
+            $this->sessionRevoked->onto($tx, $actor->userId, $affected, 'user_logout', $now);
+            $this->audit->append(
+                $tx,
+                'auth.session_revoked',
+                'auth_session',
+                Identifier::fromTrusted($affected[0]),
+                ['reason_code' => 'user_logout'],
+                $actor->userId,
+                'user',
+            );
         });
     }
 
@@ -140,9 +150,9 @@ final class SessionCommandService
 
         $this->transactions->run(function (TransactionContext $tx) use ($actor): void {
             $now = $this->clock->now();
-            $this->auth->revokeAllSessions($actor->userId, 'revoke_all', $now);
+            $affected = $this->auth->revokeAllSessions($actor->userId, 'revoke_all', $now);
             $this->auth->revokeAllDevices($actor->userId, 'revoke_all', $now);
-            $tx->recordEvent(new SessionRevoked($actor->userId, $actor->sessionId ?? $actor->userId, 'revoke_all', $now));
+            $this->sessionRevoked->onto($tx, $actor->userId, $affected, 'revoke_all', $now);
             $this->audit->append($tx, 'auth.sessions_revoked_all', 'user', $actor->userId, ['reason_code' => 'revoke_all'], $actor->userId, 'user');
         });
     }
@@ -164,8 +174,9 @@ final class SessionCommandService
             $version = $user->credentialVersion + 1;
             $now = $this->clock->now();
             $this->identities->replacePassword($user->id, $hasher->hash($next), $version, $now);
-            $this->auth->revokeAllSessions($user->id, 'password_change', $now);
+            $affected = $this->auth->revokeAllSessions($user->id, 'password_change', $now);
             $this->auth->revokeAllDevices($user->id, 'password_change', $now);
+            $this->sessionRevoked->onto($tx, $user->id, $affected, 'password_change', $now);
             $tx->recordEvent(new CredentialVersionChanged($user->id, $version, 'password_change', $now));
             $this->audit->append($tx, 'auth.password_changed', 'user', $user->id, ['reason_code' => 'password_change'], $user->id, 'user');
         });

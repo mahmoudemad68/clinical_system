@@ -10,7 +10,6 @@ use Modules\Audit\Contracts\AppendAuditEvent;
 use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Enums\ClientClass;
 use Modules\Auth\Enums\DevicePlatform;
-use Modules\Auth\Events\SessionRevoked;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\AssuranceLevel;
 use Modules\Identity\Support\UserAccount;
@@ -27,6 +26,7 @@ final class IssueAuthenticatedSession
         private readonly CredentialIssuer $credentials,
         private readonly IdentityGenerator $ids,
         private readonly AppendAuditEvent $audit,
+        private readonly RecordSessionRevokedEvents $sessionRevoked,
     ) {}
 
     /**
@@ -190,10 +190,10 @@ final class IssueAuthenticatedSession
         ];
     }
 
-    public function revokeFamily(TransactionContext $tx, string $familyId, Identifier $userId, Identifier $sessionId, string $reason, DateTimeImmutable $now): void
+    public function revokeFamily(TransactionContext $tx, string $familyId, Identifier $userId, string $reason, DateTimeImmutable $now): void
     {
         $this->auth->revokeDeviceFamily($familyId, $reason, $now);
-        $this->auth->revokeSession($sessionId, $reason, $now);
-        $tx->recordEvent(new SessionRevoked($userId, $sessionId, $reason, $now));
+        $affected = $this->auth->revokeSessionsForRefreshFamily($familyId, $reason, $now);
+        $this->sessionRevoked->onto($tx, $userId, $affected, $reason, $now);
     }
 }

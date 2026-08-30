@@ -10,6 +10,7 @@ use Modules\Audit\Contracts\AppendAuditEvent;
 use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Events\CredentialVersionChanged;
+use Modules\Auth\Services\RecordSessionRevokedEvents;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\AccountStatus;
 use Modules\Identity\Events\StatusChanged;
@@ -36,6 +37,7 @@ final class DisableIdentityService
         private readonly AppendAuditEvent $audit,
         private readonly Authorize $authorizer,
         private readonly RecordPrivilegedFailure $privilegedFailures,
+        private readonly RecordSessionRevokedEvents $sessionRevoked,
     ) {}
 
     public function handle(ActorContext $initiator, Identifier $userId, AccountStatus $target, string $reasonCode): void
@@ -71,8 +73,9 @@ final class DisableIdentityService
             $now = $this->clock->now();
             $version = $user->credentialVersion + 1;
             $this->identities->updateStatus($user->id, $target, $version, $now);
-            $this->auth->revokeAllSessions($user->id, $reasonCode, $now);
+            $affected = $this->auth->revokeAllSessions($user->id, $reasonCode, $now);
             $this->auth->revokeAllDevices($user->id, $reasonCode, $now);
+            $this->sessionRevoked->onto($tx, $user->id, $affected, $reasonCode, $now);
             $tx->recordEvent(new StatusChanged($user->id, $user->status->value, $target->value, $reasonCode, $now));
             $tx->recordEvent(new CredentialVersionChanged($user->id, $version, $reasonCode, $now));
             $this->audit->append($tx, 'identity.status_changed', 'user', $user->id, ['reason_code' => $reasonCode], $initiator->userId, 'user');

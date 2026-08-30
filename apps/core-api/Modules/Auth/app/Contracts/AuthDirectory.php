@@ -116,11 +116,25 @@ interface AuthDirectory
 
     public function revokeSession(Identifier $id, string $reason, DateTimeImmutable $now): void;
 
-    public function revokeSessionsForDevice(Identifier $deviceId, string $reason, DateTimeImmutable $now): void;
+    /**
+     * @return list<string> normalized auth_sessions.id values that were revoked
+     */
+    public function revokeSessionsForDevice(Identifier $deviceId, string $reason, DateTimeImmutable $now): array;
 
-    public function revokeAllSessions(Identifier $userId, string $reason, DateTimeImmutable $now): void;
+    /**
+     * @return list<string> normalized auth_sessions.id values that were revoked
+     */
+    public function revokeAllSessions(Identifier $userId, string $reason, DateTimeImmutable $now): array;
 
-    public function revokeOtherSessions(Identifier $userId, Identifier $keepSessionId, string $reason, DateTimeImmutable $now): void;
+    /**
+     * @return list<string> normalized auth_sessions.id values that were revoked
+     */
+    public function revokeOtherSessions(Identifier $userId, Identifier $keepSessionId, string $reason, DateTimeImmutable $now): array;
+
+    /**
+     * @return list<string> normalized auth_sessions.id values that were revoked
+     */
+    public function revokeSessionsForRefreshFamily(string $familyId, string $reason, DateTimeImmutable $now): array;
 
     public function revokeOtherDevices(Identifier $userId, Identifier $keepDeviceId, string $reason, DateTimeImmutable $now): void;
 

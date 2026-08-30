@@ -72,8 +72,73 @@ final class ConfigurationCheck implements DependencyCheck
                     return CheckStatus::Fail;
                 }
             }
+
+            if (! $this->productionReverbIsSafe()) {
+                return CheckStatus::Fail;
+            }
         }
 
         return CheckStatus::Pass;
+    }
+
+    private function productionReverbIsSafe(): bool
+    {
+        $apps = config('reverb.apps.apps');
+        if (! is_array($apps) || $apps === []) {
+            return false;
+        }
+
+        $app = $apps[0] ?? null;
+        if (! is_array($app)) {
+            return false;
+        }
+
+        foreach (['app_id', 'key', 'secret'] as $credential) {
+            $value = $app[$credential] ?? null;
+            if (! is_string($value) || $value === '') {
+                return false;
+            }
+        }
+
+        if (($app['origins_explicit'] ?? false) !== true) {
+            return false;
+        }
+
+        $origins = $app['allowed_origins'] ?? null;
+        if (! is_array($origins) || $origins === []) {
+            return false;
+        }
+
+        foreach ($origins as $origin) {
+            if (! is_string($origin) || $origin === '') {
+                return false;
+            }
+
+            $host = strtolower($origin);
+            if ($host === '*' || str_contains($host, '*')) {
+                return false;
+            }
+
+            if (in_array($host, ['localhost', '127.0.0.1', '::1', '0.0.0.0'], true)
+                || str_ends_with($host, '.localhost')) {
+                return false;
+            }
+        }
+
+        if ((bool) config('reverb.servers.reverb.host_explicit') !== true) {
+            return false;
+        }
+
+        if (($app['scheme_explicit'] ?? false) !== true) {
+            return false;
+        }
+
+        $scheme = (string) ($app['options']['scheme'] ?? '');
+        $useTls = (bool) ($app['options']['useTLS'] ?? false);
+        if ($scheme === 'https') {
+            return $useTls;
+        }
+
+        return $scheme === 'http' && ! $useTls;
     }
 }

@@ -39,6 +39,7 @@ final class CompleteRecoveryService
         private readonly AppendAuditEvent $audit,
         private readonly IdentityGenerator $ids,
         private readonly RecordInboxNotification $inbox,
+        private readonly RecordSessionRevokedEvents $sessionRevoked,
     ) {}
 
     /**
@@ -149,8 +150,9 @@ final class CompleteRecoveryService
 
             $version = $user->credentialVersion + 1;
             $this->identities->replacePassword($user->id, $passwordHash, $version, $now);
-            $this->auth->revokeAllSessions($user->id, 'recovery', $now);
+            $affected = $this->auth->revokeAllSessions($user->id, 'recovery', $now);
             $this->auth->revokeAllDevices($user->id, 'recovery', $now);
+            $this->sessionRevoked->onto($tx, $user->id, $affected, 'recovery', $now);
             $tx->recordEvent(new CredentialVersionChanged($user->id, $version, 'recovery', $now));
             $this->audit->append($tx, 'auth.recovery_completed', 'user', $user->id, ['reason_code' => 'recovery'], $user->id, 'user');
             $this->inbox->record('user', $user->id->value, 'auth.recovery_applied', [

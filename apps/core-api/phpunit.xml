@@ -42,6 +42,7 @@
         <env name="REVERB_HOST" value="127.0.0.1"/>
         <env name="REVERB_PORT" value="8081"/>
         <env name="REVERB_SCHEME" value="http"/>
+        <env name="REVERB_SERVER_HOST" value="0.0.0.0"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="AUTH_RATE_LIMIT_STORE" value="ratelimit"/>
         <env name="AUTH_RATE_LIMIT_DRIVER" value="array"/>

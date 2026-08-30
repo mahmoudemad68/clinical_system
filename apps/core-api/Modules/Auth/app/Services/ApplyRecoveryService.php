@@ -36,6 +36,7 @@ final class ApplyRecoveryService
         private readonly AppendAuditEvent $audit,
         private readonly RecordInboxNotification $inbox,
         private readonly RecordPrivilegedFailure $privilegedFailures,
+        private readonly RecordSessionRevokedEvents $sessionRevoked,
     ) {}
 
     public function handle(?ActorContext $operator, Identifier $requestId): string
@@ -95,8 +96,9 @@ final class ApplyRecoveryService
             $version = $user->credentialVersion + 1;
             $this->identities->replacePassword($userId, (string) $row->new_password_hash, $version, $now);
             $this->auth->markRecoveryApplied($requestId, $now);
-            $this->auth->revokeAllSessions($userId, 'recovery', $now);
+            $affected = $this->auth->revokeAllSessions($userId, 'recovery', $now);
             $this->auth->revokeAllDevices($userId, 'recovery', $now);
+            $this->sessionRevoked->onto($tx, $userId, $affected, 'recovery', $now);
             $tx->recordEvent(new CredentialVersionChanged($userId, $version, 'recovery', $now));
             $this->audit->append($tx, 'auth.recovery_completed', 'user', $userId, ['reason_code' => 'recovery_applied'], $operator?->userId, $operator === null ? 'system' : 'user');
             $this->inbox->record('user', $userId->value, 'auth.recovery_applied', [

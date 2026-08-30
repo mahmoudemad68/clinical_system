@@ -30,6 +30,7 @@ final class RefreshDeviceSessionService
         private readonly FieldEncryptor $encryptor,
         private readonly AuthenticationRateLimiter $rates,
         private readonly AppendAuditEvent $audit,
+        private readonly RecordSessionRevokedEvents $sessionRevoked,
     ) {}
 
     /**
@@ -212,20 +213,23 @@ final class RefreshDeviceSessionService
      */
     private function reuse(TransactionContext $tx, object $device, DateTimeImmutable $now): array
     {
-        $session = $this->auth->findActiveSessionByDevice(Identifier::fromTrusted((string) $device->id));
-        $sessionId = $session !== null
-            ? Identifier::fromTrusted((string) $session->id)
-            : Identifier::fromTrusted((string) $device->id);
-
         $this->sessions->revokeFamily(
             $tx,
             (string) $device->refresh_family_id,
             Identifier::fromTrusted((string) $device->user_id),
-            $sessionId,
             'refresh_reuse',
             $now,
         );
-        $this->auth->revokeSessionsForDevice(Identifier::fromTrusted((string) $device->id), 'refresh_reuse', $now);
+        $extra = $this->auth->revokeSessionsForDevice(Identifier::fromTrusted((string) $device->id), 'refresh_reuse', $now);
+        if ($extra !== []) {
+            $this->sessionRevoked->onto(
+                $tx,
+                Identifier::fromTrusted((string) $device->user_id),
+                $extra,
+                'refresh_reuse',
+                $now,
+            );
+        }
         $this->telemetry->authAttempt(['result' => 'refresh_reuse', 'method' => 'refresh', 'actor_class' => 'unknown']);
         $this->audit->append(
             $tx,
