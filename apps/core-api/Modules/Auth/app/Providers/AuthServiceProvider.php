@@ -16,6 +16,7 @@ use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Contracts\AuthenticationRateLimiter;
 use Modules\Auth\Contracts\AuthTelemetry;
 use Modules\Auth\Contracts\DeliverOtpSms;
+use Modules\Auth\Contracts\DeliverSecuritySms;
 use Modules\Auth\Contracts\PasswordHasher;
 use Modules\Auth\Contracts\TotpVerifier;
 use Modules\Auth\Http\Controllers\AuthController;
@@ -39,6 +40,7 @@ use Modules\Auth\Services\DisableTotpService;
 use Modules\Auth\Services\EnrollTotpService;
 use Modules\Auth\Services\IssueAuthenticatedSession;
 use Modules\Auth\Services\Outbox\OtpDeliveryConsumer;
+use Modules\Auth\Services\Outbox\RecoveryOldChannelNoticeConsumer;
 use Modules\Auth\Services\Outbox\SessionRevokedConsumer;
 use Modules\Auth\Services\Persistence\PostgresAuthStore;
 use Modules\Auth\Services\RefreshDeviceSessionService;
@@ -67,12 +69,23 @@ final class AuthServiceProvider extends ServiceProvider
             $app->make(RandomBytes::class),
         ));
 
+        $this->app->singleton(RecordingDeliverOtpSms::class, static fn (): RecordingDeliverOtpSms => new RecordingDeliverOtpSms);
+        $this->app->singleton(DisabledDeliverOtpSms::class, static fn (): DisabledDeliverOtpSms => new DisabledDeliverOtpSms);
+
         $this->app->singleton(DeliverOtpSms::class, static function ($app): DeliverOtpSms {
             if ($app->environment('testing')) {
-                return new RecordingDeliverOtpSms;
+                return $app->make(RecordingDeliverOtpSms::class);
             }
 
-            return new DisabledDeliverOtpSms;
+            return $app->make(DisabledDeliverOtpSms::class);
+        });
+
+        $this->app->singleton(DeliverSecuritySms::class, static function ($app): DeliverSecuritySms {
+            if ($app->environment('testing')) {
+                return $app->make(RecordingDeliverOtpSms::class);
+            }
+
+            return $app->make(DisabledDeliverOtpSms::class);
         });
 
         $this->app->singleton(AuthDirectory::class, static fn ($app): AuthDirectory => new PostgresAuthStore(
@@ -125,6 +138,7 @@ final class AuthServiceProvider extends ServiceProvider
         // not require runtime secrets for Composer package discovery.
         $this->app->afterResolving(OutboxDispatcher::class, function (OutboxDispatcher $dispatcher): void {
             $dispatcher->register($this->app->make(OtpDeliveryConsumer::class));
+            $dispatcher->register($this->app->make(RecoveryOldChannelNoticeConsumer::class));
             $dispatcher->register($this->app->make(SessionRevokedConsumer::class));
         });
 

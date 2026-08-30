@@ -38,6 +38,15 @@ interface AuthDirectory
 
     public function otpById(Identifier $id): ?stdClass;
 
+    public function recoveryRequestById(Identifier $id): ?stdClass;
+
+    /**
+     * Encrypted push tokens for devices that existed on the account.
+     *
+     * @return list<string>
+     */
+    public function pushTokenCiphers(Identifier $userId): array;
+
     /**
      * @param  array<string, mixed>  $row
      */

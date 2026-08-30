@@ -10,7 +10,9 @@ use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Contracts\AuthenticationRateLimiter;
 use Modules\Auth\Contracts\PasswordHasher;
 use Modules\Auth\Enums\OtpPurpose;
+use Modules\Auth\Enums\RecoveryNoticeKind;
 use Modules\Auth\Events\CredentialVersionChanged;
+use Modules\Auth\Events\RecoveryOldChannelNoticeRequested;
 use Modules\Auth\Rules\PasswordPolicy;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Platform\Contracts\Clock;
@@ -104,6 +106,12 @@ final class CompleteRecoveryService
                     'recovery_request_id' => $requestId->value,
                     'status' => 'manual_review',
                 ]);
+                $tx->recordEvent(new RecoveryOldChannelNoticeRequested(
+                    $requestId,
+                    RecoveryNoticeKind::Queued,
+                    $user->language->value,
+                    $now,
+                ));
 
                 return ['denied' => false, 'status' => 'manual_review'];
             }
@@ -129,6 +137,12 @@ final class CompleteRecoveryService
                     'recovery_request_id' => $requestId->value,
                     'status' => 'cooling_off',
                 ]);
+                $tx->recordEvent(new RecoveryOldChannelNoticeRequested(
+                    $requestId,
+                    RecoveryNoticeKind::Queued,
+                    $user->language->value,
+                    $now,
+                ));
 
                 return ['denied' => false, 'status' => 'cooling_off'];
             }
@@ -139,6 +153,16 @@ final class CompleteRecoveryService
             $this->auth->revokeAllDevices($user->id, 'recovery', $now);
             $tx->recordEvent(new CredentialVersionChanged($user->id, $version, 'recovery', $now));
             $this->audit->append($tx, 'auth.recovery_completed', 'user', $user->id, ['reason_code' => 'recovery'], $user->id, 'user');
+            $this->inbox->record('user', $user->id->value, 'auth.recovery_applied', [
+                'recovery_request_id' => $requestId->value,
+                'status' => 'applied',
+            ]);
+            $tx->recordEvent(new RecoveryOldChannelNoticeRequested(
+                $requestId,
+                RecoveryNoticeKind::Applied,
+                $user->language->value,
+                $now,
+            ));
 
             return ['denied' => false, 'status' => 'applied'];
         });

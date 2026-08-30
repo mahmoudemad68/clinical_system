@@ -14,6 +14,8 @@ interface UserDirectory
 {
     public function findById(Identifier $id): ?UserAccount;
 
+    public function encryptedPhone(Identifier $id): ?string;
+
     public function findByPhoneHmac(string $hmac): ?UserAccount;
 
     public function lockById(Identifier $userId): ?UserAccount;

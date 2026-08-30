@@ -107,6 +107,32 @@ final class PostgresAuthStore implements AuthDirectory
         return $row instanceof stdClass ? $this->normalizeOtp($row) : null;
     }
 
+    public function recoveryRequestById(Identifier $id): ?stdClass
+    {
+        $row = $this->connection->table('recovery_requests')->where('id', $id->value)->first();
+
+        return $row instanceof stdClass ? $row : null;
+    }
+
+    public function pushTokenCiphers(Identifier $userId): array
+    {
+        $ciphers = [];
+        $rows = $this->connection->table('user_devices')
+            ->where('user_id', $userId->value)
+            ->whereNotNull('push_token_ciphertext')
+            ->orderBy('id')
+            ->get(['push_token_ciphertext']);
+
+        foreach ($rows as $row) {
+            $cipher = BinaryColumn::asString($row->push_token_ciphertext);
+            if ($cipher !== '') {
+                $ciphers[] = $cipher;
+            }
+        }
+
+        return $ciphers;
+    }
+
     public function insertDevice(array $row): void
     {
         $this->connection->table('user_devices')->insert($this->bindDeviceRow($row));
@@ -288,18 +314,23 @@ final class PostgresAuthStore implements AuthDirectory
 
     public function revokeAllDevices(Identifier $userId, string $reason, DateTimeImmutable $now): int
     {
+        $update = [
+            'revoked_at' => $now->format('Y-m-d H:i:s.uP'),
+            'revoked_reason' => $reason,
+            'token_hash' => null,
+            'refresh_token_hash' => null,
+            'previous_refresh_token_hash' => null,
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ];
+
+        if ($reason !== 'recovery') {
+            $update['push_token_ciphertext'] = null;
+        }
+
         return $this->connection->table('user_devices')
             ->where('user_id', $userId->value)
             ->whereNull('revoked_at')
-            ->update([
-                'revoked_at' => $now->format('Y-m-d H:i:s.uP'),
-                'revoked_reason' => $reason,
-                'token_hash' => null,
-                'refresh_token_hash' => null,
-                'previous_refresh_token_hash' => null,
-                'push_token_ciphertext' => null,
-                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
-            ]);
+            ->update($update);
     }
 
     public function insertSession(array $row): void

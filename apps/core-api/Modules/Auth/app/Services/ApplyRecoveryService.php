@@ -9,7 +9,9 @@ use Modules\Access\Contracts\Authorize;
 use Modules\Access\Support\Capabilities;
 use Modules\Audit\Contracts\AppendAuditEvent;
 use Modules\Auth\Contracts\AuthDirectory;
+use Modules\Auth\Enums\RecoveryNoticeKind;
 use Modules\Auth\Events\CredentialVersionChanged;
+use Modules\Auth\Events\RecoveryOldChannelNoticeRequested;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
@@ -90,6 +92,12 @@ final class ApplyRecoveryService
                 'recovery_request_id' => $requestId->value,
                 'status' => 'applied',
             ]);
+            $tx->recordEvent(new RecoveryOldChannelNoticeRequested(
+                $requestId,
+                RecoveryNoticeKind::Applied,
+                $user->language->value,
+                $now,
+            ));
 
             return 'applied';
         });

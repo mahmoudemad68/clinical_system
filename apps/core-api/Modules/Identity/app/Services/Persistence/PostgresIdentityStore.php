@@ -28,6 +28,19 @@ final class PostgresIdentityStore implements UserDirectory
         return $row instanceof stdClass ? $this->map($row) : null;
     }
 
+    public function encryptedPhone(Identifier $id): ?string
+    {
+        $value = $this->connection->table('users')->where('id', $id->value)->value('phone_e164_encrypted');
+
+        if ($value === null) {
+            return null;
+        }
+
+        $cipher = BinaryColumn::asString($value);
+
+        return $cipher === '' ? null : $cipher;
+    }
+
     public function findByPhoneHmac(string $hmac): ?UserAccount
     {
         $row = $this->connection->table('users')
