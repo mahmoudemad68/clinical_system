@@ -63,6 +63,15 @@ describe('national id canonicalization', function () {
     });
 });
 
+describe('assurance levels', function () {
+    it('treats totp and recovery-code AAL2 as privileged sessions', function () {
+        expect(AssuranceLevel::Aal2Totp->satisfiesPrivilegedSession())->toBeTrue()
+            ->and(AssuranceLevel::Aal2RecoveryCode->satisfiesPrivilegedSession())->toBeTrue()
+            ->and(AssuranceLevel::Aal1Password->satisfiesPrivilegedSession())->toBeFalse()
+            ->and(AssuranceLevel::Aal2OtpPhone->satisfiesPrivilegedSession())->toBeFalse();
+    });
+});
+
 describe('password policy', function () {
     it('rejects short, numeric-only, and phone-containing passwords', function () {
         $policy = new PasswordPolicy;

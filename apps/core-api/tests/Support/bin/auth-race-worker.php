@@ -79,6 +79,10 @@ if ($op === 'refresh') {
     if (isset($payload['code'])) {
         $body['code'] = (string) $payload['code'];
     }
+} elseif ($op === 'mfa_totp_confirm') {
+    $uri = '/api/v1/auth/mfa/totp/confirm';
+    $body = ['code' => (string) ($payload['code'] ?? '')];
+    $headers['HTTP_AUTHORIZATION'] = 'Bearer '.(string) ($payload['access_token'] ?? '');
 } else {
     fwrite(STDOUT, json_encode(['ok' => false, 'error' => 'unknown_op', 'status' => 0]));
     exit(1);

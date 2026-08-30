@@ -11,6 +11,7 @@ enum AssuranceLevel: string
 {
     case Aal1Password = 'aal1_password';
     case Aal2Totp = 'aal2_totp';
+    case Aal2RecoveryCode = 'aal2_recovery_code';
     case Aal2OtpPhone = 'aal2_otp_phone';
     case Ial1SelfAsserted = 'ial1_self_asserted';
     case Ial2ProofPending = 'ial2_proof_pending';
@@ -19,6 +20,6 @@ enum AssuranceLevel: string
 
     public function satisfiesPrivilegedSession(): bool
     {
-        return $this === self::Aal2Totp;
+        return $this === self::Aal2Totp || $this === self::Aal2RecoveryCode;
     }
 }

@@ -111,5 +111,5 @@ it('issues at most one session when two connections present the same recovery co
         ->and($sessions)->toBe(1)
         ->and(DB::table('mfa_challenges')->where('id', $challengeId)->value('consumed_at'))->not->toBeNull()
         ->and((int) DB::table('users')->where('id', $userId)->value('credential_version'))->toBe(1)
-        ->and((string) DB::table('auth_sessions')->where('user_id', $userId)->value('assurance_level'))->toBe('aal2_totp');
+        ->and((string) DB::table('auth_sessions')->where('user_id', $userId)->value('assurance_level'))->toBe('aal2_recovery_code');
 });

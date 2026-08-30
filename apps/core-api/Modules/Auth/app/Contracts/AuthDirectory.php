@@ -111,6 +111,12 @@ interface AuthDirectory
 
     public function revokeAllSessions(Identifier $userId, string $reason, DateTimeImmutable $now): void;
 
+    public function revokeOtherSessions(Identifier $userId, Identifier $keepSessionId, string $reason, DateTimeImmutable $now): void;
+
+    public function revokeOtherDevices(Identifier $userId, Identifier $keepDeviceId, string $reason, DateTimeImmutable $now): void;
+
+    public function updateSessionAssurance(Identifier $sessionId, string $assuranceLevel, DateTimeImmutable $now): void;
+
     /**
      * @param  array<string, mixed>  $row
      */
@@ -132,6 +138,15 @@ interface AuthDirectory
     public function insertTotpFactor(array $row): void;
 
     public function pendingTotp(Identifier $userId): ?stdClass;
+
+    /**
+     * Enabled TOTP rows for the user, locked in stable id order.
+     *
+     * @return list<stdClass>
+     */
+    public function lockEnabledTotpFactors(Identifier $userId): array;
+
+    public function discardUnverifiedTotp(Identifier $factorId, Identifier $disabledBy, DateTimeImmutable $now): void;
 
     public function markTotpVerified(Identifier $factorId, DateTimeImmutable $now): void;
 

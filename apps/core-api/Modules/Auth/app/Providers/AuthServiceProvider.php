@@ -43,6 +43,7 @@ use Modules\Auth\Services\Outbox\SessionRevokedConsumer;
 use Modules\Auth\Services\Persistence\PostgresAuthStore;
 use Modules\Auth\Services\RefreshDeviceSessionService;
 use Modules\Auth\Services\RegisterAccountService;
+use Modules\Auth\Services\ReplaceTotpService;
 use Modules\Auth\Services\RequestOtpService;
 use Modules\Auth\Services\RotateRecoveryCodesService;
 use Modules\Auth\Services\SessionCommandService;
@@ -106,6 +107,7 @@ final class AuthServiceProvider extends ServiceProvider
         $this->app->bind(SessionCommandService::class);
         $this->app->bind(CompleteRecoveryService::class);
         $this->app->bind(ApplyRecoveryService::class);
+        $this->app->bind(ReplaceTotpService::class);
         $this->app->bind(EnrollTotpService::class);
         $this->app->bind(ConfirmTotpService::class);
         $this->app->bind(RotateRecoveryCodesService::class);

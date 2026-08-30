@@ -75,7 +75,9 @@ final class IssueAuthenticatedSession
 
         $sessionId = $this->ids->next();
         $deviceId = $this->ids->next();
-        $issuedAssurance = $needsTotp ? AssuranceLevel::Aal2Totp : AssuranceLevel::Aal1Password;
+        $issuedAssurance = $needsTotp
+            ? ($assurance->satisfiesPrivilegedSession() ? $assurance : AssuranceLevel::Aal2Totp)
+            : AssuranceLevel::Aal1Password;
         $capabilities = Capabilities::forActor(
             $user->accountType->value,
             $issuedAssurance->satisfiesPrivilegedSession(),

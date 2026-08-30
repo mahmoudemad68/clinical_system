@@ -401,6 +401,44 @@ final class PostgresAuthStore implements AuthDirectory
             ]);
     }
 
+    public function revokeOtherSessions(Identifier $userId, Identifier $keepSessionId, string $reason, DateTimeImmutable $now): void
+    {
+        $this->connection->table('auth_sessions')
+            ->where('user_id', $userId->value)
+            ->where('id', '!=', $keepSessionId->value)
+            ->whereNull('revoked_at')
+            ->update([
+                'revoked_at' => $now->format('Y-m-d H:i:s.uP'),
+                'revoked_reason' => $reason,
+                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+            ]);
+    }
+
+    public function revokeOtherDevices(Identifier $userId, Identifier $keepDeviceId, string $reason, DateTimeImmutable $now): void
+    {
+        $this->connection->table('user_devices')
+            ->where('user_id', $userId->value)
+            ->where('id', '!=', $keepDeviceId->value)
+            ->whereNull('revoked_at')
+            ->update([
+                'revoked_at' => $now->format('Y-m-d H:i:s.uP'),
+                'revoked_reason' => $reason,
+                'token_hash' => null,
+                'refresh_token_hash' => null,
+                'previous_refresh_token_hash' => null,
+                'push_token_ciphertext' => null,
+                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+            ]);
+    }
+
+    public function updateSessionAssurance(Identifier $sessionId, string $assuranceLevel, DateTimeImmutable $now): void
+    {
+        $this->connection->table('auth_sessions')->where('id', $sessionId->value)->update([
+            'assurance_level' => $assuranceLevel,
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
     public function insertMfaChallenge(array $row): void
     {
         $this->connection->table('mfa_challenges')->insert($row);
@@ -470,6 +508,41 @@ final class PostgresAuthStore implements AuthDirectory
             ->first();
 
         return $row instanceof stdClass ? $this->normalizeFactor($row) : null;
+    }
+
+    public function lockEnabledTotpFactors(Identifier $userId): array
+    {
+        $rows = $this->connection->table('mfa_factors')
+            ->where('user_id', $userId->value)
+            ->where('factor_type', 'totp')
+            ->whereNull('disabled_at')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        $factors = [];
+        foreach ($rows as $row) {
+            if ($row instanceof stdClass) {
+                $factors[] = $this->normalizeFactor($row);
+            }
+        }
+
+        return $factors;
+    }
+
+    public function discardUnverifiedTotp(Identifier $factorId, Identifier $disabledBy, DateTimeImmutable $now): void
+    {
+        $tombstone = random_bytes(32);
+        $this->connection->table('mfa_factors')
+            ->where('id', $factorId->value)
+            ->whereNull('verified_at')
+            ->whereNull('disabled_at')
+            ->update([
+                'disabled_at' => $now->format('Y-m-d H:i:s.uP'),
+                'disabled_by' => $disabledBy->value,
+                'secret_ciphertext' => BinaryColumn::bind($tombstone),
+                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+            ]);
     }
 
     public function markTotpVerified(Identifier $factorId, DateTimeImmutable $now): void

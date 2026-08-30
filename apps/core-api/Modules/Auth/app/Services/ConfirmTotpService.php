@@ -31,6 +31,7 @@ final class ConfirmTotpService
         private readonly IdentityGenerator $ids,
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
+        private readonly ReplaceTotpService $replace,
     ) {}
 
     /**
@@ -41,6 +42,10 @@ final class ConfirmTotpService
         $decision = $this->authorizer->decide($actor, Capabilities::MFA_MANAGE_SELF);
         if (! $decision->allowed) {
             throw new AuthorizationDenied;
+        }
+
+        if ($this->auth->activeTotp($actor->userId) !== null) {
+            return $this->replace->confirm($actor, $code);
         }
 
         return $this->transactions->run(function (TransactionContext $tx) use ($actor, $code): array {

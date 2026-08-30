@@ -29,6 +29,7 @@ final class EnrollTotpService
         private readonly IdentityGenerator $ids,
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
+        private readonly ReplaceTotpService $replace,
     ) {}
 
     /**
@@ -41,8 +42,12 @@ final class EnrollTotpService
             throw new AuthorizationDenied;
         }
 
+        if ($this->auth->activeTotp($actor->userId) !== null) {
+            return $this->replace->begin($actor);
+        }
+
         return $this->transactions->run(function (TransactionContext $tx) use ($actor): array {
-            if ($this->auth->activeTotp($actor->userId) !== null || $this->auth->pendingTotp($actor->userId) !== null) {
+            if ($this->auth->pendingTotp($actor->userId) !== null) {
                 throw new InvalidValueObject('An authenticator factor is already pending or active.');
             }
 

@@ -115,7 +115,7 @@ final class CompleteMfaService
                     (string) $challenge->platform,
                     (string) $challenge->device_label,
                     $now,
-                    AssuranceLevel::Aal2Totp,
+                    AssuranceLevel::Aal2RecoveryCode,
                 );
             }
 

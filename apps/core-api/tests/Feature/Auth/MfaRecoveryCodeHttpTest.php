@@ -142,7 +142,7 @@ function mfaRcStoredHashIsNotPlaintext(string $userId, string $plain): void
 }
 
 describe('MFA recovery-code complete HTTP matrix', function () {
-    it('returns 200 and aal2_totp when an unused recovery code completes the challenge once', function () {
+    it('returns 200 and aal2_recovery_code when an unused recovery code completes the challenge once', function () {
         $doctor = mfaRcInsertDoctor();
         $plain = mfaRcInsertCode($doctor['id'], $doctor['factor_id']);
         $challengeId = mfaRcLoginChallenge($doctor['phone'], $doctor['password']);
@@ -153,15 +153,15 @@ describe('MFA recovery-code complete HTTP matrix', function () {
 
         $response->assertOk()
             ->assertJsonPath('data.session_kind', 'device')
-            ->assertJsonPath('data.assurance_level', 'aal2_totp');
+            ->assertJsonPath('data.assurance_level', 'aal2_recovery_code');
         expect($response->json('data.access_token'))->toBeString()->not->toBe('')
             ->and(mfaRcUnusedCount($doctor['id']))->toBe(0)
             ->and(DB::table('mfa_challenges')->where('id', $challengeId)->value('consumed_at'))->not->toBeNull()
             ->and((int) DB::table('users')->where('id', $doctor['id'])->value('credential_version'))->toBe(1)
-            ->and((string) DB::table('auth_sessions')->where('user_id', $doctor['id'])->value('assurance_level'))->toBe('aal2_totp')
-            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->count())->toBe(1);
+            ->and((string) DB::table('auth_sessions')->where('user_id', $doctor['id'])->value('assurance_level'))->toBe('aal2_recovery_code')
+            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->where('actor_id', $doctor['id'])->count())->toBe(1);
         mfaRcDoesNotLeak($response->json(), $plain);
-        mfaRcDoesNotLeak(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->first(), $plain);
+        mfaRcDoesNotLeak(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->where('actor_id', $doctor['id'])->first(), $plain);
         mfaRcStoredHashIsNotPlaintext($doctor['id'], $plain);
     });
 
@@ -185,7 +185,7 @@ describe('MFA recovery-code complete HTTP matrix', function () {
         expect((string) DB::table('mfa_recovery_codes')->where('user_id', $doctor['id'])->value('consumed_at'))->toBe($consumedAt)
             ->and((int) DB::table('auth_sessions')->where('user_id', $doctor['id'])->count())->toBe($sessions)
             ->and((int) DB::table('users')->where('id', $doctor['id'])->value('credential_version'))->toBe(1)
-            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->count())->toBe(1);
+            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->where('actor_id', $doctor['id'])->count())->toBe(1);
         mfaRcDoesNotLeak($replay->json(), $plain);
     });
 
@@ -203,7 +203,7 @@ describe('MFA recovery-code complete HTTP matrix', function () {
         expect(mfaRcUnusedCount($doctor['id']))->toBe(1)
             ->and(DB::table('mfa_challenges')->where('id', $challengeId)->value('consumed_at'))->toBeNull()
             ->and(DB::table('auth_sessions')->where('user_id', $doctor['id'])->count())->toBe(0)
-            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->count())->toBe(0);
+            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->where('actor_id', $doctor['id'])->count())->toBe(0);
         mfaRcDoesNotLeak($response->json(), 'DEADBEEF01');
     });
 
@@ -224,7 +224,8 @@ describe('MFA recovery-code complete HTTP matrix', function () {
             ->and(mfaRcUnusedCount($other['id']))->toBe(1)
             ->and(DB::table('mfa_challenges')->where('id', $challengeId)->value('consumed_at'))->toBeNull()
             ->and(DB::table('auth_sessions')->where('user_id', $other['id'])->count())->toBe(0)
-            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->count())->toBe(0);
+            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->where('actor_id', $other['id'])->count())->toBe(0)
+            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->where('actor_id', $owner['id'])->count())->toBe(0);
         mfaRcDoesNotLeak($response->json(), $plain);
     });
 
@@ -249,7 +250,7 @@ describe('MFA recovery-code complete HTTP matrix', function () {
             ->and(DB::table('mfa_challenges')->where('id', $second)->value('consumed_at'))->toBeNull()
             ->and((int) DB::table('auth_sessions')->where('user_id', $doctor['id'])->count())->toBe($sessions)
             ->and((int) DB::table('users')->where('id', $doctor['id'])->value('credential_version'))->toBe(1)
-            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->count())->toBe(1);
+            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->where('actor_id', $doctor['id'])->count())->toBe(1);
         mfaRcDoesNotLeak($replay->json(), $plain);
     });
 
@@ -270,7 +271,7 @@ describe('MFA recovery-code complete HTTP matrix', function () {
         expect(mfaRcUnusedCount($doctor['id']))->toBe(1)
             ->and(DB::table('mfa_challenges')->where('id', $challengeId)->value('consumed_at'))->toBeNull()
             ->and(DB::table('auth_sessions')->where('user_id', $doctor['id'])->count())->toBe(0)
-            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->count())->toBe(0);
+            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->where('actor_id', $doctor['id'])->count())->toBe(0);
         mfaRcDoesNotLeak($response->json(), $plain);
     });
 
@@ -289,7 +290,7 @@ describe('MFA recovery-code complete HTTP matrix', function () {
             ->assertJsonPath('data.assurance_level', 'aal2_totp');
         expect(mfaRcUnusedCount($doctor['id']))->toBe(1)
             ->and((string) DB::table('auth_sessions')->where('user_id', $doctor['id'])->value('assurance_level'))->toBe('aal2_totp')
-            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->count())->toBe(0);
+            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->where('actor_id', $doctor['id'])->count())->toBe(0);
     });
 
     it('returns 422 when the request contains both a TOTP code and a recovery code', function () {
@@ -308,7 +309,7 @@ describe('MFA recovery-code complete HTTP matrix', function () {
         expect(mfaRcUnusedCount($doctor['id']))->toBe(1)
             ->and(DB::table('mfa_challenges')->where('id', $challengeId)->value('consumed_at'))->toBeNull()
             ->and(DB::table('auth_sessions')->where('user_id', $doctor['id'])->count())->toBe(0)
-            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->count())->toBe(0);
+            ->and(DB::table('audit_events')->where('event_name', 'auth.mfa_recovery_code_consumed')->where('actor_id', $doctor['id'])->count())->toBe(0);
         mfaRcDoesNotLeak($response->json(), $plain);
     });
 });
