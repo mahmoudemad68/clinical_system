@@ -49,19 +49,22 @@ class FailingVault implements CredentialVault {
 }
 
 void main() {
-  test('token store writes a single envelope so a crash cannot split the pair', () async {
-    final vault = MemoryVault();
-    final store = TokenStore(vault);
+  test(
+    'token store writes a single envelope so a crash cannot split the pair',
+    () async {
+      final vault = MemoryVault();
+      final store = TokenStore(vault);
 
-    await store.write(access: 'access-material', refresh: 'refresh-material');
-    expect(vault.values.containsKey(TokenStore.envelopeKey), isTrue);
-    expect(await store.readAccess(), isNotEmpty);
-    expect(await store.readRefresh(), isNotEmpty);
+      await store.write(access: 'access-material', refresh: 'refresh-material');
+      expect(vault.values.containsKey(TokenStore.envelopeKey), isTrue);
+      expect(await store.readAccess(), isNotEmpty);
+      expect(await store.readRefresh(), isNotEmpty);
 
-    await store.clear();
-    expect(await store.readAccess(), isNull);
-    expect(await store.readRefresh(), isNull);
-  });
+      await store.clear();
+      expect(await store.readAccess(), isNull);
+      expect(await store.readRefresh(), isNull);
+    },
+  );
 
   test('a vault write failure leaves no split access/refresh pair', () async {
     final vault = FailingVault();
@@ -96,5 +99,27 @@ void main() {
     expect(outcome.accessToken, isNull);
     expect(outcome.refreshToken, isNull);
     expect(outcome.sessionKind, 'device');
+  });
+
+  test(
+    'a corrupt stored envelope is unauthenticated and fail-closed',
+    () async {
+      final vault = MemoryVault();
+      vault.values[TokenStore.envelopeKey] = '{not-json';
+      final store = TokenStore(vault);
+
+      expect(await store.readAccess(), isNull);
+      expect(await store.readRefresh(), isNull);
+    },
+  );
+
+  test('an envelope missing a token is unauthenticated', () async {
+    final vault = MemoryVault();
+    vault.values[TokenStore.envelopeKey] =
+        '{"version":1,"access":"only-access"}';
+    final store = TokenStore(vault);
+
+    expect(await store.readAccess(), isNull);
+    expect(await store.readRefresh(), isNull);
   });
 }
