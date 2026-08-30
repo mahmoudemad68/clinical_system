@@ -337,7 +337,7 @@ final class DiagnosticsSliceTest extends TestCase
             'safe_error_class' => null,
             'created_at' => $now,
             'updated_at' => $now,
-            'expires_at' => '2026-08-29T00:00:00.000000+00:00',
+            'expires_at' => now('UTC')->addDay()->format('Y-m-d\TH:i:s.uP'),
         ]);
 
         $this->postJson(
