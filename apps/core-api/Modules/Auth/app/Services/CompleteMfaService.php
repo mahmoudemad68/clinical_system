@@ -6,6 +6,7 @@ namespace Modules\Auth\Services;
 
 use DateTimeImmutable;
 use Modules\Audit\Contracts\AppendAuditEvent;
+use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Contracts\AuthenticationRateLimiter;
 use Modules\Auth\Contracts\AuthTelemetry;
@@ -13,6 +14,7 @@ use Modules\Auth\Contracts\TotpVerifier;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\AssuranceLevel;
 use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Support\UserAccount;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
@@ -33,6 +35,7 @@ final class CompleteMfaService
         private readonly AuthTelemetry $telemetry,
         private readonly AuthenticationRateLimiter $rates,
         private readonly AppendAuditEvent $audit,
+        private readonly RecordPrivilegedFailure $privilegedFailures,
     ) {}
 
     /**
@@ -87,6 +90,12 @@ final class CompleteMfaService
 
             if ($user === null || $factor === null || $attempts > 5) {
                 $this->telemetry->mfa(['result' => 'denied']);
+                $this->recordPrivilegedMfaDenial(
+                    $tx,
+                    $user,
+                    'challenge_unusable',
+                    $usingRecovery ? 'recovery_code' : 'totp',
+                );
 
                 return ['denied' => true];
             }
@@ -98,6 +107,7 @@ final class CompleteMfaService
                 );
                 if ($row === null || ! $this->auth->consumeRecoveryCode(Identifier::fromTrusted((string) $row->id), $now)) {
                     $this->telemetry->mfa(['result' => 'denied']);
+                    $this->recordPrivilegedMfaDenial($tx, $user, 'recovery_code_invalid', 'recovery_code');
 
                     return ['denied' => true];
                 }
@@ -133,6 +143,7 @@ final class CompleteMfaService
 
             if (! $totp->valid || $totp->acceptedCounter === null) {
                 $this->telemetry->mfa(['result' => 'denied']);
+                $this->recordPrivilegedMfaDenial($tx, $user, 'totp_invalid', 'totp');
 
                 return ['denied' => true];
             }
@@ -159,5 +170,24 @@ final class CompleteMfaService
         unset($result['denied']);
 
         return $result;
+    }
+
+    private function recordPrivilegedMfaDenial(
+        TransactionContext $tx,
+        ?UserAccount $user,
+        string $reasonCode,
+        string $method,
+    ): void {
+        if ($user === null || ! $user->accountType->isPrivilegedStaff()) {
+            return;
+        }
+
+        $this->privilegedFailures->authenticationFailed(
+            $user->id,
+            $user->accountType->value,
+            $reasonCode,
+            $method,
+            $tx,
+        );
     }
 }

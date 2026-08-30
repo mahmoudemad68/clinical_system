@@ -7,6 +7,7 @@ namespace Modules\Identity\Services;
 use Modules\Access\Contracts\Authorize;
 use Modules\Access\Support\Capabilities;
 use Modules\Audit\Contracts\AppendAuditEvent;
+use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Events\CredentialVersionChanged;
 use Modules\Identity\Contracts\UserDirectory;
@@ -34,12 +35,22 @@ final class DisableIdentityService
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
         private readonly Authorize $authorizer,
+        private readonly RecordPrivilegedFailure $privilegedFailures,
     ) {}
 
     public function handle(ActorContext $initiator, Identifier $userId, AccountStatus $target, string $reasonCode): void
     {
         $decision = $this->authorizer->decide($initiator, Capabilities::IDENTITY_DISABLE, 'user', $userId);
         if (! $decision->allowed) {
+            $this->privilegedFailures->authorizationDenied(
+                $initiator->userId,
+                $initiator->accountType->value,
+                $initiator->assuranceLevel->value,
+                Capabilities::IDENTITY_DISABLE,
+                $decision->reasonCode,
+                $userId,
+                'user',
+            );
             throw new AuthorizationDenied;
         }
 

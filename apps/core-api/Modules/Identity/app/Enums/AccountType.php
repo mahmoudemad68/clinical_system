@@ -27,4 +27,12 @@ enum AccountType: string
     {
         return $this->value;
     }
+
+    /**
+     * Staff identities whose failed authentication is a privileged-security event.
+     */
+    public function isPrivilegedStaff(): bool
+    {
+        return $this !== self::Patient;
+    }
 }

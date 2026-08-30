@@ -11,6 +11,7 @@ use Modules\Access\Contracts\GrantStore;
 use Modules\Access\Events\AccessGrantIssued;
 use Modules\Access\Support\Capabilities;
 use Modules\Audit\Contracts\AppendAuditEvent;
+use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\TransactionContext;
@@ -28,6 +29,7 @@ final class GrantContextualAccessService implements GrantContextualAccess
         private readonly Authorize $authorizer,
         private readonly TransactionRunner $transactions,
         private readonly AppendAuditEvent $audit,
+        private readonly RecordPrivilegedFailure $privilegedFailures,
     ) {}
 
     public function grant(
@@ -52,6 +54,15 @@ final class GrantContextualAccessService implements GrantContextualAccess
             $contextId,
         );
         if (! $decision->allowed) {
+            $this->privilegedFailures->authorizationDenied(
+                $initiator->userId,
+                $initiator->accountType->value,
+                $initiator->assuranceLevel->value,
+                Capabilities::ACCESS_GRANT_ISSUE,
+                $decision->reasonCode,
+                $resourceId,
+                $resourceType,
+            );
             throw new AuthorizationDenied;
         }
 

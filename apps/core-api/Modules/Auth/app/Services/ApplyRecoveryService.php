@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Modules\Access\Contracts\Authorize;
 use Modules\Access\Support\Capabilities;
 use Modules\Audit\Contracts\AppendAuditEvent;
+use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Enums\RecoveryNoticeKind;
 use Modules\Auth\Events\CredentialVersionChanged;
@@ -34,6 +35,7 @@ final class ApplyRecoveryService
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
         private readonly RecordInboxNotification $inbox,
+        private readonly RecordPrivilegedFailure $privilegedFailures,
     ) {}
 
     public function handle(?ActorContext $operator, Identifier $requestId): string
@@ -42,21 +44,30 @@ final class ApplyRecoveryService
             throw new FeatureUnavailable;
         }
 
+        if ($operator !== null) {
+            $decision = $this->authorizer->decide(
+                $operator,
+                Capabilities::RECOVERY_APPLY,
+                'recovery_request',
+                $requestId,
+            );
+            if (! $decision->allowed) {
+                $this->privilegedFailures->authorizationDenied(
+                    $operator->userId,
+                    $operator->accountType->value,
+                    $operator->assuranceLevel->value,
+                    Capabilities::RECOVERY_APPLY,
+                    $decision->reasonCode,
+                    $requestId,
+                    'recovery_request',
+                );
+                throw new AuthorizationDenied;
+            }
+        }
+
         return $this->transactions->run(function (TransactionContext $tx) use ($operator, $requestId): string {
             $row = $this->auth->lockRecoveryRequest($requestId);
             $now = $this->clock->now();
-
-            if ($operator !== null) {
-                $decision = $this->authorizer->decide(
-                    $operator,
-                    Capabilities::RECOVERY_APPLY,
-                    'recovery_request',
-                    $requestId,
-                );
-                if (! $decision->allowed) {
-                    throw new AuthorizationDenied;
-                }
-            }
 
             if ($row === null || $row->applied_at !== null) {
                 throw new InvalidValueObject('The recovery request cannot be applied.');

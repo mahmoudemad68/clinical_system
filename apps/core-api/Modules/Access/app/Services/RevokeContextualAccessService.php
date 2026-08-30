@@ -11,6 +11,7 @@ use Modules\Access\Contracts\RevokeContextualAccess;
 use Modules\Access\Events\AccessGrantRevoked;
 use Modules\Access\Support\Capabilities;
 use Modules\Audit\Contracts\AppendAuditEvent;
+use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
@@ -24,12 +25,22 @@ final class RevokeContextualAccessService implements RevokeContextualAccess
         private readonly Authorize $authorizer,
         private readonly TransactionRunner $transactions,
         private readonly AppendAuditEvent $audit,
+        private readonly RecordPrivilegedFailure $privilegedFailures,
     ) {}
 
     public function revoke(ActorContext $initiator, Identifier $grantId, DateTimeImmutable $now): void
     {
         $decision = $this->authorizer->decide($initiator, Capabilities::ACCESS_GRANT_REVOKE, 'contextual_access_grant', $grantId);
         if (! $decision->allowed) {
+            $this->privilegedFailures->authorizationDenied(
+                $initiator->userId,
+                $initiator->accountType->value,
+                $initiator->assuranceLevel->value,
+                Capabilities::ACCESS_GRANT_REVOKE,
+                $decision->reasonCode,
+                $grantId,
+                'contextual_access_grant',
+            );
             throw new AuthorizationDenied;
         }
 

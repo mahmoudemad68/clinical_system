@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Auth\Services;
 
+use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Auth\Contracts\AuthenticationRateLimiter;
 use Modules\Auth\Contracts\AuthTelemetry;
 use Modules\Auth\Contracts\PasswordHasher;
 use Modules\Auth\Enums\ClientClass;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Support\UserAccount;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
@@ -26,6 +28,7 @@ final class AuthenticatePasswordService
         private readonly IssueAuthenticatedSession $sessions,
         private readonly Clock $clock,
         private readonly AuthTelemetry $telemetry,
+        private readonly RecordPrivilegedFailure $privilegedFailures,
     ) {}
 
     /**
@@ -51,13 +54,19 @@ final class AuthenticatePasswordService
             throw new AuthenticationFailed;
         }
 
-        if (! $this->hasher->verify($password, $user->passwordHash) || ! $user->status->canReceiveDeviceSession()) {
+        $verified = $this->hasher->verify($password, $user->passwordHash);
+        if (! $verified || ! $user->status->canReceiveDeviceSession()) {
             $this->telemetry->authAttempt(['result' => 'denied', 'method' => 'password', 'actor_class' => $user->accountType->actorClass()]);
+            $this->recordPrivilegedAuthenticationFailure(
+                $user,
+                $verified ? 'account_not_eligible' : 'invalid_credentials',
+            );
             throw new AuthenticationFailed;
         }
 
         if (! ClientClass::from($clientClass)->compatibleWith($user->accountType->value)) {
             $this->telemetry->authAttempt(['result' => 'denied', 'method' => 'password', 'actor_class' => $user->accountType->actorClass()]);
+            $this->recordPrivilegedAuthenticationFailure($user, 'client_mismatch');
             throw new AuthenticationFailed;
         }
 
@@ -72,5 +81,19 @@ final class AuthenticatePasswordService
         ]);
 
         return $result;
+    }
+
+    private function recordPrivilegedAuthenticationFailure(UserAccount $user, string $reasonCode): void
+    {
+        if (! $user->accountType->isPrivilegedStaff()) {
+            return;
+        }
+
+        $this->privilegedFailures->authenticationFailed(
+            $user->id,
+            $user->accountType->value,
+            $reasonCode,
+            'password',
+        );
     }
 }

@@ -6,6 +6,7 @@ namespace Modules\Auth\Console;
 
 use Illuminate\Console\Command;
 use Modules\Audit\Contracts\AppendAuditEvent;
+use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Contracts\PasswordHasher;
 use Modules\Auth\Contracts\TotpVerifier;
@@ -48,6 +49,7 @@ final class BootstrapAdminCommand extends Command
         Clock $clock,
         TransactionRunner $transactions,
         AppendAuditEvent $audit,
+        RecordPrivilegedFailure $privilegedFailures,
     ): int {
         if (! (bool) config('identity.bootstrap.enabled', false) || (string) config('app.env') === 'production') {
             $this->error('Bootstrap is disabled.');
@@ -58,7 +60,7 @@ final class BootstrapAdminCommand extends Command
         $phone = $protector->phone((string) $this->argument('phone'));
 
         if ((bool) $this->option('confirm')) {
-            return $this->confirmEnrollment($users, $auth, $protector, $totp, $clock, $transactions, $audit, $phone);
+            return $this->confirmEnrollment($users, $auth, $protector, $totp, $clock, $transactions, $audit, $privilegedFailures, $phone);
         }
 
         if ($users->countByAccountType(AccountType::Admin) > 0) {
@@ -150,6 +152,7 @@ final class BootstrapAdminCommand extends Command
         Clock $clock,
         TransactionRunner $transactions,
         AppendAuditEvent $audit,
+        RecordPrivilegedFailure $privilegedFailures,
         PhoneE164 $phone,
     ): int {
         $code = (string) $this->secret('Confirmation TOTP');
@@ -168,6 +171,7 @@ final class BootstrapAdminCommand extends Command
 
         $factor = $auth->pendingTotp($user->id);
         if ($factor === null) {
+            $privilegedFailures->bootstrapDenied($user->id, 'already_confirmed');
             $this->error('No pending TOTP enrollment exists.');
 
             return self::FAILURE;
@@ -177,6 +181,7 @@ final class BootstrapAdminCommand extends Command
         $now = $clock->now();
         $result = $totp->verify($secret, $code, $now, null);
         if (! $result->valid) {
+            $privilegedFailures->bootstrapDenied($user->id, 'totp_invalid');
             $this->error('TOTP confirmation failed.');
 
             return self::FAILURE;

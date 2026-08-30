@@ -248,6 +248,28 @@ function recoveryApplyUnchanged(string $requestId, string $userId, int $credenti
         ->and((int) $user->credential_version)->toBe($credentialVersion);
 }
 
+function recoveryApplyPrivilegedDenialCount(): int
+{
+    return (int) DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count();
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function recoveryApplyPrivilegedDenialMetadata(): array
+{
+    $row = DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->first();
+    expect($row)->not->toBeNull();
+    $raw = $row->metadata;
+    if (is_string($raw)) {
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    return is_array($raw) ? $raw : (array) $raw;
+}
+
 describe('privileged recovery apply HTTP matrix', function () {
     it('returns 401 when an unauthenticated caller posts apply', function () {
         $subject = recoveryApplyInsertPrivileged('doctor');
@@ -258,6 +280,7 @@ describe('privileged recovery apply HTTP matrix', function () {
         $response->assertUnauthorized()
             ->assertJsonPath('errors.0.code', 'UNAUTHENTICATED');
         recoveryApplyUnchanged($requestId, $subject['id'], 1, 'manual_review');
+        expect(DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count())->toBe(0);
     });
 
     it('returns 404 when a patient posts apply and does not mutate recovery', function () {
@@ -270,7 +293,13 @@ describe('privileged recovery apply HTTP matrix', function () {
         $response->assertNotFound()
             ->assertJsonPath('errors.0.code', 'NOT_FOUND');
         recoveryApplyUnchanged($requestId, $subject['id'], 1, 'manual_review');
-        expect(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->count())->toBe(0);
+        expect(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->count())->toBe(0)
+            ->and(recoveryApplyPrivilegedDenialCount())->toBe(1);
+        expect(recoveryApplyPrivilegedDenialMetadata())->toMatchArray([
+            'capability' => 'auth.recovery.apply',
+            'account_type' => 'patient',
+            'reason_code' => 'insufficient_assurance',
+        ]);
     });
 
     it('returns 404 when an AAL1 admin posts apply and does not mutate recovery', function () {
@@ -287,7 +316,14 @@ describe('privileged recovery apply HTTP matrix', function () {
         $response->assertNotFound()
             ->assertJsonPath('errors.0.code', 'NOT_FOUND');
         recoveryApplyUnchanged($requestId, $subject['id'], 1, 'manual_review');
-        expect(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->count())->toBe(0);
+        expect(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->count())->toBe(0)
+            ->and(recoveryApplyPrivilegedDenialCount())->toBe(1);
+        expect(recoveryApplyPrivilegedDenialMetadata())->toMatchArray([
+            'capability' => 'auth.recovery.apply',
+            'account_type' => 'admin',
+            'assurance_level' => 'aal1_password',
+            'reason_code' => 'insufficient_assurance',
+        ]);
     });
 
     it('returns 404 when an AAL2 doctor posts apply and does not mutate recovery', function () {
@@ -301,7 +337,13 @@ describe('privileged recovery apply HTTP matrix', function () {
         $response->assertNotFound()
             ->assertJsonPath('errors.0.code', 'NOT_FOUND');
         recoveryApplyUnchanged($requestId, $subject['id'], 1, 'manual_review');
-        expect(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->count())->toBe(0);
+        expect(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->count())->toBe(0)
+            ->and(recoveryApplyPrivilegedDenialCount())->toBe(1);
+        expect(recoveryApplyPrivilegedDenialMetadata())->toMatchArray([
+            'capability' => 'auth.recovery.apply',
+            'account_type' => 'doctor',
+            'reason_code' => 'insufficient_assurance',
+        ]);
     });
 
     it('returns 422 when an AAL2 admin applies a recovery still inside cooling-off', function () {
@@ -321,7 +363,8 @@ describe('privileged recovery apply HTTP matrix', function () {
             ->assertJsonPath('errors.0.code', 'VALIDATION_FAILED');
         recoveryApplyUnchanged($requestId, $patient['id'], 1, 'cooling_off');
         expect((int) DB::table('users')->where('id', $patient['id'])->value('credential_version'))->toBe(1)
-            ->and(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->count())->toBe(0);
+            ->and(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->count())->toBe(0)
+            ->and(recoveryApplyPrivilegedDenialCount())->toBe(0);
     });
 
     it('returns 200 once when an AAL2 admin applies an eligible manual_review recovery', function () {
@@ -349,13 +392,15 @@ describe('privileged recovery apply HTTP matrix', function () {
         expect(DB::table('auth_sessions')->where('user_id', $subject['id'])->whereNull('revoked_at')->count())->toBe(0)
             ->and(DB::table('user_devices')->where('user_id', $subject['id'])->whereNull('revoked_at')->count())->toBe(0)
             ->and(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->where('object_id', $subject['id'])->count())->toBe(1)
+            ->and(recoveryApplyPrivilegedDenialCount())->toBe(0)
             ->and(DB::table('notifications')->where('notifiable_id', $subject['id'])->pluck('data')->implode(''))->toContain('auth.recovery_applied');
 
         $replay = recoveryApplyPost($requestId, cookieCsrf: true);
         $replay->assertUnprocessable()
             ->assertJsonPath('errors.0.code', 'VALIDATION_FAILED');
         expect((int) DB::table('users')->where('id', $subject['id'])->value('credential_version'))->toBe(2)
-            ->and(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->where('object_id', $subject['id'])->count())->toBe(1);
+            ->and(DB::table('audit_events')->where('event_name', 'auth.recovery_completed')->where('object_id', $subject['id'])->count())->toBe(1)
+            ->and(recoveryApplyPrivilegedDenialCount())->toBe(0);
     });
 
     it('returns 200 when an AAL2 admin applies cooling-off only after the delay elapses', function () {

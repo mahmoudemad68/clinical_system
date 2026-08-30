@@ -190,7 +190,14 @@ describe('interactive TOTP confirmation', function () {
             ->assertFailed();
 
         expect(bootstrapAdminVerifiedAt($userId))->toBeNull()
-            ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_confirmed')->count())->toBe(0);
+            ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_confirmed')->count())->toBe(0)
+            ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_denied')->count())->toBe(1);
+
+        $denied = DB::table('audit_events')->where('event_name', 'identity.bootstrap_denied')->first();
+        $encoded = json_encode($denied->metadata);
+        expect($encoded)->not->toContain('000000');
+        $metadata = is_string($denied->metadata) ? json_decode($denied->metadata, true) : (array) $denied->metadata;
+        expect($metadata)->toMatchArray(['reason_code' => 'totp_invalid']);
     });
 
     it('fails safely when the hidden TOTP prompt is empty', function () {
@@ -206,7 +213,8 @@ describe('interactive TOTP confirmation', function () {
             ->assertFailed();
 
         expect(bootstrapAdminVerifiedAt($userId))->toBeNull()
-            ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_confirmed')->count())->toBe(0);
+            ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_confirmed')->count())->toBe(0)
+            ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_denied')->count())->toBe(0);
     });
 
     it('does not print the confirmation TOTP in console output', function () {
@@ -245,6 +253,7 @@ describe('interactive TOTP confirmation', function () {
             ->expectsOutput('No pending TOTP enrollment exists.')
             ->assertFailed();
 
-        expect(DB::table('audit_events')->where('event_name', 'identity.bootstrap_confirmed')->count())->toBe(1);
+        expect(DB::table('audit_events')->where('event_name', 'identity.bootstrap_confirmed')->count())->toBe(1)
+            ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_denied')->count())->toBe(1);
     });
 });
