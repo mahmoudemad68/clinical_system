@@ -9,13 +9,17 @@ use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Modules\Access\Contracts\GrantStore;
+use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Exceptions\DuplicateIdentity;
 use Modules\Platform\Support\Identifier;
 use stdClass;
 
 final class PostgresGrantStore implements GrantStore
 {
-    public function __construct(private readonly ConnectionInterface $connection) {}
+    public function __construct(
+        private readonly ConnectionInterface $connection,
+        private readonly Clock $clock,
+    ) {}
 
     public function findActive(
         Identifier $actorUserId,
@@ -25,15 +29,16 @@ final class PostgresGrantStore implements GrantStore
         string $contextType,
         Identifier $contextId,
     ): ?Identifier {
-        $row = $this->connection->table('contextual_access_grants')
-            ->where('actor_user_id', $actorUserId->value)
-            ->where('capability', $capability)
-            ->where('resource_type', $resourceType)
-            ->where('resource_id', $resourceId->value)
-            ->where('context_type', $contextType)
-            ->where('context_id', $contextId->value)
-            ->whereNull('revoked_at')
-            ->first();
+        $row = $this->constrainCurrentlyValid(
+            $this->connection->table('contextual_access_grants')
+                ->where('actor_user_id', $actorUserId->value)
+                ->where('capability', $capability)
+                ->where('resource_type', $resourceType)
+                ->where('resource_id', $resourceId->value)
+                ->where('context_type', $contextType)
+                ->where('context_id', $contextId->value),
+            $this->clock->now(),
+        )->first();
 
         return $row instanceof stdClass ? Identifier::fromTrusted((string) $row->id) : null;
     }
@@ -99,18 +104,32 @@ final class PostgresGrantStore implements GrantStore
 
     public function activeCapabilities(Identifier $actorUserId, DateTimeImmutable $now): array
     {
-        $stamp = $now->format('Y-m-d H:i:s.uP');
-        $rows = $this->connection->table('contextual_access_grants')
-            ->where('actor_user_id', $actorUserId->value)
-            ->whereNull('revoked_at')
-            ->where(function (Builder $query) use ($stamp): void {
-                $query->whereNull('valid_from')->orWhere('valid_from', '<=', $stamp);
-            })
-            ->where(function (Builder $query) use ($stamp): void {
-                $query->whereNull('valid_until')->orWhere('valid_until', '>=', $stamp);
-            })
-            ->pluck('capability');
+        $rows = $this->constrainCurrentlyValid(
+            $this->connection->table('contextual_access_grants')
+                ->where('actor_user_id', $actorUserId->value),
+            $now,
+        )->pluck('capability');
 
         return array_values(array_unique($rows->all()));
+    }
+
+    /**
+     * Active means unrevoked and inside the validity window.
+     *
+     * valid_from is inclusive (NULL or <= now). valid_until is inclusive
+     * (NULL or >= now), matching the listing predicate this store already used.
+     */
+    private function constrainCurrentlyValid(Builder $query, DateTimeImmutable $now): Builder
+    {
+        $stamp = $now->format('Y-m-d H:i:s.uP');
+
+        return $query
+            ->whereNull('revoked_at')
+            ->where(function (Builder $inner) use ($stamp): void {
+                $inner->whereNull('valid_from')->orWhere('valid_from', '<=', $stamp);
+            })
+            ->where(function (Builder $inner) use ($stamp): void {
+                $inner->whereNull('valid_until')->orWhere('valid_until', '>=', $stamp);
+            });
     }
 }
