@@ -5,7 +5,8 @@
  * Required by Phase 00 §3.2. The patient app maps these wire names into
  * clinic_common_models; it does not treat this file as a widget DTO.
  *
- * Deterministic: sorted keys, no timestamps. CI fails if the file is stale.
+ * Deterministic: sorted keys, no timestamps. Output is gitignored and
+ * regenerated in CI before Flutter analyze; it is not a committed artifact.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';

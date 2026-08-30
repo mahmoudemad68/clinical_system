@@ -134,10 +134,17 @@ jobs:
         run: npm run contracts:ai-internal
 
       - name: Fail if generated clients are stale
+        # TypeScript output is committed. Dart output is gitignored and
+        # regenerated in CI; git diff cannot see it and must not be treated as
+        # proof that a committed Dart client is fresh.
         run: |
-          if ! git diff --quiet -- packages/typescript/api_client/src/generated packages/flutter/api_client/lib/src/generated; then
-            echo "::error::A generated client is out of date. Run 'npm run contracts:generate:ts' and 'npm run contracts:generate:dart' and commit."
-            git diff -- packages/typescript/api_client/src/generated packages/flutter/api_client/lib/src/generated
+          if ! git diff --quiet -- packages/typescript/api_client/src/generated; then
+            echo "::error::The committed TypeScript client is out of date. Run 'npm run contracts:generate:ts' and commit."
+            git diff -- packages/typescript/api_client/src/generated
+            exit 1
+          fi
+          if [ ! -s packages/flutter/api_client/lib/src/generated/openapi_contract.dart ]; then
+            echo "::error::Dart OpenAPI constants were not generated. Run 'npm run contracts:generate:dart'. That file is gitignored and is produced in CI, not committed."
             exit 1
           fi
 
@@ -353,6 +360,13 @@ jobs:
           ref: ${{ env.CANDIDATE_SHA }}
       - name: Record candidate SHA
         run: bash scripts/ci/assert-candidate-sha.sh
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Generate Dart patient client constants
+        run: npm run contracts:generate:dart
       - uses: subosito/flutter-action@f2c4f6686ca8e8d6e6d0f28410eeef506ed66aff  # v2.18.0
         with:
           flutter-version: '3.47.1'
