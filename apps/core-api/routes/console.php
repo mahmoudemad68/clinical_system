@@ -10,4 +10,8 @@ Artisan::command('inspire', function () {
 
 Schedule::command('auth:prune-expired')->hourly();
 Schedule::command('audit:verify-chain')->everyFifteenMinutes();
+Schedule::command('audit:checkpoint-chain')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();
 Schedule::command('identity:apply-due-recoveries')->everyFifteenMinutes();

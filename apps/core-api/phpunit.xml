@@ -95,5 +95,7 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="FIREBASE_CREDENTIALS" value=""/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="AUDIT_CHECKPOINT_ENABLED" value="false" force="true"/>
+        <env name="AUDIT_CHECKPOINT_REQUIRED" value="false" force="true"/>
     </php>
 </phpunit>

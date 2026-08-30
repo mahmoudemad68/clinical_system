@@ -8,13 +8,20 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\ConnectionInterface;
 use Modules\Audit\Contracts\VerifyAuditChain;
+use Modules\Audit\Services\Checkpoint\AuditChainCheckpointVerifier;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 
 final class PostgresAuditChainVerifier implements VerifyAuditChain
 {
-    public function __construct(private readonly ConnectionInterface $connection) {}
+    public function __construct(
+        private readonly ConnectionInterface $connection,
+        private readonly AuditChainCheckpointVerifier $checkpoints,
+    ) {}
 
-    public function verify(): array
+    /**
+     * @return array{ok: bool, checked: int, first_bad_sequence: int|null}
+     */
+    public function verifyDatabaseChain(): array
     {
         $rows = $this->connection->table('audit_events')
             ->orderBy('chain_sequence')
@@ -81,6 +88,31 @@ final class PostgresAuditChainVerifier implements VerifyAuditChain
         }
 
         return ['ok' => true, 'checked' => $checked, 'first_bad_sequence' => null];
+    }
+
+    /**
+     * @return array{
+     *     ok: bool,
+     *     checked: int,
+     *     first_bad_sequence: int|null,
+     *     checkpoint_ok: bool|null,
+     *     checkpoint_reason: string|null
+     * }
+     */
+    public function verify(): array
+    {
+        $database = $this->verifyDatabaseChain();
+        $checkpoint = $this->checkpoints->verify();
+        $checkpointOk = $checkpoint['skipped'] ? null : $checkpoint['ok'];
+        $ok = $database['ok'] && ($checkpointOk ?? true);
+
+        return [
+            'ok' => $ok,
+            'checked' => $database['checked'],
+            'first_bad_sequence' => $database['first_bad_sequence'],
+            'checkpoint_ok' => $checkpointOk,
+            'checkpoint_reason' => $checkpoint['reason'],
+        ];
     }
 
     /**

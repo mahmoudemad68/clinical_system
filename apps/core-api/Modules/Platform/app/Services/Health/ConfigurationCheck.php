@@ -64,6 +64,14 @@ final class ConfigurationCheck implements DependencyCheck
                     return CheckStatus::Fail;
                 }
             }
+
+            if ((bool) config('audit.checkpoint.required', false)) {
+                $public = (string) config('audit.checkpoint.public_key', '');
+                $publicFile = (string) config('audit.checkpoint.public_key_file', '');
+                if ($public === '' && $publicFile === '') {
+                    return CheckStatus::Fail;
+                }
+            }
         }
 
         return CheckStatus::Pass;

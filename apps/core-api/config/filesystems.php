@@ -61,6 +61,19 @@ return [
             'visibility' => 'private',
         ],
 
+        /*
+         * Default local checkpoint disk. Production should set
+         * AUDIT_CHECKPOINT_DISK to a dedicated object-lock/WORM disk, not this
+         * same-host path. See config/audit.php and ADR 0015.
+         */
+        'audit_checkpoints' => [
+            'driver' => 'local',
+            'root' => env('AUDIT_CHECKPOINT_ROOT', storage_path('app/private/audit-checkpoints')),
+            'throw' => true,
+            'report' => false,
+            'visibility' => 'private',
+        ],
+
     ],
 
     /*

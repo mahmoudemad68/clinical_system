@@ -377,12 +377,15 @@ stay separate internally even if V1 presents one admin persona
 ## `Audit`
 
 **Built in:** 01. **Owner:** backend + security.
-**Public ports:** `AppendAuditEvent`, `QueryAuditTrail`.
+**Public ports:** `AppendAuditEvent`, `QueryAuditTrail`, `VerifyAuditChain`.
 **Events:** none; `Audit` is a sink.
 **Tables:** `audit_events`.
 **Classification:** sensitive (records reference clinical actions).
 **Prohibited:** update or delete. Append-only with tamper evidence; a partitioning
-decision waits for measured volume (`plan.md` section 112).
+decision waits for measured volume (`plan.md` section 112). Per-row hashes are
+database-owned. External Ed25519 checkpoints bind `chain_sequence` and
+`row_hash` outside PostgreSQL (ADR 0015). A local test disk is not a production
+immutable store.
 
 ## `Analytics`
 

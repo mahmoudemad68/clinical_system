@@ -35,6 +35,7 @@ Copy `0000-adr-template.md` to start. Number sequentially; do not reuse a number
 | [0012](0012-totp-verifier-package.md) | RFC 6238 TOTP verifier (`spomky-labs/otphp`) | Accepted | 01 |
 | [0013](0013-identity-key-management.md) | Envelope encryption and purpose-separated HMAC keys | Accepted locally; production KMS is Phase 23 | 01 |
 | [0014](0014-national-id-check-digit-deferred.md) | Egyptian National ID check-digit is not invented | Accepted engineering constraint; legal policy outstanding | 01 |
+| [0015](0015-audit-chain-external-checkpoint.md) | Ed25519 audit-chain checkpoints outside PostgreSQL | Accepted locally; production WORM/KMS is an operations gate | 01 |
 
 ## Open decisions carried by the roadmap
 
