@@ -38,12 +38,33 @@ it('lets the app execute the audit append function but not insert directly', fun
     $insert = DB::selectOne("SELECT has_table_privilege('clinic_app', 'audit_events', 'INSERT') AS allowed");
     $update = DB::selectOne("SELECT has_table_privilege('clinic_app', 'audit_events', 'UPDATE') AS allowed");
     $delete = DB::selectOne("SELECT has_table_privilege('clinic_app', 'audit_events', 'DELETE') AS allowed");
-    $execute = DB::selectOne("SELECT has_function_privilege('clinic_app', 'clinic_append_audit_event(uuid, text, uuid, text, text, uuid, jsonb, bytea, bytea, bigint, timestamptz)', 'EXECUTE') AS allowed");
+    $execute = DB::selectOne("SELECT has_function_privilege('clinic_app', 'clinic_append_audit_event(uuid, text, uuid, text, text, uuid, jsonb, timestamptz)', 'EXECUTE') AS allowed");
 
     expect((bool) $insert->allowed)->toBeFalse()
         ->and((bool) $update->allowed)->toBeFalse()
         ->and((bool) $delete->allowed)->toBeFalse()
         ->and((bool) $execute->allowed)->toBeTrue();
+});
+
+it('lets the audit writer execute the append function but not mutate the table', function () {
+    $role = DB::selectOne("SELECT 1 AS ok FROM pg_roles WHERE rolname = 'clinic_audit_writer'");
+    if ($role === null) {
+        $this->markTestSkipped('clinic_audit_writer is not present on this cluster');
+    }
+
+    $insert = DB::selectOne("SELECT has_table_privilege('clinic_audit_writer', 'audit_events', 'INSERT') AS allowed");
+    $update = DB::selectOne("SELECT has_table_privilege('clinic_audit_writer', 'audit_events', 'UPDATE') AS allowed");
+    $delete = DB::selectOne("SELECT has_table_privilege('clinic_audit_writer', 'audit_events', 'DELETE') AS allowed");
+    $truncate = DB::selectOne("SELECT has_table_privilege('clinic_audit_writer', 'audit_events', 'TRUNCATE') AS allowed");
+    $execute = DB::selectOne("SELECT has_function_privilege('clinic_audit_writer', 'clinic_append_audit_event(uuid, text, uuid, text, text, uuid, jsonb, timestamptz)', 'EXECUTE') AS allowed");
+    $legacy = DB::selectOne("SELECT COUNT(*)::int AS n FROM pg_proc WHERE proname = 'clinic_append_audit_event' AND pronargs = 11");
+
+    expect((bool) $insert->allowed)->toBeFalse()
+        ->and((bool) $update->allowed)->toBeFalse()
+        ->and((bool) $delete->allowed)->toBeFalse()
+        ->and((bool) $truncate->allowed)->toBeFalse()
+        ->and((bool) $execute->allowed)->toBeTrue()
+        ->and((int) $legacy->n)->toBe(0);
 });
 
 it('keeps the worker off users and grants', function () {
@@ -56,11 +77,17 @@ it('keeps the worker off users and grants', function () {
     $grants = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'contextual_access_grants', 'UPDATE') AS allowed");
     $jobs = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'jobs', 'UPDATE') AS allowed");
     $diagnostics = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'platform_diagnostics', 'UPDATE') AS allowed");
+    $auditInsert = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'audit_events', 'INSERT') AS allowed");
+    $auditUpdate = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'audit_events', 'UPDATE') AS allowed");
+    $auditDelete = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'audit_events', 'DELETE') AS allowed");
 
     expect((bool) $users->allowed)->toBeFalse()
         ->and((bool) $grants->allowed)->toBeFalse()
         ->and((bool) $jobs->allowed)->toBeTrue()
-        ->and((bool) $diagnostics->allowed)->toBeTrue();
+        ->and((bool) $diagnostics->allowed)->toBeTrue()
+        ->and((bool) $auditInsert->allowed)->toBeFalse()
+        ->and((bool) $auditUpdate->allowed)->toBeFalse()
+        ->and((bool) $auditDelete->allowed)->toBeFalse();
 });
 
 it('gives the backup role select on identity tables without write', function () {
