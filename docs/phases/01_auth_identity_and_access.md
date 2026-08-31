@@ -231,7 +231,7 @@ All encrypted/HMAC columns carry an implicit or explicit key version. Key rotati
 3. Admin, doctor, and pharmacy-owner identities require verified TOTP before privileged capability activation.
 4. A session is rejected when expired, revoked, its credential version is stale, its user is not active, or required MFA assurance is absent.
 5. A password or recovery completion increments `credential_version` and revokes existing sessions according to the approved recovery policy.
-6. National ID canonicalization is deterministic and accepts only the approved 14-digit Egyptian format; Unicode confusables, Arabic/Western digit ambiguity, whitespace, punctuation, and invalid dates/check digits are handled by one reviewed function.
+6. National ID parsing and validation are centralized in one reviewed function (`NationalId`). Canonicalization is deterministic: Unicode digits are converted, whitespace/punctuation separators are stripped, and only the approved 14-digit Egyptian format remains. Current technical validation is structural/format only (length, century, encoded calendar date, governorate allow-list, and the other constraints `NationalId` actually implements). Invalid dates and those other implemented structural constraints are rejected. Digit 14 is treated as a digit after canonicalization, not as an implemented checksum. Check-digit / modulus validation is deferred pending a cited authoritative Egyptian specification and an accountable identity/legal decision ([ADR 0014](../adr/0014-national-id-check-digit-deferred.md)). No guessed checksum algorithm may be introduced.
 7. Plain phone, National ID, OTP, token, MFA secret, or recovery code never appears in a URL, event, cache, analytics row, telemetry, exception, fixture, or support screen.
 8. Existing-profile discovery is invisible to untrusted callers. Linking requires server-side candidate lookup, approved proof, unique active link, audit, and notification.
 9. Policies resolve actor, membership, resource, and context from authoritative storage and deny on dependency uncertainty.
@@ -380,7 +380,7 @@ Jobs:
 
 ### Unit tests
 
-- Phone and National ID canonicalization/property tests, including Arabic-Indic digits, Unicode confusables, separators, invalid length/date/check data, and round-trip-safe display masking.
+- Phone and National ID canonicalization/property tests, including Arabic-Indic digits, Unicode confusables, separators, invalid length/date/century/governorate data, and round-trip-safe display masking. Tests must not invent or assert a National ID check-digit/modulus algorithm (ADR 0014).
 - User, OTP, MFA, session, recovery, profile-link, and contextual-grant state transitions with controlled clock/randomness.
 - Password policy, assurance-level calculation, capability decisions, default-deny behavior, safe error mapping, and redaction.
 - Refresh-family reuse and credential-version invalidation.
