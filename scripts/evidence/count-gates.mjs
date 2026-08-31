@@ -9,13 +9,21 @@
  *
  * Matches only rows whose first cell is a gate id (G-NN-NN).
  *
+ * Default ledger: docs/evidence/phase-00/evidence-ledger.md
+ * Optional: --ledger <path> (Phase 01: docs/evidence/phase-01/evidence-ledger.md)
+ *
  * Exit 1 if any gate id is duplicated, or if `--expect PASS=..,OPEN=..` is
  * given and the counts disagree — so CI can hold the summary honest.
  */
 
 import { readFileSync } from 'node:fs';
 
-const LEDGER = 'docs/evidence/phase-00/evidence-ledger.md';
+const DEFAULT_LEDGER = 'docs/evidence/phase-00/evidence-ledger.md';
+const ledgerArg = process.argv.indexOf('--ledger');
+const LEDGER =
+  ledgerArg !== -1 && process.argv[ledgerArg + 1]
+    ? process.argv[ledgerArg + 1]
+    : DEFAULT_LEDGER;
 const ROW = /^\| (G-\d\d-\d\d) \|.*?\| `(PASS|PARTIAL|BLOCKED|OPEN)`(?: \([^)]*\))? \|/gm;
 
 const text = readFileSync(LEDGER, 'utf8');
