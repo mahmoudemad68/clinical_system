@@ -55,6 +55,15 @@ Logs: artifacts `g-02-10-ubuntu-latest`, `g-02-10-windows-latest`,
 - Locale switch English → Arabic sets `dir=rtl`.
 - Binary fuse wire matches Forge intent, including `GrantFileProtocolExtraPrivileges=DISABLE`.
 
+## Later SHA confirmation (not production signing)
+
+GitHub Actions run
+[33398311982](https://github.com/mahmoudemad68/clinical_system/actions/runs/33398311982)
+on SHA `11ffb25c7470c4b42fd535e9780b235de57297e4` (`SUCCESS`) re-ran Packaged
+Doctor + Pharmacy WebdriverIO on Ubuntu, Windows, and macOS. That confirms the
+packaged OS matrix is present on the current candidate. It is not signed or
+notarized production-installer evidence and does not close Phase 23.
+
 ## Residual
 
 Signing and notarization remain Phase 23. This gate does not close Phase 00.
