@@ -111,6 +111,20 @@
 /.gitleaks.toml                         @clinic/security
 /.semgrep.yml                           @clinic/security
 
+# ISR-015 supply-chain surfaces. @clinic/security is the intended security
+# owner placeholder; GitHub team existence and required reviews remain
+# EXTERNAL_HUMAN (G-01-04). Later-listed patterns win.
+/infra/security/                        @clinic/security @clinic/devops
+/scripts/ci/                            @clinic/security @clinic/devops
+/.github/workflows/                     @clinic/security @clinic/devops
+/.github/path-filters.yaml              @clinic/security @clinic/devops
+/package.json                           @clinic/security @clinic/platform-architecture
+/package-lock.json                      @clinic/security @clinic/platform-architecture
+/apps/core-api/composer.lock            @clinic/security @clinic/backend
+/apps/core-api/package-lock.json        @clinic/security @clinic/backend
+/tests/e2e/package-lock.json            @clinic/security
+/tests/desktop-e2e/package-lock.json    @clinic/security
+
 # ---------------------------------------------------------------------------
 # Roadmap sources of truth. Changing scope is a product decision.
 # ---------------------------------------------------------------------------

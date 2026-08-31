@@ -1,0 +1,40 @@
+{
+  "policy_id": "ENGINEERING_LICENSE_BASELINE",
+  "legal_status": "NOT_LEGAL_APPROVAL",
+  "description": "Engineering inventory of SPDX license identifiers observed in committed Node and Composer lockfiles. This is not legal approval, license compliance, or an open-source policy. New identifiers and unrecorded UNKNOWN/UNLICENSED third-party packages fail the technical gate.",
+  "allowed_license_ids": [
+    "(MIT AND Zlib)",
+    "(MIT OR CC0-1.0)",
+    "(MIT OR GPL-3.0-or-later)",
+    "0BSD",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BlueOak-1.0.0",
+    "CC-BY-3.0",
+    "CC-BY-4.0",
+    "CC0-1.0",
+    "GPL-2.0-only",
+    "GPL-3.0-only",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",
+    "Python-2.0",
+    "Unlicense"
+  ],
+  "first_party_name_prefixes": ["@clinic/"],
+  "first_party_package_names": [
+    "clinic-platform",
+    "core-api",
+    "clinic-e2e-csrf",
+    "clinic-desktop-e2e"
+  ],
+  "allow_first_party_unlicensed": true,
+  "recorded_unknown_packages": {
+    "css-value@0.0.1": {
+      "status": "UNKNOWN_RECORDED",
+      "note": "npm registry package has no license field. Recorded so the current tree has an explicit engineering inventory row. NOT_LEGAL_APPROVAL. New unrecorded UNKNOWN packages fail."
+    }
+  }
+}

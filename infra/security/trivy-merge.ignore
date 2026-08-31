@@ -1,12 +1,10 @@
-# Merge-only Trivy ignore. Promotion scans MUST NOT pass this file.
-#
-# SF-001: extract-zip <= 2.0.1 (CVE-2026-56876 / GHSA-jmr9-qjv8-65gv) has no
-# published fix. ADR 0008 allows a time-boxed merge exception until
-# 2026-11-26T00:00:00Z. Promotion remains blocked: post-merge filesystem scan
-# runs without this file and fails closed on High/Critical.
+# Merge-only Trivy ignore. IDs are bound 1:1 to
+# infra/security/exceptions/SF-001.json by scripts/ci/isr015_policy.py.
+# Promotion scans MUST NOT pass this file.
 #
 # Do not add OS, PHP, or unrelated npm findings here. Do not restore
-# ignore-unfixed.
+# ignore-unfixed. Expiry, scope, and package identity come from the
+# canonical manifest, not from this comment.
 
 CVE-2026-56876
 GHSA-jmr9-qjv8-65gv
