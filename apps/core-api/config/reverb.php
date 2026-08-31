@@ -103,16 +103,20 @@ return [
                 // Enumerated origins only. A wildcard here is the same defect
                 // as wildcard CORS and is rejected by Semgrep.
                 'allowed_origins' => array_values(array_unique(array_filter(array_map(
-                    static function (string $origin): string {
-                        $origin = trim($origin);
-                        if ($origin === '') {
+                    static function (string $configuredOrigin): string {
+                        $configuredOrigin = trim($configuredOrigin);
+                        if ($configuredOrigin === '') {
                             return '';
                         }
 
                         // Reverb compares against parse_url(..., PHP_URL_HOST).
-                        $host = parse_url($origin, PHP_URL_HOST);
+                        // Source is REVERB_ALLOWED_ORIGINS / CORS_ALLOWED_ORIGINS,
+                        // never the request Host header.
+                        $configuredOriginHost = parse_url($configuredOrigin, PHP_URL_HOST);
 
-                        return is_string($host) && $host !== '' ? $host : $origin;
+                        return is_string($configuredOriginHost) && $configuredOriginHost !== ''
+                            ? $configuredOriginHost
+                            : $configuredOrigin;
                     },
                     explode(',', $originsSource),
                 )))),

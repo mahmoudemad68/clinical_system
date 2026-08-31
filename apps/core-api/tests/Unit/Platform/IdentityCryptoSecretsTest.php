@@ -124,6 +124,33 @@ it('fails closed when decrypting with the wrong old key', function () {
         ->toThrow(RuntimeException::class, 'Envelope decryption failed.');
 });
 
+it('fails closed when the envelope tag is tampered', function () {
+    $encryptor = new AesGcmEnvelopeEncryptor([1 => str_repeat('k', 32)], 1);
+    $envelope = $encryptor->encrypt('phone', '+201012345678');
+    $tampered = substr($envelope, 0, -1).chr(ord($envelope[-1]) ^ 0xFF);
+
+    expect(fn () => $encryptor->decrypt('phone', $tampered))
+        ->toThrow(RuntimeException::class, 'Envelope decryption failed.');
+});
+
+it('fails closed when the envelope ciphertext is tampered', function () {
+    $encryptor = new AesGcmEnvelopeEncryptor([1 => str_repeat('k', 32)], 1);
+    $envelope = $encryptor->encrypt('phone', '+201012345678');
+    $flip = 2 + 12;
+    $tampered = substr($envelope, 0, $flip).chr(ord($envelope[$flip]) ^ 0xFF).substr($envelope, $flip + 1);
+
+    expect(fn () => $encryptor->decrypt('phone', $tampered))
+        ->toThrow(RuntimeException::class, 'Envelope decryption failed.');
+});
+
+it('fails closed when decrypting with a different purpose aad', function () {
+    $encryptor = new AesGcmEnvelopeEncryptor([1 => str_repeat('k', 32)], 1);
+    $envelope = $encryptor->encrypt('phone', '+201012345678');
+
+    expect(fn () => $encryptor->decrypt('national_id', $envelope))
+        ->toThrow(RuntimeException::class, 'Envelope decryption failed.');
+});
+
 it('fails closed on an unknown envelope version', function () {
     $encryptor = new AesGcmEnvelopeEncryptor([1 => str_repeat('k', 32)], 1);
     $envelope = $encryptor->encrypt('phone', '+201012345678');

@@ -80,7 +80,7 @@ final class AesGcmEnvelopeEncryptor implements FieldEncryptor
             $purpose,
         );
 
-        if (! is_string($plain)) {
+        if ($plain === false) {
             throw new RuntimeException('Envelope decryption failed.');
         }
 
