@@ -112,9 +112,10 @@ cookies. TOTP enrolment HTTP is not exposed; bootstrap inserts a verified factor
 **Built in:** 01–02. **Owner:** backend + security.
 **Public services:** `ResolveActorContext`, `NationalIdProtector`,
 `PatientIdentityRegistry` (unavailable stub until Phase 02), `LinkVerifiedPatientAccount`
-(not enabled), `DisableIdentity`.
+(not enabled), `DisableIdentity`, `EraseSubject`, `ExportSubjectData`.
 **Events:** `identity.account_registered`, `identity.phone_verified`,
-`identity.profile_linked`, `identity.status_changed`.
+`identity.profile_linked`, `identity.status_changed`. Audit also records
+`identity.subject_erased` (append-only; not an outbox event type).
 **Tables:** `users`, `identity_national_ids`, `identity_profile_links`.
 **Classification:** sensitive. National IDs are encrypted for recovery and stored
 as keyed HMACs for exact matching; raw values never appear anywhere else
@@ -129,7 +130,8 @@ flag-gated off (ADR 0011).
 **Built in:** 01. **Owner:** backend + security.
 **Public services:** `Authorize`, `ListEffectiveCapabilities`, `GrantContextualAccess`,
 `RevokeContextualAccess`. Consultation grants are Phase 04/05; the write ports
-persist rows and stay unused by HTTP in Phase 01.
+persist rows and stay unused by HTTP in Phase 01. `access:prune-expired` deletes
+obsolete grants using an ENGINEERING_DEFAULT TTL.
 **Events:** none.
 **Tables:** `contextual_access_grants`.
 **Classification:** internal.

@@ -143,6 +143,60 @@ final class PostgresIdentityStore implements UserDirectory
         return $this->connection->table('users')->where('account_type', $type->value)->count();
     }
 
+    public function phoneLookupHmac(Identifier $userId): ?string
+    {
+        $value = $this->connection->table('users')->where('id', $userId->value)->value('phone_lookup_hmac');
+        if ($value === null) {
+            return null;
+        }
+
+        $hmac = BinaryColumn::asString($value);
+
+        return $hmac === '' ? null : $hmac;
+    }
+
+    public function tombstoneIdentity(
+        Identifier $userId,
+        string $phoneCipher,
+        string $phoneHmac,
+        string $passwordHash,
+        int $credentialVersion,
+        DateTimeImmutable $now,
+    ): void {
+        $this->connection->table('users')->where('id', $userId->value)->update([
+            'name' => 'erased',
+            'phone_e164_encrypted' => BinaryColumn::bind($phoneCipher),
+            'phone_lookup_hmac' => BinaryColumn::bind($phoneHmac),
+            'password_hash' => $passwordHash,
+            'status' => AccountStatus::Closed->value,
+            'credential_version' => $credentialVersion,
+            'phone_verified_at' => null,
+            'last_authenticated_at' => null,
+            'password_must_change' => false,
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
+    public function deleteNationalIds(Identifier $userId): int
+    {
+        return $this->connection->table('identity_national_ids')->where('user_id', $userId->value)->delete();
+    }
+
+    public function deleteProfileLinks(Identifier $userId): int
+    {
+        return $this->connection->table('identity_profile_links')->where('user_id', $userId->value)->delete();
+    }
+
+    public function countNationalIds(Identifier $userId): int
+    {
+        return $this->connection->table('identity_national_ids')->where('user_id', $userId->value)->count();
+    }
+
+    public function countProfileLinks(Identifier $userId): int
+    {
+        return $this->connection->table('identity_profile_links')->where('user_id', $userId->value)->count();
+    }
+
     public function lockById(Identifier $userId): ?UserAccount
     {
         $row = $this->connection->selectOne(

@@ -57,6 +57,34 @@ final class AuthRateLimiter implements AuthenticationRateLimiter
         $this->hit('auth-otp-verify-ip:'.$ipPrefix, (int) ($this->limits['otp_verify_per_ip_per_minute'] ?? 30), 60);
     }
 
+    /**
+     * @param  list<string>  $refreshFamilyIds
+     * @param  list<string>  $mfaChallengeIds
+     * @param  list<string>  $otpIds
+     */
+    public function forgetSubject(
+        string $subjectHmac,
+        array $refreshFamilyIds = [],
+        array $mfaChallengeIds = [],
+        array $otpIds = [],
+    ): void {
+        $this->limiter->clear('auth-login-subject:'.bin2hex($subjectHmac));
+        $this->limiter->clear('auth-otp-subject:'.bin2hex($subjectHmac));
+        $this->limiter->clear('auth-recovery-subject:'.hash('sha256', $subjectHmac));
+
+        foreach ($refreshFamilyIds as $familyId) {
+            $this->limiter->clear('auth-refresh-family:'.$familyId);
+        }
+
+        foreach ($mfaChallengeIds as $challengeId) {
+            $this->limiter->clear('auth-mfa-challenge:'.$challengeId);
+        }
+
+        foreach ($otpIds as $otpId) {
+            $this->limiter->clear('auth-otp-verify-challenge:'.$otpId);
+        }
+    }
+
     private function hit(string $key, int $max, int $decay): void
     {
         if ($this->limiter->tooManyAttempts($key, $max)) {

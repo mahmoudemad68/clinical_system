@@ -92,8 +92,14 @@ return [
     ],
 
     'retention' => [
+        // ENGINEERING_DEFAULT values. Not statutory retention periods.
+        // Legal duration remains OPEN_LEGAL_DECISION / EXTERNAL_HUMAN.
         'otp_row_days' => (int) env('IDENTITY_OTP_ROW_DAYS', 30),
         'revoked_session_days' => (int) env('IDENTITY_REVOKED_SESSION_DAYS', 90),
+        'recovery_request_days' => (int) env('IDENTITY_RECOVERY_REQUEST_DAYS', 90),
+        'revoked_device_days' => (int) env('IDENTITY_REVOKED_DEVICE_DAYS', 90),
+        'refresh_consumption_days' => (int) env('IDENTITY_REFRESH_CONSUMPTION_DAYS', 90),
+        'revoked_grant_days' => (int) env('IDENTITY_REVOKED_GRANT_DAYS', 90),
     ],
 
     'refresh' => [

@@ -33,4 +33,23 @@ interface UserDirectory
     public function updateStatus(Identifier $userId, AccountStatus $status, int $credentialVersion, DateTimeImmutable $now): void;
 
     public function countByAccountType(AccountType $type): int;
+
+    public function phoneLookupHmac(Identifier $userId): ?string;
+
+    public function tombstoneIdentity(
+        Identifier $userId,
+        string $phoneCipher,
+        string $phoneHmac,
+        string $passwordHash,
+        int $credentialVersion,
+        DateTimeImmutable $now,
+    ): void;
+
+    public function deleteNationalIds(Identifier $userId): int;
+
+    public function deleteProfileLinks(Identifier $userId): int;
+
+    public function countNationalIds(Identifier $userId): int;
+
+    public function countProfileLinks(Identifier $userId): int;
 }

@@ -113,6 +113,43 @@ final class PostgresGrantStore implements GrantStore
         return array_values(array_unique($rows->all()));
     }
 
+    public function eraseSubjectGrants(Identifier $userId): int
+    {
+        return $this->connection->table('contextual_access_grants')
+            ->where(function ($query) use ($userId): void {
+                $query->where('actor_user_id', $userId->value)
+                    ->orWhere('resource_id', $userId->value);
+            })
+            ->delete();
+    }
+
+    public function countSubjectGrants(Identifier $userId): int
+    {
+        return $this->connection->table('contextual_access_grants')
+            ->where(function ($query) use ($userId): void {
+                $query->where('actor_user_id', $userId->value)
+                    ->orWhere('resource_id', $userId->value);
+            })
+            ->count();
+    }
+
+    public function pruneObsolete(DateTimeImmutable $now): int
+    {
+        $stamp = $now->format('Y-m-d H:i:s.uP');
+        $grantDays = (int) config('identity.retention.revoked_grant_days', 90);
+        $cutoff = $now->modify(sprintf('-%d days', $grantDays))->format('Y-m-d H:i:s.uP');
+
+        return $this->connection->table('contextual_access_grants')
+            ->where(function ($query) use ($stamp, $cutoff): void {
+                $query->where(function ($inner) use ($cutoff): void {
+                    $inner->whereNotNull('revoked_at')->where('revoked_at', '<', $cutoff);
+                })->orWhere(function ($inner) use ($stamp): void {
+                    $inner->whereNotNull('valid_until')->where('valid_until', '<', $stamp);
+                });
+            })
+            ->delete();
+    }
+
     /**
      * Active means unrevoked and inside the validity window.
      *

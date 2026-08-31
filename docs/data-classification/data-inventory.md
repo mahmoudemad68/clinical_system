@@ -169,9 +169,8 @@ rules). That invariant is not a proof that a given row is clean: treat
 of the column.
 
 **Retention / deletion.** Successful database-driver jobs are deleted by the
-Laravel worker when the job completes. There is no clinic `platform:prune` or
-scheduled `queue:prune-*` for leftover rows. Legal retention period:
-**pending**.
+Laravel worker when the job completes. There is no clinic subject-erasure
+path for `jobs`. Legal retention period: **OPEN_LEGAL_DECISION**.
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -220,8 +219,10 @@ this table when the database failed driver is used.
 free of personal, clinical, or security data** (SQL bindings, identifiers,
 request fragments). There is no redaction job on this table.
 
-**Retention / deletion.** No scheduled `queue:prune-failed`. Not covered by
-`auth:prune-expired` or `platform:prune`. Legal retention: **pending**.
+**Retention / deletion.** Scheduled `queue:prune-failed --hours=` uses
+`platform.queue.failed_job_retention_hours` (ENGINEERING_DEFAULT 168). Not a
+statutory period. Not covered by `auth:prune-expired` or `platform:prune`.
+Legal retention: **OPEN_LEGAL_DECISION**.
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -298,9 +299,11 @@ data.
 
 **Retention / deletion.** Idle lifetime is `SESSION_LIFETIME` (default 120
 minutes) — an engineering config, not a legal retention period. Database-driver
-lottery `[2, 100]` may delete expired rows when that driver is used. Not
+lottery `[2, 100]` may delete expired rows when that driver is used. Subject
+erasure DELETEs rows where `user_id` matches the erased subject
+(`EraseSubjectService` via Platform `DiscardSubjectTransientCopies`). Not
 covered by `auth:prune-expired` (that command prunes `auth_sessions` /
-OTP ciphertext). Legal retention and subject-erasure: **pending**.
+OTP ciphertext). Legal retention: **OPEN_LEGAL_DECISION**.
 
 `lawful_basis` for `user_id` / `ip_address` / `user_agent` / `payload`:
 **pending**. The 2026-08-27 owner acceptance records identity-table purposes; it
@@ -594,7 +597,7 @@ There is no `client_class` column on this table (that field lives on `mfa_challe
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | internal | Device row | app | until revoked + later erase (no device-row prune job) | at rest | Mahmoud | n/a |
+| `id` | internal | Device row | app | until revoked; then ENGINEERING_DEFAULT `IDENTITY_REVOKED_DEVICE_DAYS` (default 90) via `auth:prune-expired`; subject erasure DELETEs remaining rows | at rest | Mahmoud | n/a |
 | `user_id` | personal | Which identity owns the device | app | as row; CASCADE if user deleted | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `platform` | internal | `android`/`ios`/`windows`/`macos`/`linux`/`web` | app | as row | at rest | Mahmoud | n/a |
 | `device_label` | personal | Client-supplied device label | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
@@ -658,9 +661,10 @@ plus `profile_type`/`profile_id` binds a person to a later patient/doctor/staff
 /membership profile. `proof_reference` is a nullable UUID (opaque pointer, not
 the proof document). Not a credential store.
 
-**Retention / deletion.** No clinic prune job. User-row `DELETE` would cascade;
-subject-erasure is **not** implemented as an operator workflow. Legal retention
-period: **pending**.
+**Retention / deletion.** No clinic prune job for stale links. User-row
+`DELETE` would cascade; Phase-01 subject erasure DELETEs the subject's
+link rows (`EraseSubjectService`). Legal retention period:
+**OPEN_LEGAL_DECISION**.
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -681,7 +685,7 @@ processing, not an Egyptian PDPL article.
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `family_id` | internal | Refresh family ledger | app | with family | at rest | Mahmoud | n/a |
+| `family_id` | internal | Refresh family ledger | app | ENGINEERING_DEFAULT `IDENTITY_REFRESH_CONSUMPTION_DAYS` then delete | at rest | Mahmoud | n/a |
 | `token_hash` | credential | Consumed refresh HMAC | app | with family | HMAC | Mahmoud | n/a |
 | `generation` | internal | Family generation | app | with family | at rest | Mahmoud | n/a |
 | `consumed_at` | internal | When the generation was retired | app | as row | at rest | Mahmoud | n/a |
@@ -690,7 +694,7 @@ processing, not an Egyptian PDPL article.
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | internal | Recovery id | app, operator | 90 days after terminal status (engineering default; no prune job yet) | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `id` | internal | Recovery id | app, operator | 90 days after terminal status (ENGINEERING_DEFAULT; `auth:prune-expired`) | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `user_id` | internal | FK to `users` | app, operator | as row | at rest | Mahmoud | n/a |
 | `otp_id` | internal | Challenge that authorized recovery | app | as row | at rest | Mahmoud | n/a |
 | `status` | internal | `cooling_off` / `manual_review` / `applied` / `rejected` / `expired` | app, operator | as row | at rest | Mahmoud | n/a |
@@ -705,11 +709,13 @@ tests may set 0).
 
 ### `contextual_access_grants`
 
-**Writer.** Access module via `clinic_app`. No clinic prune job.
+**Writer.** Access module via `clinic_app`. Obsolete revoked/expired rows are
+deleted by `access:prune-expired` (ENGINEERING_DEFAULT
+`IDENTITY_REVOKED_GRANT_DAYS`, default 90).
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `id` | internal | Grant identity | app | until revoked; no TTL delete job | at rest | Mahmoud | n/a |
+| `id` | internal | Grant identity | app | until revoked/expired; then ENGINEERING_DEFAULT TTL delete | at rest | Mahmoud | n/a |
 | `actor_user_id` | internal | Grantee (FK `users`) | app | as row | at rest | Mahmoud | n/a |
 | `capability` | internal | Action string | app | as row | at rest | Mahmoud | n/a |
 | `resource_type` | internal | Resource class | app | as row | at rest | Mahmoud | n/a |
@@ -761,39 +767,151 @@ above is the outbox `PROCESSED` engineering default, not a legal schedule.
 
 ---
 
+## Live non-PostgreSQL holdings (Phase 00/01)
+
+These are current runtime destinations or artefacts. They are not PostgreSQL
+tables. `lawful_basis` and statutory retention for each remain
+**OPEN_LEGAL_DECISION** (EXTERNAL_HUMAN). Engineering behaviour below is not a
+legal approval.
+
+### Audit checkpoint files
+
+**Store / path.** Laravel disk `audit_checkpoints`
+(`config/filesystems.php`). Default driver `local`, root
+`AUDIT_CHECKPOINT_ROOT` or `storage/app/private/audit-checkpoints`, prefix
+`AUDIT_CHECKPOINT_PREFIX` default `checkpoints`. Production should point
+`AUDIT_CHECKPOINT_DISK` at object-lock/WORM storage that the database owner
+does not control (ADR 0015).
+
+**Contents (as actually written).** Canonical JSON
+`clinic.audit.checkpoint.v1` plus a detached Ed25519 signature: `format`,
+`sequence`, `row_hash` (64 hex chars of the chained audit row hash),
+`checkpointed_at`, `key_id`. Files are named `*.json`. **No direct personal
+data** (no phone, National ID, name, token, or ciphertext).
+
+**Classification.** Internal security evidence.
+
+**Purpose.** External chain tip so a database rewrite of `audit_events` can be
+detected.
+
+**Readers / writers.** Audit module (`CreateAuditChainCheckpoint`,
+`FilesystemAuditChainCheckpointStore`, `audit:checkpoint-chain`,
+`VerifyAuditChain`). Serving application roles do not DML these files through
+PostgreSQL.
+
+**Retention status.** Engineering: retain as chain evidence. Legal duration
+for how long checkpoints must be kept, and whether they may be erased:
+**OPEN_LEGAL_DECISION**.
+
+**Deletion / preservation action.** `PRESERVE_SECURITY_AUDIT`. Subject
+erasure does not rewrite or delete checkpoint files.
+
+**Accountable owner.** Mahmoud.
+
+### Firebase / FCM
+
+**Destination.** Google Firebase Cloud Messaging, reached through
+`kreait/laravel-firebase` (`FirebaseSendPush` implementing `SendPush`).
+Credentials: `platform.firebase.credentials` /
+`FIREBASE_CREDENTIALS`. Empty credentials bind `DisabledSendPush`.
+
+This is a **third-party processor / destination** outside the Core trust
+boundary. Push tokens and message envelopes leave the clinic process when a
+send succeeds.
+
+**What the current implementation sends.** Device token (from decrypted
+`user_devices.push_token_ciphertext`); lock-screen `title` `Clinic` and
+`body` `You have a new notice`; data map with `type` plus any **scalar**
+keys from the caller. Non-scalars are dropped. The adapter test forbids
+clinical phrasing such as chest pain and `patient_id` in the payload.
+
+Do not assume future notification types or richer payloads.
+
+**Local copy.** Encrypted `push_token_ciphertext` on `user_devices`. Subject
+erasure and device revoke NULL then DELETE that column/row. **Remote FCM
+token copies are OPERATIONAL_FOLLOW_THROUGH** — the server has no delivery
+or ack protocol that proves Google deleted the token.
+
+**Classification.** Credential (token) in transit to the processor; lock-screen
+copy is generic.
+
+**Retention / deletion.** Server cannot wipe FCM provider backups or device
+token registries. Legal retention at the processor: **OPEN_LEGAL_DECISION**.
+
+**Accountable owner.** Mahmoud.
+
+### Backup artefacts
+
+**Location / model.** PostgreSQL role `clinic_backup` is SELECT-only on
+application tables (initdb `01-roles-and-extensions.sql` plus
+`2026_08_26_230000_audit_definer_insert_and_ciphertext_purge.php` GRANT
+SELECT). The role is not wired into the application. Intended production
+model is PostgreSQL base backup plus WAL/PITR. Encrypted isolated backup
+object storage and KMS wrapping are **not implemented** in this repository
+(Phase 23). Phase 20 `BackupStatusService` remains a null
+`UNKNOWN / not configured` adapter.
+
+**Protection.** SELECT-only backup credential (cannot DML identity rows).
+Local Compose passwords are development-only. Production backup encryption
+and isolated store: not present.
+
+**Lifecycle / rotation.** No production backup expiry/rotation job is
+implemented. **OPERATIONAL_FOLLOW_THROUGH.**
+
+**Deletion semantic.** **Subject erasure does NOT imply immediate mutation of immutable historical backups.** A completed erasure removes or tombstones
+live operational identity state. Historical dump/WAL artefacts retain the
+pre-erasure bytes until an externally approved backup lifecycle expires or
+rewrites them. The server does not rewrite backup files as part of
+`EraseSubjectService`.
+
+**Legal retention duration.** **OPEN_LEGAL_DECISION** / EXTERNAL_HUMAN.
+
+**Accountable owner.** Mahmoud.
+
+---
+
 ## ISR-013 technical vs external
 
-**Technical (this inventory + prune tests): PASS** for the original
-schema/field/event/metric/cache/queue/log/file inventory and for implemented
-`auth:prune-expired` ciphertext NULL / session DELETE behaviour.
+**Technical (this inventory + coordinator + prune tests): PASS** for the
+Phase-01 field inventory including audit checkpoint files, Firebase/FCM as a
+processor destination, and backup artefacts; for `EraseSubjectService` /
+`ExportSubjectDataService`; for scheduled `platform:prune`; and for
+engineering prune of OTP ciphertext, sessions, recovery_requests, revoked
+`user_devices`, `auth_refresh_consumptions`, and obsolete contextual grants.
 
-**External / legal / production (not claimed):** Egyptian PDPL article numbers,
-qualified-reviewer lawful basis, statutory retention schedule, operator
-data-subject erasure/export, backup/replica/search/telemetry wipe propagation,
-and production promotion. **G-08-04 stays OPEN.**
+**External / legal / production (not claimed):** Egyptian PDPL article
+numbers, qualified-reviewer lawful basis, statutory retention schedule,
+whether audit evidence may legally be erased, backup legal retention, and
+privacy/legal sign-off. **G-08-04 stays OPEN.**
 
 ## Gaps (explicitly OPEN)
 
-1. **Day counts remain engineering defaults**, not a statutory retention
+1. **Day counts remain ENGINEERING_DEFAULT values**, not a statutory retention
    schedule. Clinical and financial retention in Egypt still needs a written
-   schedule if the product stores those records.
+   schedule if the product stores those records. **OPEN_LEGAL_DECISION.**
 2. **`lawful_basis` is `owner_approved_2026-08-27`** (Mahmoud, privacy owner)
-   for documented identity processing. That is owner acceptance of purpose, not
-   an Egyptian PDPL article number and not independent legal certification.
-   Framework session IP/UA/payload and job/`failed_jobs` content that may
-   identify a person remain **pending**.
-3. **Subject-erasure for production** is not operator self-serve. Engineering
-   purge jobs cover expired OTP/session ciphertext and eligible session
-   `DELETE` ([deletion-and-purge.md](deletion-and-purge.md)). A full rights
-   workflow is still unimplemented. Account close/lock/suspend remains
-   `DisableIdentityService` and was not redesigned for this inventory.
-4. **Audit-row erasure** is not implemented (append-only). A legal order would
-   need a Phase 22/23 procedure.
-5. **Framework operational tables** (`jobs`, `job_batches`, `failed_jobs`,
-   `cache`, `cache_locks`, `sessions`) have no clinic prune job and no approved
-   legal retention period.
-6. **`identity_profile_links` retention / erasure period** is **pending**. The
-   table is inventoried; no writer currently populates it.
+   for documented identity processing already inventoried under that label.
+   That is owner acceptance of purpose, not an Egyptian PDPL article number
+   and not independent legal certification. New holdings in this file use
+   **OPEN_LEGAL_DECISION**. Never treat that token as an invented article.
+3. **Subject-erasure legal approval** is unresolved. Engineering coordinator
+   `EraseSubjectService` tombstones Phase-01 operational identity state.
+   Disable/suspend/revoke (`DisableIdentityService`) is not erasure. A
+   qualified privacy/legal decision is EXTERNAL_HUMAN.
+4. **Audit-row erasure** is not implemented (append-only,
+   `PRESERVE_SECURITY_AUDIT`). Whether audit may legally be erased is
+   **OPEN_LEGAL_DECISION**.
+5. **Framework operational tables** (`jobs`, `job_batches`, `cache`,
+   `cache_locks`) follow Laravel lifecycle. `failed_jobs` has scheduled
+   `queue:prune-failed` using `platform.queue.failed_job_retention_hours`
+   (ENGINEERING_DEFAULT 168). Legal retention remains
+   **OPEN_LEGAL_DECISION**. Subject erasure deletes Laravel `sessions` rows
+   for that `user_id`; it does not prune `jobs`.
+6. **Backup artefacts** are not rewritten by subject erasure. Production
+   expiry/rotation is **OPERATIONAL_FOLLOW_THROUGH**. Legal backup retention
+   is **OPEN_LEGAL_DECISION**.
+7. **Offline client vaults and remote FCM copies** cannot be physically
+   wiped by the server. **OPERATIONAL_FOLLOW_THROUGH.**
 
 Tracked as G-05-02. **G-08-04 stays OPEN** until independent retest; owner
 approval does not close that gate.

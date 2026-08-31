@@ -6,6 +6,7 @@ namespace Tests\Unit\Platform;
 
 use Modules\Auth\Services\RegisterAccountService;
 use Modules\Identity\Services\DisableIdentityService;
+use Modules\Identity\Services\EraseSubjectService;
 use Modules\Platform\Services\Coordinators\ApprovedCoordinators;
 use Modules\Platform\Services\Outbox\OutboxConsumer;
 use PHPUnit\Framework\Attributes\Test;
@@ -22,7 +23,7 @@ use SplFileInfo;
 final class ArchitectureBoundaryTest extends TestCase
 {
     #[Test]
-    public function phase_01_lists_the_registration_and_disable_coordinating_services(): void
+    public function phase_01_lists_the_registration_disable_and_erase_coordinating_services(): void
     {
         $this->assertContains(
             RegisterAccountService::class,
@@ -30,6 +31,10 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             DisableIdentityService::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            EraseSubjectService::class,
             ApprovedCoordinators::classes(),
         );
     }

@@ -30,6 +30,10 @@ final class Capabilities
 
     public const IDENTITY_DISABLE = 'identity.disable';
 
+    public const IDENTITY_ERASE = 'identity.erase';
+
+    public const IDENTITY_EXPORT = 'identity.export';
+
     public const RECOVERY_APPLY = 'auth.recovery.apply';
 
     /** Resource-scoped placeholder until later phases register clinical names. */
@@ -54,6 +58,8 @@ final class Capabilities
         self::ACCESS_GRANT_ISSUE,
         self::ACCESS_GRANT_REVOKE,
         self::IDENTITY_DISABLE,
+        self::IDENTITY_ERASE,
+        self::IDENTITY_EXPORT,
         self::RECOVERY_APPLY,
     ];
 

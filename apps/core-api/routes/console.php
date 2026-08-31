@@ -9,7 +9,22 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('auth:prune-expired')->hourly();
+Schedule::command('auth:prune-expired')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::command('access:prune-expired')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::command('platform:prune')
+    ->daily()
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::command('queue:prune-failed --hours='.(int) config('platform.queue.failed_job_retention_hours', 168))
+    ->daily()
+    ->withoutOverlapping()
+    ->onOneServer();
 Schedule::command('audit:verify-chain')
     ->everyFifteenMinutes()
     ->withoutOverlapping()

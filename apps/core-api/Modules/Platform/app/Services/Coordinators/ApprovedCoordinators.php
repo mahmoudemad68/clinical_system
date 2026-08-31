@@ -25,6 +25,7 @@ final class ApprovedCoordinators
         return [
             'Modules\\Auth\\Services\\RegisterAccountService',
             'Modules\\Identity\\Services\\DisableIdentityService',
+            'Modules\\Identity\\Services\\EraseSubjectService',
         ];
     }
 }

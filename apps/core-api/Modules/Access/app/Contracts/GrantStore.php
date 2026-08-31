@@ -45,4 +45,10 @@ interface GrantStore
      * @return list<string>
      */
     public function activeCapabilities(Identifier $actorUserId, DateTimeImmutable $now): array;
+
+    public function eraseSubjectGrants(Identifier $userId): int;
+
+    public function countSubjectGrants(Identifier $userId): int;
+
+    public function pruneObsolete(DateTimeImmutable $now): int;
 }

@@ -209,4 +209,30 @@ interface AuthDirectory
     public function pruneExpiredOtps(DateTimeImmutable $now): int;
 
     public function pruneExpiredSessions(DateTimeImmutable $now): int;
+
+    /**
+     * @return array{
+     *     session_ids: list<string>,
+     *     refresh_family_ids: list<string>,
+     *     mfa_challenge_ids: list<string>,
+     *     otp_ids: list<string>
+     * }
+     */
+    public function subjectAuthIdentifiers(Identifier $userId, string $subjectHmac): array;
+
+    /**
+     * @return array<string, int>
+     */
+    public function countSubjectAuthHoldings(Identifier $userId, string $subjectHmac): array;
+
+    /**
+     * @return array<string, int>
+     */
+    public function eraseSubjectAuthState(Identifier $userId, string $subjectHmac, DateTimeImmutable $now): array;
+
+    public function pruneObsoleteRecoveryRequests(DateTimeImmutable $now): int;
+
+    public function pruneObsoleteDevices(DateTimeImmutable $now): int;
+
+    public function pruneObsoleteRefreshConsumptions(DateTimeImmutable $now): int;
 }

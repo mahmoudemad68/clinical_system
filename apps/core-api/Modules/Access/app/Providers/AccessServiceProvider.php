@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Access\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\Access\Console\PruneExpiredGrantsCommand;
 use Modules\Access\Contracts\Authorize;
 use Modules\Access\Contracts\GrantContextualAccess;
 use Modules\Access\Contracts\GrantStore;
@@ -25,5 +26,12 @@ final class AccessServiceProvider extends ServiceProvider
         $this->app->singleton(GrantContextualAccess::class, GrantContextualAccessService::class);
         $this->app->singleton(RevokeContextualAccess::class, RevokeContextualAccessService::class);
         $this->app->singleton(ListEffectiveCapabilities::class, ListEffectiveCapabilitiesService::class);
+    }
+
+    public function boot(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([PruneExpiredGrantsCommand::class]);
+        }
     }
 }

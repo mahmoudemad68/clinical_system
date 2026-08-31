@@ -83,6 +83,7 @@ use Modules\Platform\Services\Persistence\EloquentDiagnosticsRepository;
 use Modules\Platform\Services\Persistence\EloquentIdempotencyStore;
 use Modules\Platform\Services\Persistence\EloquentOutboxRecorder;
 use Modules\Platform\Services\Persistence\WorkerDatabaseIdentity;
+use Modules\Platform\Services\Privacy\DiscardSubjectTransientCopies;
 use Modules\Platform\Services\Status\PlatformStatusQuery;
 use Modules\Platform\Services\Telemetry\AuditChainVerificationTelemetry;
 use Modules\Platform\Services\Telemetry\HttpInstrumentation;
@@ -182,6 +183,7 @@ final class PlatformServiceProvider extends ServiceProvider
             $app->make(IdentityGenerator::class),
             $app->make(Clock::class),
         ));
+        $this->app->singleton(DiscardSubjectTransientCopies::class);
 
         $this->app->bind(PlatformStatusQuery::class, static fn (): PlatformStatusQuery => new PlatformStatusQuery(
             (string) config('app.version', '0.0.0-dev'),

@@ -761,6 +761,196 @@ final class PostgresAuthStore implements AuthDirectory
         return $revoked;
     }
 
+    /**
+     * @return array{
+     *     session_ids: list<string>,
+     *     refresh_family_ids: list<string>,
+     *     mfa_challenge_ids: list<string>,
+     *     otp_ids: list<string>
+     * }
+     */
+    public function subjectAuthIdentifiers(Identifier $userId, string $subjectHmac): array
+    {
+        $sessionIds = $this->connection->table('auth_sessions')
+            ->where('user_id', $userId->value)
+            ->pluck('id')
+            ->all();
+        $familyIds = $this->connection->table('user_devices')
+            ->where('user_id', $userId->value)
+            ->whereNotNull('refresh_family_id')
+            ->pluck('refresh_family_id')
+            ->all();
+        $challengeIds = $this->connection->table('mfa_challenges')
+            ->where('user_id', $userId->value)
+            ->pluck('id')
+            ->all();
+        $otpIds = $subjectHmac === ''
+            ? []
+            : $this->connection->table('otp_requests')
+                ->where('subject_lookup_hmac', BinaryColumn::bind($subjectHmac))
+                ->pluck('id')
+                ->all();
+
+        return [
+            'session_ids' => array_values(array_map(static fn (mixed $id): string => (string) $id, $sessionIds)),
+            'refresh_family_ids' => array_values(array_unique(array_map(static fn (mixed $id): string => (string) $id, $familyIds))),
+            'mfa_challenge_ids' => array_values(array_map(static fn (mixed $id): string => (string) $id, $challengeIds)),
+            'otp_ids' => array_values(array_map(static fn (mixed $id): string => (string) $id, $otpIds)),
+        ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    public function countSubjectAuthHoldings(Identifier $userId, string $subjectHmac): array
+    {
+        $familyIds = $this->connection->table('user_devices')
+            ->where('user_id', $userId->value)
+            ->whereNotNull('refresh_family_id')
+            ->pluck('refresh_family_id')
+            ->all();
+
+        $consumptions = $familyIds === []
+            ? 0
+            : $this->connection->table('auth_refresh_consumptions')
+                ->whereIn('family_id', $familyIds)
+                ->count();
+
+        $otps = $subjectHmac === ''
+            ? 0
+            : $this->connection->table('otp_requests')
+                ->where('subject_lookup_hmac', BinaryColumn::bind($subjectHmac))
+                ->count();
+
+        return [
+            'user_devices' => $this->connection->table('user_devices')->where('user_id', $userId->value)->count(),
+            'auth_sessions' => $this->connection->table('auth_sessions')->where('user_id', $userId->value)->count(),
+            'auth_refresh_consumptions' => $consumptions,
+            'otp_requests' => $otps,
+            'mfa_factors' => $this->connection->table('mfa_factors')->where('user_id', $userId->value)->count(),
+            'mfa_recovery_codes' => $this->connection->table('mfa_recovery_codes')->where('user_id', $userId->value)->count(),
+            'mfa_challenges' => $this->connection->table('mfa_challenges')->where('user_id', $userId->value)->count(),
+            'recovery_requests' => $this->connection->table('recovery_requests')->where('user_id', $userId->value)->count(),
+        ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    public function eraseSubjectAuthState(Identifier $userId, string $subjectHmac, DateTimeImmutable $now): array
+    {
+        $familyIds = $this->connection->table('user_devices')
+            ->where('user_id', $userId->value)
+            ->whereNotNull('refresh_family_id')
+            ->pluck('refresh_family_id')
+            ->all();
+
+        $consumptions = 0;
+        if ($familyIds !== []) {
+            $consumptions = $this->connection->table('auth_refresh_consumptions')
+                ->whereIn('family_id', $familyIds)
+                ->delete();
+        }
+
+        $sessions = $this->connection->table('auth_sessions')->where('user_id', $userId->value)->delete();
+
+        $this->connection->table('user_devices')->where('user_id', $userId->value)->update([
+            'token_hash' => null,
+            'refresh_token_hash' => null,
+            'previous_refresh_token_hash' => null,
+            'push_token_ciphertext' => null,
+            'refresh_replay_ciphertext' => null,
+            'refresh_replay_idempotency_hmac' => null,
+            'refresh_replay_expires_at' => null,
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+        $devices = $this->connection->table('user_devices')->where('user_id', $userId->value)->delete();
+
+        $otps = 0;
+        if ($subjectHmac !== '') {
+            $this->connection->table('otp_requests')
+                ->where('subject_lookup_hmac', BinaryColumn::bind($subjectHmac))
+                ->update([
+                    'code_ciphertext' => null,
+                    'destination_ciphertext' => null,
+                ]);
+            $otps = $this->connection->table('otp_requests')
+                ->where('subject_lookup_hmac', BinaryColumn::bind($subjectHmac))
+                ->delete();
+        }
+
+        $challenges = $this->connection->table('mfa_challenges')->where('user_id', $userId->value)->delete();
+        $recoveryCodes = $this->connection->table('mfa_recovery_codes')->where('user_id', $userId->value)->delete();
+        $factors = $this->connection->table('mfa_factors')->where('user_id', $userId->value)->delete();
+
+        $this->connection->table('recovery_requests')->where('user_id', $userId->value)->update([
+            'new_password_hash' => '',
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+        $recovery = $this->connection->table('recovery_requests')->where('user_id', $userId->value)->delete();
+
+        return [
+            'user_devices' => $devices,
+            'auth_sessions' => $sessions,
+            'auth_refresh_consumptions' => $consumptions,
+            'otp_requests' => $otps,
+            'mfa_factors' => $factors,
+            'mfa_recovery_codes' => $recoveryCodes,
+            'mfa_challenges' => $challenges,
+            'recovery_requests' => $recovery,
+        ];
+    }
+
+    public function pruneObsoleteRecoveryRequests(DateTimeImmutable $now): int
+    {
+        $days = (int) config('identity.retention.recovery_request_days', 90);
+        $cutoff = $now->modify(sprintf('-%d days', $days))->format('Y-m-d H:i:s.uP');
+
+        $this->connection->table('recovery_requests')
+            ->whereIn('status', ['applied', 'rejected', 'expired'])
+            ->where('updated_at', '<', $cutoff)
+            ->update(['new_password_hash' => '']);
+
+        return $this->connection->table('recovery_requests')
+            ->whereIn('status', ['applied', 'rejected', 'expired'])
+            ->where('updated_at', '<', $cutoff)
+            ->delete();
+    }
+
+    public function pruneObsoleteDevices(DateTimeImmutable $now): int
+    {
+        $days = (int) config('identity.retention.revoked_device_days', 90);
+        $cutoff = $now->modify(sprintf('-%d days', $days))->format('Y-m-d H:i:s.uP');
+
+        $this->connection->table('user_devices')
+            ->whereNotNull('revoked_at')
+            ->where('revoked_at', '<', $cutoff)
+            ->update([
+                'token_hash' => null,
+                'refresh_token_hash' => null,
+                'previous_refresh_token_hash' => null,
+                'push_token_ciphertext' => null,
+                'refresh_replay_ciphertext' => null,
+                'refresh_replay_idempotency_hmac' => null,
+                'refresh_replay_expires_at' => null,
+            ]);
+
+        return $this->connection->table('user_devices')
+            ->whereNotNull('revoked_at')
+            ->where('revoked_at', '<', $cutoff)
+            ->delete();
+    }
+
+    public function pruneObsoleteRefreshConsumptions(DateTimeImmutable $now): int
+    {
+        $days = (int) config('identity.retention.refresh_consumption_days', 90);
+        $cutoff = $now->modify(sprintf('-%d days', $days))->format('Y-m-d H:i:s.uP');
+
+        return $this->connection->table('auth_refresh_consumptions')
+            ->where('consumed_at', '<', $cutoff)
+            ->delete();
+    }
+
     public function lockRecoveryRequest(Identifier $id): ?stdClass
     {
         $row = $this->connection->selectOne(
