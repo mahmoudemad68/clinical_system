@@ -178,6 +178,38 @@ it('fails closed when production CORS allows localhost or loopback', function (s
     'https://localhost',
     'http://127.0.0.1:3000',
     'https://127.0.0.1',
+    'https://[::1]',
+    'https://[0:0:0:0:0:0:0:1]',
+    'https://[::ffff:127.0.0.1]',
+]);
+
+it('fails closed when production CORS origin is an unbracketed or truncated IPv6 loopback URL', function (string $origin) {
+    config(productionReverbBaseline());
+    config(['cors.allowed_origins' => [$origin]]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+})->with([
+    'https://::1',
+    'https://[::1',
+]);
+
+it('passes when production CORS allows a non-loopback HTTPS IPv6 origin', function () {
+    config(productionReverbBaseline());
+    config(['cors.allowed_origins' => ['https://[2001:db8::10]']]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Pass);
+});
+
+it('fails closed when production reverb allows IPv6 loopback hosts', function (string $origin) {
+    config(productionReverbBaseline());
+    config(['reverb.apps.apps.0.allowed_origins' => [$origin]]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+})->with([
+    '[::1]',
+    '::1',
+    '0:0:0:0:0:0:0:1',
+    'https://[::1]',
 ]);
 
 it('fails closed when production CORS allows a wildcard origin', function () {

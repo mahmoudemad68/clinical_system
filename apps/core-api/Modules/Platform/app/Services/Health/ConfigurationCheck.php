@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Platform\Services\Health;
 
+use Modules\Platform\Support\OriginHost;
+
 /**
  * Critical configuration is present and non-empty.
  *
@@ -117,13 +119,13 @@ final class ConfigurationCheck implements DependencyCheck
                 return false;
             }
 
-            $host = strtolower($origin);
-            if ($host === '*' || str_contains($host, '*')) {
+            $raw = strtolower(trim($origin));
+            if ($raw === '*' || str_contains($raw, '*')) {
                 return false;
             }
 
-            if (in_array($host, ['localhost', '127.0.0.1', '::1', '0.0.0.0'], true)
-                || str_ends_with($host, '.localhost')) {
+            $host = OriginHost::fromConfiguredValue($origin);
+            if ($host === null || OriginHost::isDeniedInProduction($host)) {
                 return false;
             }
         }
@@ -225,9 +227,7 @@ final class ConfigurationCheck implements DependencyCheck
         }
 
         $host = strtolower((string) ($parts['host'] ?? ''));
-        if ($host === ''
-            || in_array($host, ['localhost', '127.0.0.1', '::1', '0.0.0.0'], true)
-            || str_ends_with($host, '.localhost')) {
+        if ($host === '' || OriginHost::isDeniedInProduction($host)) {
             return false;
         }
 
