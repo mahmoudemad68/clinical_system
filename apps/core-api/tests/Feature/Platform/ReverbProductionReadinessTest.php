@@ -20,6 +20,8 @@ beforeEach(function () {
         'reverb.apps.apps' => config('reverb.apps.apps'),
         'reverb.servers.reverb.host' => config('reverb.servers.reverb.host'),
         'reverb.servers.reverb.host_explicit' => config('reverb.servers.reverb.host_explicit'),
+        'cors.allowed_origins' => config('cors.allowed_origins'),
+        'cors.allowed_origins_patterns' => config('cors.allowed_origins_patterns'),
     ];
 });
 
@@ -48,6 +50,8 @@ it('fails /ready when production reverb credentials are empty', function () {
         'reverb.apps.apps.0.options.useTLS' => true,
         'reverb.servers.reverb.host' => '0.0.0.0',
         'reverb.servers.reverb.host_explicit' => true,
+        'cors.allowed_origins' => ['https://admin.clinic.example'],
+        'cors.allowed_origins_patterns' => [],
     ]);
 
     $response = $this->getJson('/ready');

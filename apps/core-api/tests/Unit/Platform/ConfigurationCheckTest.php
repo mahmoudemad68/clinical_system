@@ -33,6 +33,8 @@ function productionReverbBaseline(): array
         'reverb.apps.apps.0.options.useTLS' => true,
         'reverb.servers.reverb.host' => '0.0.0.0',
         'reverb.servers.reverb.host_explicit' => true,
+        'cors.allowed_origins' => ['https://admin.clinic.example'],
+        'cors.allowed_origins_patterns' => [],
     ];
 }
 
@@ -42,8 +44,6 @@ function configurationCheck(): ConfigurationCheck
         'app.key',
         'app.version',
         'database.default',
-        'identity.hmac.keys.1',
-        'identity.encryption.keys.1',
     ]);
 }
 
@@ -61,6 +61,12 @@ beforeEach(function () {
         'reverb.apps.apps' => config('reverb.apps.apps'),
         'reverb.servers.reverb.host' => config('reverb.servers.reverb.host'),
         'reverb.servers.reverb.host_explicit' => config('reverb.servers.reverb.host_explicit'),
+        'cors.allowed_origins' => config('cors.allowed_origins'),
+        'cors.allowed_origins_patterns' => config('cors.allowed_origins_patterns'),
+        'identity.hmac.current_version' => config('identity.hmac.current_version'),
+        'identity.encryption.current_version' => config('identity.encryption.current_version'),
+        'identity.hmac.keys' => config('identity.hmac.keys'),
+        'identity.encryption.keys' => config('identity.encryption.keys'),
     ];
 });
 
@@ -126,4 +132,110 @@ it('fails closed when production reverb bind host is not explicit', function () 
 it('passes local testing reverb configuration without production gates', function () {
     expect((string) config('app.env'))->toBe('testing')
         ->and(configurationCheck()->run())->toBe(CheckStatus::Pass);
+});
+
+it('fails closed when production APP_URL is http', function () {
+    config(productionReverbBaseline());
+    config(['app.url' => 'http://clinic.example']);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+});
+
+it('fails closed when production session.secure is false', function () {
+    config(productionReverbBaseline());
+    config(['session.secure' => false]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+});
+
+it('fails closed when production PostgreSQL sslmode is prefer, allow, or disable', function (string $mode) {
+    config(productionReverbBaseline());
+    config([
+        'database.connections.pgsql.sslmode' => $mode,
+        'database.connections.pgsql_migrator.sslmode' => $mode,
+        'database.connections.pgsql_worker.sslmode' => $mode,
+        'database.connections.pgsql_reporter.sslmode' => $mode,
+        'database.connections.pgsql_audit.sslmode' => $mode,
+    ]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+})->with(['prefer', 'allow', 'disable']);
+
+it('fails closed when production CORS origins are empty', function () {
+    config(productionReverbBaseline());
+    config(['cors.allowed_origins' => []]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+});
+
+it('fails closed when production CORS allows localhost or loopback', function (string $origin) {
+    config(productionReverbBaseline());
+    config(['cors.allowed_origins' => [$origin]]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+})->with([
+    'http://localhost:5173',
+    'https://localhost',
+    'http://127.0.0.1:3000',
+    'https://127.0.0.1',
+]);
+
+it('fails closed when production CORS allows a wildcard origin', function () {
+    config(productionReverbBaseline());
+    config(['cors.allowed_origins' => ['*']]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+});
+
+it('fails closed when production CORS uses origin patterns', function () {
+    config(productionReverbBaseline());
+    config(['cors.allowed_origins_patterns' => ['https://.*\\.clinic\\.example']]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+});
+
+it('fails closed when production CORS origin is not https', function () {
+    config(productionReverbBaseline());
+    config(['cors.allowed_origins' => ['http://admin.clinic.example']]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+});
+
+it('fails closed when production CORS origin is malformed', function () {
+    config(productionReverbBaseline());
+    config(['cors.allowed_origins' => ['https://']]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+});
+
+it('fails closed when the configured current hmac key is missing', function () {
+    config(productionReverbBaseline());
+    config([
+        'identity.hmac.current_version' => 2,
+        'identity.hmac.keys.2' => '',
+    ]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+});
+
+it('fails closed when the configured current encryption key is weak', function () {
+    config(productionReverbBaseline());
+    config([
+        'identity.encryption.current_version' => 2,
+        'identity.encryption.keys.2' => str_repeat('x', 31),
+    ]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+});
+
+it('passes when current_version is 2 and the v2 keys meet the floor', function () {
+    config(productionReverbBaseline());
+    config([
+        'identity.hmac.current_version' => 2,
+        'identity.encryption.current_version' => 2,
+        'identity.hmac.keys.2' => 'test_identity_hmac_v2_not_a_secret_value!!',
+        'identity.encryption.keys.2' => 'test_identity_enc_v2_not_a_secret_value!!',
+    ]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Pass);
 });

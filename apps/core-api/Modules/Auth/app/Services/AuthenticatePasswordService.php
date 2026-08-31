@@ -40,13 +40,7 @@ final class AuthenticatePasswordService
         $hmac = $this->protector->phoneHmac($parsed);
         $this->rates->hitLogin($hmac, $ipPrefix ?? '0.0.0.0');
 
-        $user = null;
-        foreach ($this->protector->phoneLookupHmacs($parsed) as $candidate) {
-            $user = $this->identities->findByPhoneHmac($candidate);
-            if ($user !== null) {
-                break;
-            }
-        }
+        $user = $this->identities->findByPhoneHmacs($this->protector->phoneLookupHmacs($parsed));
 
         if ($user === null) {
             $this->hasher->dummyVerify($password);

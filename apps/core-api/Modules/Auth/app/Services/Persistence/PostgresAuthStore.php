@@ -53,18 +53,141 @@ final class PostgresAuthStore implements AuthDirectory
         ]);
     }
 
-    public function invalidateOpenOtps(string $subjectHmac, string $purpose, DateTimeImmutable $now): void
+    public function invalidateOpenOtps(array $subjectHmacs, string $purpose, DateTimeImmutable $now): void
     {
-        $this->connection->table('otp_requests')
-            ->where('subject_lookup_hmac', BinaryColumn::bind($subjectHmac))
+        if ($subjectHmacs === []) {
+            return;
+        }
+
+        $query = $this->connection->table('otp_requests')
             ->where('purpose', $purpose)
             ->whereNull('consumed_at')
-            ->whereNull('invalidated_at')
+            ->whereNull('invalidated_at');
+
+        $query->where(function (Builder $inner) use ($subjectHmacs): void {
+            foreach ($subjectHmacs as $hmac) {
+                $inner->orWhere('subject_lookup_hmac', BinaryColumn::bind($hmac));
+            }
+        });
+
+        $query->update([
+            'invalidated_at' => $now->format('Y-m-d H:i:s.uP'),
+            'code_ciphertext' => null,
+            'destination_ciphertext' => null,
+        ]);
+    }
+
+    public function rebindOtpSubjectHmac(string $from, string $to): int
+    {
+        if ($from === $to) {
+            return 0;
+        }
+
+        return $this->connection->table('otp_requests')
+            ->where('subject_lookup_hmac', BinaryColumn::bind($from))
             ->update([
-                'invalidated_at' => $now->format('Y-m-d H:i:s.uP'),
-                'code_ciphertext' => null,
-                'destination_ciphertext' => null,
+                'subject_lookup_hmac' => BinaryColumn::bind($to),
             ]);
+    }
+
+    public function countTotpNeedingRekey(int $encryptionVersion): int
+    {
+        return $this->totpNeedingRekeyQuery($encryptionVersion)->count();
+    }
+
+    /**
+     * @return list<stdClass>
+     */
+    public function totpFactorsNeedingRekey(int $encryptionVersion, int $limit): array
+    {
+        $rows = $this->totpNeedingRekeyQuery($encryptionVersion)
+            ->orderBy('id')
+            ->limit($limit)
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            if ($row instanceof stdClass) {
+                $out[] = $this->normalizeFactor($row);
+            }
+        }
+
+        return $out;
+    }
+
+    public function rewriteTotpSecret(Identifier $factorId, string $cipher, int $keyVersion, DateTimeImmutable $now): void
+    {
+        $this->connection->table('mfa_factors')->where('id', $factorId->value)->update([
+            'secret_ciphertext' => BinaryColumn::bind($cipher),
+            'key_version' => $keyVersion,
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
+    public function countPushTokensNeedingRekey(int $encryptionVersion): int
+    {
+        return $this->pushTokenNeedingRekeyQuery($encryptionVersion)->count();
+    }
+
+    /**
+     * @return list<stdClass>
+     */
+    public function devicesWithPushTokenNeedingRekey(int $encryptionVersion, int $limit): array
+    {
+        $rows = $this->pushTokenNeedingRekeyQuery($encryptionVersion)
+            ->orderBy('id')
+            ->limit($limit)
+            ->get(['id', 'push_token_ciphertext']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            if ($row instanceof stdClass) {
+                $out[] = $row;
+            }
+        }
+
+        return $out;
+    }
+
+    public function rewritePushToken(Identifier $deviceId, string $cipher): void
+    {
+        $this->connection->table('user_devices')->where('id', $deviceId->value)->update([
+            'push_token_ciphertext' => BinaryColumn::bind($cipher),
+        ]);
+    }
+
+    public function countLiveOtpEncryptionBelow(int $version): int
+    {
+        return $this->connection->table('otp_requests')
+            ->where('key_version', '<', $version)
+            ->where(function (Builder $query): void {
+                $query->whereNotNull('code_ciphertext')
+                    ->orWhereNotNull('destination_ciphertext');
+            })
+            ->count();
+    }
+
+    public function countRefreshReplayBelow(int $version): int
+    {
+        return $this->connection->table('user_devices')
+            ->whereNotNull('refresh_replay_ciphertext')
+            ->whereRaw('(get_byte(refresh_replay_ciphertext, 0) * 256 + get_byte(refresh_replay_ciphertext, 1)) < ?', [$version])
+            ->count();
+    }
+
+    private function totpNeedingRekeyQuery(int $encryptionVersion): Builder
+    {
+        return $this->connection->table('mfa_factors')
+            ->where('factor_type', 'totp')
+            ->whereNull('disabled_at')
+            ->where('key_version', '<', $encryptionVersion);
+    }
+
+    private function pushTokenNeedingRekeyQuery(int $encryptionVersion): Builder
+    {
+        return $this->connection->table('user_devices')
+            ->whereNotNull('push_token_ciphertext')
+            ->whereRaw('(get_byte(push_token_ciphertext, 0) * 256 + get_byte(push_token_ciphertext, 1)) < ?', [$encryptionVersion]);
     }
 
     public function lockOtp(Identifier $id): ?stdClass

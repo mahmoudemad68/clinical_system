@@ -9,7 +9,8 @@ use Modules\Access\Support\Capabilities;
 use Modules\Audit\Contracts\AppendAuditEvent;
 use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Contracts\TotpVerifier;
-use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Enums\SensitiveDecryptPurpose;
+use Modules\Identity\Services\AuditedSensitiveDecryptor;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\TransactionContext;
@@ -25,7 +26,7 @@ final class DisableTotpService
         private readonly AuthDirectory $auth,
         private readonly Authorize $authorizer,
         private readonly TotpVerifier $totp,
-        private readonly NationalIdProtector $protector,
+        private readonly AuditedSensitiveDecryptor $decryptor,
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
     ) {}
@@ -44,11 +45,15 @@ final class DisableTotpService
             }
 
             $now = $this->clock->now();
-            $secret = $this->protector->decryptSecret('mfa_secret', (string) $factor->secret_ciphertext);
-            $this->audit->append($tx, 'auth.sensitive_decrypt', 'mfa_factor', Identifier::fromTrusted((string) $factor->id), [
-                'reason_code' => 'totp_disable',
-                'purpose' => 'mfa_secret',
-            ], $actor->userId, 'user');
+            $secret = $this->decryptor->decrypt(
+                SensitiveDecryptPurpose::TotpDisable,
+                (string) $factor->secret_ciphertext,
+                'mfa_factor',
+                Identifier::fromTrusted((string) $factor->id),
+                $actor->userId,
+                'user',
+                $tx,
+            );
             $result = $this->totp->verify(
                 $secret,
                 $code,

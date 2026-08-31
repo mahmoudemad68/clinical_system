@@ -65,12 +65,7 @@ final class AesGcmEnvelopeEncryptor implements FieldEncryptor
             throw new RuntimeException('Envelope is truncated.');
         }
 
-        $unpacked = unpack('nversion', substr($envelope, 0, 2));
-        $version = is_array($unpacked) ? (int) $unpacked['version'] : 0;
-
-        if ($version < 1 || ! isset($this->keys[$version])) {
-            throw new RuntimeException('Envelope version is not readable.');
-        }
+        $version = $this->envelopeVersion($envelope);
 
         $iv = substr($envelope, 2, self::IV_LENGTH);
         $tag = substr($envelope, -self::TAG_LENGTH);
@@ -90,6 +85,22 @@ final class AesGcmEnvelopeEncryptor implements FieldEncryptor
         }
 
         return $plain;
+    }
+
+    public function envelopeVersion(string $envelope): int
+    {
+        if (strlen($envelope) < 2) {
+            throw new RuntimeException('Envelope is truncated.');
+        }
+
+        $unpacked = unpack('nversion', substr($envelope, 0, 2));
+        $version = is_array($unpacked) ? (int) $unpacked['version'] : 0;
+
+        if ($version < 1 || ! isset($this->keys[$version]) || $this->keys[$version] === '') {
+            throw new RuntimeException('Envelope version is not readable.');
+        }
+
+        return $version;
     }
 
     public function currentVersion(): int

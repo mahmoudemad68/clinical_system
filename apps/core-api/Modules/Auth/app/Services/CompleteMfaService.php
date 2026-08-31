@@ -13,7 +13,8 @@ use Modules\Auth\Contracts\AuthTelemetry;
 use Modules\Auth\Contracts\TotpVerifier;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\AssuranceLevel;
-use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Enums\SensitiveDecryptPurpose;
+use Modules\Identity\Services\AuditedSensitiveDecryptor;
 use Modules\Identity\Support\UserAccount;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\TransactionContext;
@@ -28,7 +29,7 @@ final class CompleteMfaService
         private readonly AuthDirectory $auth,
         private readonly UserDirectory $identities,
         private readonly TotpVerifier $totp,
-        private readonly NationalIdProtector $protector,
+        private readonly AuditedSensitiveDecryptor $decryptor,
         private readonly CredentialIssuer $credentials,
         private readonly IssueAuthenticatedSession $sessions,
         private readonly Clock $clock,
@@ -129,11 +130,15 @@ final class CompleteMfaService
                 );
             }
 
-            $secret = $this->protector->decryptSecret('mfa_secret', (string) $factor->secret_ciphertext);
-            $this->audit->append($tx, 'auth.sensitive_decrypt', 'mfa_factor', Identifier::fromTrusted((string) $factor->id), [
-                'reason_code' => 'totp_verify',
-                'purpose' => 'mfa_secret',
-            ], $user->id, 'user');
+            $secret = $this->decryptor->decrypt(
+                SensitiveDecryptPurpose::TotpVerify,
+                (string) $factor->secret_ciphertext,
+                'mfa_factor',
+                Identifier::fromTrusted((string) $factor->id),
+                $user->id,
+                'user',
+                $tx,
+            );
             $totp = $this->totp->verify(
                 $secret,
                 (string) $totpCode,

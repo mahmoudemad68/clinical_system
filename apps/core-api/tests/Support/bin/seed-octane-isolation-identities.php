@@ -64,7 +64,8 @@ $users->insertUser(
     ),
     $protector->encryptPhone($phoneA),
     $protector->phoneHmac($phoneA),
-    1,
+    $protector->encryptionVersion(),
+    $protector->hmacVersion(),
     $now,
 );
 
@@ -82,7 +83,8 @@ $users->insertUser(
     ),
     $protector->encryptPhone($phoneB),
     $protector->phoneHmac($phoneB),
-    1,
+    $protector->encryptionVersion(),
+    $protector->hmacVersion(),
     $now,
 );
 
@@ -92,7 +94,7 @@ $auth->insertTotpFactor([
     'user_id' => $idB->value,
     'factor_type' => 'totp',
     'secret_ciphertext' => $protector->encryptSecret('mfa_secret', $secret),
-    'key_version' => 1,
+    'key_version' => $protector->encryptionVersion(),
     'last_used_counter' => null,
     'last_used_at' => null,
     'verified_at' => $now->format('Y-m-d H:i:s.uP'),

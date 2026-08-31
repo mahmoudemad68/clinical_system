@@ -7,6 +7,7 @@ namespace Tests\Unit\Platform;
 use Modules\Auth\Services\RegisterAccountService;
 use Modules\Identity\Services\DisableIdentityService;
 use Modules\Identity\Services\EraseSubjectService;
+use Modules\Identity\Services\RotateIdentityKeysService;
 use Modules\Platform\Services\Coordinators\ApprovedCoordinators;
 use Modules\Platform\Services\Outbox\OutboxConsumer;
 use PHPUnit\Framework\Attributes\Test;
@@ -35,6 +36,10 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             EraseSubjectService::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            RotateIdentityKeysService::class,
             ApprovedCoordinators::classes(),
         );
     }

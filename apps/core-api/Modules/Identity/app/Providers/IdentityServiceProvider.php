@@ -10,6 +10,7 @@ use Modules\Identity\Console\RotateIdentityKeysCommand;
 use Modules\Identity\Contracts\PatientIdentityRegistry;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Services\Adapters\UnavailablePatientIdentityRegistry;
+use Modules\Identity\Services\AuditedSensitiveDecryptor;
 use Modules\Identity\Services\DisableIdentityService;
 use Modules\Identity\Services\EraseSubjectService;
 use Modules\Identity\Services\ExportSubjectDataService;
@@ -18,6 +19,7 @@ use Modules\Identity\Services\MeQuery;
 use Modules\Identity\Services\NationalIdProtector;
 use Modules\Identity\Services\Persistence\PostgresIdentityStore;
 use Modules\Identity\Services\ResolveActorContext;
+use Modules\Identity\Services\RotateIdentityKeysService;
 use Modules\Platform\Contracts\FieldEncryptor;
 use Modules\Platform\Contracts\HmacHasher;
 
@@ -43,6 +45,8 @@ final class IdentityServiceProvider extends ServiceProvider
         $this->app->bind(EraseSubjectService::class);
         $this->app->bind(ExportSubjectDataService::class);
         $this->app->bind(LinkVerifiedPatientAccount::class);
+        $this->app->bind(AuditedSensitiveDecryptor::class);
+        $this->app->bind(RotateIdentityKeysService::class);
     }
 
     public function boot(): void

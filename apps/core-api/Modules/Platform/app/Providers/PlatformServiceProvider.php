@@ -257,8 +257,6 @@ final class PlatformServiceProvider extends ServiceProvider
                     'app.key',
                     'app.version',
                     'database.default',
-                    'identity.hmac.keys.1',
-                    'identity.encryption.keys.1',
                 ]),
                 new DatabaseCheck(DB::connection()),
                 new RedisCheck($app->make(RedisFactory::class), 'cache', true, $app->make(PlatformMetrics::class)),

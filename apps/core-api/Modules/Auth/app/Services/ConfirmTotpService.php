@@ -9,7 +9,8 @@ use Modules\Access\Support\Capabilities;
 use Modules\Audit\Contracts\AppendAuditEvent;
 use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Contracts\TotpVerifier;
-use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Enums\SensitiveDecryptPurpose;
+use Modules\Identity\Services\AuditedSensitiveDecryptor;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
@@ -26,7 +27,7 @@ final class ConfirmTotpService
         private readonly AuthDirectory $auth,
         private readonly Authorize $authorizer,
         private readonly TotpVerifier $totp,
-        private readonly NationalIdProtector $protector,
+        private readonly AuditedSensitiveDecryptor $decryptor,
         private readonly CredentialIssuer $credentials,
         private readonly IdentityGenerator $ids,
         private readonly Clock $clock,
@@ -55,11 +56,15 @@ final class ConfirmTotpService
             }
 
             $now = $this->clock->now();
-            $secret = $this->protector->decryptSecret('mfa_secret', (string) $factor->secret_ciphertext);
-            $this->audit->append($tx, 'auth.sensitive_decrypt', 'mfa_factor', Identifier::fromTrusted((string) $factor->id), [
-                'reason_code' => 'totp_confirm',
-                'purpose' => 'mfa_secret',
-            ], $actor->userId, 'user');
+            $secret = $this->decryptor->decrypt(
+                SensitiveDecryptPurpose::TotpConfirm,
+                (string) $factor->secret_ciphertext,
+                'mfa_factor',
+                Identifier::fromTrusted((string) $factor->id),
+                $actor->userId,
+                'user',
+                $tx,
+            );
 
             $result = $this->totp->verify($secret, $code, $now, null);
             if (! $result->valid) {

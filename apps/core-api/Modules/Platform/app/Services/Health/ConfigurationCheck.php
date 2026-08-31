@@ -38,11 +38,10 @@ final class ConfigurationCheck implements DependencyCheck
             }
         }
 
-        $min = (int) config('identity.hmac.min_key_length', 32);
-        foreach (['identity.hmac.keys.1', 'identity.encryption.keys.1'] as $key) {
-            if (strlen((string) config($key)) < $min) {
-                return CheckStatus::Fail;
-            }
+        $minHmac = (int) config('identity.hmac.min_key_length', 32);
+        $minEnc = (int) config('identity.encryption.min_key_length', 32);
+        if (! $this->configuredIdentityKeysAreValid($minHmac, $minEnc)) {
+            return CheckStatus::Fail;
         }
 
         if ((string) config('app.env') === 'production') {
@@ -74,6 +73,10 @@ final class ConfigurationCheck implements DependencyCheck
             }
 
             if (! $this->productionReverbIsSafe()) {
+                return CheckStatus::Fail;
+            }
+
+            if (! $this->productionCorsIsSafe()) {
                 return CheckStatus::Fail;
             }
         }
@@ -140,5 +143,109 @@ final class ConfigurationCheck implements DependencyCheck
         }
 
         return $scheme === 'http' && ! $useTls;
+    }
+
+    private function configuredIdentityKeysAreValid(int $minHmac, int $minEnc): bool
+    {
+        $hmacCurrent = (int) config('identity.hmac.current_version', 1);
+        $encCurrent = (int) config('identity.encryption.current_version', 1);
+
+        if (! $this->keyMaterialMeetsFloor(config('identity.hmac.keys.'.$hmacCurrent), $minHmac)) {
+            return false;
+        }
+
+        if (! $this->keyMaterialMeetsFloor(config('identity.encryption.keys.'.$encCurrent), $minEnc)) {
+            return false;
+        }
+
+        foreach ((array) config('identity.hmac.keys', []) as $material) {
+            if (! is_string($material) || $material === '') {
+                continue;
+            }
+
+            if (strlen($material) < $minHmac) {
+                return false;
+            }
+        }
+
+        foreach ((array) config('identity.encryption.keys', []) as $material) {
+            if (! is_string($material) || $material === '') {
+                continue;
+            }
+
+            if (strlen($material) < $minEnc) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function keyMaterialMeetsFloor(mixed $material, int $min): bool
+    {
+        return is_string($material) && $material !== '' && strlen($material) >= $min;
+    }
+
+    private function productionCorsIsSafe(): bool
+    {
+        $origins = config('cors.allowed_origins');
+        $patterns = config('cors.allowed_origins_patterns');
+
+        if (! is_array($origins) || $origins === []) {
+            return false;
+        }
+
+        if (! is_array($patterns) || $patterns !== []) {
+            return false;
+        }
+
+        foreach ($origins as $origin) {
+            if (! is_string($origin) || ! $this->productionOriginIsExactHttps($origin)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function productionOriginIsExactHttps(string $origin): bool
+    {
+        $origin = trim($origin);
+        if ($origin === '' || $origin === '*' || str_contains($origin, '*')) {
+            return false;
+        }
+
+        $parts = parse_url($origin);
+        if (! is_array($parts)) {
+            return false;
+        }
+
+        if (($parts['scheme'] ?? '') !== 'https') {
+            return false;
+        }
+
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        if ($host === ''
+            || in_array($host, ['localhost', '127.0.0.1', '::1', '0.0.0.0'], true)
+            || str_ends_with($host, '.localhost')) {
+            return false;
+        }
+
+        if (isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])) {
+            return false;
+        }
+
+        $path = $parts['path'] ?? '';
+        if ($path !== '' && $path !== '/') {
+            return false;
+        }
+
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+        $canonical = 'https://'.$host.$port;
+        if ($path === '/') {
+            $canonical .= '/';
+        }
+
+        return strtolower($origin) === $canonical;
     }
 }

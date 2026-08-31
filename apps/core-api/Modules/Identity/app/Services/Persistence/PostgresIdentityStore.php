@@ -6,6 +6,7 @@ namespace Modules\Identity\Services\Persistence;
 
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\AccountStatus;
@@ -51,22 +52,64 @@ final class PostgresIdentityStore implements UserDirectory
         return $row instanceof stdClass ? $this->map($row) : null;
     }
 
-    public function nationalIdHmacTaken(string $hmac): bool
+    /**
+     * @param  list<string>  $hmacs
+     */
+    public function findByPhoneHmacs(array $hmacs): ?UserAccount
     {
-        return $this->connection->table('identity_national_ids')
-            ->where('national_id_lookup_hmac', BinaryColumn::bind($hmac))
-            ->exists();
+        if ($hmacs === []) {
+            return null;
+        }
+
+        $query = $this->connection->table('users')
+            ->whereIn('status', ['pending_phone', 'active', 'suspended', 'locked']);
+
+        $query->where(function ($inner) use ($hmacs): void {
+            foreach ($hmacs as $hmac) {
+                $inner->orWhere('phone_lookup_hmac', BinaryColumn::bind($hmac));
+            }
+        });
+
+        $row = $query->first();
+
+        return $row instanceof stdClass ? $this->map($row) : null;
     }
 
-    public function insertUser(UserAccount $user, string $phoneCipher, string $phoneHmac, int $keyVersion, DateTimeImmutable $now): void
+    /**
+     * @param  list<string>  $hmacs
+     */
+    public function nationalIdHmacsTaken(array $hmacs): bool
     {
+        if ($hmacs === []) {
+            return false;
+        }
+
+        $query = $this->connection->table('identity_national_ids');
+        $query->where(function ($inner) use ($hmacs): void {
+            foreach ($hmacs as $hmac) {
+                $inner->orWhere('national_id_lookup_hmac', BinaryColumn::bind($hmac));
+            }
+        });
+
+        return $query->exists();
+    }
+
+    public function insertUser(
+        UserAccount $user,
+        string $phoneCipher,
+        string $phoneHmac,
+        int $encryptionVersion,
+        int $hmacVersion,
+        DateTimeImmutable $now,
+    ): void {
         try {
             $this->connection->table('users')->insert([
                 'id' => $user->id->value,
                 'name' => $user->name,
                 'phone_e164_encrypted' => BinaryColumn::bind($phoneCipher),
                 'phone_lookup_hmac' => BinaryColumn::bind($phoneHmac),
-                'phone_key_version' => $keyVersion,
+                'phone_key_version' => $encryptionVersion,
+                'phone_hmac_version' => $hmacVersion,
                 'password_hash' => $user->passwordHash,
                 'account_type' => $user->accountType->value,
                 'status' => $user->status->value,
@@ -84,15 +127,23 @@ final class PostgresIdentityStore implements UserDirectory
         }
     }
 
-    public function insertNationalId(Identifier $id, Identifier $userId, string $cipher, string $hmac, int $keyVersion, DateTimeImmutable $now): void
-    {
+    public function insertNationalId(
+        Identifier $id,
+        Identifier $userId,
+        string $cipher,
+        string $hmac,
+        int $encryptionVersion,
+        int $hmacVersion,
+        DateTimeImmutable $now,
+    ): void {
         try {
             $this->connection->table('identity_national_ids')->insert([
                 'id' => $id->value,
                 'user_id' => $userId->value,
                 'national_id_encrypted' => BinaryColumn::bind($cipher),
                 'national_id_lookup_hmac' => BinaryColumn::bind($hmac),
-                'key_version' => $keyVersion,
+                'key_version' => $encryptionVersion,
+                'hmac_key_version' => $hmacVersion,
                 'created_at' => $now->format('Y-m-d H:i:s.uP'),
                 'updated_at' => $now->format('Y-m-d H:i:s.uP'),
             ]);
@@ -205,6 +256,109 @@ final class PostgresIdentityStore implements UserDirectory
         );
 
         return $row instanceof stdClass ? $this->map($row) : null;
+    }
+
+    public function countPhonesNeedingRekey(int $encryptionVersion, int $hmacVersion): int
+    {
+        return $this->phonesNeedingRekeyQuery($encryptionVersion, $hmacVersion)->count();
+    }
+
+    public function countNationalIdsNeedingRekey(int $encryptionVersion, int $hmacVersion): int
+    {
+        return $this->nationalIdsNeedingRekeyQuery($encryptionVersion, $hmacVersion)->count();
+    }
+
+    /**
+     * @return list<stdClass>
+     */
+    public function phonesNeedingRekey(int $encryptionVersion, int $hmacVersion, int $limit): array
+    {
+        $rows = $this->phonesNeedingRekeyQuery($encryptionVersion, $hmacVersion)
+            ->orderBy('id')
+            ->limit($limit)
+            ->get(['id', 'phone_e164_encrypted', 'phone_lookup_hmac']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            if ($row instanceof stdClass) {
+                $out[] = $row;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return list<stdClass>
+     */
+    public function nationalIdsNeedingRekey(int $encryptionVersion, int $hmacVersion, int $limit): array
+    {
+        $rows = $this->nationalIdsNeedingRekeyQuery($encryptionVersion, $hmacVersion)
+            ->orderBy('id')
+            ->limit($limit)
+            ->get(['id', 'national_id_encrypted', 'national_id_lookup_hmac']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            if ($row instanceof stdClass) {
+                $out[] = $row;
+            }
+        }
+
+        return $out;
+    }
+
+    public function rewritePhoneCrypto(
+        Identifier $id,
+        string $phoneCipher,
+        string $phoneHmac,
+        int $encryptionVersion,
+        int $hmacVersion,
+        DateTimeImmutable $now,
+    ): void {
+        $this->connection->table('users')->where('id', $id->value)->update([
+            'phone_e164_encrypted' => BinaryColumn::bind($phoneCipher),
+            'phone_lookup_hmac' => BinaryColumn::bind($phoneHmac),
+            'phone_key_version' => $encryptionVersion,
+            'phone_hmac_version' => $hmacVersion,
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
+    public function rewriteNationalIdCrypto(
+        Identifier $id,
+        string $cipher,
+        string $hmac,
+        int $encryptionVersion,
+        int $hmacVersion,
+        DateTimeImmutable $now,
+    ): void {
+        $this->connection->table('identity_national_ids')->where('id', $id->value)->update([
+            'national_id_encrypted' => BinaryColumn::bind($cipher),
+            'national_id_lookup_hmac' => BinaryColumn::bind($hmac),
+            'key_version' => $encryptionVersion,
+            'hmac_key_version' => $hmacVersion,
+            'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+        ]);
+    }
+
+    private function phonesNeedingRekeyQuery(int $encryptionVersion, int $hmacVersion): Builder
+    {
+        return $this->connection->table('users')
+            ->where('status', '!=', AccountStatus::Closed->value)
+            ->where(function ($query) use ($encryptionVersion, $hmacVersion): void {
+                $query->where('phone_key_version', '<', $encryptionVersion)
+                    ->orWhere('phone_hmac_version', '<', $hmacVersion);
+            });
+    }
+
+    private function nationalIdsNeedingRekeyQuery(int $encryptionVersion, int $hmacVersion): Builder
+    {
+        return $this->connection->table('identity_national_ids')
+            ->where(function ($query) use ($encryptionVersion, $hmacVersion): void {
+                $query->where('key_version', '<', $encryptionVersion)
+                    ->orWhere('hmac_key_version', '<', $hmacVersion);
+            });
     }
 
     private function map(stdClass $row): UserAccount

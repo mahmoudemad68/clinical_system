@@ -88,7 +88,7 @@ it('nulls sensitive ciphertext when open otps are invalidated', function () {
     $hmac = otpCipherHmacForUser((string) $user->id);
     $otp = insertOtpCipherRow($now, $now->modify('+5 minutes'), $hmac, (string) $user->id);
 
-    app(AuthDirectory::class)->invalidateOpenOtps($hmac, 'registration', $now);
+    app(AuthDirectory::class)->invalidateOpenOtps([$hmac], 'registration', $now);
 
     $row = DB::table('otp_requests')->where('id', $otp['id'])->first();
     expect($row)->not->toBeNull()

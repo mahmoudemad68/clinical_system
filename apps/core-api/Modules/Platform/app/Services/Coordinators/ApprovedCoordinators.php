@@ -26,6 +26,7 @@ final class ApprovedCoordinators
             'Modules\\Auth\\Services\\RegisterAccountService',
             'Modules\\Identity\\Services\\DisableIdentityService',
             'Modules\\Identity\\Services\\EraseSubjectService',
+            'Modules\\Identity\\Services\\RotateIdentityKeysService',
         ];
     }
 }

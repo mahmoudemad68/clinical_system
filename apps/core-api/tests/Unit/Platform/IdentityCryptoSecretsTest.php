@@ -64,3 +64,82 @@ it('discovers laravel packages without identity encryption secrets', function ()
 
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput()."\n".$process->getOutput());
 });
+
+it('fails closed for empty, short, and sub-floor encryption keys', function (string $material) {
+    $encryptor = new AesGcmEnvelopeEncryptor([1 => $material], 1);
+
+    expect(fn () => $encryptor->encrypt('phone', '+201012345678'))
+        ->toThrow(RuntimeException::class);
+})->with([
+    '',
+    'x',
+    str_repeat('x', 16),
+    str_repeat('x', 31),
+]);
+
+it('encrypts when encryption key material is at least 32 characters', function () {
+    $encryptor = new AesGcmEnvelopeEncryptor([1 => str_repeat('k', 32)], 1);
+
+    expect($encryptor->decrypt('phone', $encryptor->encrypt('phone', '+201012345678')))->toBe('+201012345678');
+});
+
+it('fails closed for empty, short, and sub-floor hmac keys', function (string $material) {
+    $hasher = new HkdfHmacHasher([1 => $material], 1);
+
+    expect(fn () => $hasher->digest('phone_lookup', '+201012345678'))
+        ->toThrow(RuntimeException::class);
+})->with([
+    '',
+    'x',
+    str_repeat('x', 16),
+    str_repeat('x', 31),
+]);
+
+it('hashes when hmac key material is at least 32 characters', function () {
+    $hasher = new HkdfHmacHasher([1 => str_repeat('h', 32)], 1);
+
+    expect(strlen($hasher->digest('phone_lookup', '+201012345678')))->toBe(32);
+});
+
+it('fails closed when the configured current encryption version has no key', function () {
+    $encryptor = new AesGcmEnvelopeEncryptor([1 => str_repeat('k', 32), 2 => ''], 2);
+
+    expect(fn () => $encryptor->encrypt('phone', '+201012345678'))
+        ->toThrow(RuntimeException::class, 'Identity encryption current version has no key.');
+});
+
+it('fails closed when the configured current hmac version has no key', function () {
+    $hasher = new HkdfHmacHasher([1 => str_repeat('h', 32), 2 => ''], 2);
+
+    expect(fn () => $hasher->digest('phone_lookup', '+201012345678'))
+        ->toThrow(RuntimeException::class, 'Identity HMAC current version has no key.');
+});
+
+it('fails closed when decrypting with the wrong old key', function () {
+    $writer = new AesGcmEnvelopeEncryptor([1 => str_repeat('a', 32)], 1);
+    $envelope = $writer->encrypt('phone', '+201012345678');
+    $reader = new AesGcmEnvelopeEncryptor([1 => str_repeat('b', 32)], 1);
+
+    expect(fn () => $reader->decrypt('phone', $envelope))
+        ->toThrow(RuntimeException::class, 'Envelope decryption failed.');
+});
+
+it('fails closed on an unknown envelope version', function () {
+    $encryptor = new AesGcmEnvelopeEncryptor([1 => str_repeat('k', 32)], 1);
+    $envelope = $encryptor->encrypt('phone', '+201012345678');
+    $unknown = pack('n', 99).substr($envelope, 2);
+
+    expect(fn () => $encryptor->decrypt('phone', $unknown))
+        ->toThrow(RuntimeException::class, 'Envelope version is not readable.');
+});
+
+it('reports the envelope version used for a current write', function () {
+    $encryptor = new AesGcmEnvelopeEncryptor([
+        1 => str_repeat('a', 32),
+        2 => str_repeat('b', 32),
+    ], 2);
+    $envelope = $encryptor->encrypt('phone', '+201012345678');
+
+    expect($encryptor->envelopeVersion($envelope))->toBe(2)
+        ->and($encryptor->currentVersion())->toBe(2);
+});

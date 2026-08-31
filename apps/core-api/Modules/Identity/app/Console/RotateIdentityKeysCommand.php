@@ -5,85 +5,68 @@ declare(strict_types=1);
 namespace Modules\Identity\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Database\ConnectionInterface;
-use Modules\Identity\Services\NationalIdProtector;
-use Modules\Identity\Support\NationalId;
-use Modules\Platform\Services\Persistence\BinaryColumn;
+use Modules\Identity\Services\RotateIdentityKeysService;
 use Throwable;
 
 /**
- * Dual-read/new-write local re-key. Production KMS binding remains Phase 23 (ADR 0013).
+ * Dual-read / new-write identity re-key. Default is inspect/dry-run.
  *
- * Ciphertext is never printed.
+ * Production mutation requires --apply --confirm. Ciphertext and keys are
+ * never printed. Actual KMS binding remains Phase 23.
  */
 final class RotateIdentityKeysCommand extends Command
 {
-    protected $signature = 'identity:rotate-keys {--dry-run : Count only; never rewrite ciphertext}';
+    protected $signature = 'identity:rotate-keys
+        {--dry-run : Inspect counts only; never rewrite (default)}
+        {--apply : Rewrite a batch onto the current key versions}
+        {--confirm : Required with --apply when APP_ENV=production}
+        {--status : Report whether an old version may be retired}
+        {--batch=100 : Maximum rows rewritten per holding per invocation}';
 
-    protected $description = 'Re-encrypt identity rows onto the current key version. Ciphertext is never printed.';
+    protected $description = 'Inspect or rewrite identity envelopes onto the current key versions. Never prints secrets.';
 
-    public function handle(ConnectionInterface $connection, NationalIdProtector $protector): int
+    public function handle(RotateIdentityKeysService $rotation): int
     {
-        $currentHmac = (int) config('identity.hmac.current_version', 1);
-        $currentEnc = (int) config('identity.encryption.current_version', 1);
+        $apply = (bool) $this->option('apply');
 
-        $phones = $connection->table('users')->where('phone_key_version', '<', $currentEnc)->count();
-        $nids = $connection->table('identity_national_ids')->where('key_version', '<', $currentEnc)->count();
-        $otps = $connection->table('otp_requests')->where('key_version', '<', $currentEnc)->count();
-        $factors = $connection->table('mfa_factors')->where('key_version', '<', $currentEnc)->count();
-
-        $this->info(sprintf(
-            'Pending re-key counts (hmac_current=%d enc_current=%d): phones=%d national_ids=%d otps=%d totp_factors=%d.',
-            $currentHmac,
-            $currentEnc,
-            $phones,
-            $nids,
-            $otps,
-            $factors,
-        ));
-
-        if ($this->option('dry-run')) {
-            return self::SUCCESS;
-        }
-
-        if ((string) config('app.env') === 'production') {
-            $this->error('Production rewrite is Phase 23.');
+        if ($apply && (string) config('app.env') === 'production' && ! (bool) $this->option('confirm')) {
+            $this->error('Production rewrite requires --apply --confirm.');
 
             return self::FAILURE;
         }
 
-        $rewritten = 0;
-        $connection->table('users')->where('phone_key_version', '<', $currentEnc)->orderBy('id')->each(function (object $row) use ($connection, $protector, $currentEnc, &$rewritten): void {
-            try {
-                $plain = $protector->decryptPhone(BinaryColumn::asString($row->phone_e164_encrypted));
-                $phone = $protector->phone($plain);
-                $connection->table('users')->where('id', $row->id)->update([
-                    'phone_e164_encrypted' => BinaryColumn::bind($protector->encryptPhone($phone)),
-                    'phone_lookup_hmac' => BinaryColumn::bind($protector->phoneHmac($phone)),
-                    'phone_key_version' => $currentEnc,
-                ]);
-                $rewritten++;
-            } catch (Throwable) {
-                $this->error('A phone row could not be re-keyed.');
-            }
-        });
+        try {
+            $report = $apply
+                ? $rotation->apply(max(1, (int) $this->option('batch')))
+                : $rotation->inspect();
+        } catch (Throwable) {
+            $this->error('Identity key rotation failed closed. Ciphertext was not printed.');
 
-        $connection->table('identity_national_ids')->where('key_version', '<', $currentEnc)->orderBy('id')->each(function (object $row) use ($connection, $protector, $currentEnc, &$rewritten): void {
-            try {
-                $plain = $protector->decryptSecret('national_id', BinaryColumn::asString($row->national_id_encrypted));
-                $nationalId = NationalId::fromUntrusted($plain, (bool) config('identity.allow_synthetic_national_ids', false));
-                $connection->table('identity_national_ids')->where('id', $row->id)->update([
-                    'national_id_encrypted' => BinaryColumn::bind($protector->encryptNationalId($nationalId)),
-                    'national_id_lookup_hmac' => BinaryColumn::bind($protector->nationalIdHmac($nationalId)),
-                    'key_version' => $currentEnc,
-                ]);
-                $rewritten++;
-            } catch (Throwable) {
-                $this->error('A national-id row could not be re-keyed.');
-            }
-        });
+            return self::FAILURE;
+        }
 
-        $this->info(sprintf('Rewrote %d identity rows onto the current key version.', $rewritten));
+        $safe = $report->toSafeArray();
+        $this->info('pending_phone='.$safe['pending_phone']);
+        $this->info('pending_national_id='.$safe['pending_national_id']);
+        $this->info('pending_totp='.$safe['pending_totp']);
+        $this->info('pending_push_token='.$safe['pending_push_token']);
+        $this->info('live_otp_old_encryption='.$safe['live_otp_old_encryption']);
+        $this->info('live_refresh_replay='.$safe['live_refresh_replay']);
+        $this->info('rewritten_phone='.$safe['rewritten_phone']);
+        $this->info('rewritten_national_id='.$safe['rewritten_national_id']);
+        $this->info('rewritten_totp='.$safe['rewritten_totp']);
+        $this->info('rewritten_push_token='.$safe['rewritten_push_token']);
+        $this->info('hmac_current='.$safe['hmac_current']);
+        $this->info('enc_current='.$safe['encryption_current']);
+        $this->info('retirement_safe='.($safe['retirement_safe'] ? 'yes' : 'no'));
+        $this->info('otp_ciphertext_policy='.$safe['otp_ciphertext_policy']);
+        $this->info('refresh_replay_policy='.$safe['refresh_replay_policy']);
+
+        if ((bool) $this->option('status') || ! $apply) {
+            $this->info($report->retirementSafe
+                ? 'Old encryption/HMAC version retirement is eligible. Environment keys are not removed automatically.'
+                : 'Old encryption/HMAC version retirement is not safe. Live ciphertext or lookup rows still depend on the previous version.');
+        }
 
         return self::SUCCESS;
     }

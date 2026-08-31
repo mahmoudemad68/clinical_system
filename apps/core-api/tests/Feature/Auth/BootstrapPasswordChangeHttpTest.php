@@ -13,6 +13,7 @@ use Modules\Auth\Contracts\TotpVerifier;
 use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Services\NationalIdProtector;
 use Modules\Platform\Contracts\Clock;
+use Modules\Platform\Contracts\FieldEncryptor;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Services\Testing\SyntheticEgyptianData;
@@ -73,7 +74,7 @@ function bootstrapPwConfirmed(mixed $test): array
         ->first();
     expect($row)->not->toBeNull();
 
-    $secret = app(NationalIdProtector::class)->decryptSecret(
+    $secret = app(FieldEncryptor::class)->decrypt(
         'mfa_secret',
         BinaryColumn::asString($row->secret_ciphertext),
     );

@@ -59,7 +59,7 @@ final class EnrollTotpService
                 'user_id' => $actor->userId->value,
                 'factor_type' => 'totp',
                 'secret_ciphertext' => $this->protector->encryptSecret('mfa_secret', $secret),
-                'key_version' => 1,
+                'key_version' => $this->protector->encryptionVersion(),
                 'last_used_counter' => null,
                 'last_used_at' => null,
                 'verified_at' => null,

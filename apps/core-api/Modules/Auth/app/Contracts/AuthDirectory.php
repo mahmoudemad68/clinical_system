@@ -26,7 +26,36 @@ interface AuthDirectory
         int $keyVersion,
     ): void;
 
-    public function invalidateOpenOtps(string $subjectHmac, string $purpose, DateTimeImmutable $now): void;
+    /**
+     * @param  list<string>  $subjectHmacs
+     */
+    public function invalidateOpenOtps(array $subjectHmacs, string $purpose, DateTimeImmutable $now): void;
+
+    public function rebindOtpSubjectHmac(string $from, string $to): int;
+
+    public function countTotpNeedingRekey(int $encryptionVersion): int;
+
+    /**
+     * Enabled TOTP factors still on an older encryption version.
+     *
+     * @return list<stdClass>
+     */
+    public function totpFactorsNeedingRekey(int $encryptionVersion, int $limit): array;
+
+    public function rewriteTotpSecret(Identifier $factorId, string $cipher, int $keyVersion, DateTimeImmutable $now): void;
+
+    public function countPushTokensNeedingRekey(int $encryptionVersion): int;
+
+    /**
+     * @return list<stdClass>
+     */
+    public function devicesWithPushTokenNeedingRekey(int $encryptionVersion, int $limit): array;
+
+    public function rewritePushToken(Identifier $deviceId, string $cipher): void;
+
+    public function countLiveOtpEncryptionBelow(int $version): int;
+
+    public function countRefreshReplayBelow(int $version): int;
 
     public function lockOtp(Identifier $id): ?stdClass;
 

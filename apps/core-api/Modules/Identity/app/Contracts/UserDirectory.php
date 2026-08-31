@@ -9,6 +9,7 @@ use Modules\Identity\Enums\AccountStatus;
 use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Support\UserAccount;
 use Modules\Platform\Support\Identifier;
+use stdClass;
 
 interface UserDirectory
 {
@@ -18,11 +19,36 @@ interface UserDirectory
 
     public function findByPhoneHmac(string $hmac): ?UserAccount;
 
+    /**
+     * @param  list<string>  $hmacs
+     */
+    public function findByPhoneHmacs(array $hmacs): ?UserAccount;
+
+    /**
+     * @param  list<string>  $hmacs
+     */
+    public function nationalIdHmacsTaken(array $hmacs): bool;
+
     public function lockById(Identifier $userId): ?UserAccount;
 
-    public function insertUser(UserAccount $user, string $phoneCipher, string $phoneHmac, int $keyVersion, DateTimeImmutable $now): void;
+    public function insertUser(
+        UserAccount $user,
+        string $phoneCipher,
+        string $phoneHmac,
+        int $encryptionVersion,
+        int $hmacVersion,
+        DateTimeImmutable $now,
+    ): void;
 
-    public function insertNationalId(Identifier $id, Identifier $userId, string $cipher, string $hmac, int $keyVersion, DateTimeImmutable $now): void;
+    public function insertNationalId(
+        Identifier $id,
+        Identifier $userId,
+        string $cipher,
+        string $hmac,
+        int $encryptionVersion,
+        int $hmacVersion,
+        DateTimeImmutable $now,
+    ): void;
 
     public function markPhoneVerified(Identifier $userId, DateTimeImmutable $now): void;
 
@@ -52,4 +78,36 @@ interface UserDirectory
     public function countNationalIds(Identifier $userId): int;
 
     public function countProfileLinks(Identifier $userId): int;
+
+    public function countPhonesNeedingRekey(int $encryptionVersion, int $hmacVersion): int;
+
+    public function countNationalIdsNeedingRekey(int $encryptionVersion, int $hmacVersion): int;
+
+    /**
+     * @return list<stdClass>
+     */
+    public function phonesNeedingRekey(int $encryptionVersion, int $hmacVersion, int $limit): array;
+
+    /**
+     * @return list<stdClass>
+     */
+    public function nationalIdsNeedingRekey(int $encryptionVersion, int $hmacVersion, int $limit): array;
+
+    public function rewritePhoneCrypto(
+        Identifier $id,
+        string $phoneCipher,
+        string $phoneHmac,
+        int $encryptionVersion,
+        int $hmacVersion,
+        DateTimeImmutable $now,
+    ): void;
+
+    public function rewriteNationalIdCrypto(
+        Identifier $id,
+        string $cipher,
+        string $hmac,
+        int $encryptionVersion,
+        int $hmacVersion,
+        DateTimeImmutable $now,
+    ): void;
 }

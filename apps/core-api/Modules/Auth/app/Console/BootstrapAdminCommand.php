@@ -15,6 +15,8 @@ use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\AccountStatus;
 use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Enums\LanguagePreference;
+use Modules\Identity\Enums\SensitiveDecryptPurpose;
+use Modules\Identity\Services\AuditedSensitiveDecryptor;
 use Modules\Identity\Services\NationalIdProtector;
 use Modules\Identity\Support\PhoneE164;
 use Modules\Identity\Support\UserAccount;
@@ -50,6 +52,7 @@ final class BootstrapAdminCommand extends Command
         TransactionRunner $transactions,
         AppendAuditEvent $audit,
         RecordPrivilegedFailure $privilegedFailures,
+        AuditedSensitiveDecryptor $decryptor,
     ): int {
         if (! (bool) config('identity.bootstrap.enabled', false) || (string) config('app.env') === 'production') {
             $this->error('Bootstrap is disabled.');
@@ -60,7 +63,7 @@ final class BootstrapAdminCommand extends Command
         $phone = $protector->phone((string) $this->argument('phone'));
 
         if ((bool) $this->option('confirm')) {
-            return $this->confirmEnrollment($users, $auth, $protector, $totp, $clock, $transactions, $audit, $privilegedFailures, $phone);
+            return $this->confirmEnrollment($users, $auth, $protector, $totp, $clock, $transactions, $audit, $privilegedFailures, $decryptor, $phone);
         }
 
         if ($users->countByAccountType(AccountType::Admin) > 0) {
@@ -69,7 +72,7 @@ final class BootstrapAdminCommand extends Command
             return self::FAILURE;
         }
 
-        if ($users->findByPhoneHmac($protector->phoneHmac($phone)) !== null) {
+        if ($users->findByPhoneHmacs($protector->phoneLookupHmacs($phone)) !== null) {
             $this->error('An identity already exists for that phone handle.');
 
             return self::FAILURE;
@@ -110,7 +113,8 @@ final class BootstrapAdminCommand extends Command
                 ),
                 $protector->encryptPhone($phone),
                 $protector->phoneHmac($phone),
-                1,
+                $protector->encryptionVersion(),
+                $protector->hmacVersion(),
                 $now,
             );
 
@@ -119,7 +123,7 @@ final class BootstrapAdminCommand extends Command
                 'user_id' => $userId->value,
                 'factor_type' => 'totp',
                 'secret_ciphertext' => $protector->encryptSecret('mfa_secret', $secret),
-                'key_version' => 1,
+                'key_version' => $protector->encryptionVersion(),
                 'last_used_counter' => null,
                 'last_used_at' => null,
                 'verified_at' => null,
@@ -153,6 +157,7 @@ final class BootstrapAdminCommand extends Command
         TransactionRunner $transactions,
         AppendAuditEvent $audit,
         RecordPrivilegedFailure $privilegedFailures,
+        AuditedSensitiveDecryptor $decryptor,
         PhoneE164 $phone,
     ): int {
         $code = (string) $this->secret('Confirmation TOTP');
@@ -162,7 +167,7 @@ final class BootstrapAdminCommand extends Command
             return self::FAILURE;
         }
 
-        $user = $users->findByPhoneHmac($protector->phoneHmac($phone));
+        $user = $users->findByPhoneHmacs($protector->phoneLookupHmacs($phone));
         if ($user === null || $user->accountType !== AccountType::Admin) {
             $this->error('No bootstrap admin exists for that phone handle.');
 
@@ -177,7 +182,14 @@ final class BootstrapAdminCommand extends Command
             return self::FAILURE;
         }
 
-        $secret = $protector->decryptSecret('mfa_secret', (string) $factor->secret_ciphertext);
+        $secret = $decryptor->decrypt(
+            SensitiveDecryptPurpose::TotpBootstrapConfirm,
+            (string) $factor->secret_ciphertext,
+            'mfa_factor',
+            Identifier::fromTrusted((string) $factor->id),
+            $user->id,
+            'user',
+        );
         $now = $clock->now();
         $result = $totp->verify($secret, $code, $now, null);
         if (! $result->valid) {

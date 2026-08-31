@@ -7,9 +7,11 @@ namespace Modules\Auth\Services\Outbox;
 use DateTimeImmutable;
 use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Contracts\DeliverOtpSms;
-use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Enums\SensitiveDecryptPurpose;
+use Modules\Identity\Services\AuditedSensitiveDecryptor;
 use Modules\Platform\Exceptions\ProviderNotEnabled;
 use Modules\Platform\Services\Outbox\OutboxConsumer;
+use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Services\Telemetry\PlatformMetrics;
 use Modules\Platform\Support\Identifier;
 
@@ -17,7 +19,7 @@ final class OtpDeliveryConsumer implements OutboxConsumer
 {
     public function __construct(
         private readonly AuthDirectory $auth,
-        private readonly NationalIdProtector $protector,
+        private readonly AuditedSensitiveDecryptor $decryptor,
         private readonly DeliverOtpSms $sms,
         private readonly PlatformMetrics $metrics,
     ) {}
@@ -41,8 +43,22 @@ final class OtpDeliveryConsumer implements OutboxConsumer
             return;
         }
 
-        $destination = $this->protector->decryptPhone(is_string($row->destination_ciphertext) ? $row->destination_ciphertext : (string) $row->destination_ciphertext);
-        $code = $this->protector->decryptSecret('otp_code', is_string($row->code_ciphertext) ? $row->code_ciphertext : (string) $row->code_ciphertext);
+        $destination = $this->decryptor->decrypt(
+            SensitiveDecryptPurpose::OtpDeliveryDestination,
+            BinaryColumn::asString($row->destination_ciphertext),
+            'otp_request',
+            $otpId,
+            null,
+            'system',
+        );
+        $code = $this->decryptor->decrypt(
+            SensitiveDecryptPurpose::OtpDeliveryCode,
+            BinaryColumn::asString($row->code_ciphertext),
+            'otp_request',
+            $otpId,
+            null,
+            'system',
+        );
 
         try {
             $this->sms->deliver($destination, $code, (string) $row->locale, (string) $row->purpose);

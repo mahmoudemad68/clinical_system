@@ -8,7 +8,8 @@ use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Contracts\DeliverSecuritySms;
 use Modules\Auth\Enums\RecoveryNoticeKind;
 use Modules\Identity\Contracts\UserDirectory;
-use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Enums\SensitiveDecryptPurpose;
+use Modules\Identity\Services\AuditedSensitiveDecryptor;
 use Modules\Platform\Contracts\SendPush;
 use Modules\Platform\Exceptions\ProviderNotEnabled;
 use Modules\Platform\Services\Outbox\OutboxConsumer;
@@ -21,7 +22,7 @@ final class RecoveryOldChannelNoticeConsumer implements OutboxConsumer
     public function __construct(
         private readonly AuthDirectory $auth,
         private readonly UserDirectory $identities,
-        private readonly NationalIdProtector $protector,
+        private readonly AuditedSensitiveDecryptor $decryptor,
         private readonly DeliverSecuritySms $sms,
         private readonly SendPush $push,
         private readonly PlatformMetrics $metrics,
@@ -55,7 +56,14 @@ final class RecoveryOldChannelNoticeConsumer implements OutboxConsumer
             return;
         }
 
-        $destination = $this->protector->decryptPhone($cipher);
+        $destination = $this->decryptor->decrypt(
+            SensitiveDecryptPurpose::PhoneRecoveryNotice,
+            $cipher,
+            'user',
+            $userId,
+            null,
+            'system',
+        );
 
         try {
             $this->sms->notify($destination, $kind->value, $locale);
@@ -82,7 +90,14 @@ final class RecoveryOldChannelNoticeConsumer implements OutboxConsumer
 
         foreach ($this->auth->pushTokenCiphers($userId) as $tokenCipher) {
             try {
-                $token = $this->protector->decryptSecret('push_token', $tokenCipher);
+                $token = $this->decryptor->decrypt(
+                    SensitiveDecryptPurpose::PushTokenDelivery,
+                    $tokenCipher,
+                    'user',
+                    $userId,
+                    null,
+                    'system',
+                );
                 $this->push->send($token, $pushType, ['ref' => $requestId->value]);
             } catch (Throwable) {
                 // Push is best-effort after the SMS notice is accepted.

@@ -8,6 +8,7 @@ use Modules\Auth\Contracts\AuthDirectory;
 use Modules\Auth\Contracts\AuthenticationRateLimiter;
 use Modules\Auth\Enums\OtpPurpose;
 use Modules\Auth\Events\OtpDeliveryRequested;
+use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Services\NationalIdProtector;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
@@ -21,6 +22,7 @@ final class RequestOtpService
     public function __construct(
         private readonly TransactionRunner $transactions,
         private readonly NationalIdProtector $protector,
+        private readonly UserDirectory $identities,
         private readonly AuthDirectory $auth,
         private readonly CredentialIssuer $credentials,
         private readonly IdentityGenerator $ids,
@@ -42,11 +44,17 @@ final class RequestOtpService
 
         $parsed = $this->protector->phone($phone);
         $hmac = $this->protector->phoneHmac($parsed);
+        $lookupHmacs = $this->protector->phoneLookupHmacs($parsed);
         $this->rates->hitOtp($hmac, $ipPrefix ?? '0.0.0.0');
         $now = $this->clock->now();
 
-        return $this->transactions->run(function (TransactionContext $tx) use ($parsed, $hmac, $otpPurpose, $locale, $ipPrefix, $now): OtpChallengeResult {
-            $this->auth->invalidateOpenOtps($hmac, $otpPurpose->value, $now);
+        return $this->transactions->run(function (TransactionContext $tx) use ($parsed, $hmac, $lookupHmacs, $otpPurpose, $locale, $ipPrefix, $now): OtpChallengeResult {
+            $existing = $this->identities->findByPhoneHmacs($lookupHmacs);
+            $subjectHmac = $existing !== null
+                ? ($this->identities->phoneLookupHmac($existing->id) ?? $hmac)
+                : $hmac;
+
+            $this->auth->invalidateOpenOtps($lookupHmacs, $otpPurpose->value, $now);
             $challengeId = $this->ids->next();
             $code = $this->credentials->otpCode();
             $ttl = (int) config('identity.otp.ttl_seconds', 300);
@@ -54,7 +62,7 @@ final class RequestOtpService
             $this->auth->insertOtp(
                 $challengeId,
                 $otpPurpose->value,
-                $hmac,
+                $subjectHmac,
                 $this->credentials->hashOtp($challengeId->value, $otpPurpose->value, $code),
                 $this->protector->encryptSecret('otp_code', $code),
                 (int) config('identity.otp.max_attempts', 5),
@@ -64,7 +72,7 @@ final class RequestOtpService
                 null,
                 $locale,
                 $this->protector->encryptPhone($parsed),
-                1,
+                $this->protector->encryptionVersion(),
             );
 
             $tx->recordEvent(new OtpDeliveryRequested($challengeId, 'otp:'.$challengeId->value, $locale, $now));

@@ -111,6 +111,7 @@ cookies. TOTP enrolment HTTP is not exposed; bootstrap inserts a verified factor
 
 **Built in:** 01–02. **Owner:** backend + security.
 **Public services:** `ResolveActorContext`, `NationalIdProtector`,
+`AuditedSensitiveDecryptor`, `RotateIdentityKeysService` (`identity:rotate-keys`),
 `PatientIdentityRegistry` (unavailable stub until Phase 02), `LinkVerifiedPatientAccount`
 (not enabled), `DisableIdentity`, `EraseSubject`, `ExportSubjectData`.
 **Events:** `identity.account_registered`, `identity.phone_verified`,

@@ -37,7 +37,9 @@ final class LinkVerifiedPatientAccount
         }
 
         $parsed = $this->protector->nationalId($nationalId);
-        $this->registry->findClaimCandidate($this->protector->nationalIdHmac($parsed));
+        foreach ($this->protector->nationalIdLookupHmacs($parsed) as $hmac) {
+            $this->registry->findClaimCandidate($hmac);
+        }
 
         $this->telemetry->claim(['result' => 'manual_review', 'assurance_level' => 'aal1']);
 

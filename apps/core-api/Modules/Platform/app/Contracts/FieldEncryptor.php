@@ -23,5 +23,11 @@ interface FieldEncryptor
      */
     public function decrypt(string $purpose, string $envelope): string;
 
+    /**
+     * Envelope key version prefix. Does not decrypt. Fails closed on a
+     * truncated or unknown version.
+     */
+    public function envelopeVersion(string $envelope): int;
+
     public function currentVersion(): int;
 }

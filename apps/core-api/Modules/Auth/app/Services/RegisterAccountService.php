@@ -62,13 +62,14 @@ final class RegisterAccountService
         $this->passwords->assert($input['password'], $phone);
 
         $phoneHmac = $this->protector->phoneHmac($phone);
+        $lookupHmacs = $this->protector->phoneLookupHmacs($phone);
         $this->rates->hitOtp($phoneHmac, $ipPrefix ?? '0.0.0.0');
 
         $language = LanguagePreference::from($input['language']);
         $now = $this->clock->now();
 
-        return $this->transactions->run(function (TransactionContext $tx) use ($input, $phone, $nationalId, $phoneHmac, $language, $ipPrefix, $deviceFingerprint, $now): OtpChallengeResult {
-            $existing = $this->identities->findByPhoneHmac($phoneHmac);
+        return $this->transactions->run(function (TransactionContext $tx) use ($input, $phone, $nationalId, $phoneHmac, $lookupHmacs, $language, $ipPrefix, $deviceFingerprint, $now): OtpChallengeResult {
+            $existing = $this->identities->findByPhoneHmacs($lookupHmacs);
             $userId = $existing instanceof UserAccount ? $existing->id : $this->ids->next();
 
             if ($existing === null) {
@@ -85,11 +86,16 @@ final class RegisterAccountService
                 );
 
                 try {
+                    if ($this->identities->nationalIdHmacsTaken($this->protector->nationalIdLookupHmacs($nationalId))) {
+                        throw new DuplicateIdentity;
+                    }
+
                     $this->identities->insertUser(
                         $user,
                         $this->protector->encryptPhone($phone),
                         $phoneHmac,
-                        1,
+                        $this->protector->encryptionVersion(),
+                        $this->protector->hmacVersion(),
                         $now,
                     );
                     $this->identities->insertNationalId(
@@ -97,20 +103,25 @@ final class RegisterAccountService
                         $userId,
                         $this->protector->encryptNationalId($nationalId),
                         $this->protector->nationalIdHmac($nationalId),
-                        1,
+                        $this->protector->encryptionVersion(),
+                        $this->protector->hmacVersion(),
                         $now,
                     );
                     $tx->recordEvent(new AccountRegistered($userId, AccountStatus::PendingPhone->value, $language->value, $now));
                     $this->audit->append($tx, 'identity.account_registered', 'user', $userId, ['reason_code' => 'registration'], $userId, 'user');
                 } catch (DuplicateIdentity) {
-                    $existing = $this->identities->findByPhoneHmac($phoneHmac);
+                    $existing = $this->identities->findByPhoneHmacs($lookupHmacs);
                     if ($existing instanceof UserAccount) {
                         $userId = $existing->id;
                     }
                 }
             }
 
-            $this->auth->invalidateOpenOtps($phoneHmac, OtpPurpose::Registration->value, $now);
+            $subjectHmac = $existing instanceof UserAccount
+                ? ($this->identities->phoneLookupHmac($existing->id) ?? $phoneHmac)
+                : $phoneHmac;
+
+            $this->auth->invalidateOpenOtps($lookupHmacs, OtpPurpose::Registration->value, $now);
 
             $challengeId = $this->ids->next();
             $code = $this->credentials->otpCode();
@@ -119,7 +130,7 @@ final class RegisterAccountService
             $this->auth->insertOtp(
                 $challengeId,
                 OtpPurpose::Registration->value,
-                $phoneHmac,
+                $subjectHmac,
                 $this->credentials->hashOtp($challengeId->value, OtpPurpose::Registration->value, $code),
                 $this->protector->encryptSecret('otp_code', $code),
                 (int) config('identity.otp.max_attempts', 5),
@@ -131,7 +142,7 @@ final class RegisterAccountService
                     : null,
                 $language->value,
                 $this->protector->encryptPhone($phone),
-                1,
+                $this->protector->encryptionVersion(),
             );
 
             $tx->recordEvent(new OtpDeliveryRequested(

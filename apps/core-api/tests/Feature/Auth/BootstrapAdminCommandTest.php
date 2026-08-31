@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\DB;
 use Modules\Auth\Console\BootstrapAdminCommand;
 use Modules\Auth\Contracts\TotpVerifier;
 use Modules\Identity\Enums\AccountType;
-use Modules\Identity\Services\NationalIdProtector;
 use Modules\Platform\Contracts\Clock;
+use Modules\Platform\Contracts\FieldEncryptor;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Services\Testing\SyntheticEgyptianData;
 use Modules\Platform\Services\Time\FrozenClock;
@@ -72,7 +72,7 @@ function bootstrapAdminPendingSecret(string $userId): string
 
     expect($row)->not->toBeNull();
 
-    return app(NationalIdProtector::class)->decryptSecret(
+    return app(FieldEncryptor::class)->decrypt(
         'mfa_secret',
         BinaryColumn::asString($row->secret_ciphertext),
     );
@@ -173,7 +173,16 @@ describe('interactive TOTP confirmation', function () {
 
         expect(bootstrapAdminVerifiedAt($userId))->not->toBeNull()
             ->and((bool) DB::table('users')->where('id', $userId)->value('password_must_change'))->toBeTrue()
-            ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_confirmed')->count())->toBe(1);
+            ->and(DB::table('audit_events')->where('event_name', 'identity.bootstrap_confirmed')->count())->toBe(1)
+            ->and(DB::table('audit_events')->where('event_name', 'auth.sensitive_decrypt')->count())->toBe(1);
+
+        $decrypt = DB::table('audit_events')->where('event_name', 'auth.sensitive_decrypt')->first();
+        $encoded = json_encode($decrypt->metadata);
+        $metadata = is_string($decrypt->metadata) ? json_decode($decrypt->metadata, true) : (array) $decrypt->metadata;
+        expect($encoded)->not->toContain($code)
+            ->and($metadata['reason_code'] ?? null)->toBe('totp_bootstrap_confirm')
+            ->and($metadata['decrypt_class'] ?? null)->toBe('internal_processing')
+            ->and($metadata['purpose'] ?? null)->toBe('mfa_secret');
     });
 
     it('rejects an invalid TOTP without marking the factor verified', function () {

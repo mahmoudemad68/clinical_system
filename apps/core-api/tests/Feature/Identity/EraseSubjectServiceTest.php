@@ -61,7 +61,8 @@ function eraseSeedSubject(string $label): array
         Identifier::fromTrusted((string) $user->id),
         $protector->encryptNationalId($nid),
         $protector->nationalIdHmac($nid),
-        1,
+        $protector->encryptionVersion(),
+        $protector->hmacVersion(),
         $now->toDateTimeImmutable(),
     );
 

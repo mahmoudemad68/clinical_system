@@ -63,18 +63,18 @@ final class NationalIdProtector
         return $this->encryptor->encrypt('national_id', $nationalId->canonical());
     }
 
-    public function decryptPhone(string $envelope): string
-    {
-        return $this->encryptor->decrypt('phone', $envelope);
-    }
-
     public function encryptSecret(string $purpose, string $plain): string
     {
         return $this->encryptor->encrypt($purpose, $plain);
     }
 
-    public function decryptSecret(string $purpose, string $envelope): string
+    public function encryptionVersion(): int
     {
-        return $this->encryptor->decrypt($purpose, $envelope);
+        return $this->encryptor->currentVersion();
+    }
+
+    public function hmacVersion(): int
+    {
+        return $this->hmac->currentVersion();
     }
 }
