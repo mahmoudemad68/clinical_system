@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Platform\Domain\Contracts\StoreObject;
-use App\Modules\Platform\Domain\Exceptions\ProviderNotEnabled;
-use App\Modules\Platform\Domain\ValueObjects\StoredObjectRef;
-use App\Modules\Platform\Infrastructure\Adapters\DisabledGenerateText;
-use App\Modules\Platform\Infrastructure\Adapters\DisabledRetrieveKnowledge;
-use App\Modules\Platform\Infrastructure\Adapters\DisabledScanObject;
-use App\Modules\Platform\Infrastructure\Adapters\DisabledSendOtp;
-use App\Modules\Platform\Infrastructure\Adapters\DisabledSendPush;
-use App\Modules\Platform\Infrastructure\ObjectStorage\InMemoryStoreObject;
 use DateTimeImmutable;
 use DateTimeZone;
+use Modules\Platform\Contracts\StoreObject;
+use Modules\Platform\Exceptions\ProviderNotEnabled;
+use Modules\Platform\Services\Adapters\DisabledGenerateText;
+use Modules\Platform\Services\Adapters\DisabledRetrieveKnowledge;
+use Modules\Platform\Services\Adapters\DisabledScanObject;
+use Modules\Platform\Services\Adapters\DisabledSendOtp;
+use Modules\Platform\Services\Adapters\DisabledSendPush;
+use Modules\Platform\Services\ObjectStorage\InMemoryStoreObject;
+use Modules\Platform\Support\StoredObjectRef;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;

@@ -3,27 +3,27 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use App\Modules\Access\Domain\Contracts\Authorize;
-use App\Modules\Access\Domain\Contracts\GrantContextualAccess;
-use App\Modules\Access\Domain\Contracts\ListEffectiveCapabilities;
-use App\Modules\Access\Domain\Contracts\RevokeContextualAccess;
-use App\Modules\Access\Domain\ValueObjects\Capabilities;
-use App\Modules\Identity\Application\DisableIdentityCoordinator;
-use App\Modules\Identity\Application\LinkVerifiedPatientAccount;
-use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
-use App\Modules\Identity\Domain\ValueObjects\AccountType;
-use App\Modules\Identity\Domain\ValueObjects\ActorContext;
-use App\Modules\Identity\Domain\ValueObjects\AssuranceLevel;
-use App\Modules\Identity\Domain\ValueObjects\LanguagePreference;
-use App\Modules\Platform\Domain\Contracts\Clock;
-use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
-use App\Modules\Platform\Domain\Exceptions\AuthorizationDenied;
-use App\Modules\Platform\Domain\Exceptions\FeatureUnavailable;
-use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Modules\Access\Contracts\Authorize;
+use Modules\Access\Contracts\GrantContextualAccess;
+use Modules\Access\Contracts\ListEffectiveCapabilities;
+use Modules\Access\Contracts\RevokeContextualAccess;
+use Modules\Access\Support\Capabilities;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Enums\AccountType;
+use Modules\Identity\Enums\AssuranceLevel;
+use Modules\Identity\Enums\LanguagePreference;
+use Modules\Identity\Services\DisableIdentityService;
+use Modules\Identity\Services\LinkVerifiedPatientAccount;
+use Modules\Identity\Support\ActorContext;
+use Modules\Platform\Contracts\Clock;
+use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Exceptions\AuthorizationDenied;
+use Modules\Platform\Exceptions\FeatureUnavailable;
+use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Support\Identifier;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -102,10 +102,14 @@ it('enforces one active contextual grant per lookup tuple', function () {
 
     expect($first->value)->toBe($second->value)
         ->and(DB::table('contextual_access_grants')->count())->toBe(1)
-        ->and(DB::table('contextual_access_grants')->value('issued_by_id'))->toBe($admin->id);
+        ->and(DB::table('contextual_access_grants')->value('issued_by_id'))->toBe($admin->id)
+        ->and(DB::table('audit_events')->where('event_name', 'access.grant_issued')->count())->toBe(1)
+        ->and(DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count())->toBe(0);
 
     app(RevokeContextualAccess::class)->revoke($initiator, $first, $now);
-    expect(DB::table('contextual_access_grants')->whereNull('revoked_at')->count())->toBe(0);
+    expect(DB::table('contextual_access_grants')->whereNull('revoked_at')->count())->toBe(0)
+        ->and(DB::table('audit_events')->where('event_name', 'access.grant_revoked')->count())->toBe(1)
+        ->and(DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count())->toBe(0);
 
     $listed = app(ListEffectiveCapabilities::class)->forActor(syntheticActor($userId), $now);
     expect($listed)->not->toContain('clinical.record.read');
@@ -128,6 +132,40 @@ it('rejects a grant from a patient actor', function () {
         'test_grant',
         $now,
     ))->toThrow(AuthorizationDenied::class);
+
+    expect(DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count())->toBe(1)
+        ->and(DB::table('audit_events')->where('event_name', 'access.grant_issued')->count())->toBe(0);
+});
+
+it('rejects a grant revoke from a patient actor', function () {
+    $user = User::factory()->create();
+    $admin = User::factory()->create([
+        'account_type' => AccountType::Admin->value,
+        'status' => AccountStatus::Active->value,
+    ]);
+    $ids = app(IdentityGenerator::class);
+    $now = app(Clock::class)->now();
+    $grantId = app(GrantContextualAccess::class)->grant(
+        operatorActor(Identifier::fromTrusted((string) $admin->id)),
+        Identifier::fromTrusted((string) $user->id),
+        Capabilities::CONTEXT_DELEGATE,
+        'auth_session',
+        $ids->next(),
+        'self',
+        $ids->next(),
+        'test_grant',
+        $now,
+    );
+
+    expect(fn () => app(RevokeContextualAccess::class)->revoke(
+        syntheticActor(Identifier::fromTrusted((string) $user->id)),
+        $grantId,
+        $now,
+    ))->toThrow(AuthorizationDenied::class);
+
+    expect(DB::table('contextual_access_grants')->whereNull('revoked_at')->count())->toBe(1)
+        ->and(DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count())->toBe(1)
+        ->and(DB::table('audit_events')->where('event_name', 'access.grant_revoked')->count())->toBe(0);
 });
 
 it('rejects a second active grant row at the unique index', function () {
@@ -171,7 +209,7 @@ it('disables an identity and increments credential version', function () {
         'status' => AccountStatus::Active->value,
     ]);
 
-    app(DisableIdentityCoordinator::class)->handle(
+    app(DisableIdentityService::class)->handle(
         operatorActor(Identifier::fromTrusted((string) $admin->id)),
         Identifier::fromTrusted((string) $user->id),
         AccountStatus::Locked,
@@ -180,18 +218,23 @@ it('disables an identity and increments credential version', function () {
 
     $row = DB::table('users')->where('id', $user->id)->first();
     expect($row->status)->toBe('locked')
-        ->and((int) $row->credential_version)->toBe(2);
+        ->and((int) $row->credential_version)->toBe(2)
+        ->and(DB::table('audit_events')->where('event_name', 'identity.status_changed')->count())->toBe(1)
+        ->and(DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count())->toBe(0);
 });
 
 it('rejects identity disable from a patient actor', function () {
     $user = User::factory()->create();
 
-    expect(fn () => app(DisableIdentityCoordinator::class)->handle(
+    expect(fn () => app(DisableIdentityService::class)->handle(
         syntheticActor(Identifier::fromTrusted((string) $user->id)),
         Identifier::fromTrusted((string) $user->id),
         AccountStatus::Locked,
         'security_lock',
     ))->toThrow(AuthorizationDenied::class);
+
+    expect(DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count())->toBe(1)
+        ->and((string) DB::table('users')->where('id', $user->id)->value('status'))->not->toBe('locked');
 });
 
 it('does not disclose profile claim while the flag is off', function () {
@@ -234,6 +277,8 @@ it('rejects a grant of an operator capability and a grant from stale AAL1 admin'
         $now,
     ))->toThrow(InvalidValueObject::class);
 
+    expect(DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count())->toBe(0);
+
     expect(fn () => app(GrantContextualAccess::class)->grant(
         $aal1,
         Identifier::fromTrusted((string) $user->id),
@@ -245,6 +290,8 @@ it('rejects a grant of an operator capability and a grant from stale AAL1 admin'
         'test_grant',
         $now,
     ))->toThrow(AuthorizationDenied::class);
+
+    expect(DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count())->toBe(1);
 });
 
 it('does not allow a grant on resource A to authorize resource B', function () {

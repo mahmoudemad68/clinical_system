@@ -147,11 +147,16 @@ function LoginPanel({
   }, []);
 
   if (secure === false) {
-    return <p role="alert">{t.offline}</p>;
+    return (
+      <p role="alert" data-testid="keystore-unavailable">
+        {t.offline}
+      </p>
+    );
   }
 
   return (
     <form
+      data-testid="login-form"
       onSubmit={(event) => {
         event.preventDefault();
         void (async () => {
@@ -214,7 +219,9 @@ function LoginPanel({
         </label>
       ) : null}
       {message ? <p role="alert">{message}</p> : null}
-      <button type="submit">{t.signIn}</button>
+      <button data-testid="sign-in" type="submit">
+        {t.signIn}
+      </button>
     </form>
   );
 }
@@ -233,7 +240,7 @@ function SessionPanel({ locale, onSignedOut }: { locale: Locale; onSignedOut: ()
   });
 
   return (
-    <section>
+    <section data-testid="session-panel">
       <h2 style={{ fontSize: typography.size.title }}>{t.sessions}</h2>
       <ul>
         {(data ?? []).map((session) => (
@@ -285,11 +292,14 @@ function App() {
   return (
     <main style={{ fontFamily: typography.fontFamily, padding: spacing.lg, maxWidth: 640 }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: typography.size.heading }}>{productName}</h1>
+        <h1 data-testid="product-title" style={{ fontSize: typography.size.heading }}>
+          {productName}
+        </h1>
 
         <label>
           {sharedStrings[locale].common.language}{' '}
           <select
+            data-testid="language-select"
             aria-label={sharedStrings[locale].common.language}
             value={locale}
             onChange={(event) => setLocale(event.target.value as Locale)}
@@ -306,7 +316,9 @@ function App() {
         <LoginPanel locale={locale} onAuthenticated={() => setSignedIn(true)} />
       )}
 
-      <h2 style={{ fontSize: typography.size.title }}>{sharedStrings[locale].health.title}</h2>
+      <h2 data-testid="health-heading" style={{ fontSize: typography.size.title }}>
+        {sharedStrings[locale].health.title}
+      </h2>
       <HealthPanel locale={locale} />
     </main>
   );

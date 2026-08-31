@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Auth\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Support\ActorContext;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+
+/**
+ * Restricted identity surface: pending-phone users, and bootstrap admins
+ * who still must replace the bootstrap password.
+ */
+final class DenyPendingBusinessAccess
+{
+    /** @var list<string> */
+    private const ALLOWED = [
+        'api.v1.auth.logout',
+        'api.v1.auth.sessions.index',
+        'api.v1.auth.sessions.destroy',
+        'api.v1.auth.sessions.revoke-all',
+        'api.v1.auth.token.refresh',
+        'api.v1.me.show',
+        'api.v1.me.capabilities',
+    ];
+
+    /** @var list<string> */
+    private const PASSWORD_CHANGE_REQUIRED = [
+        'api.v1.auth.password.change',
+        'api.v1.auth.logout',
+        'api.v1.auth.sessions.revoke-all',
+    ];
+
+    public function handle(Request $request, Closure $next): Response
+    {
+        $actor = $request->attributes->get(ActorContext::class);
+
+        if (! $actor instanceof ActorContext) {
+            return $next($request);
+        }
+
+        if ($actor->passwordMustChange) {
+            $name = $request->route()?->getName();
+
+            if (! is_string($name) || ! in_array($name, self::PASSWORD_CHANGE_REQUIRED, true)) {
+                throw new AccessDeniedHttpException;
+            }
+
+            return $next($request);
+        }
+
+        if ($actor->status !== AccountStatus::PendingPhone) {
+            return $next($request);
+        }
+
+        $name = $request->route()?->getName();
+
+        if (! is_string($name) || ! in_array($name, self::ALLOWED, true)) {
+            throw new AccessDeniedHttpException;
+        }
+
+        return $next($request);
+    }
+}

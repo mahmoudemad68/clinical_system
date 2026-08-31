@@ -1,5 +1,16 @@
 import type { ModuleOptions } from 'webpack';
 
+export const rendererRules: Required<ModuleOptions>['rules'] = [
+  {
+    test: /\.tsx?$/,
+    exclude: /(node_modules|\.webpack)/,
+    use: {
+      loader: 'ts-loader',
+      options: { transpileOnly: true },
+    },
+  },
+];
+
 export const rules: Required<ModuleOptions>['rules'] = [
   {
     // Native modules. Encrypted SQLite (SQLite3MultipleCiphers) must sit
@@ -15,12 +26,5 @@ export const rules: Required<ModuleOptions>['rules'] = [
       options: { outputAssetBase: 'native_modules' },
     },
   },
-  {
-    test: /\.tsx?$/,
-    exclude: /(node_modules|\.webpack)/,
-    use: {
-      loader: 'ts-loader',
-      options: { transpileOnly: true },
-    },
-  },
+  ...rendererRules,
 ];

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Modules\Platform\Infrastructure\Telemetry\RedactingLogTap;
-use App\Modules\Platform\Infrastructure\Telemetry\SentryBeforeSend;
 use Illuminate\Log\Logger;
+use Modules\Platform\Services\Telemetry\RedactingLogTap;
+use Modules\Platform\Services\Telemetry\SentryBeforeSend;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
 use Monolog\Logger as MonologLogger;

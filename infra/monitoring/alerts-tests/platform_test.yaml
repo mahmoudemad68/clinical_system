@@ -1,0 +1,121 @@
+# Prometheus unit tests for ISR-008 audit-chain alerts.
+#
+# Kept outside infra/monitoring/alerts/ so Prometheus does not load this as a rule file.
+# Run from repo root:
+#   docker run --rm -v "$PWD/infra/monitoring:/etc/prometheus:ro" --entrypoint /bin/promtool \
+#     prom/prometheus:v3.5.0 test rules /etc/prometheus/alerts-tests/platform_test.yaml
+
+rule_files:
+  - /etc/prometheus/alerts/platform.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    name: healthy verification does not fire
+    input_series:
+      - series: clinic_audit_chain_verification_ok
+        values: '1+0x6'
+      - series: clinic_audit_chain_verification_last_run_timestamp_seconds
+        values: '1+0x6'
+      - series: clinic_audit_chain_verification_staleness_seconds
+        values: '10+0x6'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: AuditChainVerificationFailed
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: AuditChainVerificationStale
+        exp_alerts: []
+
+  - interval: 1m
+    name: current verification failure fires
+    input_series:
+      - series: clinic_audit_chain_verification_ok
+        values: '0+0x6'
+      - series: clinic_audit_chain_verification_last_run_timestamp_seconds
+        values: '1+0x6'
+      - series: clinic_audit_chain_verification_staleness_seconds
+        values: '10+0x6'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: AuditChainVerificationFailed
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              owner: security
+              component: audit
+            exp_annotations:
+              summary: Audit chain verification is failing
+              description: The scheduled verifier reported a failed in-database hash chain or a failed external checkpoint check. Treat as a possible database-owner rewrite. Capture evidence before any repair. Do not rewrite audit_events or mint a checkpoint to silence this.
+              runbook: docs/runbooks/audit-chain-verification.md
+      - eval_time: 2m
+        alertname: AuditChainVerificationStale
+        exp_alerts: []
+
+  - interval: 1m
+    name: never-run zero last_run does not look like a failed chain
+    input_series:
+      - series: clinic_audit_chain_verification_ok
+        values: '0+0x6'
+      - series: clinic_audit_chain_verification_last_run_timestamp_seconds
+        values: '0+0x6'
+      - series: clinic_audit_chain_verification_staleness_seconds
+        values: '0+0x6'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: AuditChainVerificationFailed
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: AuditChainVerificationStale
+        exp_alerts: []
+
+  - interval: 1m
+    name: never-run becomes stale after 45m of scrapes without an execution
+    input_series:
+      - series: clinic_audit_chain_verification_ok
+        values: '0+0x6'
+      - series: clinic_audit_chain_verification_last_run_timestamp_seconds
+        values: '0+0x6'
+      - series: clinic_audit_chain_verification_staleness_seconds
+        values: '2800+0x6'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: AuditChainVerificationFailed
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: AuditChainVerificationStale
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              owner: security
+              component: audit
+            exp_annotations:
+              summary: Audit chain verifier has gone silent
+              description: No verification execution has completed for more than 45 minutes. The chain may be intact; the control that watches it is not running.
+              runbook: docs/runbooks/audit-chain-verification.md
+
+  - interval: 1m
+    name: stale verifier fires after 45m threshold plus sustain
+    input_series:
+      - series: clinic_audit_chain_verification_ok
+        values: '1+0x6'
+      - series: clinic_audit_chain_verification_last_run_timestamp_seconds
+        values: '1+0x6'
+      - series: clinic_audit_chain_verification_staleness_seconds
+        values: '2800+0x6'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: AuditChainVerificationStale
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              owner: security
+              component: audit
+            exp_annotations:
+              summary: Audit chain verifier has gone silent
+              description: No verification execution has completed for more than 45 minutes. The chain may be intact; the control that watches it is not running.
+              runbook: docs/runbooks/audit-chain-verification.md
+      - eval_time: 3m
+        alertname: AuditChainVerificationFailed
+        exp_alerts: []

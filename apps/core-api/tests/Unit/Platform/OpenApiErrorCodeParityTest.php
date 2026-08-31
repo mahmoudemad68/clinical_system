@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Platform\Http\Responses\ErrorCode;
+use Modules\Platform\Http\Responses\ErrorCode;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;

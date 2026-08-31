@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
-use App\Modules\Platform\Infrastructure\ObjectStorage\S3StoreObject;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Modules\Platform\Services\ObjectStorage\S3StoreObject;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Tests\TestCase;

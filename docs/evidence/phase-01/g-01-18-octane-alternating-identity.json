@@ -1,0 +1,47 @@
+{
+  "gate": "G-01-18",
+  "result": "PASS",
+  "runtime": "php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=8080 --workers=1 --max-requests=10000",
+  "octane_server": "frankenphp",
+  "workers": 1,
+  "max_requests": 10000,
+  "worker_pids": [
+    2401
+  ],
+  "worker_reuse_proven": true,
+  "sequential_iterations": 50,
+  "concurrent_pairs": 20,
+  "authenticated_gets": 244,
+  "unique_request_ids": 244,
+  "request_id_collisions": 0,
+  "leakage_failures": 0,
+  "leakage_samples": [],
+  "users": {
+    "A": {
+      "label": "synthetic-isolation-alpha",
+      "account_type": "patient",
+      "language": "en",
+      "assurance_level": "aal1_password",
+      "status": "active",
+      "unique_capability": "access.context.delegate",
+      "user_id": "01a04865-c844-7b43-8de1-d02c97d61893",
+      "session_kind": "device"
+    },
+    "B": {
+      "label": "synthetic-isolation-beta",
+      "account_type": "doctor",
+      "language": "ar",
+      "assurance_level": "aal2_totp",
+      "status": "active",
+      "unique_capability": null,
+      "user_id": "01a04865-c844-7cd7-8de1-d02c987dc887",
+      "session_kind": "device"
+    }
+  },
+  "sequence": "login A (password) then login B (password+TOTP); alternate GET /api/v1/me and /api/v1/me/capabilities; then concurrent paired GET /api/v1/me",
+  "candidate_sha": "d27e2b3c1d74319b1f6f404bc0ab8c236749f780",
+  "generated_at": "2026-08-28T12:44:41+00:00",
+  "recorded_at": "2026-08-28T12:44:41Z",
+  "octane_status": "INFO  Octane server is running.",
+  "octane_worker_log_excerpt": ""
+}

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Modules\Auth\Http\Controllers\AuthController;
-use App\Modules\Platform\Http\Controllers\DiagnosticsController;
-use App\Modules\Platform\Http\Controllers\PlatformHealthController;
 use Illuminate\Support\Facades\Route;
+use Modules\Auth\Http\Controllers\AuthController;
+use Modules\Platform\Http\Controllers\DiagnosticsController;
+use Modules\Platform\Http\Controllers\PlatformHealthController;
 
 /*
 |--------------------------------------------------------------------------

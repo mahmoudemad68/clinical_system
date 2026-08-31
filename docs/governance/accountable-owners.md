@@ -27,4 +27,7 @@ Assessor/remediator separation is **lost**. That is recorded, not hidden.
 - ADR 0006 still forbids local clinical storage until G-06-01 is `PASS` on all
   five target platforms. Linux evidence is recorded; Windows, macOS, Android,
   and iOS have not run.
-- Packaged Electron E2E (G-02-10) is still missing and is not waived.
+- Packaged Electron E2E (G-02-10) is PASS: Ubuntu, Windows, and macOS each
+  packaged and launched Clinic Doctor and Clinic Pharmacy
+  (workflow `33155677159`, SHA `4a98fac6538546b52f6eff0c5ef98a9608714b90`).
+  Signing and notarization remain Phase 23.

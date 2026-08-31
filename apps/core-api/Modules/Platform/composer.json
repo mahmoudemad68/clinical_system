@@ -1,0 +1,22 @@
+{
+    "name": "clinic/platform",
+    "description": "Clinic Platform module",
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Platform\\": "app/",
+            "Modules\\Platform\\Database\\Factories\\": "database/factories/",
+            "Modules\\Platform\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Platform\\Tests\\": "tests/"
+        }
+    }
+}

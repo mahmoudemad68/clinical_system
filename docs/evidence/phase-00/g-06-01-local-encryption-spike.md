@@ -83,4 +83,4 @@ write was executed with `ELECTRON_RUN_AS_NODE=1` against Electron 44.0.0
 not load the addon at process start — Phase 00 still refuses clinical writes.
 
 Signing is absent (Phase 23). Installed-artifact WebdriverIO and fuse
-inspection remain G-02-10.
+inspection are G-02-10 (`PASS` on SHA `4a98fac6538546b52f6eff0c5ef98a9608714b90`).

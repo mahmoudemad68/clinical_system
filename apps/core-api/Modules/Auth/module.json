@@ -1,0 +1,11 @@
+{
+    "name": "Auth",
+    "alias": "auth",
+    "description": "Clinic Auth module",
+    "keywords": [],
+    "priority": 30,
+    "providers": [
+        "Modules\\Auth\\Providers\\AuthServiceProvider"
+    ],
+    "files": []
+}

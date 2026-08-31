@@ -1,0 +1,34 @@
+{
+  "resolved_at": "2026-08-31",
+  "images": [
+    {
+      "readable": "postgis/postgis:16-3.4",
+      "digest": "sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5",
+      "ref": "postgis/postgis:16-3.4@sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5"
+    },
+    {
+      "readable": "redis:7-alpine",
+      "digest": "sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf",
+      "ref": "redis:7-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf"
+    },
+    {
+      "readable": "tufin/oasdiff:v1.9.8",
+      "digest": "sha256:c6a4b8b98a61e8ad14a1fdbef1993bf725eb512cc3fe72fe31c8b240f3a59168",
+      "ref": "tufin/oasdiff:v1.9.8@sha256:c6a4b8b98a61e8ad14a1fdbef1993bf725eb512cc3fe72fe31c8b240f3a59168"
+    },
+    {
+      "readable": "semgrep/semgrep:1.99.0",
+      "digest": "sha256:ae27024c16f7848cdbfd49c24ed0b78b13f13b85fcd7b87c679aaa8b0c0dce98",
+      "ref": "semgrep/semgrep:1.99.0@sha256:ae27024c16f7848cdbfd49c24ed0b78b13f13b85fcd7b87c679aaa8b0c0dce98"
+    }
+  ],
+  "tools": [
+    {
+      "name": "trivy",
+      "version": "v0.70.0",
+      "artifact": "trivy_0.70.0_Linux-64bit.tar.gz",
+      "url": "https://github.com/aquasecurity/trivy/releases/download/v0.70.0/trivy_0.70.0_Linux-64bit.tar.gz",
+      "sha256": "8b4376d5d6befe5c24d503f10ff136d9e0c49f9127a4279fd110b727929a5aa9"
+    }
+  ]
+}

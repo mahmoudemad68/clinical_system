@@ -27,7 +27,13 @@ Until Phase 23:
 
 - Identity HMAC and envelope keys come from the process environment / injected
   secrets, never from the git tree.
-- `identity:rotate-keys` **refuses ciphertext rewrite in production**.
+- `identity:rotate-keys` is inspect/dry-run by default. `--apply` rewrites a
+  batch onto the current `FieldEncryptor` / `HmacHasher` versions. Production
+  `--apply` requires `--confirm`. The command prints counts and retirement
+  status only (never plaintext or keys) and never deletes environment keys.
+  `--status` reports whether an old version still has live ciphertext or HMAC
+  lookup rows. This is a provider-neutral application mechanism, **not** live
+  KMS rotation evidence.
 - Registration, profile claim, and recovery stay flag-gated and
   production-locked (ADR 0011 / 0013).
 

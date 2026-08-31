@@ -43,6 +43,11 @@ class TokenStore {
   final CredentialVault _storage;
 
   Future<void> write({required String access, required String refresh}) async {
+    if (access.isEmpty || refresh.isEmpty) {
+      throw ArgumentError(
+        'token envelope requires a complete access and refresh pair',
+      );
+    }
     final envelope = jsonEncode({
       'version': 1,
       'access': access,
@@ -56,14 +61,20 @@ class TokenStore {
   Future<Map<String, String>?> _readEnvelope() async {
     final raw = await _storage.read(envelopeKey);
     if (raw != null && raw.isNotEmpty) {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map<String, dynamic> &&
-          decoded['access'] is String &&
-          decoded['refresh'] is String) {
-        return {
-          'access': decoded['access'] as String,
-          'refresh': decoded['refresh'] as String,
-        };
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map<String, dynamic> &&
+            decoded['access'] is String &&
+            decoded['refresh'] is String &&
+            (decoded['access'] as String).isNotEmpty &&
+            (decoded['refresh'] as String).isNotEmpty) {
+          return {
+            'access': decoded['access'] as String,
+            'refresh': decoded['refresh'] as String,
+          };
+        }
+      } on FormatException {
+        return null;
       }
       return null;
     }

@@ -1,0 +1,106 @@
+{
+  "gate": "G-02-10",
+  "result": "PASS",
+  "candidate_sha": "4a98fac6538546b52f6eff0c5ef98a9608714b90",
+  "recorded_at": "2026-08-28T08:40:00.000Z",
+  "command": "node scripts/desktop/run-packaged-e2e.mjs",
+  "workflow": {
+    "run_id": 33155677159,
+    "url": "https://github.com/mahmoudemad68/clinical_system/actions/runs/33155677159",
+    "head_sha": "4a98fac6538546b52f6eff0c5ef98a9608714b90"
+  },
+  "os_executed": [
+    "linux",
+    "windows",
+    "macos"
+  ],
+  "os_not_executed": [],
+  "os_matrix": {
+    "linux": {
+      "executed": true,
+      "result": "PASS",
+      "runner": "ubuntu-latest",
+      "job_id": 98797779682,
+      "job_url": "https://github.com/mahmoudemad68/clinical_system/actions/runs/33155677159/job/98797779682",
+      "step": "Packaged Doctor and Pharmacy WebdriverIO",
+      "apps_launched": [
+        "doctor",
+        "pharmacy"
+      ],
+      "artifact": "g-02-10-ubuntu-latest"
+    },
+    "windows": {
+      "executed": true,
+      "result": "PASS",
+      "runner": "windows-latest",
+      "job_id": 98797779679,
+      "job_url": "https://github.com/mahmoudemad68/clinical_system/actions/runs/33155677159/job/98797779679",
+      "step": "Packaged Doctor and Pharmacy WebdriverIO",
+      "apps_launched": [
+        "doctor",
+        "pharmacy"
+      ],
+      "artifact": "g-02-10-windows-latest"
+    },
+    "macos": {
+      "executed": true,
+      "result": "PASS",
+      "runner": "macos-latest",
+      "job_id": 98797779637,
+      "job_url": "https://github.com/mahmoudemad68/clinical_system/actions/runs/33155677159/job/98797779637",
+      "step": "Packaged Doctor and Pharmacy WebdriverIO",
+      "apps_launched": [
+        "doctor",
+        "pharmacy"
+      ],
+      "artifact": "g-02-10-macos-latest"
+    }
+  },
+  "apps": [
+    {
+      "app": "doctor",
+      "productName": "Clinic Doctor",
+      "packagedOrigin": "clinic-doctor-app://-",
+      "launched_on": [
+        "linux",
+        "windows",
+        "macos"
+      ]
+    },
+    {
+      "app": "pharmacy",
+      "productName": "Clinic Pharmacy",
+      "packagedOrigin": "clinic-pharmacy-app://-",
+      "launched_on": [
+        "linux",
+        "windows",
+        "macos"
+      ]
+    }
+  ],
+  "harness": {
+    "runner": "@wdio/electron-service",
+    "mode": "packaged-binary",
+    "forbidden_fallbacks": [
+      "vitest",
+      "electron-forge start",
+      "vite",
+      "file://",
+      "asar-inspect-only"
+    ]
+  },
+  "assertions": [
+    "custom clinic-*-app:// origin",
+    "no file:// fallback",
+    "no Node in renderer",
+    "no auth tokens in renderer storage",
+    "hostile navigation denied",
+    "window.open denied",
+    "EN to AR RTL",
+    "fuse/security wire including GrantFileProtocolExtraPrivileges=DISABLE"
+  ],
+  "residual": {
+    "signing_notarization": "Phase 23",
+    "phase_00": "OPEN"
+  }
+}

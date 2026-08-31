@@ -131,18 +131,23 @@ Options:
 
 ### Recorded time-boxed merge exception (ADR 0008)
 
-- **Decision:** merge of this High finding is permitted until **2026-11-26T00:00:00Z**.
-- **Owner:** Mahmoud (named security owner). **Assessor/remediator separation is lost**; this exception is not independent approval.
-- **Promotion:** still **blocked**. This exception is not a production-readiness sign-off.
-- **Compensating controls:** build-time only; trusted Electron CDN archives; ephemeral CI runners; no signing credentials in the affected lane (see above).
-- **Watch:** upstream `extract-zip` and `@electron/packager` for a fixed release. Re-open if a fix is published before expiry.
-- **Expiry action:** after 2026-11-26 the finding blocks merge as well as promotion unless a new exception is recorded or the advisory is resolved.
+Authority is
+[`infra/security/exceptions/SF-001.json`](../../../infra/security/exceptions/SF-001.json),
+not this paragraph. Merge of this High finding is permitted only while that
+manifest remains unexpired, `scope: MERGE_ONLY`, and
+`promotion_allowed: false`. Independent acceptance is
+`PENDING_INDEPENDENT_ACCEPTANCE`. Assessor/remediator separation is lost;
+this exception is not independent approval. Promotion remains blocked.
 
-### Scan isolation (does not weaken promotion)
+### Canonical exception (does not close the finding)
 
-PR filesystem Trivy uses `infra/security/trivy-merge.ignore` and lists **only**
-`CVE-2026-56876` / `GHSA-jmr9-qjv8-65gv`. A CI expiry step fails the PR job
-after 2026-11-26T00:00:00Z even if the ignore file is still present.
+The merge-only exception is the machine-readable manifest
+[`infra/security/exceptions/SF-001.json`](../../../infra/security/exceptions/SF-001.json).
+That file is the authority for IDs, `extract-zip@2.0.1`, `MERGE_ONLY` scope,
+`promotion_allowed: false`, UTC expiry, and
+`independent_acceptance_status: PENDING_INDEPENDENT_ACCEPTANCE`.
+`infra/security/trivy-merge.ignore` may list only the same IDs. Independent
+acceptance is **not** recorded here.
 
 Post-merge `promotion-fs-scan` runs the **same** Trivy filesystem scan **without**
 that ignore file and with `exit-code: 1`. Image scans never use the merge

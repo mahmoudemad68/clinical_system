@@ -8,6 +8,7 @@ parameters:
     level: 6
     paths:
         - app
+        - Modules
     excludePaths:
         - app/Http/Controllers/Controller.php
     treatPhpDocTypesAsCertain: false
@@ -16,13 +17,13 @@ parameters:
     ignoreErrors:
         -
             identifier: identical.alwaysTrue
-            path: app/Modules/Platform/Domain/ValueObjects/Money.php
+            path: Modules/Platform/app/Support/Money.php
         -
             identifier: notIdentical.alwaysFalse
-            path: app/Modules/Platform/Domain/ValueObjects/Money.php
+            path: Modules/Platform/app/Support/Money.php
         -
             identifier: void.pure
-            path: app/Modules/Platform/Domain/ValueObjects/Money.php
+            path: Modules/Platform/app/Support/Money.php
         -
             identifier: booleanNot.alwaysTrue
-            path: app/Modules/Platform/Infrastructure/Console/OutboxWorkCommand.php
+            path: Modules/Platform/app/Console/OutboxWorkCommand.php

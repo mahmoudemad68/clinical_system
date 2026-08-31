@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Platform\Infrastructure\Telemetry\PlatformMetrics;
 use InvalidArgumentException;
+use Modules\Platform\Services\Telemetry\PlatformMetrics;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

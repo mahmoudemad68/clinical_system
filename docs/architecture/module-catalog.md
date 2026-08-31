@@ -5,7 +5,7 @@ surface, the tables it owns, the highest data classification it handles, and the
 dependencies forbidden to it.
 
 **Ownership rule.** A module owns its tables. No other module reads or writes
-them directly. Access happens through a public application port or a published
+them directly. Access happens through a public module service or a published
 event (ADR 0001, ADR 0004).
 
 **Status.** `Platform` was implemented in Phase 00. Phase 01 implements `Auth`,
@@ -50,9 +50,8 @@ event (ADR 0001, ADR 0004).
 
 These apply to every module and are not repeated per entry:
 
-- No import of another module's `Domain`, `Infrastructure`, Eloquent models, or
-  migrations.
-- No `Domain` layer import of Laravel, Eloquent, a facade, or a provider SDK.
+- No import of another module's persistence types or migrations.
+- No `Domain`, `Application`, or `Infrastructure` directory trees.
 - No write to a table owned by another module.
 - No unbounded work inside an HTTP request (`plan.md` section 174).
 - No raw national ID, credential, clinical text, or object key in a log, metric
@@ -94,7 +93,7 @@ concept only makes sense for one module, it does not belong here.
 ## `Auth` — authentication and devices
 
 **Built in:** 01. **Owner:** backend + security (CODEOWNERS).
-**Public ports:** `RegisterAccount`, `RequestOtp`, `VerifyOtp`, `AuthenticatePassword`,
+**Public services:** `RegisterAccount`, `RequestOtp`, `VerifyOtp`, `AuthenticatePassword`,
 `CompleteMfaChallenge`, `RefreshDeviceSession`, `ListOwnSessions`, `RevokeOwnSession`,
 `RevokeAllSessions`, `ChangePassword`, `BeginAccountRecovery`, `CompleteAccountRecovery`.
 **Events:** `auth.otp_delivery_requested`, `auth.session_revoked`,
@@ -111,11 +110,13 @@ cookies. TOTP enrolment HTTP is not exposed; bootstrap inserts a verified factor
 ## `Identity` — central user and National ID protection
 
 **Built in:** 01–02. **Owner:** backend + security.
-**Public ports:** `ResolveActorContext`, `NationalIdProtector`,
+**Public services:** `ResolveActorContext`, `NationalIdProtector`,
+`AuditedSensitiveDecryptor`, `RotateIdentityKeysService` (`identity:rotate-keys`),
 `PatientIdentityRegistry` (unavailable stub until Phase 02), `LinkVerifiedPatientAccount`
-(not enabled), `DisableIdentity`.
+(not enabled), `DisableIdentity`, `EraseSubject`, `ExportSubjectData`.
 **Events:** `identity.account_registered`, `identity.phone_verified`,
-`identity.profile_linked`, `identity.status_changed`.
+`identity.profile_linked`, `identity.status_changed`. Audit also records
+`identity.subject_erased` (append-only; not an outbox event type).
 **Tables:** `users`, `identity_national_ids`, `identity_profile_links`.
 **Classification:** sensitive. National IDs are encrypted for recovery and stored
 as keyed HMACs for exact matching; raw values never appear anywhere else
@@ -128,9 +129,10 @@ flag-gated off (ADR 0011).
 ## `Access` — deny-by-default capabilities
 
 **Built in:** 01. **Owner:** backend + security.
-**Public ports:** `Authorize`, `ListEffectiveCapabilities`, `GrantContextualAccess`,
+**Public services:** `Authorize`, `ListEffectiveCapabilities`, `GrantContextualAccess`,
 `RevokeContextualAccess`. Consultation grants are Phase 04/05; the write ports
-persist rows and stay unused by HTTP in Phase 01.
+persist rows and stay unused by HTTP in Phase 01. `access:prune-expired` deletes
+obsolete grants using an ENGINEERING_DEFAULT TTL.
 **Events:** none.
 **Tables:** `contextual_access_grants`.
 **Classification:** internal.
@@ -183,7 +185,7 @@ with a GiST index.
 **Tables:** `doctor_schedules`, `schedule_exceptions`, `appointment_types`,
 `appointments`, `appointment_status_events`.
 **Classification:** personal.
-**Prohibited:** booking outside `BookAppointmentCoordinator` when the workflow
+**Prohibited:** booking outside `BookAppointmentService` when the workflow
 spans modules; double-booking a slot without a database-level constraint.
 Strong consistency required (`plan.md` section 173).
 
@@ -196,7 +198,7 @@ Strong consistency required (`plan.md` section 173).
 **Tables:** `queue_entries`.
 **Classification:** personal.
 **Prohibited:** granting clinical-record access. Check-in establishes queue
-eligibility only; the access grant is created by `StartConsultationCoordinator`
+eligibility only; the access grant is created by `StartConsultationService`
 (invariant 7).
 
 ## `Clinical` — encounters and medical records
@@ -302,7 +304,7 @@ point (invariant 16).
 **Prohibited:** storing or processing a PAN or CVV. If no approved terminal
 provider is selected, V1 records only an external terminal reference and status
 (`docs/phases/README.md` open decisions). Sale runs through
-`CompleteSaleCoordinator`.
+`CompleteSaleService`.
 
 ## `Integrations` — external pharmacy connectors
 
@@ -378,12 +380,15 @@ stay separate internally even if V1 presents one admin persona
 ## `Audit`
 
 **Built in:** 01. **Owner:** backend + security.
-**Public ports:** `AppendAuditEvent`, `QueryAuditTrail`.
+**Public ports:** `AppendAuditEvent`, `QueryAuditTrail`, `VerifyAuditChain`.
 **Events:** none; `Audit` is a sink.
 **Tables:** `audit_events`.
 **Classification:** sensitive (records reference clinical actions).
 **Prohibited:** update or delete. Append-only with tamper evidence; a partitioning
-decision waits for measured volume (`plan.md` section 112).
+decision waits for measured volume (`plan.md` section 112). Per-row hashes are
+database-owned. External Ed25519 checkpoints bind `chain_sequence` and
+`row_hash` outside PostgreSQL (ADR 0015). A local test disk is not a production
+immutable store.
 
 ## `Analytics`
 

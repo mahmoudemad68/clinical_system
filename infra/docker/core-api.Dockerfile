@@ -78,6 +78,7 @@ COPY --from=vendor /app/vendor ./vendor
 COPY apps/core-api/ ./
 
 COPY --from=composer/composer:2-bin /composer /usr/bin/composer
+# package:discover runs here and must boot without runtime Identity keys.
 RUN composer dump-autoload --no-dev --optimize --classmap-authoritative \
     && rm -f /usr/bin/composer
 

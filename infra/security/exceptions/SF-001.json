@@ -1,0 +1,23 @@
+{
+  "exception_id": "SF-001",
+  "package": "extract-zip",
+  "affected_version": "2.0.1",
+  "vulnerability_ids": [
+    "CVE-2026-56876",
+    "GHSA-jmr9-qjv8-65gv"
+  ],
+  "scope": "MERGE_ONLY",
+  "promotion_allowed": false,
+  "expires_at": "2026-11-26T00:00:00Z",
+  "owner": "@clinic/security",
+  "justification": "extract-zip@2.0.1 is the latest published version and the advisory covers <=2.0.1. No patched upstream release exists. ADR 0008 allows a time-boxed High merge exception; promotion remains blocked.",
+  "compensating_controls": [
+    "Build-time Electron packaging only; absent from packaged runtime artifacts",
+    "Extracts Electron CDN archives fetched over TLS, not attacker-supplied zips",
+    "CI builders are ephemeral",
+    "Pull-request lane does not receive signing credentials"
+  ],
+  "independent_acceptance_status": "PENDING_INDEPENDENT_ACCEPTANCE",
+  "lockfile": "package-lock.json",
+  "package_lock_key": "node_modules/extract-zip"
+}

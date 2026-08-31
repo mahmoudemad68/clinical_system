@@ -1,14 +1,23 @@
 # Post-merge pipeline (Phase 00 §6).
 #
 #   1. push signed immutable images to the registry
-#   2. deploy to the isolated development/staging environment
-#   3. run backward-compatible migrations with timeout and lock monitoring
-#   4. execute smoke, contract, authorization-canary, and observability checks
-#   5. keep production promotion manual until Phase 23 gates pass
+#   2. verify digest, signature, and provenance of those same artifacts
+#   3. deploy to the isolated development/staging environment
+#   4. run backward-compatible migrations with timeout and lock monitoring
+#   5. execute smoke, contract, authorization-canary, and observability checks
+#   6. keep production promotion manual until Phase 23 gates pass
 #
 # Artifacts are built ONCE here and promoted unchanged. Staging and production
 # never rebuild from source (ADR 0008), because a rebuild is a different
 # artifact and everything verified about the first one stops applying.
+#
+# Permission matrix (ISR-015):
+#   workflow default     contents: read
+#   build                packages/id-token/attestations write (push, sign, attest)
+#   verify-artifacts     packages/attestations read (no write, no OIDC mint)
+#   promotion-fs-scan    inherit default
+#   deploy-staging       inherit default
+#   promote-production   inherit default
 
 name: post-merge
 
@@ -23,9 +32,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
-  id-token: write        # keyless signing
-  attestations: write
 
 env:
   REGISTRY: ghcr.io
@@ -36,6 +42,11 @@ jobs:
   build:
     name: Build and sign images
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
     strategy:
       matrix:
         include:
@@ -97,14 +108,64 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
-      - name: Scan the built image
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0  # v0.29.0
+      - name: Persist image identity
+        run: |
+          mkdir -p "${RUNNER_TEMP}/image-identity"
+          printf '%s' '${{ steps.build.outputs.digest }}' > "${RUNNER_TEMP}/image-identity/${{ matrix.unit }}.digest"
+          printf '%s' '${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.unit }}' > "${RUNNER_TEMP}/image-identity/${{ matrix.unit }}.image"
+          printf '%s' '${{ github.sha }}' > "${RUNNER_TEMP}/image-identity/${{ matrix.unit }}.commit"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
+          name: image-digest-${{ matrix.unit }}
+          path: ${{ runner.temp }}/image-identity/
+          if-no-files-found: error
+
+      - name: Install Trivy
+        run: bash scripts/ci/install-trivy.sh
+
+      - name: Scan the built image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          skip-setup-trivy: true
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.unit }}@${{ steps.build.outputs.digest }}
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: 'false'
-          ignorefile: infra/security/trivy-image.ignore
+          trivyignores: infra/security/trivy-image.ignore
+
+  verify-artifacts:
+    name: Verify signatures and provenance
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      packages: read
+      attestations: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772  # v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          pattern: image-digest-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/image-identity
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a  # v3.8.1
+
+      - name: Verify image digest, signature, and provenance
+        env:
+          IMAGE_DIGEST_DIR: ${{ runner.temp }}/image-identity
+          COSIGN_CERTIFICATE_OIDC_ISSUER: https://token.actions.githubusercontent.com
+          COSIGN_CERTIFICATE_IDENTITY_REGEXP: https://github.com/${{ github.repository }}/.github/workflows/post-merge.yaml@refs/heads/main
+        run: bash scripts/ci/verify-signed-images.sh
 
   promotion-fs-scan:
     name: Promotion filesystem scan
@@ -112,9 +173,12 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - name: Install Trivy
+        run: bash scripts/ci/install-trivy.sh
       - name: Filesystem scan without merge exceptions
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0  # v0.29.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
+          skip-setup-trivy: true
           scan-type: fs
           scanners: vuln,secret,misconfig
           severity: CRITICAL,HIGH
@@ -123,7 +187,7 @@ jobs:
   deploy-staging:
     name: Deploy to staging
     runs-on: ubuntu-latest
-    needs: [build, promotion-fs-scan]
+    needs: [build, promotion-fs-scan, verify-artifacts]
     environment:
       name: staging
     steps:

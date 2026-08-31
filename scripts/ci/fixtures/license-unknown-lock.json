@@ -1,0 +1,15 @@
+{
+  "name": "synthetic-unknown",
+  "lockfileVersion": 3,
+  "packages": {
+    "": {
+      "name": "synthetic-unknown",
+      "version": "0.0.0",
+      "license": "MIT"
+    },
+    "node_modules/definitely-not-a-real-package": {
+      "version": "1.0.0",
+      "license": "UNKNOWN"
+    }
+  }
+}

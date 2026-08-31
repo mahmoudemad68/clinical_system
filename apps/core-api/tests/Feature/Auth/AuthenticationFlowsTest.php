@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-use App\Modules\Auth\Domain\Contracts\DeliverOtpSms;
-use App\Modules\Auth\Domain\Contracts\PasswordHasher;
-use App\Modules\Auth\Domain\Contracts\TotpVerifier;
-use App\Modules\Auth\Infrastructure\Adapters\RecordingDeliverOtpSms;
-use App\Modules\Identity\Domain\NationalIdProtector;
-use App\Modules\Platform\Domain\Contracts\Clock;
-use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
-use App\Modules\Platform\Infrastructure\Outbox\OutboxDispatcher;
-use App\Modules\Platform\Infrastructure\Persistence\BinaryColumn;
-use App\Modules\Platform\Infrastructure\Testing\SyntheticEgyptianData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
+use Modules\Auth\Contracts\DeliverOtpSms;
+use Modules\Auth\Contracts\PasswordHasher;
+use Modules\Auth\Contracts\TotpVerifier;
+use Modules\Auth\Services\Adapters\RecordingDeliverOtpSms;
+use Modules\Identity\Services\NationalIdProtector;
+use Modules\Platform\Contracts\Clock;
+use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Services\Outbox\OutboxDispatcher;
+use Modules\Platform\Services\Persistence\BinaryColumn;
+use Modules\Platform\Services\Testing\SyntheticEgyptianData;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Modules\Platform\Application\Features\PlatformFeatures;
-use App\Modules\Platform\Infrastructure\Audit\ConfigChangeAuditor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
+use Modules\Platform\Services\Audit\ConfigChangeAuditor;
+use Modules\Platform\Services\Features\PlatformFeatures;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);

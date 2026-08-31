@@ -97,6 +97,7 @@ packages/flutter/api_client/lib/src/generated/
 # ---------------------------------------------------------------------------
 infra/docker/**/data/
 infra/**/.volumes/
+tmp/
 docs/evidence/**/local/
 *.sbom.json
 !docs/evidence/**/*.sbom.json
@@ -127,3 +128,5 @@ Thumbs.db
 # ---------------------------------------------------------------------------
 .webpack/
 out/
+tests/desktop-e2e/logs/
+tests/desktop-e2e/.wdio-electron/

@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, type SubmitEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiClient, ApiError, toApiFailure } from '@/api/client';
 
-type LoginPanelProps = {
+interface LoginPanelProps {
   onAuthenticated: () => void;
-};
+}
 
 /**
  * Cookie/CSRF admin login. Tokens never enter local or session storage.
@@ -18,7 +18,7 @@ export function LoginPanel({ onAuthenticated }: LoginPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function submit(event: React.FormEvent): Promise<void> {
+  async function submit(event: SubmitEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setBusy(true);
     setError(null);
@@ -34,7 +34,7 @@ export function LoginPanel({ onAuthenticated }: LoginPanelProps) {
             body: { code },
           },
         );
-        if (verifyError || !data?.data) {
+        if (verifyError || !data.data) {
           throw new ApiError(toApiFailure(verifyError));
         }
         onAuthenticated();
@@ -51,7 +51,7 @@ export function LoginPanel({ onAuthenticated }: LoginPanelProps) {
         },
       });
 
-      if (loginError || !data?.data) {
+      if (loginError || !data.data) {
         throw new ApiError(toApiFailure(loginError));
       }
 
@@ -70,7 +70,11 @@ export function LoginPanel({ onAuthenticated }: LoginPanelProps) {
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)}>
+    <form
+      onSubmit={(event) => {
+        void submit(event);
+      }}
+    >
       <h2>{t('auth.title')}</h2>
       <label>
         {t('auth.phone')}
@@ -79,7 +83,9 @@ export function LoginPanel({ onAuthenticated }: LoginPanelProps) {
           type="tel"
           autoComplete="username"
           value={phone}
-          onChange={(event) => setPhone(event.target.value)}
+          onChange={(event) => {
+            setPhone(event.target.value);
+          }}
         />
       </label>
       <label>
@@ -89,7 +95,9 @@ export function LoginPanel({ onAuthenticated }: LoginPanelProps) {
           type="password"
           autoComplete="current-password"
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value);
+          }}
         />
       </label>
       {challengeId !== null ? (
@@ -101,7 +109,9 @@ export function LoginPanel({ onAuthenticated }: LoginPanelProps) {
             autoComplete="one-time-code"
             maxLength={6}
             value={code}
-            onChange={(event) => setCode(event.target.value)}
+            onChange={(event) => {
+              setCode(event.target.value);
+            }}
           />
         </label>
       ) : null}

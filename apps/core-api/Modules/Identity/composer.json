@@ -1,0 +1,22 @@
+{
+    "name": "clinic/identity",
+    "description": "Clinic Identity module",
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Identity\\": "app/",
+            "Modules\\Identity\\Database\\Factories\\": "database/factories/",
+            "Modules\\Identity\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Identity\\Tests\\": "tests/"
+        }
+    }
+}

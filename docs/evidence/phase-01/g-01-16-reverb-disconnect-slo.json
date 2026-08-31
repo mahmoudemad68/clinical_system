@@ -1,0 +1,23 @@
+{
+  "gate": "G-01-16",
+  "measurement": "revoke_to_websocket_close",
+  "generated_at": "2026-08-30T12:49:57+00:00",
+  "sample_size": 100,
+  "timeouts": 0,
+  "slo_seconds": 5,
+  "p50_seconds": 0.095847,
+  "p95_seconds": 0.210985,
+  "p99_seconds": 0.220569,
+  "max_seconds": 0.228422,
+  "result": "PASS",
+  "candidate_sha": "1164dd4b96145d442752973db00dcb6e58f41bf6",
+  "runtime": {
+    "reverb_host": "127.0.0.1",
+    "reverb_port": 8081,
+    "reverb_scheme": "http",
+    "broadcast_connection": "reverb_channel_auth_and_optional_hint",
+    "outbox": "in_process_dispatchBatch_after_logout_commit",
+    "socket": "live_pusher_protocol_private_auth.session"
+  },
+  "recorded_at": "2026-08-30T12:49:58Z"
+}

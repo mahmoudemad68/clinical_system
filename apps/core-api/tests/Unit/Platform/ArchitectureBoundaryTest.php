@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Auth\Application\RegisterAccountCoordinator;
-use App\Modules\Identity\Application\DisableIdentityCoordinator;
-use App\Modules\Platform\Application\Coordinators\ApprovedCoordinators;
-use App\Modules\Platform\Application\Outbox\OutboxConsumer;
+use Modules\Auth\Services\RegisterAccountService;
+use Modules\Identity\Services\DisableIdentityService;
+use Modules\Identity\Services\EraseSubjectService;
+use Modules\Identity\Services\RotateIdentityKeysService;
+use Modules\Platform\Services\Coordinators\ApprovedCoordinators;
+use Modules\Platform\Services\Outbox\OutboxConsumer;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
@@ -16,28 +18,35 @@ use RegexIterator;
 use SplFileInfo;
 
 /**
- * Architecture tests that deptrac does not cover: coordinator allow-list,
- * Domain not importing Illuminate by source, consumers staying inside Platform.
+ * Architecture tests that deptrac does not cover: coordinating-service
+ * allow-list, rejection of DDD directories, consumers staying inside Platform.
  */
 final class ArchitectureBoundaryTest extends TestCase
 {
     #[Test]
-    public function phase_01_lists_the_registration_and_disable_coordinators(): void
+    public function phase_01_lists_the_registration_disable_and_erase_coordinating_services(): void
     {
         $this->assertContains(
-            RegisterAccountCoordinator::class,
+            RegisterAccountService::class,
             ApprovedCoordinators::classes(),
         );
         $this->assertContains(
-            DisableIdentityCoordinator::class,
+            DisableIdentityService::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            EraseSubjectService::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            RotateIdentityKeysService::class,
             ApprovedCoordinators::classes(),
         );
     }
 
     #[Test]
-    public function coordinator_classes_must_be_on_the_allow_list(): void
+    public function coordinator_suffix_classes_must_not_return(): void
     {
-        $allowed = ApprovedCoordinators::classes();
         $found = [];
 
         foreach ($this->phpFiles(basePath: $this->modulesRoot()) as $file) {
@@ -50,40 +59,54 @@ final class ArchitectureBoundaryTest extends TestCase
                 continue;
             }
 
-            if (preg_match('/^namespace (App\\\\Modules\\\\[^;]+);/m', $contents, $ns) !== 1) {
-                continue;
-            }
-
-            $found[] = $ns[1].'\\'.$match[1];
+            $found[] = $match[1];
         }
 
         $this->assertSame(
             [],
-            array_values(array_diff($found, $allowed)),
-            'A coordinator class must be listed in ApprovedCoordinators before it can call another module.',
+            $found,
+            'Cross-module writers are *Service classes listed in ApprovedCoordinators, not *Coordinator types.',
         );
     }
 
     #[Test]
-    public function domain_sources_do_not_import_the_framework(): void
+    public function ddd_directory_trees_must_not_return(): void
     {
-        foreach ($this->phpFiles($this->modulesRoot()) as $file) {
-            if (! str_contains($file, DIRECTORY_SEPARATOR.'Domain'.DIRECTORY_SEPARATOR)) {
-                continue;
-            }
+        $this->assertDirectoryDoesNotExist(dirname(__DIR__, 3).'/app/Modules');
 
+        $forbidden = [];
+
+        foreach ($this->phpFiles($this->modulesRoot()) as $file) {
+            if (preg_match('#/app/(Domain|Application|Infrastructure)(/|$)#', $file) === 1) {
+                $forbidden[] = $file;
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $forbidden,
+            'Modules must not reintroduce Domain, Application, or Infrastructure directories.',
+        );
+    }
+
+    #[Test]
+    public function platform_kernel_does_not_import_business_modules(): void
+    {
+        $platform = $this->modulesRoot().DIRECTORY_SEPARATOR.'Platform';
+
+        foreach ($this->phpFiles($platform) as $file) {
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/^use (Illuminate|Laravel)\\\\/m',
+                '/^use Modules\\\\(Auth|Identity|Access|Audit)\\\\/m',
                 $contents,
-                $file.' Domain must not import framework types.',
+                $file.' Platform must not import a business module. List coordinating services as class-string names.',
             );
         }
     }
 
     #[Test]
-    public function outbox_consumers_do_not_import_another_modules_eloquent_models(): void
+    public function outbox_consumers_do_not_import_another_modules_persistence(): void
     {
         foreach ($this->phpFiles($this->modulesRoot()) as $file) {
             $contents = (string) file_get_contents($file);
@@ -93,7 +116,7 @@ final class ArchitectureBoundaryTest extends TestCase
             }
 
             $this->assertDoesNotMatchRegularExpression(
-                '/use App\\\\Modules\\\\(?!Platform\\\\).*\\\\Infrastructure\\\\Persistence\\\\/',
+                '/use Modules\\\\(?!Platform\\\\).*\\\\(Models|Services\\\\Persistence)\\\\/',
                 $contents,
                 $file.' consumer must not import another module\'s persistence types.',
             );
@@ -130,6 +153,6 @@ final class ArchitectureBoundaryTest extends TestCase
 
     private function modulesRoot(): string
     {
-        return dirname(__DIR__, 3).'/app/Modules';
+        return dirname(__DIR__, 3).'/Modules';
     }
 }

@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 /**
- * PHPStan boots Laravel, which constructs the identity encryptor. These are
- * the same non-secret fixtures as phpunit.xml. They must be in the process
- * environment before Larastan's application bootstrap runs.
+ * PHPStan boots Laravel. Identity encryption no longer requires keys at
+ * construct time, but these match phpunit.xml so analysis sees the same
+ * non-secret fixtures the test suite uses.
  */
 $fixtures = [
     'APP_KEY' => '01234567890123456789012345678901',

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Modules\Auth\Domain\Contracts\AuthDirectory;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
 use Illuminate\Support\Facades\Broadcast;
+use Modules\Auth\Services\AuthorizePrivateSessionChannel;
+use Modules\Identity\Support\ActorContext;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,26 +15,19 @@ use Illuminate\Support\Facades\Broadcast;
 | to subscribe until Phase 04 supplies actor-scoped queue channels. A
 | channel name is not authorization (invariant 13).
 |
-| Session disconnect is bound to the exact auth_sessions row. Measured
-| socket-close SLO remains G-01-16 OPEN.
+| Session disconnect is bound to the exact presenting auth_sessions row.
+| Same-user ownership of another session is not sufficient. The Reverb
+| process closes subscribed sockets when that row is revoked.
 |
 */
 
 Broadcast::channel('platform.health', static fn (): bool => false);
 
 Broadcast::channel('auth.session.{sessionId}', static function ($user, string $sessionId): bool {
-    if ($user === null || $sessionId === '') {
+    $actor = request()->attributes->get(ActorContext::class);
+    if (! $actor instanceof ActorContext) {
         return false;
     }
 
-    try {
-        $session = app(AuthDirectory::class)->findSession(Identifier::fromString($sessionId));
-    } catch (Throwable) {
-        return false;
-    }
-
-    return $session !== null
-        && $session->revoked_at === null
-        && (string) $session->user_id === (string) $user->getAuthIdentifier()
-        && (string) $session->id === $sessionId;
+    return app(AuthorizePrivateSessionChannel::class)->allows($actor, $sessionId);
 });

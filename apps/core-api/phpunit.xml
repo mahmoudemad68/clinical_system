@@ -15,6 +15,7 @@
     <source>
         <include>
             <directory>app</directory>
+            <directory>Modules</directory>
         </include>
     </source>
     <php>
@@ -41,9 +42,13 @@
         <env name="REVERB_HOST" value="127.0.0.1"/>
         <env name="REVERB_PORT" value="8081"/>
         <env name="REVERB_SCHEME" value="http"/>
+        <env name="REVERB_SERVER_HOST" value="0.0.0.0"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="AUTH_RATE_LIMIT_STORE" value="ratelimit"/>
         <env name="AUTH_RATE_LIMIT_DRIVER" value="array"/>
+        <env name="AUTH_OTP_VERIFY_PER_IP_PER_MINUTE" value="100000"/>
+        <env name="AUTH_OTP_VERIFY_PER_CHALLENGE_PER_MINUTE" value="100000"/>
+        <env name="AUTH_RECOVERY_PER_IP_PER_HOUR" value="100000"/>
         <env name="IDENTITY_RECOVERY_COOLING_OFF_SECONDS" value="0"/>
         <env name="IDENTITY_HMAC_KEY_V2" value="test_identity_hmac_v2_not_a_secret_value!!"/>
         <env name="IDENTITY_ENCRYPTION_KEY_V2" value="test_identity_enc_v2_not_a_secret_value!!"/>
@@ -69,6 +74,8 @@
         <env name="DB_MIGRATION_PASSWORD" value="local_dev_only_not_a_secret"/>
         <env name="DB_AUDIT_USERNAME" value="clinic_audit_writer"/>
         <env name="DB_AUDIT_PASSWORD" value="local_dev_only_not_a_secret"/>
+        <env name="DB_WORKER_USERNAME" value="clinic_worker" force="true"/>
+        <env name="DB_WORKER_PASSWORD" value="local_dev_only_not_a_secret" force="true"/>
         <env name="DB_URL" value=""/>
         <env name="APP_VERSION" value="0.0.0-test"/>
         <env name="APP_BUSINESS_TIMEZONE" value="Africa/Cairo"/>
@@ -89,5 +96,7 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="FIREBASE_CREDENTIALS" value=""/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="AUDIT_CHECKPOINT_ENABLED" value="false" force="true"/>
+        <env name="AUDIT_CHECKPOINT_REQUIRED" value="false" force="true"/>
     </php>
 </phpunit>

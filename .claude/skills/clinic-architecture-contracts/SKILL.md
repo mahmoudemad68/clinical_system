@@ -1,6 +1,6 @@
 ---
 name: clinic-architecture-contracts
-description: Design or change this clinic system's module boundaries, cross-module coordinators, API/event/job contracts, ADRs, or deployment-unit interfaces. Use for architecture and compatibility work, not for owning domain feature rules.
+description: Design or change this clinic system's conventional Nwidart Laravel module boundaries, cross-module services, API/event/job contracts, ADRs, or deployment-unit interfaces. Use for architecture and compatibility work, not for owning business feature rules.
 ---
 
 # Clinic Architecture Contracts
@@ -12,13 +12,14 @@ Protect the architecture contract of the clinic platform while implementing the 
 This skill owns:
 
 - repository and deployment-unit boundaries;
-- the inward dependency rule `HTTP / Infrastructure / Jobs -> Application -> Domain`;
-- module public command/query ports and approved cross-module coordinators;
+- the conventional `Modules/<Name>` layout managed by `nwidart/laravel-modules`;
+- module-owned controllers, services, models, routes, jobs, events, listeners, policies, and optional enums;
+- public module services and explicit cross-module transaction services;
 - OpenAPI, event, and internal job/message envelope conventions;
 - compatibility, idempotency, outbox, data-classification, and failure-isolation contracts;
 - ADR and module-catalog changes when an architectural decision actually changes.
 
-It does not own clinical, pharmacy, identity, or AI product meaning. The relevant domain skill defines those invariants. Laravel, PostgreSQL, realtime, client, security, and test skills implement or verify their layer without redefining ownership.
+It does not own clinical, pharmacy, identity, or AI product meaning. The relevant business-area skill defines those invariants. Laravel, PostgreSQL, realtime, client, security, and test skills implement or verify their layer without redefining ownership.
 
 Do not convert the Core into microservices, make Qdrant or Redis authoritative, or enable a future feature merely to make a design look complete.
 
@@ -40,9 +41,11 @@ When the request names a numbered phase, that phase document is authoritative fo
 - FastAPI receives minimum authorized context through a typed internal contract. It has no Core PostgreSQL credentials, route to Core tables, or permission to mutate them.
 - PostgreSQL/PostGIS is authoritative. Redis supports cache, locks, queues, rate limits, and realtime only; an empty Redis must not erase business truth.
 - Clients never connect directly to PostgreSQL, Redis, S3, Qdrant, model providers, SMS/FCM, or external pharmacy sources.
-- Client deployment boundaries stay distinct: Flutter owns patient Android/iOS, Electron owns doctor/pharmacy desktop main-preload-renderer processes, and React admin owns the browser application. Shared React/TypeScript code does not merge their authentication or trust models.
-- Modules never import another module's Eloquent models or write its tables. They call a narrow module-owned port or consume a committed event.
-- Strong cross-module workflows use an explicit application coordinator and one PostgreSQL transaction/unit of work. Booking, consultation start/end, prescription exposure, purchase receipt, sale/cancellation, and refund must not rely on an event-only consistency chain.
+- Client deployment boundaries stay distinct: Flutter owns patient Android/iOS, Electron owns doctor/pharmacy desktop main-preload-renderer processes, and first-party admin UI is Inertia inside Laravel (`clinic-react-admin-development`). Do not scaffold `apps/admin-web`. Shared React/TypeScript code does not merge their authentication or trust models.
+- Laravel modules live at top-level `Modules/<Name>/` and follow the package's normal mini-application structure. Core business code uses module-owned controllers, Form Requests, API Resources, models, services, policies, jobs, events/listeners, providers, and optional backed enums.
+- Do not introduce `Domain/Application/Infrastructure` layers, command/query handlers, aggregates, repository wrappers around ordinary Eloquent access, or `*Port` types. A replaceable external dependency may use a small interface in the owning module's `app/Contracts` folder.
+- A module owns its table writes. Cross-module behavior calls a descriptive module service. Mutations go through the owning service.
+- Strong cross-module workflows use an explicit Laravel service and one PostgreSQL transaction. Booking, consultation start/end, prescription exposure, purchase receipt, sale/cancellation, and refund must not rely on an event-only consistency chain.
 - Events and provider effects start after commit through the transactional outbox. Events carry IDs and necessary non-sensitive facts, not clinical documents or free text.
 - Laravel Horizon consumes Laravel jobs only. Python work uses an authenticated typed command and an AI-owned queue/protocol; Python never deserializes PHP jobs.
 - OpenAPI is the public HTTP source of truth. Event schemas and AI internal contracts are versioned separately and remain backward compatible during rollout.
@@ -60,9 +63,9 @@ Jobs carry stable identifiers, schema versions, deadlines, and idempotency keys.
 ## Implementation workflow
 
 1. Read Phase 00 and every phase whose owner or contract participates. Inspect current ADRs, module catalog, OpenAPI, event schemas, and code before proposing a new abstraction.
-2. Name the authoritative module and classify each step as strong or eventual. If multiple authoritative modules must change atomically, name one application coordinator and narrow participating command ports.
+2. Name the authoritative module and classify each step as strong or eventual. If multiple modules must change atomically, name one coordinating Laravel service and the participating module service methods.
 3. Draw or describe the success, denial, conflict, timeout, duplicate, crash, and recovery paths. Make unknown external outcomes reconcilable rather than automatically replaying a new intent.
-4. Define the smallest typed contract that preserves interface segregation. Domain/application code owns ports; framework and provider adapters implement them.
+4. Prefer concrete Laravel services. Define a small interface only when an external provider or genuinely swappable implementation requires one, and bind it in the module service provider.
 5. Make schema evolution additive first. For a breaking change, define a new version, dual-read/dual-write or compatibility window, telemetry, and a later removal gate.
 6. Update an ADR only for a real decision or reversal. Update the module catalog and contract artifacts in the same change so the architecture cannot drift silently.
 7. Keep future V1 exclusions disabled. Stop and request product direction if the change requires alternatives, reservations, transfers, supplier automation, online payment, emergency specialist chat, or another excluded capability.
@@ -71,9 +74,9 @@ Jobs carry stable identifiers, schema versions, deadlines, and idempotency keys.
 
 Use repository-discovered commands rather than inventing script names. The completed change must provide evidence that:
 
-- `deptrac/deptrac` and architecture tests reject a deliberate forbidden module dependency;
+- architecture tests reject direct cross-module table writes, module cycles, and reintroduction of the removed DDD directory tree;
 - OpenAPI/event/internal schemas lint, compatibility checks pass, and the generated Dart patient plus TypeScript Electron/admin clients have no unexplained diff;
-- coordinator integration tests prove all participating writes, audit metadata, idempotency result, and outbox records commit or roll back together;
+- coordinating-service integration tests prove all participating writes, audit metadata, idempotency result, and outbox records commit or roll back together;
 - duplicate events/jobs produce one effect, exhausted work becomes operator-visible, and provider/realtime failure cannot roll back committed Core state;
 - Laravel and Python workers cannot consume each other's queue payloads;
 - AI/Qdrant failure leaves non-AI Core readiness and workflows available;

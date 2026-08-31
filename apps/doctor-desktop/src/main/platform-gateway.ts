@@ -1,5 +1,4 @@
 import { app, net } from 'electron';
-import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { baseRequestHeaders, unwrapEnvelope, type paths } from '@clinic/api-client';
 import type {
@@ -17,6 +16,9 @@ import {
   SecureStorageUnavailableError,
   secureStorageStatus,
 } from './device-credentials';
+import { resolveApiBaseUrl } from './api-origin';
+import { PACKAGED_API_ALLOWED_ORIGINS } from './packaged-api-allowlist';
+import { TokenRefreshSession } from './token-refresh';
 
 /**
  * Main-process HTTP transport.
@@ -25,13 +27,15 @@ import {
  * operating system's proxy configuration and certificate store (ADR 0010).
  *
  * Tokens stay in this process. The renderer never receives them.
+ *
+ * Packaged API origin trust comes from `PACKAGED_API_ALLOWED_ORIGINS` (baked
+ * into this bundle). Runtime `CLINIC_API_BASE_URL` only selects among that
+ * list; it cannot add a host.
  */
-
-const BASE_URL = process.env['CLINIC_API_BASE_URL'] ?? 'http://localhost:8080';
 
 let memoryAccess: string | null = null;
 let memoryRefresh: string | null = null;
-let refreshIdempotencyKey: string | null = null;
+const tokenRefresh = new TokenRefreshSession();
 
 function restoreFromDisk(): void {
   if (memoryAccess !== null) {
@@ -81,20 +85,25 @@ async function requestJson<T>(
     headers['Content-Type'] = 'application/json';
   }
 
-  const base = new URL(BASE_URL);
-  if (app.isPackaged && base.protocol !== 'https:') {
-    throw new Error('INSECURE_TRANSPORT');
-  }
-  const target = new URL(`${BASE_URL}${path}`);
+  const baseUrl = resolveApiBaseUrl({
+    configuredUrl: process.env['CLINIC_API_BASE_URL'],
+    isPackaged: app.isPackaged,
+    packagedAllowedOrigins: PACKAGED_API_ALLOWED_ORIGINS,
+  });
+  const base = new URL(baseUrl);
+  const target = new URL(`${baseUrl}${path}`);
   if (target.origin !== base.origin) {
     throw new Error('ORIGIN_REFUSED');
   }
 
-  const response = await net.fetch(target.toString(), {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  // exactOptionalPropertyTypes: omit `body` entirely when the request has none.
+  // Passing `body: undefined` is not assignable to RequestInit.
+  const response = await net.fetch(
+    target.toString(),
+    body === undefined
+      ? { method, headers }
+      : { method, headers, body: JSON.stringify(body) },
+  );
 
   if (response.status === 401 && allowRefresh && memoryRefresh !== null && path !== '/api/v1/auth/token/refresh' && path !== '/api/v1/auth/logout') {
     const rotated = await refreshTokens(locale);
@@ -117,22 +126,29 @@ async function refreshTokens(locale: string): Promise<boolean> {
   if (memoryRefresh === null) {
     return false;
   }
-  refreshIdempotencyKey ??= randomUUID();
-  try {
-    const data = await requestJson<{
-      access_token?: string;
-      refresh_token?: string;
-    }>('POST', '/api/v1/auth/token/refresh', locale, {
-      refresh_token: memoryRefresh,
-    }, {
-      'Idempotency-Key': refreshIdempotencyKey,
-    }, false);
-    persistIssued(data);
-    refreshIdempotencyKey = null;
-    return true;
-  } catch {
-    return false;
-  }
+  return tokenRefresh.run({
+    request: (idempotencyKey) =>
+      requestJson<{
+        access_token?: string;
+        refresh_token?: string;
+      }>(
+        'POST',
+        '/api/v1/auth/token/refresh',
+        locale,
+        {
+          refresh_token: memoryRefresh,
+        },
+        {
+          'Idempotency-Key': idempotencyKey,
+        },
+        false,
+      ),
+    persist: persistDeviceTokens,
+    remember: (tokens) => {
+      memoryAccess = tokens.access;
+      memoryRefresh = tokens.refresh;
+    },
+  });
 }
 
 function persistIssued(data: {
@@ -260,7 +276,7 @@ export const platformGateway = {
     clearDeviceTokens();
     memoryAccess = null;
     memoryRefresh = null;
-    refreshIdempotencyKey = null;
+    tokenRefresh.clear();
     return { revoked: true };
   },
 
@@ -331,3 +347,10 @@ export const platformGateway = {
 export type ApiPaths = paths;
 
 export { SecureStorageUnavailableError };
+
+/** Clears in-memory tokens and the retained refresh key. Production IPC does not call this. */
+export function resetPlatformGatewaySession(): void {
+  memoryAccess = null;
+  memoryRefresh = null;
+  tokenRefresh.clear();
+}

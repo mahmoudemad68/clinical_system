@@ -55,6 +55,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Worker identity probe
+    |--------------------------------------------------------------------------
+    |
+    | Local G-01-18 evidence only. When true, responses include
+    | X-Octane-Worker-Pid so alternating-user HTTP can prove the same
+    | long-lived worker handled both identities. Leave false otherwise.
+    |
+    */
+
+    'worker_probe' => filter_var(env('OCTANE_WORKER_PROBE', false), FILTER_VALIDATE_BOOLEAN),
+
+    /*
+    |--------------------------------------------------------------------------
     | Octane Listeners
     |--------------------------------------------------------------------------
     |

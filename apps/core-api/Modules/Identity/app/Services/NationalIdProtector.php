@@ -1,0 +1,80 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Identity\Services;
+
+use Modules\Identity\Support\NationalId;
+use Modules\Identity\Support\PhoneE164;
+use Modules\Platform\Contracts\FieldEncryptor;
+use Modules\Platform\Contracts\HmacHasher;
+
+final class NationalIdProtector
+{
+    public function __construct(
+        private readonly FieldEncryptor $encryptor,
+        private readonly HmacHasher $hmac,
+        private readonly bool $allowSynthetic,
+    ) {}
+
+    public function phone(string $raw): PhoneE164
+    {
+        return PhoneE164::fromUntrusted($raw, $this->allowSynthetic);
+    }
+
+    public function nationalId(string $raw): NationalId
+    {
+        return NationalId::fromUntrusted($raw, $this->allowSynthetic);
+    }
+
+    public function phoneHmac(PhoneE164 $phone): string
+    {
+        return $this->hmac->digest('phone_lookup', $phone->e164());
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function phoneLookupHmacs(PhoneE164 $phone): array
+    {
+        return $this->hmac->lookupDigests('phone_lookup', $phone->e164());
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function nationalIdLookupHmacs(NationalId $nationalId): array
+    {
+        return $this->hmac->lookupDigests('national_id_lookup', $nationalId->canonical());
+    }
+
+    public function nationalIdHmac(NationalId $nationalId): string
+    {
+        return $this->hmac->digest('national_id_lookup', $nationalId->canonical());
+    }
+
+    public function encryptPhone(PhoneE164 $phone): string
+    {
+        return $this->encryptor->encrypt('phone', $phone->e164());
+    }
+
+    public function encryptNationalId(NationalId $nationalId): string
+    {
+        return $this->encryptor->encrypt('national_id', $nationalId->canonical());
+    }
+
+    public function encryptSecret(string $purpose, string $plain): string
+    {
+        return $this->encryptor->encrypt($purpose, $plain);
+    }
+
+    public function encryptionVersion(): int
+    {
+        return $this->encryptor->currentVersion();
+    }
+
+    public function hmacVersion(): int
+    {
+        return $this->hmac->currentVersion();
+    }
+}

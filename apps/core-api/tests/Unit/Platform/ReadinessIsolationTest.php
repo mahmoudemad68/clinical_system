@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Platform\Application\Health\CheckStatus;
-use App\Modules\Platform\Application\Health\DependencyCheck;
-use App\Modules\Platform\Application\Health\ReadinessProbe;
+use Modules\Platform\Services\Health\CheckStatus;
+use Modules\Platform\Services\Health\DependencyCheck;
+use Modules\Platform\Services\Health\ReadinessProbe;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

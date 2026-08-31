@@ -1,0 +1,47 @@
+# Path filters for .github/workflows/pull-request.yaml.
+# Root Node workspace files (package.json / package-lock.json; npm workspaces
+# live in package.json) must select every client job that installs from the
+# root lockfile (ISR-015). Packaged Electron E2E follows the `desktop` flag.
+# Do not add root Node files to AI or Core API jobs.
+
+core_api:
+  - 'apps/core-api/**'
+  - 'packages/contracts/**'
+
+ai_service:
+  - 'apps/ai-service/**'
+  - 'packages/contracts/ai_internal/**'
+
+admin_web:
+  - 'apps/admin-web/**'
+  - 'packages/typescript/**'
+  - 'packages/typescript/tsconfig.base.json'
+  - 'packages/contracts/openapi/**'
+  - 'package.json'
+  - 'package-lock.json'
+
+flutter:
+  # Patient mobile. Consumes root Node to generate the Dart OpenAPI constants.
+  - 'apps/patient-app/**'
+  - 'packages/flutter/**'
+  - 'package.json'
+  - 'package-lock.json'
+
+desktop:
+  - 'apps/doctor-desktop/**'
+  - 'apps/pharmacy-desktop/**'
+  - 'packages/typescript/**'
+  - 'packages/typescript/tsconfig.base.json'
+  - 'packages/contracts/openapi/**'
+  - 'tests/desktop-e2e/**'
+  - 'scripts/desktop/**'
+  - 'package.json'
+  - 'package-lock.json'
+
+contracts:
+  - 'packages/contracts/**'
+  - 'scripts/contracts/**'
+
+infra:
+  - 'infra/**'
+  - '.github/workflows/**'

@@ -133,6 +133,16 @@ return [
             'sslkey' => env('DB_SSLKEY') ?: null,
         ],
 
+        /*
+        |----------------------------------------------------------------------
+        | Queue / Horizon / outbox worker connection
+        |----------------------------------------------------------------------
+        |
+        | Selected at worker bootstrap by WorkerDatabaseIdentity. HTTP and
+        | Octane keep the default `pgsql` / clinic_app identity. Do not set
+        | DB_CONNECTION=pgsql_worker on the API process.
+        |
+        */
         'pgsql_worker' => [
             'driver' => 'pgsql',
             'url' => env('DB_WORKER_URL', env('DB_URL')),

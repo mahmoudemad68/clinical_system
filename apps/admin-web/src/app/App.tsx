@@ -38,7 +38,9 @@ export function App() {
           <button
             type="button"
             onClick={() => {
-              void apiClient.POST('/api/v1/auth/logout', {}).then(() => setSignedIn(false));
+              void apiClient.POST('/api/v1/auth/logout', {}).then(() => {
+                setSignedIn(false);
+              });
             }}
           >
             {t('auth.signOut')}
@@ -46,7 +48,13 @@ export function App() {
         ) : null}
       </header>
 
-      {signedIn ? null : <LoginPanel onAuthenticated={() => setSignedIn(true)} />}
+      {signedIn ? null : (
+        <LoginPanel
+          onAuthenticated={() => {
+            setSignedIn(true);
+          }}
+        />
+      )}
       <HealthPanel />
     </main>
   );

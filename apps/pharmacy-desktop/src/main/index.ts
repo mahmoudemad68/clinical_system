@@ -1,9 +1,10 @@
-import { app, BrowserWindow, session, shell, protocol, net } from 'electron';
+import { app, BrowserWindow, session, shell, protocol } from 'electron';
+import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { APP_CONFIG } from '../shared/app-config';
 import { registerCapabilities, trustWindow } from './capabilities';
 import { assessLocalEncryption } from './local-encryption';
+import { resolvePackagedAsset } from './packaged-assets';
 
 /**
  * Privileged main process.
@@ -26,13 +27,19 @@ const isDevelopment = !app.isPackaged;
  * the encrypted database. SQLite corruption from concurrent writers is not
  * theoretical.
  */
+// Distinct user-data root per application (Phase 00 §2.3). Set before the
+// single-instance lock, because the lock is keyed on this directory.
+const userDataOverride = process.env.CLINIC_DESKTOP_USER_DATA?.trim();
+app.setPath(
+  'userData',
+  userDataOverride && userDataOverride.length > 0
+    ? userDataOverride
+    : path.join(app.getPath('appData'), APP_CONFIG.userDataDirectory),
+);
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 }
-
-// Distinct user-data root per application (Phase 00 §2.3). Set before any
-// path is read, or Electron caches the default.
-app.setPath('userData', path.join(app.getPath('appData'), APP_CONFIG.userDataDirectory));
 
 /**
  * Register the packaged-asset scheme as privileged and standard BEFORE the app
@@ -46,22 +53,22 @@ app.setPath('userData', path.join(app.getPath('appData'), APP_CONFIG.userDataDir
 protocol.registerSchemesAsPrivileged([
   {
     scheme: APP_CONFIG.assetProtocolScheme,
-    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: false },
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true },
   },
 ]);
 
 /** Content Security Policy for packaged renderer content. */
 function contentSecurityPolicy(): string {
-  const self = `${APP_CONFIG.assetProtocolScheme}://-`;
+  const scheme = `${APP_CONFIG.assetProtocolScheme}:`;
 
   return [
     `default-src 'none'`,
-    `script-src ${self}`,
+    `script-src 'self' ${scheme}`,
     // MUI/Emotion inject styles at runtime; script stays strict, which is the
     // half that matters for code execution.
-    `style-src ${self} 'unsafe-inline'`,
-    `img-src ${self} data:`,
-    `font-src ${self} data:`,
+    `style-src 'self' ${scheme} 'unsafe-inline'`,
+    `img-src 'self' ${scheme} data:`,
+    `font-src 'self' ${scheme} data:`,
     // The renderer never connects anywhere. All I/O goes through IPC to main.
     `connect-src 'none'`,
     `object-src 'none'`,
@@ -101,6 +108,15 @@ function createWindow(): void {
 
   // Paint only when ready, so the user never sees an empty frame.
   window.once('ready-to-show', () => window.show());
+
+  // Electron 44 emits Event<WebContentsConsoleMessageEventParams> as the first
+  // argument. Positional level/message/line/sourceId remain only as deprecated
+  // extras; the details object is the supported payload.
+  window.webContents.on('console-message', (details) => {
+    logPackagedProtocol(
+      `console level=${details.level} src=${details.sourceId}:${details.lineNumber} ${details.message}`,
+    );
+  });
 
   // Register before loading: an IPC message can arrive as soon as the
   // preload runs, and an unregistered window would be refused.
@@ -180,12 +196,29 @@ function isPackagedAsset(url: string): boolean {
   }
 }
 
-function isPathInside(root: string, candidate: string): boolean {
-  const resolvedRoot = path.resolve(root);
-  const resolved = path.resolve(candidate);
-  const relative = path.relative(resolvedRoot, resolved);
+function mimeForPackagedAsset(file: string): string {
+  if (file.endsWith('.js')) {
+    return 'application/javascript; charset=utf-8';
+  }
+  if (file.endsWith('.html')) {
+    return 'text/html; charset=utf-8';
+  }
+  if (file.endsWith('.css')) {
+    return 'text/css; charset=utf-8';
+  }
+  return 'application/octet-stream';
+}
 
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+function logPackagedProtocol(message: string): void {
+  const dest = process.env.CLINIC_DESKTOP_PROTOCOL_LOG?.trim();
+  if (!dest) {
+    return;
+  }
+  try {
+    appendFileSync(dest, `${message}\n`);
+  } catch {
+    // Diagnostic only; never fail asset serving because a log file is missing.
+  }
 }
 
 /** Serve packaged renderer assets from the privileged custom scheme. */
@@ -193,16 +226,27 @@ function registerAssetProtocol(): void {
   protocol.handle(APP_CONFIG.assetProtocolScheme, async (request) => {
     const { pathname } = new URL(request.url);
     const root = path.join(__dirname, '..', 'renderer', 'main_window');
+    const resolved = resolvePackagedAsset(root, pathname);
 
-    // Resolve and confirm containment. Without this check a crafted
-    // `../../` path reads arbitrary files with the app's privileges.
-    const resolved = path.normalize(path.join(root, pathname === '/' ? 'index.html' : pathname));
-
-    if (!isPathInside(root, resolved)) {
+    if (resolved === null) {
+      logPackagedProtocol(`403 ${request.url} pathname=${pathname} root=${root}`);
       return new Response('Forbidden', { status: 403 });
     }
 
-    return net.fetch(pathToFileURL(resolved).toString());
+    try {
+      const body = Uint8Array.from(readFileSync(resolved));
+      logPackagedProtocol(`200 ${request.url} -> ${resolved} bytes=${body.byteLength}`);
+      return new Response(body, {
+        status: 200,
+        headers: {
+          'Content-Type': mimeForPackagedAsset(resolved),
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+    } catch (error) {
+      logPackagedProtocol(`404 ${request.url} -> ${resolved} error=${error instanceof Error ? error.message : String(error)}`);
+      return new Response('Not found', { status: 404 });
+    }
   });
 }
 

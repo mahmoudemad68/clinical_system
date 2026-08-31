@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Platform;
 
-use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
-use App\Modules\Platform\Domain\ValueObjects\CursorScope;
-use App\Modules\Platform\Domain\ValueObjects\IdempotencyKey;
-use App\Modules\Platform\Domain\ValueObjects\PaginationCursor;
-use App\Modules\Platform\Infrastructure\Pagination\HmacCursorSigner;
+use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Services\Pagination\HmacCursorSigner;
+use Modules\Platform\Support\CursorScope;
+use Modules\Platform\Support\IdempotencyKey;
+use Modules\Platform\Support\PaginationCursor;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Modules\Auth\Domain\Contracts\TotpVerifier;
-use App\Modules\Platform\Domain\Contracts\Clock;
+use Modules\Auth\Contracts\TotpVerifier;
+use Modules\Platform\Contracts\Clock;
 use Tests\TestCase;
 
 uses(TestCase::class);

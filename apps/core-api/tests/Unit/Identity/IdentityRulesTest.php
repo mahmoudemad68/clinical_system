@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-use App\Modules\Access\Application\DefaultDenyAuthorizer;
-use App\Modules\Access\Domain\Contracts\GrantStore;
-use App\Modules\Access\Domain\ValueObjects\Capabilities;
-use App\Modules\Auth\Domain\Rules\PasswordPolicy;
-use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
-use App\Modules\Identity\Domain\ValueObjects\AccountType;
-use App\Modules\Identity\Domain\ValueObjects\ActorContext;
-use App\Modules\Identity\Domain\ValueObjects\AssuranceLevel;
-use App\Modules\Identity\Domain\ValueObjects\LanguagePreference;
-use App\Modules\Identity\Domain\ValueObjects\NationalId;
-use App\Modules\Identity\Domain\ValueObjects\PhoneE164;
-use App\Modules\Platform\Domain\Exceptions\InvalidValueObject;
-use App\Modules\Platform\Domain\ValueObjects\Identifier;
+use Modules\Access\Contracts\GrantStore;
+use Modules\Access\Services\DefaultDenyAuthorizer;
+use Modules\Access\Support\Capabilities;
+use Modules\Auth\Rules\PasswordPolicy;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Enums\AccountType;
+use Modules\Identity\Enums\AssuranceLevel;
+use Modules\Identity\Enums\LanguagePreference;
+use Modules\Identity\Support\ActorContext;
+use Modules\Identity\Support\NationalId;
+use Modules\Identity\Support\PhoneE164;
+use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Support\Identifier;
 
 describe('phone canonicalization', function () {
     it('accepts western, arabic-indic, and separated egyptian mobiles', function (string $raw) {
@@ -60,6 +60,15 @@ describe('national id canonicalization', function () {
 
     it('rejects an impossible calendar date', function () {
         expect(fn () => NationalId::fromUntrusted('29999010100011'))->toThrow(InvalidValueObject::class);
+    });
+});
+
+describe('assurance levels', function () {
+    it('treats totp and recovery-code AAL2 as privileged sessions', function () {
+        expect(AssuranceLevel::Aal2Totp->satisfiesPrivilegedSession())->toBeTrue()
+            ->and(AssuranceLevel::Aal2RecoveryCode->satisfiesPrivilegedSession())->toBeTrue()
+            ->and(AssuranceLevel::Aal1Password->satisfiesPrivilegedSession())->toBeFalse()
+            ->and(AssuranceLevel::Aal2OtpPhone->satisfiesPrivilegedSession())->toBeFalse();
     });
 });
 
@@ -112,5 +121,28 @@ describe('default-deny authorizer', function () {
 
         expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::PASSWORD_CHANGE)->reasonCode)
             ->toBe('pending_restricted');
+    });
+
+    it('restricts bootstrap admins that still must change password', function () {
+        $actor = new ActorContext(
+            Identifier::fromTrusted('0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c03'),
+            AccountType::Admin,
+            AccountStatus::Active,
+            LanguagePreference::English,
+            AssuranceLevel::Aal2Totp,
+            1,
+            null,
+            null,
+            [],
+            Capabilities::forActor('admin', true, true),
+            true,
+        );
+        $authorizer = new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class));
+
+        expect($authorizer->decide($actor, Capabilities::PASSWORD_CHANGE)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::IDENTITY_ME_READ)->allowed)->toBeFalse()
+            ->and($authorizer->decide($actor, Capabilities::IDENTITY_ME_READ)->reasonCode)->toBe('password_change_required');
+        expect($authorizer->decide($actor, Capabilities::ACCESS_GRANT_ISSUE)->allowed)->toBeFalse()
+            ->and($authorizer->decide($actor, Capabilities::ACCESS_GRANT_ISSUE)->reasonCode)->toBe('password_change_required');
     });
 });

@@ -243,7 +243,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Complete a TOTP challenge */
+        /** Complete a TOTP or recovery-code MFA challenge */
         post: operations["verifyMfaChallenge"];
         delete?: never;
         options?: never;
@@ -764,6 +764,12 @@ export interface components {
         MfaVerifyRequest: {
             code: string;
         };
+        /** @description Exactly one of TOTP `code` or a single unused `recovery_code`. Never both. */
+        MfaChallengeVerifyRequest: {
+            code: string;
+        } | {
+            recovery_code: string;
+        };
         MfaEnrollResult: {
             factor_id: components["schemas"]["Uuid"];
             provisioning_uri: string;
@@ -813,6 +819,7 @@ export interface components {
             expires_in?: number;
             capabilities?: string[];
             assurance_level?: string;
+            password_must_change?: boolean;
         };
         RefreshResult: {
             access_token: string;
@@ -1392,7 +1399,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MfaVerifyRequest"];
+                "application/json": components["schemas"]["MfaChallengeVerifyRequest"];
             };
         };
         responses: {

@@ -1,5 +1,18 @@
 <?php
 
+$reverbServerHost = env('REVERB_SERVER_HOST');
+$reverbScheme = env('REVERB_SCHEME');
+$reverbAllowedOrigins = env('REVERB_ALLOWED_ORIGINS');
+$corsAllowedOrigins = env('CORS_ALLOWED_ORIGINS');
+$originsExplicit = (is_string($reverbAllowedOrigins) && $reverbAllowedOrigins !== '')
+    || (is_string($corsAllowedOrigins) && $corsAllowedOrigins !== '');
+$originsSource = is_string($reverbAllowedOrigins) && $reverbAllowedOrigins !== ''
+    ? $reverbAllowedOrigins
+    : (is_string($corsAllowedOrigins) && $corsAllowedOrigins !== ''
+        ? $corsAllowedOrigins
+        : 'http://localhost:5173,http://localhost:3000');
+$resolvedScheme = is_string($reverbScheme) && $reverbScheme !== '' ? $reverbScheme : 'https';
+
 return [
 
     /*
@@ -29,8 +42,11 @@ return [
     'servers' => [
 
         'reverb' => [
-            'host' => env('REVERB_SERVER_HOST', '0.0.0.0'),
-            'port' => env('REVERB_SERVER_PORT', 8080),
+            // Local/testing may fall back to 0.0.0.0. Production readiness
+            // requires host_explicit so an absent env cannot silently bind.
+            'host' => is_string($reverbServerHost) && $reverbServerHost !== '' ? $reverbServerHost : '0.0.0.0',
+            'host_explicit' => is_string($reverbServerHost) && $reverbServerHost !== '',
+            'port' => env('REVERB_SERVER_PORT', 8081),
             'path' => env('REVERB_SERVER_PATH', ''),
             'hostname' => env('REVERB_HOST'),
             'options' => [
@@ -79,18 +95,31 @@ return [
                 'options' => [
                     'host' => env('REVERB_HOST'),
                     'port' => env('REVERB_PORT', 443),
-                    'scheme' => env('REVERB_SCHEME', 'https'),
-                    'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
+                    'scheme' => $resolvedScheme,
+                    'useTLS' => $resolvedScheme === 'https',
                 ],
+                'scheme_explicit' => is_string($reverbScheme) && $reverbScheme !== '',
+                'origins_explicit' => $originsExplicit,
                 // Enumerated origins only. A wildcard here is the same defect
                 // as wildcard CORS and is rejected by Semgrep.
-                'allowed_origins' => array_values(array_filter(array_map(
-                    static fn (string $origin): string => trim($origin),
-                    explode(',', (string) env(
-                        'REVERB_ALLOWED_ORIGINS',
-                        env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000'),
-                    )),
-                ))),
+                'allowed_origins' => array_values(array_unique(array_filter(array_map(
+                    static function (string $configuredOrigin): string {
+                        $configuredOrigin = trim($configuredOrigin);
+                        if ($configuredOrigin === '') {
+                            return '';
+                        }
+
+                        // Reverb compares against parse_url(..., PHP_URL_HOST).
+                        // Source is REVERB_ALLOWED_ORIGINS / CORS_ALLOWED_ORIGINS,
+                        // never the request Host header.
+                        $configuredOriginHost = parse_url($configuredOrigin, PHP_URL_HOST);
+
+                        return is_string($configuredOriginHost) && $configuredOriginHost !== ''
+                            ? $configuredOriginHost
+                            : $configuredOrigin;
+                    },
+                    explode(',', $originsSource),
+                )))),
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
                 'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'max_connections' => env('REVERB_APP_MAX_CONNECTIONS', 500),

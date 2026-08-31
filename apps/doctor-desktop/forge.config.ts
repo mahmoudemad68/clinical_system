@@ -6,9 +6,13 @@ import { WebpackPlugin } from '@electron-forge/plugin-webpack';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { createRequire } from 'node:module';
 
 import { mainConfig } from './webpack.main.config';
 import { rendererConfig } from './webpack.renderer.config';
+
+const require = createRequire(import.meta.url);
+const electronChecksums = require('electron/checksums.json') as Record<string, string>;
 
 /**
  * Electron Forge configuration for Clinic Doctor.
@@ -25,6 +29,13 @@ const config: ForgeConfig = {
 
     // Integrity check of the packaged asar. Detects post-signing tampering.
     asar: true,
+
+    // Official Electron checksums from the pinned `electron` package. Lets
+    // `electron-forge package` verify the zip from cache without fetching
+    // SHASUMS256.txt from GitHub at package time.
+    download: {
+      checksums: electronChecksums,
+    },
 
     // NOTE: `osxSign` and `osxNotarize` are deliberately ABSENT, not set to
     // undefined. Under `exactOptionalPropertyTypes` an explicit undefined is a

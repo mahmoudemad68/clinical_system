@@ -32,6 +32,7 @@
     "desktop:test": "npm run test --workspace apps/doctor-desktop && npm run test --workspace apps/pharmacy-desktop",
     "desktop:lint": "npm run lint --workspace apps/doctor-desktop && npm run lint --workspace apps/pharmacy-desktop",
     "desktop:package": "npm run package --workspace apps/doctor-desktop && npm run package --workspace apps/pharmacy-desktop",
+    "desktop:e2e": "node scripts/desktop/run-packaged-e2e.mjs",
     "desktop:configure-sandbox": "node scripts/desktop/ensure-linux-chromium-sandbox.mjs",
     "packages:typecheck": "npm run typecheck --workspaces --if-present",
     "packages:test": "npm run test --workspaces --if-present",

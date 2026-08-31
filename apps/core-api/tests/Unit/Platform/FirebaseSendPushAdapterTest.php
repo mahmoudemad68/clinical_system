@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Modules\Platform\Infrastructure\Adapters\FirebaseSendPush;
-use App\Modules\Platform\Infrastructure\Telemetry\PlatformMetrics;
 use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Messaging\CloudMessage;
+use Modules\Platform\Services\Adapters\FirebaseSendPush;
+use Modules\Platform\Services\Telemetry\PlatformMetrics;
 
 it('sends generic lock-screen copy through the Firebase messaging contract', function () {
     $messaging = Mockery::mock(Messaging::class);

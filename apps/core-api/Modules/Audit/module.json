@@ -1,0 +1,11 @@
+{
+    "name": "Audit",
+    "alias": "audit",
+    "description": "Clinic Audit module",
+    "keywords": [],
+    "priority": 10,
+    "providers": [
+        "Modules\\Audit\\Providers\\AuditServiceProvider"
+    ],
+    "files": []
+}

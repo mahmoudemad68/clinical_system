@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/auth/recovery_old_channel_notice_requested.v1.schema.json",
+  "title": "auth.recovery_old_channel_notice_requested v1",
+  "description": "A non-secret recovery security notice should be delivered on the account's pre-existing channel. Destination is re-read from persisted account state; the payload never carries a phone, token, OTP, or password.",
+  "type": "object",
+  "required": ["recovery_request_id", "notice_kind", "locale"],
+  "additionalProperties": false,
+  "properties": {
+    "recovery_request_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "notice_kind": {
+      "type": "string",
+      "enum": ["queued", "applied"]
+    },
+    "locale": {
+      "type": "string",
+      "enum": ["ar", "en"]
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Auth",
+    "classification": "internal",
+    "consumers": ["auth.recovery_old_channel_notice"],
+    "retention_days": 7
+  }
+}

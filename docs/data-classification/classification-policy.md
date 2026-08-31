@@ -5,7 +5,7 @@ and file in this platform carries exactly one classification. The classification
 determines where the value may travel, how long it is kept, and who may read it.
 
 The `Classification` enum in
-`apps/core-api/app/Modules/Platform/Domain/ValueObjects/Classification.php`
+`apps/core-api/Modules/Platform/app/Enums/Classification.php`
 is the executable form of this document. A rule stated here and not encoded
 there is a rule that will be forgotten.
 

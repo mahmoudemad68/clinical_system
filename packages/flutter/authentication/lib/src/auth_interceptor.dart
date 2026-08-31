@@ -9,19 +9,26 @@ import 'token_store.dart';
 ///
 /// Non-idempotent requests are not retried unless the original Idempotency-Key
 /// header is still present.
+///
+/// A failed refresh does not clear the vault. Only [AuthApi.refresh] may clear
+/// credentials, and only when the refresh endpoint authoritatively rejects
+/// them. Transient, protocol, and persistence failures keep the previous
+/// envelope as the source of truth.
 class AuthInterceptor extends Interceptor {
   AuthInterceptor({
     required TokenStore store,
     required ClinicHttpClient client,
     required Future<bool> Function() refresh,
-  }) : _store = store,
-       _client = client,
-       _refresh = refresh;
+  }) : this._(store, client, refresh);
+
+  AuthInterceptor._(this._store, this._client, this._refresh);
 
   final TokenStore _store;
   final ClinicHttpClient _client;
   final Future<bool> Function() _refresh;
   Completer<bool>? _inFlight;
+
+  static const _retriedExtra = 'clinicAuthRetried';
 
   @override
   Future<void> onRequest(
@@ -37,6 +44,27 @@ class AuthInterceptor extends Interceptor {
   }
 
   @override
+  Future<void> onResponse(
+    Response<dynamic> response,
+    ResponseInterceptorHandler handler,
+  ) async {
+    if (response.statusCode != 401) {
+      handler.next(response);
+      return;
+    }
+    if (_isRefreshRequest(response.requestOptions)) {
+      handler.next(response);
+      return;
+    }
+    await _recoverUnauthorized(
+      response.requestOptions,
+      original: response,
+      onResolved: handler.resolve,
+      onGiveUp: handler.reject,
+    );
+  }
+
+  @override
   Future<void> onError(
     DioException err,
     ErrorInterceptorHandler handler,
@@ -46,41 +74,52 @@ class AuthInterceptor extends Interceptor {
       return;
     }
 
-    if (err.requestOptions.path.contains('/auth/token/refresh')) {
-      handler.next(err);
+    await _recoverUnauthorized(
+      err.requestOptions,
+      original: err.response,
+      onResolved: handler.resolve,
+      onGiveUp: handler.next,
+    );
+  }
+
+  Future<void> _recoverUnauthorized(
+    RequestOptions failed, {
+    required Response<dynamic>? original,
+    required void Function(Response<dynamic> response) onResolved,
+    required void Function(DioException err) onGiveUp,
+  }) async {
+    if (_isRefreshRequest(failed) || failed.extra[_retriedExtra] == true) {
+      onGiveUp(_unauthorized(failed, original));
       return;
     }
 
-    final method = err.requestOptions.method.toUpperCase();
+    final method = failed.method.toUpperCase();
     final canRetry =
-        method == 'GET' ||
-        err.requestOptions.headers['Idempotency-Key'] is String;
+        method == 'GET' || failed.headers['Idempotency-Key'] is String;
 
     if (!canRetry) {
-      await _store.clear();
-      _client.setAuthToken(null);
-      handler.next(err);
+      onGiveUp(_unauthorized(failed, original));
       return;
     }
 
     final refreshed = await _refreshOnce();
     if (!refreshed) {
-      await _store.clear();
-      _client.setAuthToken(null);
-      handler.next(err);
+      onGiveUp(_unauthorized(failed, original));
       return;
     }
 
     try {
       final token = await _store.readAccess();
-      final opts = err.requestOptions;
-      if (token != null) {
-        opts.headers['Authorization'] = 'Bearer $token';
+      failed.extra[_retriedExtra] = true;
+      if (token != null && token.isNotEmpty) {
+        failed.headers['Authorization'] = 'Bearer $token';
+      } else {
+        failed.headers.remove('Authorization');
       }
-      final response = await _client.dio.fetch<dynamic>(opts);
-      handler.resolve(response);
+      final response = await _client.dio.fetch<dynamic>(failed);
+      onResolved(response);
     } on DioException catch (retryError) {
-      handler.next(retryError);
+      onGiveUp(retryError);
     }
   }
 
@@ -100,5 +139,20 @@ class AuthInterceptor extends Interceptor {
           _inFlight = null;
         });
     return completer.future;
+  }
+
+  bool _isRefreshRequest(RequestOptions options) {
+    return options.path.contains('/auth/token/refresh');
+  }
+
+  DioException _unauthorized(
+    RequestOptions options,
+    Response<dynamic>? response,
+  ) {
+    return DioException(
+      requestOptions: options,
+      response: response,
+      type: DioExceptionType.badResponse,
+    );
   }
 }

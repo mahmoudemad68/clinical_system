@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Platform;
 
-use App\Modules\Platform\Infrastructure\Cache\CacheWarmer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
+use Modules\Platform\Services\Cache\CacheWarmer;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Throwable;

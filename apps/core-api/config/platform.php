@@ -172,4 +172,19 @@ return [
         'credentials' => (string) env('FIREBASE_CREDENTIALS', env('GOOGLE_APPLICATION_CREDENTIALS', '')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Queue engineering cleanup
+    |--------------------------------------------------------------------------
+    |
+    | Laravel owns jobs / job_batches / failed_jobs lifecycle. Successful
+    | database-driver jobs are deleted by the worker. This value is the
+    | ENGINEERING_DEFAULT passed to queue:prune-failed. It is not a statutory
+    | retention period (OPEN_LEGAL_DECISION).
+    |
+    */
+    'queue' => [
+        'failed_job_retention_hours' => (int) env('PLATFORM_FAILED_JOB_RETENTION_HOURS', 168),
+    ],
+
 ];

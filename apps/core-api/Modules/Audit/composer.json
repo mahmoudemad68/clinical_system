@@ -1,0 +1,22 @@
+{
+    "name": "clinic/audit",
+    "description": "Clinic Audit module",
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Audit\\": "app/",
+            "Modules\\Audit\\Database\\Factories\\": "database/factories/",
+            "Modules\\Audit\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Audit\\Tests\\": "tests/"
+        }
+    }
+}

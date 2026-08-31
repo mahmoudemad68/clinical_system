@@ -79,9 +79,12 @@ return [
         'otp_per_subject_per_hour' => (int) env('AUTH_OTP_PER_SUBJECT_PER_HOUR', 5),
         'otp_per_ip_per_hour' => (int) env('AUTH_OTP_PER_IP_PER_HOUR', 20),
         'recovery_per_subject_per_hour' => (int) env('AUTH_RECOVERY_PER_SUBJECT_PER_HOUR', 3),
+        'recovery_per_ip_per_hour' => (int) env('AUTH_RECOVERY_PER_IP_PER_HOUR', 20),
         'refresh_per_device_per_minute' => (int) env('AUTH_REFRESH_PER_DEVICE_PER_MINUTE', 30),
         'refresh_per_ip_per_minute' => (int) env('AUTH_REFRESH_PER_IP_PER_MINUTE', 60),
         'mfa_per_challenge_per_minute' => (int) env('AUTH_MFA_PER_CHALLENGE_PER_MINUTE', 10),
+        'otp_verify_per_challenge_per_minute' => (int) env('AUTH_OTP_VERIFY_PER_CHALLENGE_PER_MINUTE', 10),
+        'otp_verify_per_ip_per_minute' => (int) env('AUTH_OTP_VERIFY_PER_IP_PER_MINUTE', 30),
     ],
 
     'recovery' => [
@@ -89,8 +92,14 @@ return [
     ],
 
     'retention' => [
+        // ENGINEERING_DEFAULT values. Not statutory retention periods.
+        // Legal duration remains OPEN_LEGAL_DECISION / EXTERNAL_HUMAN.
         'otp_row_days' => (int) env('IDENTITY_OTP_ROW_DAYS', 30),
         'revoked_session_days' => (int) env('IDENTITY_REVOKED_SESSION_DAYS', 90),
+        'recovery_request_days' => (int) env('IDENTITY_RECOVERY_REQUEST_DAYS', 90),
+        'revoked_device_days' => (int) env('IDENTITY_REVOKED_DEVICE_DAYS', 90),
+        'refresh_consumption_days' => (int) env('IDENTITY_REFRESH_CONSUMPTION_DAYS', 90),
+        'revoked_grant_days' => (int) env('IDENTITY_REVOKED_GRANT_DAYS', 90),
     ],
 
     'refresh' => [

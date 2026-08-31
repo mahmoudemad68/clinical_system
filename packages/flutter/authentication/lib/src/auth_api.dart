@@ -1,6 +1,7 @@
 import 'package:clinic_error_handling/clinic_error_handling.dart';
 import 'package:clinic_networking/clinic_networking.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'token_store.dart';
 
@@ -13,6 +14,10 @@ class AuthApi {
   final TokenStore _tokens;
   String? _refreshIdempotencyKey;
 
+  /// Retained refresh Idempotency-Key. Null when no attempt is in flight.
+  @visibleForTesting
+  String? get refreshIdempotencyKeyForTest => _refreshIdempotencyKey;
+
   Future<OtpChallenge> register({
     required String name,
     required String phone,
@@ -21,17 +26,13 @@ class AuthApi {
     required String language,
     required String idempotencyKey,
   }) async {
-    final data = await _post(
-      '/api/v1/auth/registrations',
-      {
-        'name': name,
-        'phone': phone,
-        'national_id': nationalId,
-        'password': password,
-        'language': language,
-      },
-      idempotencyKey: idempotencyKey,
-    );
+    final data = await _post('/api/v1/auth/registrations', {
+      'name': name,
+      'phone': phone,
+      'national_id': nationalId,
+      'password': password,
+      'language': language,
+    }, idempotencyKey: idempotencyKey);
     return OtpChallenge.fromWire(data);
   }
 
@@ -42,17 +43,13 @@ class AuthApi {
     required String deviceLabel,
     required String idempotencyKey,
   }) async {
-    final data = await _post(
-      '/api/v1/auth/otp-verifications',
-      {
-        'challenge_id': challengeId,
-        'code': code,
-        'client_class': 'patient_mobile',
-        'platform': platform,
-        'device_label': deviceLabel,
-      },
-      idempotencyKey: idempotencyKey,
-    );
+    final data = await _post('/api/v1/auth/otp-verifications', {
+      'challenge_id': challengeId,
+      'code': code,
+      'client_class': 'patient_mobile',
+      'platform': platform,
+      'device_label': deviceLabel,
+    }, idempotencyKey: idempotencyKey);
     return _persistIfDevice(data);
   }
 
@@ -72,6 +69,11 @@ class AuthApi {
     return _persistIfDevice(data);
   }
 
+  /// Rotates the device session.
+  ///
+  /// Returns true only after a complete access+refresh pair is durably
+  /// persisted. Incomplete 2xx, malformed bodies, and vault write failures
+  /// keep the retained Idempotency-Key and the previous envelope.
   Future<bool> refresh() async {
     final current = await _tokens.readRefresh();
     if (current == null || current.isEmpty) {
@@ -82,15 +84,22 @@ class AuthApi {
       final data = await _post('/api/v1/auth/token/refresh', {
         'refresh_token': current,
       }, idempotencyKey: _refreshIdempotencyKey);
-      await _persistIfDevice(data);
+      final pair = completeDeviceTokenPair(data);
+      if (pair == null) {
+        return false;
+      }
+      await _tokens.write(access: pair.access, refresh: pair.refresh);
+      _client.setAuthToken(pair.access);
       _refreshIdempotencyKey = null;
       return true;
     } on ApiFailure catch (failure) {
-      if (failure.statusCode == 401) {
+      if (isAuthoritativeCredentialRejection(failure)) {
         await _tokens.clear();
         _client.setAuthToken(null);
         _refreshIdempotencyKey = null;
       }
+      return false;
+    } catch (_) {
       return false;
     }
   }
@@ -104,16 +113,18 @@ class AuthApi {
 
   Future<Map<String, dynamic>> me() async {
     try {
-      final response = await _client.dio.get<Map<String, dynamic>>('/api/v1/me');
+      final response = await _client.dio.get<Map<String, dynamic>>(
+        '/api/v1/me',
+      );
       final body = response.data;
       final data = body?['data'];
       if (data is Map<String, dynamic>) {
         return Map<String, dynamic>.from(data);
       }
-      throw const ApiFailure(
+      throw ApiFailure(
         code: ApiErrorCode.internalError,
         message: 'The service returned an unexpected response.',
-        statusCode: 200,
+        statusCode: response.statusCode ?? 0,
       );
     } on DioException catch (e) {
       final failure = e.error;
@@ -126,12 +137,10 @@ class AuthApi {
 
   Future<AuthOutcome> _persistIfDevice(Map<String, dynamic> data) async {
     final outcome = AuthOutcome.fromWire(data);
-    if (outcome.accessToken != null && outcome.refreshToken != null) {
-      await _tokens.write(
-        access: outcome.accessToken!,
-        refresh: outcome.refreshToken!,
-      );
-      _client.setAuthToken(outcome.accessToken);
+    final pair = completeDeviceTokenPair(data);
+    if (pair != null) {
+      await _tokens.write(access: pair.access, refresh: pair.refresh);
+      _client.setAuthToken(pair.access);
     }
     return outcome.withoutSecrets();
   }
@@ -145,21 +154,21 @@ class AuthApi {
       final response = await _client.dio.post<Map<String, dynamic>>(
         path,
         data: body,
-        options: Options(
-          headers: {
-            if (idempotencyKey != null) 'Idempotency-Key': idempotencyKey,
-          },
-        ),
+        options: Options(headers: {'Idempotency-Key': ?idempotencyKey}),
       );
+      final status = response.statusCode ?? 0;
+      if (status < 200 || status >= 300) {
+        throw apiFailureFromResponse(status, response.data);
+      }
       final envelope = response.data;
       final data = envelope?['data'];
       if (data is Map<String, dynamic>) {
         return Map<String, dynamic>.from(data);
       }
-      throw const ApiFailure(
+      throw ApiFailure(
         code: ApiErrorCode.internalError,
         message: 'The service returned an unexpected response.',
-        statusCode: 200,
+        statusCode: status,
       );
     } on DioException catch (e) {
       final failure = e.error;
@@ -221,4 +230,57 @@ class AuthOutcome {
       sessionKind: sessionKind,
     );
   }
+}
+
+class DeviceTokenPair {
+  const DeviceTokenPair({required this.access, required this.refresh});
+
+  final String access;
+  final String refresh;
+}
+
+/// Complete non-empty access and refresh tokens, or null.
+DeviceTokenPair? completeDeviceTokenPair(Map<String, dynamic> data) {
+  final access = data['access_token'];
+  final refresh = data['refresh_token'];
+  if (access is! String || access.isEmpty) {
+    return null;
+  }
+  if (refresh is! String || refresh.isEmpty) {
+    return null;
+  }
+  return DeviceTokenPair(access: access, refresh: refresh);
+}
+
+bool isAuthoritativeCredentialRejection(ApiFailure failure) {
+  if (failure.statusCode == 401) {
+    return true;
+  }
+  return failure.statusCode >= 400 &&
+      failure.statusCode < 500 &&
+      failure.isAuthentication;
+}
+
+ApiFailure apiFailureFromResponse(int statusCode, Object? body) {
+  if (body is Map<String, dynamic>) {
+    final errors = body['errors'];
+    final requestId = body['request_id'] as String?;
+    if (errors is List && errors.isNotEmpty) {
+      final first = errors.first;
+      if (first is Map<String, dynamic>) {
+        return ApiFailure(
+          code: ApiErrorCode.fromWire(first['code'] as String?),
+          message: (first['message'] as String?) ?? 'The request failed.',
+          statusCode: statusCode,
+          field: first['field'] as String?,
+          requestId: requestId,
+        );
+      }
+    }
+  }
+  return ApiFailure(
+    code: ApiErrorCode.internalError,
+    message: 'The request failed.',
+    statusCode: statusCode,
+  );
 }

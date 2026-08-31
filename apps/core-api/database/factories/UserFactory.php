@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Models\User;
-use App\Modules\Identity\Domain\NationalIdProtector;
-use App\Modules\Identity\Domain\ValueObjects\AccountStatus;
-use App\Modules\Identity\Domain\ValueObjects\AccountType;
-use App\Modules\Identity\Domain\ValueObjects\LanguagePreference;
-use App\Modules\Platform\Domain\Contracts\IdentityGenerator;
-use App\Modules\Platform\Infrastructure\Persistence\BinaryColumn;
-use App\Modules\Platform\Infrastructure\Testing\SyntheticEgyptianData;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Enums\AccountType;
+use Modules\Identity\Enums\LanguagePreference;
+use Modules\Identity\Services\NationalIdProtector;
+use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Services\Persistence\BinaryColumn;
+use Modules\Platform\Services\Testing\SyntheticEgyptianData;
 
 /**
  * @extends Factory<User>
@@ -34,7 +34,8 @@ class UserFactory extends Factory
             'name' => $synthetic->name()['given'].' '.$synthetic->name()['family'],
             'phone_e164_encrypted' => BinaryColumn::bind($protector->encryptPhone($phone)),
             'phone_lookup_hmac' => BinaryColumn::bind($protector->phoneHmac($phone)),
-            'phone_key_version' => 1,
+            'phone_key_version' => $protector->encryptionVersion(),
+            'phone_hmac_version' => $protector->hmacVersion(),
             'password_hash' => Hash::driver('argon2id')->make('password-factory-12'),
             'account_type' => AccountType::Patient->value,
             'status' => AccountStatus::Active->value,
@@ -43,6 +44,7 @@ class UserFactory extends Factory
             'phone_verified_at' => $now,
             'last_authenticated_at' => null,
             'bootstrap_exempt' => false,
+            'password_must_change' => false,
             'created_at' => $now,
             'updated_at' => $now,
         ];

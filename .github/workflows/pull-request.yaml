@@ -13,6 +13,9 @@
 # Path filters keep the runtime honest: only changed units run their full
 # suite, while contract validation always runs because a contract change
 # affects every consumer.
+#
+# Evidence binds to the pull-request head commit. github.sha on pull_request
+# is GitHub's synthetic merge ref, not the reviewed candidate.
 
 name: pull-request
 
@@ -34,6 +37,7 @@ env:
   PHP_VERSION: '8.3'
   NODE_VERSION: '22'
   PYTHON_VERSION: '3.12'
+  CANDIDATE_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
 
 jobs:
 
@@ -51,36 +55,27 @@ jobs:
       infra: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36  # v3.0.2
         id: filter
         with:
-          filters: |
-            core_api:
-              - 'apps/core-api/**'
-              - 'packages/contracts/**'
-            ai_service:
-              - 'apps/ai-service/**'
-              - 'packages/contracts/ai_internal/**'
-            admin_web:
-              - 'apps/admin-web/**'
-              - 'packages/typescript/**'
-              - 'packages/contracts/openapi/**'
-            flutter:
-              # Patient mobile only. Doctor and pharmacy moved to Electron
-              # (ADR 0010) and are matched by the `desktop` filter below.
-              - 'apps/patient-app/**'
-              - 'packages/flutter/**'
-            desktop:
-              - 'apps/doctor-desktop/**'
-              - 'apps/pharmacy-desktop/**'
-              - 'packages/typescript/**'
-              - 'packages/contracts/openapi/**'
-            contracts:
-              - 'packages/contracts/**'
-              - 'scripts/contracts/**'
-            infra:
-              - 'infra/**'
-              - '.github/workflows/**'
+          filters: .github/path-filters.yaml
+
+  # ------------------------------------------------------- supply-chain policy
+  supply-chain-policy:
+    name: Supply-chain policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
+      - name: ISR-015 repository policy gates
+        run: python3 scripts/ci/run-isr015-validators.py
 
   # -------------------------------------------------------------- contracts
   contracts:
@@ -89,8 +84,11 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
+          ref: ${{ env.CANDIDATE_SHA }}
           # The breaking-change detector diffs against main, so it needs history.
           fetch-depth: 0
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
@@ -108,7 +106,9 @@ jobs:
       - name: Evidence ledger integrity
         # Fails on a duplicate gate id or a summary that disagrees with the
         # table. Keeps the headline totals honest without anyone recounting.
-        run: node scripts/evidence/count-gates.mjs --expect PASS=30,PARTIAL=15,BLOCKED=0,OPEN=2
+        run: |
+          node scripts/evidence/count-gates.mjs --expect PASS=46,PARTIAL=0,BLOCKED=0,OPEN=1
+          node scripts/evidence/count-gates.mjs --ledger docs/evidence/phase-01/evidence-ledger.md --expect PASS=22,PARTIAL=0,BLOCKED=0,OPEN=1
 
       - name: Generate TypeScript client
         run: npm run contracts:generate:ts
@@ -120,10 +120,17 @@ jobs:
         run: npm run contracts:ai-internal
 
       - name: Fail if generated clients are stale
+        # TypeScript output is committed. Dart output is gitignored and
+        # regenerated in CI; git diff cannot see it and must not be treated as
+        # proof that a committed Dart client is fresh.
         run: |
-          if ! git diff --quiet -- packages/typescript/api_client/src/generated packages/flutter/api_client/lib/src/generated; then
-            echo "::error::A generated client is out of date. Run 'npm run contracts:generate:ts' and 'npm run contracts:generate:dart' and commit."
-            git diff -- packages/typescript/api_client/src/generated packages/flutter/api_client/lib/src/generated
+          if ! git diff --quiet -- packages/typescript/api_client/src/generated; then
+            echo "::error::The committed TypeScript client is out of date. Run 'npm run contracts:generate:ts' and commit."
+            git diff -- packages/typescript/api_client/src/generated
+            exit 1
+          fi
+          if [ ! -s packages/flutter/api_client/lib/src/generated/openapi_contract.dart ]; then
+            echo "::error::Dart OpenAPI constants were not generated. Run 'npm run contracts:generate:dart'. That file is gitignored and is produced in CI, not committed."
             exit 1
           fi
 
@@ -139,8 +146,10 @@ jobs:
         continue-on-error: true
         run: |
           git show origin/main:packages/contracts/openapi/openapi.yaml > /tmp/base.yaml || exit 0
+          # oasdiff v1.9.8, digest-pinned.
           docker run --rm -v /tmp:/base -v "$PWD/packages/contracts/openapi":/head \
-            tufin/oasdiff breaking /base/base.yaml /head/openapi.yaml --fail-on ERR
+            tufin/oasdiff:v1.9.8@sha256:c6a4b8b98a61e8ad14a1fdbef1993bf725eb512cc3fe72fe31c8b240f3a59168 \
+            breaking /base/base.yaml /head/openapi.yaml --fail-on ERR
 
   # ---------------------------------------------------------------- core-api
   core-api:
@@ -151,7 +160,8 @@ jobs:
 
     services:
       postgres:
-        image: postgis/postgis:16-3.4
+        # postgis/postgis:16-3.4
+        image: postgis/postgis:16-3.4@sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5
         env:
           POSTGRES_DB: clinic_test
           POSTGRES_USER: clinic_migrator
@@ -161,7 +171,8 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 20
         ports: ['5432:5432']
       redis:
-        image: redis:7-alpine
+        # redis:7-alpine
+        image: redis:7-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s --health-timeout 5s --health-retries 20
@@ -173,6 +184,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        working-directory: ${{ github.workspace }}
+        run: bash scripts/ci/assert-candidate-sha.sh
 
       - uses: shivammathur/setup-php@9e72090525849c5e82e596468b86eb55e9cc5401  # 2.32.0
         with:
@@ -181,6 +197,14 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Application environment
+        # composer install runs package:discover, which boots Identity. Copy
+        # committed non-secret placeholders before Composer scripts run.
+        # CI postgres uses a distinct password from local.env; workload roles
+        # are created by migrations because clinic_migrator is the image
+        # superuser.
+        run: cp .env.example .env
+
       - name: Install dependencies from the committed lock
         # --no-interaction with a lock present is a frozen install: a lockfile
         # that would change fails the build (ADR 0008).
@@ -188,13 +212,6 @@ jobs:
 
       - name: Fail if the lockfile drifted
         run: git diff --exit-code -- composer.lock
-
-      - name: Application environment
-        # PHPStan and artisan boot Auth outbox consumers, which construct the
-        # identity encryptor. Missing keys fail closed. CI postgres uses a
-        # distinct password from local.env; workload roles are created by
-        # migrations because clinic_migrator is the image superuser.
-        run: cp .env.example .env
 
       - name: Format check
         run: ./vendor/bin/pint --test
@@ -215,6 +232,20 @@ jobs:
           DB_MIGRATION_PASSWORD: ci_only_not_a_secret
         run: php artisan migrate --database=pgsql_migrator --force
 
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/core-api/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Inertia assets
+        # Persona status pages render through Vite. Pest must see a real
+        # production manifest; withoutVite() would skip that contract.
+        run: npm run build
+
       - name: Tests
         env:
           DB_HOST: localhost
@@ -223,12 +254,10 @@ jobs:
           DB_PASSWORD: ci_only_not_a_secret
           DB_MIGRATION_USERNAME: clinic_migrator
           DB_MIGRATION_PASSWORD: ci_only_not_a_secret
+          DB_WORKER_USERNAME: clinic_worker
+          DB_WORKER_PASSWORD: local_dev_only_not_a_secret
           REDIS_HOST: localhost
         run: ./vendor/bin/pest
-
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
 
       - name: Browser CSRF and session cookies
         working-directory: .
@@ -244,8 +273,6 @@ jobs:
         run: |
           npm ci --prefix tests/e2e
           npx --prefix tests/e2e playwright install --with-deps chromium
-          npm ci --prefix apps/core-api
-          npm run build --prefix apps/core-api
           php apps/core-api/artisan serve --host=127.0.0.1 --port=8080 &
           sleep 3
           npx --prefix tests/e2e playwright test --config tests/e2e/playwright.config.ts
@@ -263,6 +290,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        working-directory: ${{ github.workspace }}
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -290,6 +322,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -310,6 +346,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Generate Dart patient client constants
+        run: npm run contracts:generate:dart
       - uses: subosito/flutter-action@f2c4f6686ca8e8d6e6d0f28410eeef506ed66aff  # v2.18.0
         with:
           flutter-version: '3.47.1'
@@ -328,6 +375,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -349,10 +400,104 @@ jobs:
       - name: Shared TypeScript packages
         run: npm run packages:test
 
-      # Packaging is not run here. It downloads the Electron binary per target
-      # and rebuilds native addons, which belongs in the post-merge lane where
-      # the artifact is actually retained. Phase 00 CI never receives signing
-      # credentials (Phase 23 owns those).
+      # Unsigned packaged-window evidence is G-02-10 (desktop-packaged-e2e).
+      # Signing credentials stay out of pull requests (Phase 23).
+
+  # ------------------------------------------ desktop packaged E2E (G-02-10)
+  desktop-packaged-e2e:
+    name: Packaged Electron E2E (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        shell: bash
+        run: bash scripts/ci/assert-candidate-sha.sh
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install workspace dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${RUNNER_OS}" = Windows ]; then
+            # Root `npm ci` on windows-latest (job 98607821468) failed after a
+            # full extract (~99s, 3517 log lines) before packaged E2E ran.
+            # The same lockfile `npm ci` succeeded on ubuntu/macOS (~16s).
+            # The only required hasInstallScript package is msw 2.15.0, whose
+            # postinstall is `node -e "import(...).catch(() => void 0)"` —
+            # cmd.exe lifecycle scripts break on `() =>`. Packaged E2E does
+            # not need that worker copy; Forge rebuilds natives at package.
+            npm ci --ignore-scripts
+            node node_modules/electron/install.js
+          else
+            npm ci
+          fi
+
+      - name: Install packaged E2E runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${RUNNER_OS}" = Windows ]; then
+            npm ci --ignore-scripts --prefix tests/desktop-e2e
+          else
+            npm ci --prefix tests/desktop-e2e
+          fi
+
+      - run: npm run contracts:generate:ts
+        shell: bash
+
+      - name: Linux runtime libraries for packaged Chromium
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb fonts-liberation libnss3 libnspr4 \
+            libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libgtk-3-0 \
+            libgbm1 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+            libxrandr2 libxfixes3 libxext6 libxi6 libx11-xcb1 libxcb-dri3-0 \
+            libxshmfence1 libxss1 libxtst6 libpango-1.0-0 libpangocairo-1.0-0 \
+            libcairo2 libcups2 libasound2t64 \
+            || sudo apt-get install -y xvfb fonts-liberation libnss3 libnspr4 \
+            libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libgtk-3-0 \
+            libgbm1 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+            libxrandr2 libxfixes3 libxext6 libxi6 libx11-xcb1 libxcb-dri3-0 \
+            libxshmfence1 libxss1 libxtst6 libpango-1.0-0 libpangocairo-1.0-0 \
+            libcairo2 libcups2 libasound2
+
+      - name: Packaged Doctor and Pharmacy WebdriverIO
+        shell: bash
+        env:
+          # Installers/signing stay Phase 23. This job packages and launches the
+          # unsigned Forge binaries. Make is best-effort locally, not the gate.
+          CLINIC_DESKTOP_SKIP_MAKE: '1'
+          # RFC 2606 example origins, baked at package time only. Not production
+          # hosts. Runtime CLINIC_API_BASE_URL cannot enlarge this list.
+          CLINIC_DOCTOR_PACKAGED_API_ALLOWED_ORIGINS: 'https://api.example.com'
+          CLINIC_PHARMACY_PACKAGED_API_ALLOWED_ORIGINS: 'https://pharmacy.example.com'
+        run: node scripts/desktop/run-packaged-e2e.mjs
+
+      - name: Upload packaged E2E logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: g-02-10-${{ matrix.os }}
+          path: |
+            tests/desktop-e2e/logs/
+            docs/evidence/phase-00/g-02-10-packaged-electron-e2e.json
+            docs/evidence/phase-00/g-02-10-packaged-electron-e2e.md
+          if-no-files-found: warn
+
 
   # ---------------------------------------------------------------- security
   security:
@@ -360,46 +505,52 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
       security-events: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
+          ref: ${{ env.CANDIDATE_SHA }}
           fetch-depth: 0
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
 
-      # Secrets must never reach a fork/PR job from untrusted code, so this
-      # workflow requests no secrets at all.
+      # Fork/PR jobs must not receive repository secrets or a PAT. The
+      # automatically issued workflow token is enough for gitleaks to resolve
+      # the pull-request diff.
       - name: Secret scan
         uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3  # v2.3.7
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
 
       - name: SAST
-        uses: returntocorp/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d  # v1
-        with:
-          config: >-
-            p/default
-            p/security-audit
-            p/secrets
-            p/owasp-top-ten
-
-      - name: SF-001 merge exception expiry
+        # Digest-pinned semgrep/semgrep:1.99.0. Same rulesets as the previous
+        # SHA-pinned action input. Mutable scanner tags are not used.
         run: |
-          python3 - <<'PY'
-          from datetime import datetime, timezone
-          expiry = datetime(2026, 11, 26, tzinfo=timezone.utc)
-          if datetime.now(timezone.utc) >= expiry:
-              raise SystemExit("SF-001 merge exception expired; extract-zip must be fixed or a new exception recorded")
-          print("SF-001 merge exception still in window until 2026-11-26T00:00:00Z")
-          PY
+          docker run --rm -v "$PWD:/src" -w /src \
+            semgrep/semgrep:1.99.0@sha256:ae27024c16f7848cdbfd49c24ed0b78b13f13b85fcd7b87c679aaa8b0c0dce98 \
+            semgrep scan --error --metrics=off \
+              --config p/default \
+              --config p/security-audit \
+              --config p/secrets \
+              --config p/owasp-top-ten
+
+      - name: SF-001 merge exception binding
+        run: python3 scripts/ci/isr015_policy.py sf001
+
+      - name: Install Trivy
+        run: bash scripts/ci/install-trivy.sh
 
       - name: Filesystem and dependency scan
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0  # v0.29.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
+          skip-setup-trivy: true
           scan-type: fs
           scanners: vuln,secret,misconfig
           severity: CRITICAL,HIGH
           exit-code: '1'
-          ignorefile: infra/security/trivy-merge.ignore
+          trivyignores: infra/security/trivy-merge.ignore
 
       - name: Generate SBOM
         uses: anchore/sbom-action@df80a981bc6edbc4e220a492d3cbe9f5547a6e75  # v0.17.9
@@ -422,6 +573,10 @@ jobs:
             dockerfile: infra/docker/ai-service.Dockerfile
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        run: bash scripts/ci/assert-candidate-sha.sh
       - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2  # v3.10.0
       - id: build
         uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4  # v6.15.0
@@ -434,14 +589,17 @@ jobs:
           tags: clinic-pr/${{ matrix.unit }}:scan
           build-args: |
             APP_VERSION=0.0.0-pr
-            BUILD_COMMIT=${{ github.sha }}
+            BUILD_COMMIT=${{ env.CANDIDATE_SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Install Trivy
+        run: bash scripts/ci/install-trivy.sh
       - name: Scan the built image
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0  # v0.29.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
+          skip-setup-trivy: true
           image-ref: clinic-pr/${{ matrix.unit }}:scan
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: 'false'
-          ignorefile: infra/security/trivy-image.ignore
+          trivyignores: infra/security/trivy-image.ignore

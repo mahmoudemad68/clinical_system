@@ -86,8 +86,8 @@ Attach each rule to the most specific path that covers its evidence. Never a laz
 
 Examples:
 
-- Models: `app/Models/**` in a default app, or `app/Modules/Blog/Models/**` / `src/Domain/Blog/**` in a modular one.
-- Controllers, routing, validation, responses: `app/Http/**`, or `app/Modules/*/Http/**` when each module owns its HTTP layer.
+- Models: `app/Models/**` in a default app, or `Modules/Blog/Models/**` / `src/Domain/Blog/**` in a modular one.
+- Controllers, routing, validation, responses: `app/Http/**`, or `Modules/*/Http/**` when each module owns its HTTP layer.
 - Actions, Services, DTOs: `app/Actions/**`, `app/Services/**`, `app/Data/**`, or the module path the app actually uses.
 - Tests: `tests/**`.
 - Migrations and database: `database/migrations/**`.

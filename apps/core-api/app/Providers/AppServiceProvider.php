@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Modules\Platform\Infrastructure\Telemetry\RedactingLogTap;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Telescope\TelescopeServiceProvider as LaravelTelescopeServiceProvider;
+use Modules\Platform\Services\Telemetry\RedactingLogTap;
 use Monolog\Handler\NullHandler;
 use RuntimeException;
 

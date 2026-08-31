@@ -20,8 +20,8 @@ without a new row.
 | ASVS area | Phase 00 control | Status | Evidence |
 | --- | --- | --- | --- |
 | V1 architecture | Modular monolith, AI isolation, CODEOWNERS, deptrac | `PARTIAL` | ADRs 0001–0010; G-01-01…G-01-05. GitHub teams not live. |
-| V2 authentication | Registration, OTP, password, TOTP, recovery (flag-gated) | `PARTIAL` | Pest AuthenticationFlowsTest; recovery on in phpunit only. Packaged client E2E OPEN |
-| V3 session | Device bearer rotation/reuse revoke; admin cookie + CSRF | `PARTIAL` | Cookie CSRF middleware; Electron/Flutter token isolation. Packaged E2E OPEN |
+| V2 authentication | Registration, OTP, password, TOTP, recovery (flag-gated) | `PARTIAL` | Pest AuthenticationFlowsTest; recovery on in phpunit only. Electron packaged E2E is G-02-10 PASS; Flutter/admin packaged client E2E still open |
+| V3 session | Device bearer rotation/reuse revoke; admin cookie + CSRF | `PARTIAL` | Cookie CSRF middleware; Electron/Flutter token isolation. Electron packaged renderer-storage assertions are G-02-10 PASS |
 | V4 access control | Deny-by-default; no object IDs yet | `PARTIAL` | Channel callbacks return false; public routes are health only |
 | V5 validation | Request size, JSON depth, closed OpenAPI additionalProperties | `APPLIED` | `EnforceRequestBounds`; DiagnosticsSliceTest |
 | V6 cryptography | TLS for non-local hops planned; local Compose binds localhost | `PARTIAL` | G-05-04. Staging TLS not configured. Local encryption spike PARTIAL on Linux only (G-06-01) |
@@ -61,7 +61,8 @@ without a new row.
 | MASVS-CODE | `PARTIAL` | very_good_analysis / melos analyze |
 | MASVS-RESILIENCE | `NOT_TESTED` | Offline/local outbox is later |
 
-Electron doctor/pharmacy is not MASVS. Packaged-window evidence is G-02-10 and remains OPEN.
+Electron doctor/pharmacy is not MASVS. Packaged-window evidence is G-02-10 and is PASS
+on Ubuntu, Windows, and macOS (workflow `33155677159`).
 
 ## Residual
 
