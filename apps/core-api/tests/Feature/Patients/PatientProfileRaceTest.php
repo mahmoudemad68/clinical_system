@@ -10,10 +10,6 @@ use Tests\Support\ConcurrentHttpPair;
 
 uses(CommittedDatabaseTestCase::class);
 
-afterEach(function (): void {
-    DB::unprepared('TRUNCATE TABLE patient_demographic_revisions, patient_profiles, identity_national_ids, users RESTART IDENTITY CASCADE');
-});
-
 it('creates one profile when the same user onboards concurrently', function () {
     $session = patientsActiveSession('race-user');
     $body = patientsDemographics($session['payload']['national_id']);

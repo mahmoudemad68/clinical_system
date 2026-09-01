@@ -169,6 +169,18 @@ final class ArchitectureBoundaryTest extends TestCase
         }
     }
 
+    #[Test]
+    public function committed_database_tests_truncate_after_each_case(): void
+    {
+        $file = dirname(__DIR__, 2).DIRECTORY_SEPARATOR.'CommittedDatabaseTestCase.php';
+        $contents = (string) file_get_contents($file);
+
+        $this->assertStringContainsString('function tearDown', $contents);
+        $this->assertStringContainsString('truncateTablesForAllConnections', $contents);
+        $this->assertStringNotContainsString("'outbox_events'", $contents);
+        $this->assertStringNotContainsString("'audit_events'", $contents);
+    }
+
     /**
      * @return list<string>
      */
