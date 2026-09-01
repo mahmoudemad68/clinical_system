@@ -192,6 +192,21 @@ jobs:
     expect_pass("O promotion isolation (current workflows)", ["promotion-isolation"])
     expect_pass("P/Q provenance wiring", ["provenance-wiring"])
     expect_pass("R CODEOWNERS coverage", ["codeowners-coverage"])
+
+    vex = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "ci" / "verify_core_api_openvex.py")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    vex_out = (vex.stdout or "") + (vex.stderr or "")
+    if vex.returncode != 0:
+        raise SystemExit(f"core-api OpenVEX applicability: expected exit 0, got {vex.returncode}\n{vex_out}")
+    print("S core-api OpenVEX document/wiring/narrowness: PASS")
+    if vex_out.strip():
+        for line in vex_out.strip().splitlines():
+            print(f"  {line}")
+
     print("ISR-015 repository technical validators: PASS")
     return 0
 
