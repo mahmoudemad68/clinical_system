@@ -37,6 +37,7 @@ REQUIRED_CODEOWNERS = (
     "scripts/ci/install-trivy.sh",
     "scripts/ci/verify-signed-images.sh",
     "scripts/ci/verify_core_api_openvex.py",
+    "scripts/ci/run_gitleaks_national_id_allowlist.py",
     "infra/security/vex/core-api-frankenphp-cve-2026-56854.openvex.json",
     "infra/security/vex/core-api-frankenphp-cve-2026-56854.applicability.json",
     ".gitleaks.toml",

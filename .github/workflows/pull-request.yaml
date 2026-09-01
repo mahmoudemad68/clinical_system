@@ -515,6 +515,9 @@ jobs:
       - name: Record candidate SHA
         run: bash scripts/ci/assert-candidate-sha.sh
 
+      - name: National-ID allowlist regression
+        run: python3 scripts/ci/run_gitleaks_national_id_allowlist.py
+
       # Fork/PR jobs must not receive repository secrets or a PAT. The
       # automatically issued workflow token is enough for gitleaks to resolve
       # the pull-request diff.

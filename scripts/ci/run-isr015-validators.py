@@ -207,6 +207,26 @@ jobs:
         for line in vex_out.strip().splitlines():
             print(f"  {line}")
 
+    nid = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "ci" / "run_gitleaks_national_id_allowlist.py"),
+            "--static-only",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    nid_out = (nid.stdout or "") + (nid.stderr or "")
+    if nid.returncode != 0:
+        raise SystemExit(
+            f"gitleaks National-ID allowlist: expected exit 0, got {nid.returncode}\n{nid_out}"
+        )
+    print("T gitleaks National-ID allowlist static: PASS")
+    if nid_out.strip():
+        for line in nid_out.strip().splitlines():
+            print(f"  {line}")
+
     print("ISR-015 repository technical validators: PASS")
     return 0
 

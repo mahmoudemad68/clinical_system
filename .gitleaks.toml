@@ -28,6 +28,13 @@ regex = '''(^|[^0-9])([23][0-9]{13})([^0-9]|$)'''
 secretGroup = 2
 tags = ["pii", "national-id"]
 
+[rules.allowlist]
+description = "Exact FrankenPHP/Caddy Go pseudo-version PURL (not an Egyptian National ID)"
+regexTarget = "line"
+regexes = [
+  '''pkg:golang/github\.com/dunglas/frankenphp/caddy@v0\.0\.0-20260806145936-a765b086f5cc''',
+]
+
 [allowlist]
 description = "Documented local development values and synthetic test data"
 
