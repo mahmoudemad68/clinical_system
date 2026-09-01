@@ -27,6 +27,7 @@ remains off in defaults, phpunit, and environment files.
 | Docker `./vendor/bin/pest tests/Feature/Identity tests/Unit/Identity` | Identity feature + unit **passed** in the combined Identity/Auth run (Auth later re-run isolated) |
 | Docker `./vendor/bin/pest tests/Feature/Auth/AuthenticationFlowsTest.php tests/Feature/Access` | **23 passed** (152 assertions) |
 | `npm run contracts:verify` | OpenAPI valid; **15 event schemas**; TS + Dart generated (`PatientOnboardingResult` compact) |
+| Docker `./vendor/bin/pest --filter='creates an authoritative profile, stores protected national id'` (after log/span canary fix) | **1 passed** (51 assertions) |
 
 Patients feature subset from the 41-test run:
 
@@ -54,5 +55,8 @@ Phase 02 as a whole is **not** PASS.
 - No Flutter / Electron / admin UI in this chunk.
 - Unlinked create/resolve stay default-denied until Phase 03 grants exist.
 - Exercised National-ID canary sinks: HTTP body, outbox payload, audit
-  metadata, Monolog `TestHandler` on the default log channel, and
-  `PlatformMetrics::render()`. Other sinks were not claimed.
+  metadata, Monolog `TestHandler` behind `RedactingLogTap` (records
+  non-empty; phpunit `LOG_CHANNEL=null` is not used), in-process
+  `TelemetryGateway` HTTP spans from `InstrumentHttp`, and
+  `PlatformMetrics::render()` (`clinic_http_responses_total` present).
+  Other sinks were not claimed.

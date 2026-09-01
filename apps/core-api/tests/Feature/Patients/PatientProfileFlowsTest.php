@@ -5,8 +5,8 @@ declare(strict_types=1);
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Modules\Auth\Contracts\DeliverOtpSms;
 use Modules\Patients\Enums\PatientSourceType;
 use Modules\Patients\Services\CreateUnlinkedPatientProfile;
@@ -17,9 +17,12 @@ use Modules\Platform\Services\Features\PlatformFeatures;
 use Modules\Platform\Services\Outbox\OutboxDispatcher;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Services\Telemetry\PlatformMetrics;
+use Modules\Platform\Services\Telemetry\RedactingLogTap;
+use Modules\Platform\Services\Telemetry\TelemetryGateway;
 use Modules\Platform\Services\Testing\SyntheticEgyptianData;
 use Monolog\Handler\TestHandler;
 use Monolog\Level;
+use Monolog\Logger as MonologLogger;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -30,7 +33,9 @@ describe('patient onboarding', function () {
         $body = patientsDemographics($session['payload']['national_id']);
         $canary = $session['payload']['national_id'];
         $logHandler = new TestHandler(Level::Debug);
-        Log::channel()->getLogger()->pushHandler($logHandler);
+        $monolog = new MonologLogger('patient-nid-canary');
+        $monolog->pushHandler($logHandler);
+        app(RedactingLogTap::class)(new Logger($monolog));
 
         $response = $this->postJson('/api/v1/patients/onboarding', $body, patientsAuth($session['token']) + patientsIdem('pon-happy'));
 
@@ -93,9 +98,20 @@ describe('patient onboarding', function () {
         );
         expect($revisionBlob)->not->toContain($canary);
 
-        $logBlob = json_encode($logHandler->getRecords(), JSON_INVALID_UTF8_SUBSTITUTE);
+        $monolog->info('patient onboarding canary', ['national_id' => $canary]);
+        $logRecords = $logHandler->getRecords();
+        expect($logRecords)->not->toBeEmpty();
+        $logBlob = json_encode($logRecords, JSON_INVALID_UTF8_SUBSTITUTE);
         expect($logBlob)->not->toContain($canary);
-        expect(app(PlatformMetrics::class)->render())->not->toContain($canary);
+
+        $spans = app(TelemetryGateway::class)->httpSpans();
+        expect($spans)->not->toBeEmpty();
+        $spanBlob = json_encode($spans, JSON_INVALID_UTF8_SUBSTITUTE);
+        expect($spanBlob)->not->toContain($canary);
+
+        $metrics = app(PlatformMetrics::class)->render();
+        expect($metrics)->toContain('clinic_http_responses_total')
+            ->and($metrics)->not->toContain($canary);
     });
 
     it('replays a committed idempotent onboarding without creating a second profile', function () {
