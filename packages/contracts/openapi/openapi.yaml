@@ -9,7 +9,9 @@ info:
     Server and client code both conform to it; neither generates it.
 
     Phase 01 adds authentication, identity projection, and deny-by-default
-    capabilities. Clinical, pharmacy, and AI capabilities remain absent.
+    capabilities. Phase 02 chunk 01 adds the Patients demographic profile
+    vertical slice. Clinical, pharmacy, doctor, verification, and AI
+    capabilities remain absent.
 
     Compatibility rules (ADR 0003):
       * Additive optional fields are compatible within a version.
@@ -51,6 +53,10 @@ tags:
   - name: identity
     description: |
       Phase 01 identity projection. `/me` returns handles and status only.
+  - name: patients
+    description: |
+      Phase 02 patient demographic profiles. Own-profile only. National ID
+      is write-only input and never returned. No public National ID lookup.
 
 paths:
   /live:
@@ -878,6 +884,147 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
 
+  /api/v1/patients/onboarding:
+    post:
+      tags: [patients]
+      operationId: onboardPatientProfile
+      summary: Create or resume the authenticated patient's demographic profile
+      description: |
+        Authenticated, phone-verified patient submits allowlisted demographics
+        and a National ID. The server canonicalizes the identifier and computes
+        a blind index. If no authoritative profile exists, one is created and
+        attached to the caller. If an unlinked profile exists, the Phase 01
+        claim boundary is invoked and a duplicate is not created.
+
+        `FEATURE_IDENTITY_PROFILE_CLAIM` remains off: existing-profile outcomes
+        are the same generic pending/not-found envelope and do not disclose
+        whether a National ID is already known. Retries with the same
+        Idempotency-Key are replayed. The request cannot set ownership, status,
+        version, or encryption metadata.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientOnboardingRequest'
+      responses:
+        '201':
+          description: A new authoritative profile was created and linked.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PatientOnboardingResult'
+        '200':
+          description: |
+            Idempotent replay of an existing own profile, or generic
+            manual-review-required when claim is enabled. When the claim flag
+            is off, colliding identities are hidden as 404.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PatientOnboardingResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/patients/me/profile:
+    get:
+      tags: [patients]
+      operationId: getOwnPatientProfile
+      summary: Current user's patient demographic projection
+      description: |
+        Server-derived from the authenticated user's attached profile.
+        Never returns ciphertext, HMAC, key versions, National ID, or another
+        patient's data. There is no GET-by-id patient profile API.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: Own demographic projection.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PatientProfile'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/patients/me/demographics:
+    patch:
+      tags: [patients]
+      operationId: updateOwnPatientDemographics
+      summary: Update allowlisted demographic fields on the own profile
+      description: |
+        Optimistic `version` is required. Unknown JSON properties are rejected.
+        Request bodies cannot change user_id, status, National ID protection
+        metadata, ownership, audit fields, or version except as the expected
+        current version for compare-and-set. Height and weight use named
+        ENGINEERING_DEFAULT bounds and are rejected, never clamped.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientDemographicsPatchRequest'
+      responses:
+        '200':
+          description: Updated own projection, including the new version.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PatientProfile'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
 components:
 
   securitySchemes:
@@ -1695,6 +1842,145 @@ components:
           items:
             type: string
             maxLength: 32
+
+    PatientGender:
+      type: string
+      description: |
+        ENGINEERING_DEFAULT closed vocabulary for V1 onboarding. Not a clinical
+        or legal sex classification. Not derived from National ID digits.
+      enum: [male, female]
+
+    PatientBloodType:
+      type: string
+      description: Self-reported ABO/Rh label. Not lab-verified.
+      enum: [A+, A-, B+, B-, AB+, AB-, O+, O-]
+
+    PatientMaritalStatus:
+      type: string
+      description: ENGINEERING_DEFAULT closed vocabulary. Not a civil-status legal taxonomy.
+      enum: [single, married, divorced, widowed]
+
+    PatientOnboardingRequest:
+      type: object
+      required: [national_id, full_name, gender]
+      additionalProperties: false
+      properties:
+        national_id:
+          type: string
+          maxLength: 32
+          description: Write-only. Canonicalized server-side. Never echoed.
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        gender:
+          $ref: '#/components/schemas/PatientGender'
+        date_of_birth:
+          type: [string, 'null']
+          format: date
+        height_cm:
+          type: [number, 'null']
+          minimum: 30
+          maximum: 300
+          description: ENGINEERING_DEFAULT storage bounds, not a clinical threshold. Values must also be greater than 0.
+        weight_kg:
+          type: [number, 'null']
+          minimum: 1
+          maximum: 700
+          description: ENGINEERING_DEFAULT storage bounds, not a clinical threshold. Values must also be greater than 0.
+        marital_status:
+          $ref: '#/components/schemas/PatientMaritalStatus'
+        blood_type:
+          $ref: '#/components/schemas/PatientBloodType'
+
+    PatientDemographicsPatchRequest:
+      type: object
+      required: [version]
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          minimum: 1
+          description: Expected current profile version (compare-and-set).
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        gender:
+          $ref: '#/components/schemas/PatientGender'
+        date_of_birth:
+          type: [string, 'null']
+          format: date
+        height_cm:
+          type: [number, 'null']
+          minimum: 30
+          maximum: 300
+        weight_kg:
+          type: [number, 'null']
+          minimum: 1
+          maximum: 700
+        marital_status:
+          $ref: '#/components/schemas/PatientMaritalStatus'
+        blood_type:
+          $ref: '#/components/schemas/PatientBloodType'
+
+    PatientProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - patient_id
+        - full_name
+        - gender
+        - date_of_birth
+        - height_cm
+        - weight_kg
+        - marital_status
+        - blood_type
+        - status
+        - version
+        - created_at
+        - updated_at
+      properties:
+        patient_id:
+          $ref: '#/components/schemas/Uuid'
+        full_name:
+          type: string
+          maxLength: 200
+        gender:
+          $ref: '#/components/schemas/PatientGender'
+        date_of_birth:
+          type: [string, 'null']
+          format: date
+        height_cm:
+          type: [string, 'null']
+          description: Decimal as stored. Never a raw database ciphertext.
+        weight_kg:
+          type: [string, 'null']
+        marital_status:
+          type: [string, 'null']
+        blood_type:
+          type: [string, 'null']
+        status:
+          type: string
+          enum: [active, disputed, merged, restricted, archived]
+        version:
+          type: integer
+          minimum: 1
+        created_at:
+          $ref: '#/components/schemas/Instant'
+        updated_at:
+          $ref: '#/components/schemas/Instant'
+
+    PatientOnboardingResult:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [profile_ready, manual_review_required]
+        profile:
+          $ref: '#/components/schemas/PatientProfile'
 
   responses:
 

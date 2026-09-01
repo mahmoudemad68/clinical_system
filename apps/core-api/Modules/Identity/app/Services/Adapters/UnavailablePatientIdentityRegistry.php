@@ -20,8 +20,11 @@ final class UnavailablePatientIdentityRegistry implements PatientIdentityRegistr
 
     public function attachAccount(Identifier $candidateId, Identifier $userId, Identifier $proof): void
     {
-        // Phase 02 implements attachment inside Patients. A call here is a
-        // programming error, not a client-visible existence signal.
         throw new \RuntimeException('Patient identity registry is not available in Phase 01.');
+    }
+
+    public function eraseLinkedProfiles(Identifier $userId): int
+    {
+        return 0;
     }
 }

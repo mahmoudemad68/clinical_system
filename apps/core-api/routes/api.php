@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Auth\Http\Controllers\AuthController;
+use Modules\Patients\Http\Controllers\PatientProfileController;
 use Modules\Platform\Http\Controllers\DiagnosticsController;
 use Modules\Platform\Http\Controllers\PlatformHealthController;
 
@@ -103,5 +104,15 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/me/capabilities', [AuthController::class, 'capabilities'])
             ->name('api.v1.me.capabilities');
+
+        Route::middleware('platform.idempotency')
+            ->post('/patients/onboarding', [PatientProfileController::class, 'onboard'])
+            ->name('api.v1.patients.onboarding');
+
+        Route::get('/patients/me/profile', [PatientProfileController::class, 'me'])
+            ->name('api.v1.patients.me.profile');
+
+        Route::patch('/patients/me/demographics', [PatientProfileController::class, 'updateDemographics'])
+            ->name('api.v1.patients.me.demographics');
     });
 });

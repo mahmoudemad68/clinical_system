@@ -515,6 +515,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create or resume the authenticated patient's demographic profile
+         * @description Authenticated, phone-verified patient submits allowlisted demographics
+         *     and a National ID. The server canonicalizes the identifier and computes
+         *     a blind index. If no authoritative profile exists, one is created and
+         *     attached to the caller. If an unlinked profile exists, the Phase 01
+         *     claim boundary is invoked and a duplicate is not created.
+         *
+         *     `FEATURE_IDENTITY_PROFILE_CLAIM` remains off: existing-profile outcomes
+         *     are the same generic pending/not-found envelope and do not disclose
+         *     whether a National ID is already known. Retries with the same
+         *     Idempotency-Key are replayed. The request cannot set ownership, status,
+         *     version, or encryption metadata.
+         */
+        post: operations["onboardPatientProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current user's patient demographic projection
+         * @description Server-derived from the authenticated user's attached profile.
+         *     Never returns ciphertext, HMAC, key versions, National ID, or another
+         *     patient's data. There is no GET-by-id patient profile API.
+         */
+        get: operations["getOwnPatientProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/me/demographics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update allowlisted demographic fields on the own profile
+         * @description Optimistic `version` is required. Unknown JSON properties are rejected.
+         *     Request bodies cannot change user_id, status, National ID protection
+         *     metadata, ownership, audit fields, or version except as the expected
+         *     current version for compare-and-set. Height and weight use named
+         *     ENGINEERING_DEFAULT bounds and are rejected, never clamped.
+         */
+        patch: operations["updateOwnPatientDemographics"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -861,6 +937,70 @@ export interface components {
             csrf?: boolean;
             disabled?: boolean;
             recovery_codes?: string[];
+        };
+        /**
+         * @description ENGINEERING_DEFAULT closed vocabulary for V1 onboarding. Not a clinical
+         *     or legal sex classification. Not derived from National ID digits.
+         * @enum {string}
+         */
+        PatientGender: "male" | "female";
+        /**
+         * @description Self-reported ABO/Rh label. Not lab-verified.
+         * @enum {string}
+         */
+        PatientBloodType: "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-";
+        /**
+         * @description ENGINEERING_DEFAULT closed vocabulary. Not a civil-status legal taxonomy.
+         * @enum {string}
+         */
+        PatientMaritalStatus: "single" | "married" | "divorced" | "widowed";
+        PatientOnboardingRequest: {
+            /** @description Write-only. Canonicalized server-side. Never echoed. */
+            national_id: string;
+            full_name: string;
+            gender: components["schemas"]["PatientGender"];
+            /** Format: date */
+            date_of_birth?: string | null;
+            /** @description ENGINEERING_DEFAULT storage bounds, not a clinical threshold. Values must also be greater than 0. */
+            height_cm?: number | null;
+            /** @description ENGINEERING_DEFAULT storage bounds, not a clinical threshold. Values must also be greater than 0. */
+            weight_kg?: number | null;
+            marital_status?: components["schemas"]["PatientMaritalStatus"];
+            blood_type?: components["schemas"]["PatientBloodType"];
+        };
+        PatientDemographicsPatchRequest: {
+            /** @description Expected current profile version (compare-and-set). */
+            version: number;
+            full_name?: string;
+            gender?: components["schemas"]["PatientGender"];
+            /** Format: date */
+            date_of_birth?: string | null;
+            height_cm?: number | null;
+            weight_kg?: number | null;
+            marital_status?: components["schemas"]["PatientMaritalStatus"];
+            blood_type?: components["schemas"]["PatientBloodType"];
+        };
+        PatientProfile: {
+            patient_id: components["schemas"]["Uuid"];
+            full_name: string;
+            gender: components["schemas"]["PatientGender"];
+            /** Format: date */
+            date_of_birth: string | null;
+            /** @description Decimal as stored. Never a raw database ciphertext. */
+            height_cm: string | null;
+            weight_kg: string | null;
+            marital_status: string | null;
+            blood_type: string | null;
+            /** @enum {string} */
+            status: "active" | "disputed" | "merged" | "restricted" | "archived";
+            version: number;
+            created_at: components["schemas"]["Instant"];
+            updated_at: components["schemas"]["Instant"];
+        };
+        PatientOnboardingResult: {
+            /** @enum {string} */
+            status: "profile_ready" | "manual_review_required";
+            profile?: components["schemas"]["PatientProfile"];
         };
     };
     responses: {
@@ -1831,6 +1971,136 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
+        };
+    };
+    onboardPatientProfile: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatientOnboardingRequest"];
+            };
+        };
+        responses: {
+            /**
+             * @description Idempotent replay of an existing own profile, or generic
+             *     manual-review-required when claim is enabled. When the claim flag
+             *     is off, colliding identities are hidden as 404.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PatientOnboardingResult"];
+                    };
+                };
+            };
+            /** @description A new authoritative profile was created and linked. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PatientOnboardingResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getOwnPatientProfile: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Own demographic projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PatientProfile"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateOwnPatientDemographics: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatientDemographicsPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated own projection, including the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PatientProfile"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
         };
     };
 }

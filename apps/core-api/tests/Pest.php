@@ -8,3 +8,5 @@ declare(strict_types=1);
  * Existing PHPUnit *Test.php classes remain as the in-place suite. New
  * coverage uses describe/it/expect in this directory.
  */
+
+require_once __DIR__.'/Support/patientHttpHelpers.php';

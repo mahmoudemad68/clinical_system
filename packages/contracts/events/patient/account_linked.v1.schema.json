@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/patient/account_linked.v1.schema.json",
+  "title": "patient.account_linked v1",
+  "description": "A user account was attached to a patient profile. No National ID, name, DOB, or ciphertext.",
+  "type": "object",
+  "required": ["patient_id", "user_id", "assurance_level"],
+  "additionalProperties": false,
+  "properties": {
+    "patient_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "user_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "assurance_level": {
+      "type": "string",
+      "maxLength": 32
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Patients",
+    "classification": "personal",
+    "consumers": ["audit.identity"],
+    "retention_days": 365
+  }
+}

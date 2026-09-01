@@ -14,6 +14,7 @@ use Modules\Auth\Contracts\AuthenticationRateLimiter;
 use Modules\Auth\Contracts\PasswordHasher;
 use Modules\Auth\Events\CredentialVersionChanged;
 use Modules\Auth\Services\RecordSessionRevokedEvents;
+use Modules\Identity\Contracts\PatientIdentityRegistry;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\AccountStatus;
 use Modules\Identity\Events\StatusChanged;
@@ -50,6 +51,7 @@ final class EraseSubjectService
         private readonly Authorize $authorizer,
         private readonly RecordPrivilegedFailure $privilegedFailures,
         private readonly RecordSessionRevokedEvents $sessionRevoked,
+        private readonly PatientIdentityRegistry $patientProfiles,
     ) {}
 
     public function handle(ActorContext $initiator, Identifier $userId, string $reasonCode): SubjectErasureReport
@@ -99,6 +101,7 @@ final class EraseSubjectService
 
             $nationalIds = $this->identities->deleteNationalIds($userId);
             $profileLinks = $this->identities->deleteProfileLinks($userId);
+            $patientProfiles = $this->patientProfiles->eraseLinkedProfiles($userId);
 
             $version = $user->credentialVersion + 1;
             $this->identities->tombstoneIdentity(
@@ -139,6 +142,7 @@ final class EraseSubjectService
                 'contextual_access_grants' => $grantCount,
                 'identity_national_ids' => $nationalIds,
                 'identity_profile_links' => $profileLinks,
+                'patient_profiles' => $patientProfiles,
                 'user_devices' => $authCounts['user_devices'],
                 'auth_sessions' => $authCounts['auth_sessions'],
                 'auth_refresh_consumptions' => $authCounts['auth_refresh_consumptions'],

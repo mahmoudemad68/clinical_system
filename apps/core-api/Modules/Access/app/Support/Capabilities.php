@@ -22,6 +22,12 @@ final class Capabilities
 
     public const IDENTITY_CAPABILITIES_READ = 'identity.capabilities.read';
 
+    public const PATIENTS_ONBOARDING = 'patients.onboarding.submit';
+
+    public const PATIENTS_PROFILE_READ_OWN = 'patients.profile.read_own';
+
+    public const PATIENTS_PROFILE_UPDATE_OWN = 'patients.profile.update_own';
+
     public const MFA_MANAGE_SELF = 'auth.mfa.manage_self';
 
     public const ACCESS_GRANT_ISSUE = 'access.grant.issue';
@@ -50,6 +56,9 @@ final class Capabilities
         self::PASSWORD_CHANGE,
         self::IDENTITY_ME_READ,
         self::IDENTITY_CAPABILITIES_READ,
+        self::PATIENTS_ONBOARDING,
+        self::PATIENTS_PROFILE_READ_OWN,
+        self::PATIENTS_PROFILE_UPDATE_OWN,
         self::MFA_MANAGE_SELF,
     ];
 

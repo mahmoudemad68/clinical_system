@@ -141,14 +141,16 @@ importing another module's persistence models. Unknown actions deny.
 
 ## `Patients` — patient profiles
 
-**Built in:** 02. **Owner:** backend + clinical.
-**Public ports:** `CreatePatientProfile`, `UpdatePatientProfile`,
-`GetPatientSummary`.
-**Events:** `patient.profile_created`, `patient.profile_updated`.
-**Tables:** `patient_profiles`.
+**Built in:** 02 (chunk 01: Patients vertical slice). **Owner:** backend + clinical.
+**Public services:** `CreatePatientProfile`, `GetOwnPatientProfile`,
+`UpdateOwnDemographics`, `CreateUnlinkedPatientProfile`, `ResolvePatientHandle`.
+**Events:** `patient.profile_created`, `patient.account_linked`.
+**Tables:** `patient_profiles`, `patient_demographic_revisions`.
 **Classification:** sensitive.
-**Prohibited:** returning clinical history. A patient summary is demographic;
-clinical content belongs to `Clinical` and requires an access grant.
+**Prohibited:** returning clinical history; public National ID lookup; exposing
+ciphertext, HMAC, or key versions on HTTP projections. A patient summary is
+demographic; clinical content belongs to `Clinical` and requires an access
+grant. `FEATURE_IDENTITY_PROFILE_CLAIM` remains off.
 
 ## `Doctors` — clinician profiles and verification
 

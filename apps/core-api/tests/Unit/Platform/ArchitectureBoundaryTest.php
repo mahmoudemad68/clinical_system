@@ -8,6 +8,9 @@ use Modules\Auth\Services\RegisterAccountService;
 use Modules\Identity\Services\DisableIdentityService;
 use Modules\Identity\Services\EraseSubjectService;
 use Modules\Identity\Services\RotateIdentityKeysService;
+use Modules\Patients\Services\CreatePatientProfile;
+use Modules\Patients\Services\CreateUnlinkedPatientProfile;
+use Modules\Patients\Services\UpdateOwnDemographics;
 use Modules\Platform\Services\Coordinators\ApprovedCoordinators;
 use Modules\Platform\Services\Outbox\OutboxConsumer;
 use PHPUnit\Framework\Attributes\Test;
@@ -40,6 +43,18 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             RotateIdentityKeysService::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            CreatePatientProfile::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            UpdateOwnDemographics::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            CreateUnlinkedPatientProfile::class,
             ApprovedCoordinators::classes(),
         );
     }
@@ -98,7 +113,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/^use Modules\\\\(Auth|Identity|Access|Audit)\\\\/m',
+                '/^use Modules\\\\(Auth|Identity|Access|Audit|Patients)\\\\/m',
                 $contents,
                 $file.' Platform must not import a business module. List coordinating services as class-string names.',
             );

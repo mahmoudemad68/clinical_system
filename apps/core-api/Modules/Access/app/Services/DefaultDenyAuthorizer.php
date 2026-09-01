@@ -85,7 +85,10 @@ final class DefaultDenyAuthorizer implements Authorize
     private function pendingForbidden(string $action): bool
     {
         return $action === Capabilities::PASSWORD_CHANGE
-            || $action === Capabilities::MFA_MANAGE_SELF;
+            || $action === Capabilities::MFA_MANAGE_SELF
+            || $action === Capabilities::PATIENTS_ONBOARDING
+            || $action === Capabilities::PATIENTS_PROFILE_READ_OWN
+            || $action === Capabilities::PATIENTS_PROFILE_UPDATE_OWN;
     }
 
     private function requiresPrivilege(string $action): bool

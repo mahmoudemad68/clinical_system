@@ -37,6 +37,7 @@ final class IdentityServiceProvider extends ServiceProvider
             (bool) config('identity.allow_synthetic_national_ids', false),
         ));
 
+        // Patients (priority 50) replaces this with PostgresPatientIdentityRegistry.
         $this->app->singleton(PatientIdentityRegistry::class, UnavailablePatientIdentityRegistry::class);
 
         $this->app->bind(ResolveActorContext::class);

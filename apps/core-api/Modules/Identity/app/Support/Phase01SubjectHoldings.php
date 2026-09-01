@@ -41,6 +41,16 @@ final class Phase01SubjectHoldings
                 'Phase-01 identity-to-profile bindings only. No Phase 02+ clinical profiles.',
             ),
             new SubjectHoldingPlan(
+                'patient_profiles',
+                SubjectHoldingAction::IrreversibleTombstone,
+                'Unlink user_id, tombstone National ID ciphertext/HMAC and name ciphertext, set status archived. Unlinked walk-in profiles are not selected by user_id. Not a clinical record.',
+            ),
+            new SubjectHoldingPlan(
+                'patient_demographic_revisions',
+                SubjectHoldingAction::PreserveSecurityAudit,
+                'Append-only demographic field history. Name ciphertext in historical revision rows is a documented residual and is not rewritten.',
+            ),
+            new SubjectHoldingPlan(
                 'user_devices',
                 SubjectHoldingAction::Delete,
                 'Bearer, refresh, previous-refresh, push_token_ciphertext, and refresh-replay material are removed with the row. Remote FCM copies are OPERATIONAL_FOLLOW_THROUGH.',

@@ -68,6 +68,8 @@ final class ExportSubjectDataService
             'users.phone_lookup_hmac' => 1,
             'identity_national_ids' => $this->identities->countNationalIds($userId),
             'identity_profile_links' => $this->identities->countProfileLinks($userId),
+            'patient_profiles' => null,
+            'patient_demographic_revisions' => null,
             'user_devices' => $authCounts['user_devices'],
             'auth_sessions' => $authCounts['auth_sessions'],
             'auth_refresh_consumptions' => $authCounts['auth_refresh_consumptions'],

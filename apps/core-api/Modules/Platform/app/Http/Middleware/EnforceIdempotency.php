@@ -209,6 +209,11 @@ final class EnforceIdempotency
                 'ref' => 'diagnostics',
                 'id' => $data['diagnostics_id'],
             ],
+            isset($data['profile']['patient_id']) => [
+                'ref' => 'patient_profile',
+                'id' => $data['profile']['patient_id'],
+                'status' => $data['status'] ?? 'profile_ready',
+            ],
             default => ['ref' => 'truncated'],
         };
 
@@ -234,6 +239,12 @@ final class EnforceIdempotency
             ],
             'diagnostics' => [
                 'diagnostics_id' => $decoded['id'] ?? null,
+            ],
+            'patient_profile' => [
+                'status' => $decoded['status'] ?? 'profile_ready',
+                'profile' => [
+                    'patient_id' => $decoded['id'] ?? null,
+                ],
             ],
             default => $decoded,
         };

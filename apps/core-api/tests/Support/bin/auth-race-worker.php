@@ -83,6 +83,16 @@ if ($op === 'refresh') {
     $uri = '/api/v1/auth/mfa/totp/confirm';
     $body = ['code' => (string) ($payload['code'] ?? '')];
     $headers['HTTP_AUTHORIZATION'] = 'Bearer '.(string) ($payload['access_token'] ?? '');
+} elseif ($op === 'http') {
+    $method = strtoupper((string) ($payload['method'] ?? 'POST'));
+    $uri = (string) ($payload['uri'] ?? '');
+    $body = is_array($payload['body'] ?? null) ? $payload['body'] : [];
+    if (isset($payload['access_token'])) {
+        $headers['HTTP_AUTHORIZATION'] = 'Bearer '.(string) $payload['access_token'];
+    }
+    if (isset($payload['idempotency_key'])) {
+        $headers['HTTP_IDEMPOTENCY_KEY'] = (string) $payload['idempotency_key'];
+    }
 } else {
     fwrite(STDOUT, json_encode(['ok' => false, 'error' => 'unknown_op', 'status' => 0]));
     exit(1);
@@ -146,4 +156,5 @@ fwrite(STDOUT, json_encode([
     'has_refresh_token' => is_array($json) && isset($json['data']['refresh_token']),
     'session_id' => is_array($json) ? ($json['data']['session_id'] ?? null) : null,
     'recovery_status' => is_array($json) ? ($json['data']['status'] ?? null) : null,
+    'patient_id' => is_array($json) ? ($json['data']['profile']['patient_id'] ?? $json['data']['patient_id'] ?? null) : null,
 ], JSON_THROW_ON_ERROR));

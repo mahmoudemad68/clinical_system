@@ -391,6 +391,8 @@ Phase 00 status pages share only process liveness. No actor, tenant, host, check
 | Event | Version | Class | Payload | Consumers | Retention |
 | --- | --- | --- | --- | --- | --- |
 | `platform.diagnostics_round_trip_recorded` | 1 | internal | `diagnostics_id`, `label`, `echo_delay_ms`, `recorded_at` | `platform.diagnostics_consumer` | 7 days |
+| `patient.profile_created` | 1 | personal | `patient_id`, `linked_user_id` nullable, `source_type` | later projections | 7 days |
+| `patient.account_linked` | 1 | personal | `patient_id`, `user_id`, `assurance_level` | later projections | 7 days |
 
 ---
 
@@ -681,6 +683,63 @@ link rows (`EraseSubjectService`). Legal retention period:
 `owner_approved_2026-08-27` is owner acceptance of documented identity
 processing, not an Egyptian PDPL article.
 
+### `patient_profiles`
+
+Phase 02 chunk 01 demographic profiles
+(`2026_09_01_150000_create_patient_profile_tables.php`). One authoritative
+(non-merged) row per National ID blind index. `user_id` attaches to at most
+one profile. Ownership is this column, not `identity_profile_links`.
+
+**Writer.** Patients module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked. Height/weight CHECKs are named
+ENGINEERING_DEFAULT storage bounds, not clinical protocol.
+
+**PII / sensitive.** National ID and full name are envelope-encrypted.
+Lookup is HMAC only. HTTP projections never return ciphertext, HMAC, or
+key versions.
+
+**Retention / deletion.** Linked-profile subject erasure tombstones crypto
+fields, unlinks `user_id`, and sets `archived`. Unlinked walk-in profiles
+are not selected by user-id erasure. Legal retention:
+**OPEN_LEGAL_DECISION**.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 profile identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `user_id` | personal | Attached account (nullable unique while set) | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `national_id_ciphertext` | sensitive | Recovery / later verification | app (audited decrypt) | until erasure tombstone | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `national_id_lookup_hmac` | sensitive | Blind match; unique while `status <> merged` | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `national_id_key_version` | internal | Envelope/HMAC key version | app | as row | at rest | Mahmoud | n/a |
+| `full_name_ciphertext` | personal | Display name | app | until erasure tombstone | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `gender` | personal | ENGINEERING_DEFAULT closed vocabulary | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `date_of_birth` | personal | Self-reported date (nullable) | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `height_cm` | personal | Self-reported; ENGINEERING_DEFAULT bounds | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `weight_kg` | personal | Self-reported; ENGINEERING_DEFAULT bounds | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `marital_status` | personal | Self-reported closed vocabulary (nullable) | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `blood_type` | personal | Self-reported ABO/Rh; not lab-verified | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `status` | internal | `active` / `disputed` / `merged` / `restricted` / `archived` | app | as row | at rest | Mahmoud | n/a |
+| `created_by_type` / `created_by_id` | internal | Provenance | app | as row | at rest | Mahmoud | n/a |
+| `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `patient_demographic_revisions`
+
+Append-only demographic field history. No clinical facts. Mutation is
+denied by trigger. `clinic_app` may SELECT+INSERT only.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Revision identity | app | retained with profile | at rest | Mahmoud | n/a |
+| `patient_profile_id` | internal | Parent profile | app | as row | at rest | Mahmoud | n/a |
+| `field_name` | internal | Allowlisted demographic field | app | as row | at rest | Mahmoud | n/a |
+| `old_protected` / `new_protected` | personal | Previous/new name ciphertext when the field is `full_name` | app | as row; erasure residual | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `old_plain` / `new_plain` | personal | Previous/new non-name demographic value | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `actor_type` / `actor_id` | internal | Who changed the field | app | as row | at rest | Mahmoud | n/a |
+| `reason_code` / `source_type` | internal | Why / which workflow | app | as row | at rest | Mahmoud | n/a |
+| `profile_version` | internal | Profile version after the change | app | as row | at rest | Mahmoud | n/a |
+| `request_id` | internal | Correlation identifier | app | as row | at rest | Mahmoud | n/a |
+| `created_at` | internal | When the revision was appended | app | as row | at rest | Mahmoud | n/a |
+
 ### `auth_refresh_consumptions`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
@@ -761,6 +820,8 @@ Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
 | `identity.phone_verified` | 1 | personal | user id, verified_at | later projections | 7 days |
 | `identity.status_changed` | 1 | personal | user id, old/new status, reason_code | later projections | 7 days |
 | `identity.profile_linked` | 1 | personal | user_id, profile_type, profile_id, assurance_level | later projections | 7 days |
+| `patient.profile_created` | 1 | personal | patient_id, linked_user_id nullable, source_type | later projections | 7 days |
+| `patient.account_linked` | 1 | personal | patient_id, user_id, assurance_level | later projections | 7 days |
 
 `credential` classification is rejected by the outbox CHECK. Event retention
 above is the outbox `PROCESSED` engineering default, not a legal schedule.
