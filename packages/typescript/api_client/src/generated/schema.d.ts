@@ -529,14 +529,16 @@ export interface paths {
          * @description Authenticated, phone-verified patient submits allowlisted demographics
          *     and a National ID. The server canonicalizes the identifier and computes
          *     a blind index. If no authoritative profile exists, one is created and
-         *     attached to the caller. If an unlinked profile exists, the Phase 01
-         *     claim boundary is invoked and a duplicate is not created.
+         *     attached to the caller. The successful body is compact (`status`,
+         *     `patient_id`, `version`); `GET /api/v1/patients/me/profile` is the
+         *     canonical projection. If an unlinked or conflicting profile exists, the
+         *     Phase 01 claim boundary is invoked when eligible and the client always
+         *     receives the same generic `manual_review_required` outcome. That
+         *     outcome does not disclose whether a National ID is already known.
          *
-         *     `FEATURE_IDENTITY_PROFILE_CLAIM` remains off: existing-profile outcomes
-         *     are the same generic pending/not-found envelope and do not disclose
-         *     whether a National ID is already known. Retries with the same
-         *     Idempotency-Key are replayed. The request cannot set ownership, status,
-         *     version, or encryption metadata.
+         *     `FEATURE_IDENTITY_PROFILE_CLAIM` remains off. Retries with the same
+         *     Idempotency-Key replay the compact business result. The request cannot
+         *     set ownership, status, version, or encryption metadata.
          */
         post: operations["onboardPatientProfile"];
         delete?: never;
@@ -1000,7 +1002,8 @@ export interface components {
         PatientOnboardingResult: {
             /** @enum {string} */
             status: "profile_ready" | "manual_review_required";
-            profile?: components["schemas"]["PatientProfile"];
+            patient_id?: components["schemas"]["Uuid"];
+            version?: number;
         };
     };
     responses: {
@@ -2002,9 +2005,10 @@ export interface operations {
         };
         responses: {
             /**
-             * @description Idempotent replay of an existing own profile, or generic
-             *     manual-review-required when claim is enabled. When the claim flag
-             *     is off, colliding identities are hidden as 404.
+             * @description Idempotent replay of a compact own-profile result, retry of an
+             *     already-linked caller, or generic `manual_review_required` for
+             *     existing, owned, conflicting, or claim-disabled National IDs.
+             *     Pending-phone callers remain 404.
              */
             200: {
                 headers: {
@@ -2016,7 +2020,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description A new authoritative profile was created and linked. */
+            /** @description A new authoritative profile was created and linked. Body is compact. */
             201: {
                 headers: {
                     [name: string]: unknown;

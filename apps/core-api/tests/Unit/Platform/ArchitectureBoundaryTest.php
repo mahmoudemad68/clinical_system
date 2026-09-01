@@ -10,6 +10,7 @@ use Modules\Identity\Services\EraseSubjectService;
 use Modules\Identity\Services\RotateIdentityKeysService;
 use Modules\Patients\Services\CreatePatientProfile;
 use Modules\Patients\Services\CreateUnlinkedPatientProfile;
+use Modules\Patients\Services\ResolvePatientHandle;
 use Modules\Patients\Services\UpdateOwnDemographics;
 use Modules\Platform\Services\Coordinators\ApprovedCoordinators;
 use Modules\Platform\Services\Outbox\OutboxConsumer;
@@ -55,6 +56,10 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             CreateUnlinkedPatientProfile::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            ResolvePatientHandle::class,
             ApprovedCoordinators::classes(),
         );
     }
@@ -138,6 +143,30 @@ final class ArchitectureBoundaryTest extends TestCase
         }
 
         $this->assertTrue(interface_exists(OutboxConsumer::class));
+    }
+
+    #[Test]
+    public function platform_idempotency_does_not_encode_patient_profiles(): void
+    {
+        $file = $this->modulesRoot().DIRECTORY_SEPARATOR.'Platform/app/Http/Middleware/EnforceIdempotency.php';
+        $contents = (string) file_get_contents($file);
+
+        $this->assertStringNotContainsString('patient_profile', $contents);
+        $this->assertStringNotContainsString('patient_id', $contents);
+    }
+
+    #[Test]
+    public function identity_does_not_query_patients_tables(): void
+    {
+        foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.'Identity') as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/table\([\'"]patient_(profiles|demographic_revisions)/',
+                $contents,
+                $file.' Identity must not read or write Patients tables.',
+            );
+        }
     }
 
     /**

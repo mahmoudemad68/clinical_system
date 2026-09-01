@@ -15,6 +15,4 @@ interface PatientIdentityRegistry
     public function findClaimCandidate(string $blindIndex): ?Identifier;
 
     public function attachAccount(Identifier $candidateId, Identifier $userId, Identifier $proof): void;
-
-    public function eraseLinkedProfiles(Identifier $userId): int;
 }

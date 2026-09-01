@@ -30,6 +30,7 @@ final class ApprovedCoordinators
             'Modules\\Patients\\Services\\CreatePatientProfile',
             'Modules\\Patients\\Services\\UpdateOwnDemographics',
             'Modules\\Patients\\Services\\CreateUnlinkedPatientProfile',
+            'Modules\\Patients\\Services\\ResolvePatientHandle',
         ];
     }
 }

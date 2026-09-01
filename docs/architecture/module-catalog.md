@@ -112,8 +112,10 @@ cookies. TOTP enrolment HTTP is not exposed; bootstrap inserts a verified factor
 **Built in:** 01–02. **Owner:** backend + security.
 **Public services:** `ResolveActorContext`, `NationalIdProtector`,
 `AuditedSensitiveDecryptor`, `RotateIdentityKeysService` (`identity:rotate-keys`),
-`PatientIdentityRegistry` (unavailable stub until Phase 02), `LinkVerifiedPatientAccount`
+`PatientIdentityRegistry` (Patients adapter; claim still off), `PatientSubjectPrivacy`
+(Identity contract; Patients adapter only), `LinkVerifiedPatientAccount`
 (not enabled), `DisableIdentity`, `EraseSubject`, `ExportSubjectData`.
+Identity never queries Patients tables.
 **Events:** `identity.account_registered`, `identity.phone_verified`,
 `identity.profile_linked`, `identity.status_changed`. Audit also records
 `identity.subject_erased` (append-only; not an outbox event type).
@@ -143,14 +145,18 @@ importing another module's persistence models. Unknown actions deny.
 
 **Built in:** 02 (chunk 01: Patients vertical slice). **Owner:** backend + clinical.
 **Public services:** `CreatePatientProfile`, `GetOwnPatientProfile`,
-`UpdateOwnDemographics`, `CreateUnlinkedPatientProfile`, `ResolvePatientHandle`.
+`UpdateOwnDemographics`, `CreateUnlinkedPatientProfile`, `ResolvePatientHandle`,
+`PatientSubjectPrivacy` (Identity erasure/export port).
 **Events:** `patient.profile_created`, `patient.account_linked`.
 **Tables:** `patient_profiles`, `patient_demographic_revisions`.
 **Classification:** sensitive.
 **Prohibited:** returning clinical history; public National ID lookup; exposing
-ciphertext, HMAC, or key versions on HTTP projections. A patient summary is
-demographic; clinical content belongs to `Clinical` and requires an access
-grant. `FEATURE_IDENTITY_PROFILE_CLAIM` remains off.
+ciphertext, HMAC, or key versions on HTTP projections; Platform encoding of
+Patients replay types. A patient summary is demographic; clinical content belongs
+to `Clinical` and requires an access grant. Onboarding HTTP is compact (`status`,
+`patient_id`, `version`); `GET /patients/me/profile` is the canonical projection.
+Collisions return generic `manual_review_required`. Unlinked create/resolve
+are Access-gated and default-denied. `FEATURE_IDENTITY_PROFILE_CLAIM` remains off.
 
 ## `Doctors` — clinician profiles and verification
 

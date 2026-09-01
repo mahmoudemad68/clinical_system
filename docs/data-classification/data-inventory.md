@@ -698,9 +698,10 @@ ENGINEERING_DEFAULT storage bounds, not clinical protocol.
 Lookup is HMAC only. HTTP projections never return ciphertext, HMAC, or
 key versions.
 
-**Retention / deletion.** Linked-profile subject erasure tombstones crypto
-fields, unlinks `user_id`, and sets `archived`. Unlinked walk-in profiles
-are not selected by user-id erasure. Legal retention:
+**Retention / deletion.** Linked-profile subject erasure is performed by the
+Patients `PatientSubjectPrivacy` adapter (Identity never queries these tables).
+It tombstones crypto fields, unlinks `user_id`, and sets `archived`. Unlinked
+walk-in profiles are not selected by user-id erasure. Legal retention:
 **OPEN_LEGAL_DECISION**.
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |

@@ -22,9 +22,4 @@ final class UnavailablePatientIdentityRegistry implements PatientIdentityRegistr
     {
         throw new \RuntimeException('Patient identity registry is not available in Phase 01.');
     }
-
-    public function eraseLinkedProfiles(Identifier $userId): int
-    {
-        return 0;
-    }
 }

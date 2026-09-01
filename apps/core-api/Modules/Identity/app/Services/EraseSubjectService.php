@@ -14,7 +14,7 @@ use Modules\Auth\Contracts\AuthenticationRateLimiter;
 use Modules\Auth\Contracts\PasswordHasher;
 use Modules\Auth\Events\CredentialVersionChanged;
 use Modules\Auth\Services\RecordSessionRevokedEvents;
-use Modules\Identity\Contracts\PatientIdentityRegistry;
+use Modules\Identity\Contracts\PatientSubjectPrivacy;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\AccountStatus;
 use Modules\Identity\Events\StatusChanged;
@@ -51,7 +51,7 @@ final class EraseSubjectService
         private readonly Authorize $authorizer,
         private readonly RecordPrivilegedFailure $privilegedFailures,
         private readonly RecordSessionRevokedEvents $sessionRevoked,
-        private readonly PatientIdentityRegistry $patientProfiles,
+        private readonly PatientSubjectPrivacy $patientPrivacy,
     ) {}
 
     public function handle(ActorContext $initiator, Identifier $userId, string $reasonCode): SubjectErasureReport
@@ -70,7 +70,7 @@ final class EraseSubjectService
             throw new AuthorizationDenied;
         }
 
-        $plan = Phase01SubjectHoldings::plan();
+        $plan = [...Phase01SubjectHoldings::plan(), ...$this->patientPrivacy->holdings()];
 
         $report = $this->transactions->run(function (TransactionContext $tx) use ($initiator, $userId, $reasonCode, $plan): SubjectErasureReport {
             $user = $this->identities->lockById($userId);
@@ -101,7 +101,7 @@ final class EraseSubjectService
 
             $nationalIds = $this->identities->deleteNationalIds($userId);
             $profileLinks = $this->identities->deleteProfileLinks($userId);
-            $patientProfiles = $this->patientProfiles->eraseLinkedProfiles($userId);
+            $patientCounts = $this->patientPrivacy->eraseLinked($userId);
 
             $version = $user->credentialVersion + 1;
             $this->identities->tombstoneIdentity(
@@ -135,14 +135,13 @@ final class EraseSubjectService
                 'user',
             );
 
-            return new SubjectErasureReport($userId, false, $plan, [
+            return new SubjectErasureReport($userId, false, $plan, array_merge([
                 'notifications' => $transientCounts['notifications'],
                 'laravel_sessions' => $transientCounts['laravel_sessions'],
                 'pending_or_failed_outbox' => $transientCounts['pending_or_failed_outbox'],
                 'contextual_access_grants' => $grantCount,
                 'identity_national_ids' => $nationalIds,
                 'identity_profile_links' => $profileLinks,
-                'patient_profiles' => $patientProfiles,
                 'user_devices' => $authCounts['user_devices'],
                 'auth_sessions' => $authCounts['auth_sessions'],
                 'auth_refresh_consumptions' => $authCounts['auth_refresh_consumptions'],
@@ -151,7 +150,7 @@ final class EraseSubjectService
                 'mfa_recovery_codes' => $authCounts['mfa_recovery_codes'],
                 'mfa_challenges' => $authCounts['mfa_challenges'],
                 'recovery_requests' => $authCounts['recovery_requests'],
-            ]);
+            ], $patientCounts));
         });
 
         assert($report instanceof SubjectErasureReport);

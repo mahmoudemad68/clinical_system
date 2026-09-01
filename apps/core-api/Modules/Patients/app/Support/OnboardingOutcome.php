@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Patients\Support;
 
+/**
+ * Compact onboarding result. GET /patients/me/profile is the canonical
+ * projection. This payload must fit the Platform 255-byte idempotency pointer.
+ */
 final readonly class OnboardingOutcome
 {
     public const PROFILE_READY = 'profile_ready';
@@ -12,7 +16,8 @@ final readonly class OnboardingOutcome
 
     public function __construct(
         public string $status,
-        public ?PatientProfileProjection $profile,
+        public ?string $patientId,
+        public ?int $version,
         public bool $created,
     ) {}
 
@@ -25,12 +30,10 @@ final readonly class OnboardingOutcome
             return ['status' => self::MANUAL_REVIEW_REQUIRED];
         }
 
-        $profile = $this->profile;
-        assert($profile instanceof PatientProfileProjection);
-
         return [
             'status' => self::PROFILE_READY,
-            'profile' => $profile->toArray(),
+            'patient_id' => $this->patientId,
+            'version' => $this->version,
         ];
     }
 }

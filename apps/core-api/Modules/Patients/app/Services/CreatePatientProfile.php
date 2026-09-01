@@ -16,14 +16,9 @@ use Modules\Identity\Support\ActorContext;
 use Modules\Identity\Support\NationalId;
 use Modules\Patients\Enums\PatientSourceType;
 use Modules\Patients\Events\PatientAccountLinked;
-use Modules\Patients\Events\PatientProfileCreated;
 use Modules\Patients\Services\Persistence\PostgresPatientProfileStore;
 use Modules\Patients\Support\OnboardingOutcome;
-use Modules\Patients\Support\PatientProfileProjector;
 use Modules\Patients\Support\PatientProfileRecord;
-use Modules\Patients\Support\PatientProfileRowFactory;
-use Modules\Platform\Contracts\Clock;
-use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
 use Modules\Platform\Exceptions\AuthorizationDenied;
@@ -33,7 +28,7 @@ use Modules\Platform\Support\Identifier;
 
 /**
  * Authenticated patient onboarding: create or route to the Phase 01 claim
- * boundary. Never confirms whether a National ID already exists.
+ * boundary. Collision and review paths share one generic pending outcome.
  *
  * Listed in ApprovedCoordinators: Patients writes plus Identity claim lookup
  * and Audit happen in one transaction.
@@ -44,20 +39,17 @@ final class CreatePatientProfile
         private readonly TransactionRunner $transactions,
         private readonly PostgresPatientProfileStore $store,
         private readonly NationalIdProtector $protector,
-        private readonly PatientProfileProjector $projector,
-        private readonly PatientProfileRowFactory $rows,
+        private readonly CommitNewPatientProfile $commit,
         private readonly UserDirectory $identities,
         private readonly LinkVerifiedPatientAccount $claim,
         private readonly Authorize $authorize,
-        private readonly IdentityGenerator $ids,
-        private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
     ) {}
 
     /**
      * @param  array<string, mixed>  $input
      */
-    public function handle(ActorContext $actor, array $input): OnboardingOutcome
+    public function handle(ActorContext $actor, array $input, Identifier $requestId): OnboardingOutcome
     {
         if ($actor->accountType !== AccountType::Patient || ! $actor->status->canAccessBusinessEndpoints()) {
             throw new FeatureUnavailable;
@@ -70,18 +62,17 @@ final class CreatePatientProfile
 
         $nationalId = $this->protector->nationalId((string) $input['national_id']);
         $hmacs = $this->protector->nationalIdLookupHmacs($nationalId);
-        $this->assertMatchesBoundIdentity($actor->userId, $hmacs);
 
         $already = $this->store->findByUserId($actor->userId, false);
         if ($already instanceof PatientProfileRecord) {
-            return new OnboardingOutcome(
-                OnboardingOutcome::PROFILE_READY,
-                $this->projector->project($already),
-                false,
-            );
+            return $this->ready($already, false);
         }
 
-        return $this->transactions->run(function (TransactionContext $tx) use ($actor, $input, $nationalId, $hmacs): OnboardingOutcome {
+        return $this->transactions->run(function (TransactionContext $tx) use ($actor, $input, $nationalId, $hmacs, $requestId): OnboardingOutcome {
+            if (! $this->matchesBoundIdentity($actor->userId, $hmacs)) {
+                return $this->manualReview($tx, $actor);
+            }
+
             $this->store->lockLookupIndex($this->protector->nationalIdHmac($nationalId));
 
             $existing = $this->store->findAuthoritativeByHmacs($hmacs, true);
@@ -90,16 +81,16 @@ final class CreatePatientProfile
             }
 
             try {
-                return $this->createLinked($tx, $actor, $input, $nationalId);
+                return $this->createLinked($tx, $actor, $input, $nationalId, $requestId);
             } catch (DuplicateIdentity) {
                 $retry = $this->store->findByUserId($actor->userId, true)
                     ?? $this->store->findAuthoritativeByHmacs($hmacs, true);
 
-                if ($retry instanceof PatientProfileRecord && $retry->userId?->equals($actor->userId) === true) {
-                    return new OnboardingOutcome(OnboardingOutcome::PROFILE_READY, $this->projector->project($retry), false);
+                if ($retry instanceof PatientProfileRecord) {
+                    return $this->existingPath($tx, $actor, $retry, (string) $input['national_id']);
                 }
 
-                throw new FeatureUnavailable;
+                return $this->manualReview($tx, $actor);
             }
         });
     }
@@ -107,20 +98,20 @@ final class CreatePatientProfile
     /**
      * @param  list<string>  $hmacs
      */
-    private function assertMatchesBoundIdentity(Identifier $userId, array $hmacs): void
+    private function matchesBoundIdentity(Identifier $userId, array $hmacs): bool
     {
         $stored = $this->identities->nationalIdLookupHmac($userId);
         if ($stored === null) {
-            return;
+            return true;
         }
 
         foreach ($hmacs as $hmac) {
             if (hash_equals($stored, $hmac)) {
-                return;
+                return true;
             }
         }
 
-        throw new FeatureUnavailable;
+        return false;
     }
 
     /**
@@ -131,33 +122,25 @@ final class CreatePatientProfile
         ActorContext $actor,
         array $input,
         NationalId $nationalId,
+        Identifier $requestId,
     ): OnboardingOutcome {
-        $id = $this->ids->next();
-        $now = $this->clock->now();
-        $this->store->insert($this->rows->attributes(
-            $id,
+        $created = $this->commit->insert(
+            $tx,
             $actor->userId,
             $nationalId,
             $input,
             'user',
             $actor->userId,
-            $now,
-        ));
-
-        $this->audit->append(
-            $tx,
-            'patient.profile_created',
-            'patient_profile',
-            $id,
-            ['reason_code' => 'self_onboarding', 'source_type' => PatientSourceType::SelfOnboarding->value],
-            $actor->userId,
-            'user',
+            PatientSourceType::SelfOnboarding,
+            $requestId,
+            'self_onboarding',
         );
+
         $this->audit->append(
             $tx,
             'patient.account_linked',
             'patient_profile',
-            $id,
+            $created->id,
             [
                 'reason_code' => 'self_onboarding',
                 'assurance_level' => AssuranceLevel::Ial1SelfAsserted->value,
@@ -165,24 +148,14 @@ final class CreatePatientProfile
             $actor->userId,
             'user',
         );
-
-        $tx->recordEvent(new PatientProfileCreated(
-            $id,
-            $actor->userId,
-            PatientSourceType::SelfOnboarding->value,
-            $now,
-        ));
         $tx->recordEvent(new PatientAccountLinked(
-            $id,
+            $created->id,
             $actor->userId,
             AssuranceLevel::Ial1SelfAsserted->value,
-            $now,
+            $created->updatedAt,
         ));
 
-        $created = $this->store->findById($id, false);
-        assert($created instanceof PatientProfileRecord);
-
-        return new OnboardingOutcome(OnboardingOutcome::PROFILE_READY, $this->projector->project($created), true);
+        return $this->ready($created, true);
     }
 
     private function existingPath(
@@ -192,25 +165,42 @@ final class CreatePatientProfile
         string $nationalIdInput,
     ): OnboardingOutcome {
         if ($existing->userId?->equals($actor->userId) === true) {
-            return new OnboardingOutcome(OnboardingOutcome::PROFILE_READY, $this->projector->project($existing), false);
+            return $this->ready($existing, false);
         }
 
         if ($existing->userId === null && $existing->status->isClaimEligible()) {
-            $this->audit->append(
-                $tx,
-                'patient.profile_claim_attempted',
-                'patient_profile',
-                $existing->id,
-                ['reason_code' => 'existing_unlinked'],
-                $actor->userId,
-                'user',
-            );
-
-            $this->claim->handle($actor, $nationalIdInput);
-
-            return new OnboardingOutcome(OnboardingOutcome::MANUAL_REVIEW_REQUIRED, null, false);
+            try {
+                $this->claim->handle($actor, $nationalIdInput);
+            } catch (FeatureUnavailable) {
+                // Flag off: the ceremony ran; the client still sees pending.
+            }
         }
 
-        throw new FeatureUnavailable;
+        return $this->manualReview($tx, $actor);
+    }
+
+    private function manualReview(TransactionContext $tx, ActorContext $actor): OnboardingOutcome
+    {
+        $this->audit->append(
+            $tx,
+            'patient.onboarding_review_required',
+            'user',
+            $actor->userId,
+            ['reason_code' => 'manual_review'],
+            $actor->userId,
+            'user',
+        );
+
+        return new OnboardingOutcome(OnboardingOutcome::MANUAL_REVIEW_REQUIRED, null, null, false);
+    }
+
+    private function ready(PatientProfileRecord $row, bool $created): OnboardingOutcome
+    {
+        return new OnboardingOutcome(
+            OnboardingOutcome::PROFILE_READY,
+            $row->id->value,
+            $row->version,
+            $created,
+        );
     }
 }

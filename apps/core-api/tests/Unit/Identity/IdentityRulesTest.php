@@ -101,6 +101,9 @@ describe('default-deny authorizer', function () {
         $authorizer = new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class));
 
         expect($authorizer->decide($actor, Capabilities::IDENTITY_ME_READ)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::PATIENTS_UNLINKED_CREATE)->allowed)->toBeFalse()
+            ->and($authorizer->decide($actor, Capabilities::PATIENTS_UNLINKED_CREATE)->reasonCode)->toBe('capability_absent');
+        expect(Capabilities::isKnown(Capabilities::PATIENTS_UNLINKED_RESOLVE))->toBeTrue();
         expect($authorizer->decide($actor, 'clinical.record.read')->allowed)->toBeFalse()
             ->and($authorizer->decide($actor, 'clinical.record.read')->reasonCode)->toBe('unknown_action');
     });

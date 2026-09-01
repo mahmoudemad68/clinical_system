@@ -3,11 +3,19 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\DB;
+use Modules\Access\Support\Capabilities;
 use Modules\Auth\Contracts\DeliverOtpSms;
 use Modules\Auth\Services\Adapters\RecordingDeliverOtpSms;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Enums\AccountType;
+use Modules\Identity\Enums\AssuranceLevel;
+use Modules\Identity\Enums\LanguagePreference;
 use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Support\ActorContext;
+use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Services\Outbox\OutboxDispatcher;
 use Modules\Platform\Services\Testing\SyntheticEgyptianData;
+use Modules\Platform\Support\Identifier;
 
 /**
  * @return array{name: string, phone: string, national_id: string, password: string, language: string}
@@ -100,4 +108,48 @@ function patientsDemographics(string $nationalId, string $name = 'Synthetic Pati
 function patientsIdem(string $name): array
 {
     return ['Idempotency-Key' => 'clinic-test-idem-'.$name];
+}
+
+function patientsCorrelationId(): Identifier
+{
+    return app(IdentityGenerator::class)->next();
+}
+
+function patientsUnlinkedActor(?string $userId = null): ActorContext
+{
+    $id = $userId !== null
+        ? Identifier::fromTrusted($userId)
+        : app(IdentityGenerator::class)->next();
+
+    return new ActorContext(
+        $id,
+        AccountType::Patient,
+        AccountStatus::Active,
+        LanguagePreference::English,
+        AssuranceLevel::Aal1Password,
+        1,
+        null,
+        null,
+        [],
+        [
+            Capabilities::PATIENTS_UNLINKED_CREATE,
+            Capabilities::PATIENTS_UNLINKED_RESOLVE,
+        ],
+    );
+}
+
+function patientsSelfActor(string $userId): ActorContext
+{
+    return new ActorContext(
+        Identifier::fromTrusted($userId),
+        AccountType::Patient,
+        AccountStatus::Active,
+        LanguagePreference::English,
+        AssuranceLevel::Aal1Password,
+        1,
+        null,
+        null,
+        [],
+        Capabilities::AUTHENTICATED_SELF,
+    );
 }

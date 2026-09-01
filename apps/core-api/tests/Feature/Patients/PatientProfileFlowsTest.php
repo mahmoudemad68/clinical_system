@@ -6,15 +6,20 @@ use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Modules\Auth\Contracts\DeliverOtpSms;
 use Modules\Patients\Enums\PatientSourceType;
 use Modules\Patients\Services\CreateUnlinkedPatientProfile;
 use Modules\Patients\Services\ResolvePatientHandle;
 use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Exceptions\AuthorizationDenied;
 use Modules\Platform\Services\Features\PlatformFeatures;
 use Modules\Platform\Services\Outbox\OutboxDispatcher;
 use Modules\Platform\Services\Persistence\BinaryColumn;
+use Modules\Platform\Services\Telemetry\PlatformMetrics;
 use Modules\Platform\Services\Testing\SyntheticEgyptianData;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -24,21 +29,27 @@ describe('patient onboarding', function () {
         $session = patientsActiveSession('happy');
         $body = patientsDemographics($session['payload']['national_id']);
         $canary = $session['payload']['national_id'];
+        $logHandler = new TestHandler(Level::Debug);
+        Log::channel()->getLogger()->pushHandler($logHandler);
 
         $response = $this->postJson('/api/v1/patients/onboarding', $body, patientsAuth($session['token']) + patientsIdem('pon-happy'));
 
         $response->assertCreated()
             ->assertJsonPath('data.status', 'profile_ready')
-            ->assertJsonPath('data.profile.full_name', 'Synthetic Patient')
-            ->assertJsonPath('data.profile.gender', 'female')
-            ->assertJsonPath('data.profile.version', 1)
-            ->assertJsonMissingPath('data.profile.national_id')
+            ->assertJsonPath('data.version', 1)
+            ->assertJsonMissingPath('data.profile')
+            ->assertJsonMissingPath('data.full_name')
+            ->assertJsonMissingPath('data.national_id')
             ->assertJsonMissingPath('data.national_id_ciphertext')
             ->assertJsonMissingPath('data.national_id_lookup_hmac')
             ->assertJsonMissingPath('data.national_id_key_version');
 
         $encoded = $response->getContent();
         expect($encoded)->not->toContain($canary);
+
+        $me = $this->getJson('/api/v1/patients/me/profile', patientsAuth($session['token']));
+        $me->assertOk()->assertJsonPath('data.full_name', 'Synthetic Patient')
+            ->assertJsonPath('data.patient_id', $response->json('data.patient_id'));
 
         expect(DB::table('patient_profiles')->count())->toBe(1);
         $row = DB::table('patient_profiles')->first();
@@ -67,11 +78,24 @@ describe('patient onboarding', function () {
             ->and($linkedPayload)->not->toContain('national_id');
 
         $auditBlob = json_encode(
-            DB::table('audit_events')->where('object_type', 'patient_profile')->get(['event_name', 'metadata', 'actor_id', 'object_id'])->all(),
+            DB::table('audit_events')->where('object_type', 'patient_profile')->orWhere('event_name', 'patient.onboarding_review_required')->get(['event_name', 'metadata', 'actor_id', 'object_id'])->all(),
             JSON_INVALID_UTF8_SUBSTITUTE,
         );
         expect(is_string($auditBlob))->toBeTrue()
             ->and($auditBlob)->not->toContain($canary);
+
+        $revisionFields = DB::table('patient_demographic_revisions')->pluck('field_name')->all();
+        expect($revisionFields)->toContain('full_name', 'gender', 'date_of_birth', 'height_cm', 'weight_kg', 'marital_status', 'blood_type')
+            ->and($revisionFields)->not->toContain('national_id');
+        $revisionBlob = json_encode(
+            DB::table('patient_demographic_revisions')->get(['field_name', 'old_plain', 'new_plain', 'reason_code'])->all(),
+            JSON_INVALID_UTF8_SUBSTITUTE,
+        );
+        expect($revisionBlob)->not->toContain($canary);
+
+        $logBlob = json_encode($logHandler->getRecords(), JSON_INVALID_UTF8_SUBSTITUTE);
+        expect($logBlob)->not->toContain($canary);
+        expect(app(PlatformMetrics::class)->render())->not->toContain($canary);
     });
 
     it('replays a committed idempotent onboarding without creating a second profile', function () {
@@ -80,10 +104,21 @@ describe('patient onboarding', function () {
         $headers = patientsAuth($session['token']) + patientsIdem('pon-idem-same');
 
         $first = $this->postJson('/api/v1/patients/onboarding', $body, $headers);
-        $first->assertCreated();
+        $first->assertCreated()
+            ->assertJsonPath('data.patient_id', $first->json('data.patient_id'))
+            ->assertJsonMissingPath('data.profile');
         $second = $this->postJson('/api/v1/patients/onboarding', $body, $headers);
         $second->assertCreated()
-            ->assertJsonPath('data.profile.patient_id', $first->json('data.profile.patient_id'));
+            ->assertJsonPath('data.status', 'profile_ready')
+            ->assertJsonPath('data.patient_id', $first->json('data.patient_id'))
+            ->assertJsonPath('data.version', 1)
+            ->assertJsonMissingPath('data.full_name');
+
+        $stored = (string) DB::table('idempotency_keys')->orderByDesc('created_at')->value('response_reference');
+        expect(strlen($stored))->toBeLessThanOrEqual(255)
+            ->and($stored)->not->toContain('patient_profile')
+            ->and($stored)->not->toContain('full_name')
+            ->and($stored)->toContain($first->json('data.patient_id'));
 
         expect(DB::table('patient_profiles')->count())->toBe(1);
     });
@@ -96,7 +131,8 @@ describe('patient onboarding', function () {
 
         $this->postJson('/api/v1/patients/onboarding', $body, patientsAuth($session['token']) + patientsIdem('pon-retry-2'))
             ->assertOk()
-            ->assertJsonPath('data.status', 'profile_ready');
+            ->assertJsonPath('data.status', 'profile_ready')
+            ->assertJsonMissingPath('data.profile');
 
         expect(DB::table('patient_profiles')->count())->toBe(1);
     });
@@ -107,9 +143,9 @@ describe('patient onboarding', function () {
         $session = patientsActiveSession('claimoff');
         $nid = $session['payload']['national_id'];
         app(CreateUnlinkedPatientProfile::class)->handle(
+            patientsUnlinkedActor(),
             patientsDemographics($nid, 'Walk In'),
-            'staff',
-            app(IdentityGenerator::class)->next(),
+            patientsCorrelationId(),
         );
 
         $response = $this->postJson(
@@ -118,8 +154,11 @@ describe('patient onboarding', function () {
             patientsAuth($session['token']) + patientsIdem('pon-claimoff'),
         );
 
-        $response->assertNotFound()
-            ->assertJsonPath('errors.0.code', 'NOT_FOUND');
+        $response->assertOk()
+            ->assertJsonPath('data.status', 'manual_review_required')
+            ->assertJsonMissingPath('data.patient_id')
+            ->assertJsonMissingPath('data.profile');
+        expect($response->json('errors'))->toBeArray()->toBeEmpty();
         expect(DB::table('patient_profiles')->count())->toBe(1)
             ->and(DB::table('patient_profiles')->value('user_id'))->toBeNull()
             ->and($response->getContent())->not->toContain($nid);
@@ -133,9 +172,9 @@ describe('patient onboarding', function () {
             $session = patientsActiveSession('claimon');
             $nid = $session['payload']['national_id'];
             $handle = app(CreateUnlinkedPatientProfile::class)->handle(
+                patientsUnlinkedActor(),
                 patientsDemographics($nid, 'Walk In'),
-                'staff',
-                app(IdentityGenerator::class)->next(),
+                patientsCorrelationId(),
             );
 
             $response = $this->postJson(
@@ -223,8 +262,11 @@ describe('patient onboarding', function () {
             patientsAuth($other['token']) + patientsIdem('pon-owned-b'),
         );
 
-        $response->assertNotFound()
-            ->assertJsonPath('errors.0.code', 'NOT_FOUND');
+        $response->assertOk()
+            ->assertJsonPath('data.status', 'manual_review_required')
+            ->assertJsonMissingPath('data.patient_id')
+            ->assertJsonMissingPath('data.profile');
+        expect($response->json('errors'))->toBeArray()->toBeEmpty();
         expect($response->getContent())->not->toContain($owner['payload']['national_id'])
             ->and(DB::table('patient_profiles')->count())->toBe(1)
             ->and((string) DB::table('patient_profiles')->value('user_id'))->toBe($owner['user_id']);
@@ -308,29 +350,57 @@ describe('demographic updates', function () {
 });
 
 describe('unlinked handle resolution', function () {
+    it('denies unlinked create and resolve without the reserved capability', function () {
+        $session = patientsActiveSession('ul-deny');
+        $nid = $session['payload']['national_id'];
+        $actor = patientsSelfActor($session['user_id']);
+
+        expect(fn () => app(CreateUnlinkedPatientProfile::class)->handle(
+            $actor,
+            patientsDemographics($nid, 'Walk In'),
+            patientsCorrelationId(),
+        ))->toThrow(AuthorizationDenied::class);
+
+        expect(fn () => app(ResolvePatientHandle::class)->handle(
+            $actor,
+            $nid,
+            patientsCorrelationId(),
+        ))->toThrow(AuthorizationDenied::class);
+
+        expect(DB::table('patient_profiles')->count())->toBe(0);
+    });
+
     it('returns an opaque handle and never exposes a public national-id lookup route', function () {
         $synthetic = new SyntheticEgyptianData;
         $nid = $synthetic->nationalId();
-        $createdBy = app(IdentityGenerator::class)->next();
+        $actor = patientsUnlinkedActor();
         $handle = app(CreateUnlinkedPatientProfile::class)->handle(
+            $actor,
             patientsDemographics($nid, 'Walk In'),
-            'staff',
-            $createdBy,
+            patientsCorrelationId(),
         );
 
-        $resolved = app(ResolvePatientHandle::class)->handle($nid);
+        $resolved = app(ResolvePatientHandle::class)->handle($actor, $nid, patientsCorrelationId());
         expect($resolved)->not->toBeNull()
             ->and($resolved->patientId->equals($handle->patientId))->toBeTrue();
 
         $again = app(CreateUnlinkedPatientProfile::class)->handle(
+            $actor,
             patientsDemographics($nid, 'Walk In Again'),
-            'staff',
-            $createdBy,
+            patientsCorrelationId(),
         );
         expect($again->patientId->equals($handle->patientId))->toBeTrue()
             ->and(DB::table('patient_profiles')->count())->toBe(1)
             ->and(json_encode(DB::table('outbox_events')->where('event_type', 'patient.profile_created')->value('payload')))
             ->toContain(PatientSourceType::WalkIn->value);
+
+        $lookupAudit = json_encode(
+            DB::table('audit_events')->where('event_name', 'patient.handle_lookup')->get(['event_name', 'metadata', 'actor_id', 'object_id'])->all(),
+            JSON_INVALID_UTF8_SUBSTITUTE,
+        );
+        expect($lookupAudit)->not->toContain($nid)
+            ->and($lookupAudit)->not->toContain('hmac')
+            ->and($lookupAudit)->not->toContain('Walk In');
 
         $this->getJson('/api/v1/patients/lookup?national_id='.$nid)->assertNotFound();
         $this->postJson('/api/v1/patients/lookup', ['national_id' => $nid])->assertNotFound();

@@ -9,7 +9,8 @@ use Modules\Identity\Enums\SubjectHoldingAction;
 /**
  * Explicit Phase-01 subject-linked holdings enumerator.
  *
- * Shared by erasure and export. Does not include Phase 02+ clinical tables.
+ * Shared by erasure and export. Clinical and demographic tables owned by
+ * later modules are contributed through their public privacy contracts.
  * Legal retention and lawful basis remain OPEN_LEGAL_DECISION.
  */
 final class Phase01SubjectHoldings
@@ -38,17 +39,7 @@ final class Phase01SubjectHoldings
             new SubjectHoldingPlan(
                 'identity_profile_links',
                 SubjectHoldingAction::Delete,
-                'Phase-01 identity-to-profile bindings only. No Phase 02+ clinical profiles.',
-            ),
-            new SubjectHoldingPlan(
-                'patient_profiles',
-                SubjectHoldingAction::IrreversibleTombstone,
-                'Unlink user_id, tombstone National ID ciphertext/HMAC and name ciphertext, set status archived. Unlinked walk-in profiles are not selected by user_id. Not a clinical record.',
-            ),
-            new SubjectHoldingPlan(
-                'patient_demographic_revisions',
-                SubjectHoldingAction::PreserveSecurityAudit,
-                'Append-only demographic field history. Name ciphertext in historical revision rows is a documented residual and is not rewritten.',
+                'Identity-to-profile bindings only. Clinical profile rows are owned by their modules.',
             ),
             new SubjectHoldingPlan(
                 'user_devices',

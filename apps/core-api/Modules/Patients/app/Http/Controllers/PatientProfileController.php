@@ -21,7 +21,7 @@ final class PatientProfileController
     public function onboard(Request $request, CreatePatientProfile $handler): JsonResponse
     {
         $data = ClosedJsonValidator::validate($request, DemographicRules::onboarding());
-        $outcome = $handler->handle($this->actor($request), $data);
+        $outcome = $handler->handle($this->actor($request), $data, $this->requestId($request));
 
         if ($outcome->created) {
             return Envelope::created($outcome->toArray(), $this->requestId($request));

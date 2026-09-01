@@ -9,6 +9,7 @@ use Modules\Access\Contracts\GrantStore;
 use Modules\Access\Support\Capabilities;
 use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Auth\Contracts\AuthDirectory;
+use Modules\Identity\Contracts\PatientSubjectPrivacy;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\SubjectHoldingAction;
 use Modules\Identity\Support\ActorContext;
@@ -35,6 +36,7 @@ final class ExportSubjectDataService
         private readonly DiscardSubjectTransientCopies $transients,
         private readonly Authorize $authorizer,
         private readonly RecordPrivilegedFailure $privilegedFailures,
+        private readonly PatientSubjectPrivacy $patientPrivacy,
     ) {}
 
     public function handle(ActorContext $initiator, Identifier $userId): SubjectDataExport
@@ -68,8 +70,6 @@ final class ExportSubjectDataService
             'users.phone_lookup_hmac' => 1,
             'identity_national_ids' => $this->identities->countNationalIds($userId),
             'identity_profile_links' => $this->identities->countProfileLinks($userId),
-            'patient_profiles' => null,
-            'patient_demographic_revisions' => null,
             'user_devices' => $authCounts['user_devices'],
             'auth_sessions' => $authCounts['auth_sessions'],
             'auth_refresh_consumptions' => $authCounts['auth_refresh_consumptions'],
@@ -95,6 +95,8 @@ final class ExportSubjectDataService
             'backup_artefacts' => null,
         ];
 
+        $counts = array_merge($counts, $this->patientPrivacy->exportCounts($userId));
+
         $holdings = array_map(
             static function (SubjectHoldingPlan $plan) use ($counts): array {
                 $count = $counts[$plan->holding] ?? null;
@@ -109,7 +111,7 @@ final class ExportSubjectDataService
                     ], true) ? null : $count,
                 ];
             },
-            Phase01SubjectHoldings::plan(),
+            [...Phase01SubjectHoldings::plan(), ...$this->patientPrivacy->holdings()],
         );
 
         return new SubjectDataExport(

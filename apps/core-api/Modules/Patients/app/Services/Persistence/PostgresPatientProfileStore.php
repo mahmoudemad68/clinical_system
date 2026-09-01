@@ -102,6 +102,23 @@ final class PostgresPatientProfileStore
             ->update($changes);
     }
 
+    public function attachAccount(Identifier $id, Identifier $userId, int $expectedVersion, DateTimeImmutable $now): int
+    {
+        try {
+            return $this->connection->table('patient_profiles')
+                ->where('id', $id->value)
+                ->where('version', $expectedVersion)
+                ->whereNull('user_id')
+                ->update([
+                    'user_id' => $userId->value,
+                    'version' => $expectedVersion + 1,
+                    'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+                ]);
+        } catch (UniqueConstraintViolationException) {
+            throw new DuplicateIdentity;
+        }
+    }
+
     /**
      * @param  array<string, mixed>  $row
      */
@@ -129,10 +146,10 @@ final class PostgresPatientProfileStore
             ]);
     }
 
-    public function countAuthoritative(): int
+    public function countLinkedToUser(Identifier $userId): int
     {
         return $this->connection->table('patient_profiles')
-            ->where('status', '<>', PatientStatus::Merged->value)
+            ->where('user_id', $userId->value)
             ->count();
     }
 
