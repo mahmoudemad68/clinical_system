@@ -179,6 +179,10 @@ def run_fixture_scans() -> None:
         root = Path(tmp)
         work = root / "reports"
         work.mkdir()
+        # The Gitleaks image runs as uid 1000. GitHub Actions creates this
+        # directory as the runner user (typically 1001) with 0755, so the
+        # container cannot write /out/*.json unless the directory is world-writable.
+        work.chmod(0o777)
         config = GITLEAKS_TOML
 
         allowed = root / "allowed-purl"
