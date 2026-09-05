@@ -22,6 +22,16 @@ final class Capabilities
 
     public const IDENTITY_CAPABILITIES_READ = 'identity.capabilities.read';
 
+    public const PATIENTS_ONBOARDING = 'patients.onboarding.submit';
+
+    public const PATIENTS_PROFILE_READ_OWN = 'patients.profile.read_own';
+
+    public const PATIENTS_PROFILE_UPDATE_OWN = 'patients.profile.update_own';
+
+    public const PATIENTS_UNLINKED_CREATE = 'patients.unlinked.create';
+
+    public const PATIENTS_UNLINKED_RESOLVE = 'patients.unlinked.resolve';
+
     public const MFA_MANAGE_SELF = 'auth.mfa.manage_self';
 
     public const ACCESS_GRANT_ISSUE = 'access.grant.issue';
@@ -50,6 +60,9 @@ final class Capabilities
         self::PASSWORD_CHANGE,
         self::IDENTITY_ME_READ,
         self::IDENTITY_CAPABILITIES_READ,
+        self::PATIENTS_ONBOARDING,
+        self::PATIENTS_PROFILE_READ_OWN,
+        self::PATIENTS_PROFILE_UPDATE_OWN,
         self::MFA_MANAGE_SELF,
     ];
 
@@ -78,10 +91,16 @@ final class Capabilities
         self::SESSION_REVOKE_ALL,
     ];
 
+    /** @var list<string> */
+    public const DEFAULT_DENIED = [
+        self::PATIENTS_UNLINKED_CREATE,
+        self::PATIENTS_UNLINKED_RESOLVE,
+    ];
+
     /** Clinical, pharmacy-stock, and catalog capabilities are absent on purpose. */
     public static function isKnown(string $capability): bool
     {
-        return in_array($capability, [...self::AUTHENTICATED_SELF, ...self::PRIVILEGED_OPERATOR, ...self::GRANTABLE], true);
+        return in_array($capability, [...self::AUTHENTICATED_SELF, ...self::PRIVILEGED_OPERATOR, ...self::GRANTABLE, ...self::DEFAULT_DENIED], true);
     }
 
     public static function isGrantable(string $capability): bool

@@ -124,7 +124,40 @@ jobs:
       - name: Install Trivy
         run: bash scripts/ci/install-trivy.sh
 
+      - name: Verify core-api OpenVEX applicability
+        if: matrix.unit == 'core-api'
+        run: python3 scripts/ci/verify_core_api_openvex.py --image ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.unit }}@${{ steps.build.outputs.digest }}
+      - name: Prove core-api OpenVEX is not a blanket suppress
+        if: matrix.unit == 'core-api'
+        run: |
+          set -euo pipefail
+          REPORT="${RUNNER_TEMP}/core-api-trivy-vex-narrow.json"
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --exit-code 0 \
+            --ignore-unfixed=false \
+            --vex infra/security/vex/core-api-frankenphp-cve-2026-56854.openvex.json \
+            --show-suppressed \
+            --format json \
+            --output "${REPORT}" \
+            --skip-version-check \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.unit }}@${{ steps.build.outputs.digest }}
+          python3 scripts/ci/verify_core_api_openvex.py --assert-narrow-json "${REPORT}"
+      - name: Scan the built core-api image
+        if: matrix.unit == 'core-api'
+        run: |
+          set -euo pipefail
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --ignore-unfixed=false \
+            --ignorefile infra/security/trivy-image.ignore \
+            --vex infra/security/vex/core-api-frankenphp-cve-2026-56854.openvex.json \
+            --show-suppressed \
+            --skip-version-check \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.unit }}@${{ steps.build.outputs.digest }}
       - name: Scan the built image
+        if: matrix.unit != 'core-api'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           skip-setup-trivy: true

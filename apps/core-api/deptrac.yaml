@@ -42,6 +42,11 @@ parameters:
         - type: directory
           value: Modules/Access/.*
 
+    - name: Patients
+      collectors:
+        - type: directory
+          value: Modules/Patients/.*
+
     - name: Framework
       collectors:
         - type: classLike
@@ -117,6 +122,15 @@ parameters:
     Access:
       - Platform
       - Identity
+      - Audit
+      - DomainSafeVendor
+      - Framework
+      - Providers
+
+    Patients:
+      - Platform
+      - Identity
+      - Access
       - Audit
       - DomainSafeVendor
       - Framework

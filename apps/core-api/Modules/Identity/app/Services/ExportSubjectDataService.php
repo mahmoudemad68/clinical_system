@@ -9,6 +9,7 @@ use Modules\Access\Contracts\GrantStore;
 use Modules\Access\Support\Capabilities;
 use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Auth\Contracts\AuthDirectory;
+use Modules\Identity\Contracts\PatientSubjectPrivacy;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\SubjectHoldingAction;
 use Modules\Identity\Support\ActorContext;
@@ -35,6 +36,7 @@ final class ExportSubjectDataService
         private readonly DiscardSubjectTransientCopies $transients,
         private readonly Authorize $authorizer,
         private readonly RecordPrivilegedFailure $privilegedFailures,
+        private readonly PatientSubjectPrivacy $patientPrivacy,
     ) {}
 
     public function handle(ActorContext $initiator, Identifier $userId): SubjectDataExport
@@ -93,6 +95,8 @@ final class ExportSubjectDataService
             'backup_artefacts' => null,
         ];
 
+        $counts = array_merge($counts, $this->patientPrivacy->exportCounts($userId));
+
         $holdings = array_map(
             static function (SubjectHoldingPlan $plan) use ($counts): array {
                 $count = $counts[$plan->holding] ?? null;
@@ -107,7 +111,7 @@ final class ExportSubjectDataService
                     ], true) ? null : $count,
                 ];
             },
-            Phase01SubjectHoldings::plan(),
+            [...Phase01SubjectHoldings::plan(), ...$this->patientPrivacy->holdings()],
         );
 
         return new SubjectDataExport(

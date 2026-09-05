@@ -1,0 +1,11 @@
+{
+    "name": "Patients",
+    "alias": "patients",
+    "description": "Clinic Patients module",
+    "keywords": [],
+    "priority": 50,
+    "providers": [
+        "Modules\\Patients\\Providers\\PatientsServiceProvider"
+    ],
+    "files": []
+}

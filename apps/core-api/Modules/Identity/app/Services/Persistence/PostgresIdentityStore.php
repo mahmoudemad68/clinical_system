@@ -206,6 +206,21 @@ final class PostgresIdentityStore implements UserDirectory
         return $hmac === '' ? null : $hmac;
     }
 
+    public function nationalIdLookupHmac(Identifier $userId): ?string
+    {
+        $value = $this->connection->table('identity_national_ids')
+            ->where('user_id', $userId->value)
+            ->value('national_id_lookup_hmac');
+
+        if ($value === null) {
+            return null;
+        }
+
+        $hmac = BinaryColumn::asString($value);
+
+        return $hmac === '' ? null : $hmac;
+    }
+
     public function tombstoneIdentity(
         Identifier $userId,
         string $phoneCipher,

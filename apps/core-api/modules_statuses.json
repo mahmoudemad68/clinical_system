@@ -3,5 +3,6 @@
     "Audit": true,
     "Identity": true,
     "Auth": true,
-    "Access": true
+    "Access": true,
+    "Patients": true
 }

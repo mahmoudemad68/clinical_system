@@ -62,6 +62,8 @@ interface UserDirectory
 
     public function phoneLookupHmac(Identifier $userId): ?string;
 
+    public function nationalIdLookupHmac(Identifier $userId): ?string;
+
     public function tombstoneIdentity(
         Identifier $userId,
         string $phoneCipher,

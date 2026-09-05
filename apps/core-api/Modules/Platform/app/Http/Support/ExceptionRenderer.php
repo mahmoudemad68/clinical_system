@@ -15,6 +15,7 @@ use Modules\Platform\Exceptions\AuthorizationDenied;
 use Modules\Platform\Exceptions\FeatureUnavailable;
 use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\RateLimited;
+use Modules\Platform\Exceptions\VersionConflict;
 use Modules\Platform\Http\Responses\ErrorCode;
 use Modules\Platform\Http\Responses\ErrorEnvelope;
 use Modules\Platform\Support\Identifier;
@@ -76,6 +77,8 @@ final class ExceptionRenderer
                 $requestId,
                 headers: array_filter(['Retry-After' => $e->getHeaders()['Retry-After'] ?? null]),
             ),
+
+            $e instanceof VersionConflict => ErrorEnvelope::of(ErrorCode::VersionConflict, $requestId),
 
             // A value object rejecting input is a client-side validation
             // failure. Its message is written to be safe to surface: it names

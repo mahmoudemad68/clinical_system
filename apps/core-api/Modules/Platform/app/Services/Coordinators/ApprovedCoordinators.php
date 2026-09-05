@@ -27,6 +27,10 @@ final class ApprovedCoordinators
             'Modules\\Identity\\Services\\DisableIdentityService',
             'Modules\\Identity\\Services\\EraseSubjectService',
             'Modules\\Identity\\Services\\RotateIdentityKeysService',
+            'Modules\\Patients\\Services\\CreatePatientProfile',
+            'Modules\\Patients\\Services\\UpdateOwnDemographics',
+            'Modules\\Patients\\Services\\CreateUnlinkedPatientProfile',
+            'Modules\\Patients\\Services\\ResolvePatientHandle',
         ];
     }
 }

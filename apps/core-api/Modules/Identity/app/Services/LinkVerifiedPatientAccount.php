@@ -12,8 +12,8 @@ use Modules\Platform\Services\Features\PlatformFeatures;
 
 /**
  * Existing-profile claim. Flag-gated off until product/privacy/security/support
- * enablement (ADR 0011). The patient registry is a stub in Phase 01, so this
- * never confirms candidate existence and never attaches a profile.
+ * enablement (ADR 0011). Patients may rebind PatientIdentityRegistry; this
+ * still never confirms candidate existence and never attaches a profile.
  */
 final class LinkVerifiedPatientAccount
 {
