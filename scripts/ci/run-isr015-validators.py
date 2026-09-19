@@ -191,6 +191,69 @@ jobs:
 
     expect_pass("O promotion isolation (current workflows)", ["promotion-isolation"])
     expect_pass("P/Q provenance wiring", ["provenance-wiring"])
+    with tempfile.TemporaryDirectory() as tmp:
+        tmpdir = Path(tmp)
+        current_workflow = (ROOT / ".github" / "workflows" / "post-merge.yaml").read_text(
+            encoding="utf-8"
+        )
+        gh_token_line = "GH_TOKEN: ${{ github.token }}"
+        if gh_token_line not in current_workflow:
+            raise SystemExit("post-merge.yaml is missing GH_TOKEN: ${{ github.token }}")
+
+        removed = current_workflow.replace("          GH_TOKEN: ${{ github.token }}\n", "")
+        if removed == current_workflow:
+            raise SystemExit("GH_TOKEN removal fixture did not change the workflow")
+        expect_fail(
+            "P3 GH_TOKEN removal fails closed",
+            [
+                "provenance-wiring",
+                "--workflow",
+                str(write(tmpdir / "post-merge-no-gh-token.yaml", removed)),
+            ],
+            "verify step must expose GH_TOKEN bound to ${{ github.token }}",
+        )
+
+        mutated = current_workflow.replace(gh_token_line, "GH_TOKEN: ${{ secrets.GH_PAT }}")
+        if mutated == current_workflow:
+            raise SystemExit("GH_TOKEN mutation fixture did not change the workflow")
+        expect_fail(
+            "P3 GH_TOKEN mutation fails closed",
+            [
+                "provenance-wiring",
+                "--workflow",
+                str(write(tmpdir / "post-merge-pat-gh-token.yaml", mutated)),
+            ],
+            "verify step GH_TOKEN must be bound to ${{ github.token }}",
+        )
+
+        no_attest = current_workflow.replace("      attestations: read\n", "")
+        if no_attest == current_workflow:
+            raise SystemExit("attestations: read removal fixture did not change the workflow")
+        expect_fail(
+            "P3 attestations: read removal fails closed",
+            [
+                "provenance-wiring",
+                "--workflow",
+                str(write(tmpdir / "post-merge-no-attest.yaml", no_attest)),
+            ],
+            "verify-artifacts must keep attestations: read",
+        )
+
+        no_script = current_workflow.replace(
+            "        run: bash scripts/ci/verify-signed-images.sh",
+            "        run: echo skipped",
+        )
+        if no_script == current_workflow:
+            raise SystemExit("verification script removal fixture did not change the workflow")
+        expect_fail(
+            "P3 verification script removal fails closed",
+            [
+                "provenance-wiring",
+                "--workflow",
+                str(write(tmpdir / "post-merge-no-script.yaml", no_script)),
+            ],
+            "verify-artifacts must verify signatures/attestations",
+        )
     expect_pass("P2 gh attestation CLI flags", ["gh-attestation-cli"])
     with tempfile.TemporaryDirectory() as tmp:
         tmpdir = Path(tmp)
