@@ -416,10 +416,16 @@ final class ArchitectureBoundaryTest extends TestCase
             $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Services/VerificationDocumentService.php',
         );
         $this->assertStringNotContainsString('account_type === AccountType::Admin', $service);
+        $this->assertStringNotContainsString('attributedApplicantId', $service);
         $this->assertDoesNotMatchRegularExpression(
             '/function registerValidatedMetadata\(\s*ActorContext/',
             $service,
         );
+        $this->assertMatchesRegularExpression(
+            '/function registerValidatedMetadata\(\s*TrustedDocumentEvidence\s+\$evidence\s*\)/',
+            $service,
+        );
+        $this->assertStringContainsString('findById($case->applicantId', $service);
     }
 
     #[Test]

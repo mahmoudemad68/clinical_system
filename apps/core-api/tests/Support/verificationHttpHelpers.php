@@ -107,7 +107,6 @@ function verificationOpenCase(ActorContext $actor): ApplicantCaseProjection
  * @return array{document_id: string, object_id: string, sha256: string}
  */
 function verificationRegisterDocument(
-    ActorContext $actor,
     string $caseId,
     string $status = 'available',
     string $scanStatus = 'clean',
@@ -126,10 +125,7 @@ function verificationRegisterDocument(
         'scan_status' => $scanStatus,
         'status' => $status,
     ]);
-    $row = app(VerificationDocumentService::class)->registerValidatedMetadata(
-        $evidence,
-        $actor->userId,
-    );
+    $row = app(VerificationDocumentService::class)->registerValidatedMetadata($evidence);
 
     return [
         'document_id' => $row->documentId,
@@ -173,7 +169,7 @@ function verificationPrepareDraftWithAvailableDocument(string $key): array
     $onboarded = verificationOnboardDoctor($key);
     $opened = verificationOpenCase($onboarded['actor']);
     expect($opened->caseId)->toBeString();
-    $document = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId);
+    $document = verificationRegisterDocument((string) $opened->caseId);
 
     return [
         'session' => $onboarded['session'],

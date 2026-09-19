@@ -56,6 +56,8 @@ approval.
   is `DisabledTrustedDocumentEvidenceIssuer` (`ProviderNotEnabled`). A doctor
   or admin `ActorContext` is not scanner trust. Tests use
   `TestingTrustedDocumentEvidenceIssuer` only as an explicit test fixture.
+- Document-registration audit attribution is derived from the case applicant
+  through `DoctorApplicantService`. Callers cannot supply an applicant user ID.
 - Secure upload, quarantine, malware scanning, magic-byte MIME enforcement on
   real bytes, and signed review URLs remain deferred. There is no HTTP upload.
 - Document content identity is immutable. After the parent case leaves `draft`,

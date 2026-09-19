@@ -150,7 +150,7 @@ describe('submission', function () {
     it('rejects submission when the required document is not available', function () {
         $onboarded = verificationOnboardDoctor('submit-quarantine');
         $opened = verificationOpenCase($onboarded['actor']);
-        verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId, 'quarantined', 'pending');
+        verificationRegisterDocument((string) $opened->caseId, 'quarantined', 'pending');
 
         $this->postJson(
             '/api/v1/doctors/me/verification-submissions',
@@ -592,18 +592,74 @@ describe('trusted document registration', function () {
     it('registers AVAILABLE evidence only through the test-only issuer', function () {
         $onboarded = verificationOnboardDoctor('trusted-iss');
         $opened = verificationOpenCase($onboarded['actor']);
-        $document = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId);
+        $document = verificationRegisterDocument((string) $opened->caseId);
+
+        $audit = DB::table('audit_events')->where('event_name', 'verification.document_registered')->first();
+        $metadata = is_string($audit->metadata) ? json_decode($audit->metadata, true) : (array) $audit->metadata;
 
         expect(DB::table('verification_documents')->where('id', $document['document_id'])->value('status'))->toBe('available')
-            ->and(DB::table('audit_events')->where('event_name', 'verification.document_registered')->value('actor_type'))->toBe('system')
-            ->and(DB::table('audit_events')->where('event_name', 'verification.document_registered')->value('actor_id'))->toBeNull()
+            ->and($audit->actor_type)->toBe('system')
+            ->and($audit->actor_id)->toBeNull()
+            ->and($metadata['attributed_applicant_user_id'] ?? null)->toBe($onboarded['session']['user_id'])
+            ->and(json_encode($metadata, JSON_THROW_ON_ERROR))->not->toContain($document['object_id'])
             ->and(app(TrustedDocumentEvidenceIssuer::class))->toBeInstanceOf(DisabledTrustedDocumentEvidenceIssuer::class);
+    });
+
+    it('attributes registration to the case applicant even when a different user is in scope', function () {
+        $owner = verificationOnboardDoctor('attr-owner');
+        $opened = verificationOpenCase($owner['actor']);
+        $other = verificationOnboardDoctor('attr-other');
+        $document = verificationRegisterDocument((string) $opened->caseId);
+
+        $audit = DB::table('audit_events')->where('event_name', 'verification.document_registered')->first();
+        $metadata = is_string($audit->metadata) ? json_decode($audit->metadata, true) : (array) $audit->metadata;
+
+        expect($metadata['attributed_applicant_user_id'] ?? null)->toBe($owner['session']['user_id'])
+            ->and($metadata['attributed_applicant_user_id'] ?? null)->not->toBe($other['session']['user_id'])
+            ->and($audit->actor_type)->toBe('system');
+        unset($document);
+    });
+
+    it('fails closed when the case applicant cannot be resolved', function () {
+        $ids = app(IdentityGenerator::class);
+        $now = now('UTC')->format('Y-m-d H:i:s.uP');
+        $caseId = $ids->next()->value;
+        DB::table('verification_cases')->insert([
+            'id' => $caseId,
+            'applicant_type' => 'doctor',
+            'applicant_id' => $ids->next()->value,
+            'case_type' => 'doctor_verification',
+            'status' => 'draft',
+            'submitted_at' => null,
+            'assigned_reviewer_id' => null,
+            'decided_at' => null,
+            'version' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $objectId = $ids->next()->value;
+        $evidence = (new TestingTrustedDocumentEvidenceIssuer(app(VerificationPolicy::class)))->issue([
+            'case_id' => $caseId,
+            'requirement_code' => 'professional_id',
+            'object_id' => $objectId,
+            'sha256' => hash('sha256', 'synthetic-missing-applicant-'.$objectId),
+            'detected_mime' => 'application/pdf',
+            'size_bytes' => 2048,
+            'scan_status' => 'clean',
+            'status' => 'available',
+        ]);
+
+        expect(fn () => app(VerificationDocumentService::class)->registerValidatedMetadata($evidence))
+            ->toThrow(AuthorizationDenied::class);
+
+        expect(DB::table('verification_documents')->count())->toBe(0)
+            ->and(DB::table('audit_events')->where('event_name', 'verification.document_registered')->count())->toBe(0);
     });
 
     it('applies a trusted scan outcome only while the case is draft', function () {
         $onboarded = verificationOnboardDoctor('scan-life');
         $opened = verificationOpenCase($onboarded['actor']);
-        $quarantined = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId, 'quarantined', 'pending');
+        $quarantined = verificationRegisterDocument((string) $opened->caseId, 'quarantined', 'pending');
         $issuer = new TestingTrustedDocumentEvidenceIssuer(app(VerificationPolicy::class));
         $promoted = $issuer->issue([
             'case_id' => (string) $opened->caseId,
@@ -676,10 +732,10 @@ describe('reviewer document access', function () {
     it('lets the assigned reviewer read only AVAILABLE and CLEAN evidence', function () {
         $onboarded = verificationOnboardDoctor('rev-ok');
         $opened = verificationOpenCase($onboarded['actor']);
-        $quarantined = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId, 'quarantined', 'pending');
-        $failed = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId, 'rejected', 'failed');
-        $retired = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId, 'retired', 'clean');
-        $available = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId);
+        $quarantined = verificationRegisterDocument((string) $opened->caseId, 'quarantined', 'pending');
+        $failed = verificationRegisterDocument((string) $opened->caseId, 'rejected', 'failed');
+        $retired = verificationRegisterDocument((string) $opened->caseId, 'retired', 'clean');
+        $available = verificationRegisterDocument((string) $opened->caseId);
         $draft = [
             'session' => $onboarded['session'],
             'case_id' => (string) $opened->caseId,

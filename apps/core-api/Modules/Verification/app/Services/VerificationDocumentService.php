@@ -49,11 +49,9 @@ final class VerificationDocumentService
         private readonly AppendAuditEvent $audit,
     ) {}
 
-    public function registerValidatedMetadata(
-        TrustedDocumentEvidence $evidence,
-        ?Identifier $attributedApplicantId,
-    ): DocumentMetadataProjection {
-        return $this->transactions->run(function (TransactionContext $tx) use ($evidence, $attributedApplicantId): DocumentMetadataProjection {
+    public function registerValidatedMetadata(TrustedDocumentEvidence $evidence): DocumentMetadataProjection
+    {
+        return $this->transactions->run(function (TransactionContext $tx) use ($evidence): DocumentMetadataProjection {
             $this->store->lockCase($evidence->caseId);
             $case = $this->store->findCaseById($evidence->caseId, true);
             if (! $case instanceof VerificationCaseRecord) {
@@ -66,6 +64,8 @@ final class VerificationDocumentService
             if (! $this->policy->isKnownRequirement($case->caseType->value, $evidence->requirementCode)) {
                 throw new InvalidValueObject('Requirement code is not allowed.');
             }
+
+            $applicantUserId = $this->authoritativeApplicantUserId($case);
 
             $now = $this->clock->now();
             $stamp = $now->format('Y-m-d H:i:s.uP');
@@ -100,7 +100,7 @@ final class VerificationDocumentService
                     'requirement_code' => $evidence->requirementCode,
                     'scan_status' => $evidence->scanStatus->value,
                     'status' => $evidence->status->value,
-                    'attributed_applicant_user_id' => $attributedApplicantId?->value,
+                    'attributed_applicant_user_id' => $applicantUserId->value,
                 ],
                 null,
                 'system',
@@ -213,6 +213,16 @@ final class VerificationDocumentService
             'verification_document',
         );
         throw new AuthorizationDenied;
+    }
+
+    private function authoritativeApplicantUserId(VerificationCaseRecord $case): Identifier
+    {
+        $doctor = $this->doctors->findById($case->applicantId, true);
+        if (! $doctor instanceof DoctorApplicantProjection) {
+            throw new AuthorizationDenied;
+        }
+
+        return $doctor->userId;
     }
 
     private function assertNotSelfReview(ActorContext $reviewer, VerificationCaseRecord $case): void
