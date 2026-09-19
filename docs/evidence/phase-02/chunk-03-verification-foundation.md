@@ -6,6 +6,7 @@ Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 **Scope implemented:** Verification module persistence and services for doctor
 verification cases, document metadata/references, and append-only reviewer
 decisions; narrow `DoctorApplicantService`; doctor own-status/submit HTTP;
+compact submit outcome sized for the Platform 255-byte idempotency pointer;
 versioned outbox events; architecture-boundary tests.
 
 **Explicitly deferred:** secure upload/quarantine/malware scanner, Admin
@@ -20,23 +21,28 @@ remains off. ADR 0014 and G-08-04 are not closed by this slice. Staging
 
 - **Branch:** `cursor/verification-foundation-cc7f`
 - **Recorded:** 2026-09-19
-- **Environment:** host PHP with `pdo_pgsql`, database `clinic_test`. Gates
-  below are filled after the focused and full Core runs on this branch.
+- **Environment:** host PHP 8.3.6 with `pdo_pgsql`, database `clinic_test`.
+  Gates below were executed on this host after the compact-submit revision.
 
 ## Commands actually executed
 
 | Command | Result |
 | --- | --- |
-| `./vendor/bin/pint --test` | pending this commit |
-| `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | pending this commit |
-| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | pending this commit |
-| `./vendor/bin/pest` focused Verification/Doctors/Identity/Architecture | pending this commit |
-| `./vendor/bin/pest` full Core suite | pending this commit |
-| `npm run contracts:lint` | pending this commit |
-| `npm run contracts:events` | pending this commit |
-| `npm run contracts:generate:ts` | pending this commit |
-| `npm run contracts:breaking` | pending this commit |
-| `python3 scripts/ci/run-isr015-validators.py` | pending this commit |
+| `./vendor/bin/pint --test` | **PASS** |
+| `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | **PASS** (0 errors) |
+| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | **PASS** (0 violations, 0 uncovered, 1845 allowed) |
+| `./vendor/bin/pest tests/Feature/Verification tests/Unit/Verification tests/Unit/Platform/ArchitectureBoundaryTest.php tests/Feature/Doctors tests/Unit/Doctors tests/Unit/Identity/IdentityRulesTest.php` | **91 passed** (2584 assertions) |
+| `./vendor/bin/pest` (full Core suite) | **591 passed**, 14 skipped (10277 assertions; 605 tests) |
+| `npm run contracts:lint` | **PASS** (`core@v1` valid) |
+| `npm run contracts:events` | **PASS** (18 schemas) |
+| `npm run contracts:ai-internal` | **PASS** (1 schema) |
+| `npm run contracts:generate:ts` | **PASS** (committed client not stale) |
+| `npm run contracts:breaking` | **PASS** (no breaking changes against `origin/main`) |
+| `python3 scripts/ci/run-isr015-validators.py` | **PASS** (path-filters, license-gate, OpenVEX including gRPC S2, catalog S3/S4, Gitleaks NID static, SF-001, promotion isolation) |
+| `php artisan module:list` | Verification enabled, priority 54 |
+
+Gitleaks, Trivy image scans, and OpenVEX were **not** weakened. ISR-015 static
+validators passed locally; container Gitleaks/Trivy remain CI jobs.
 
 Phase 02 as a whole is **not** PASS.
 
