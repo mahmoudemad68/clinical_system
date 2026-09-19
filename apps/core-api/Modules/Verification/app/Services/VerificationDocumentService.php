@@ -28,6 +28,7 @@ use Modules\Verification\Support\TrustedDocumentEvidence;
 use Modules\Verification\Support\VerificationCaseRecord;
 use Modules\Verification\Support\VerificationDocumentRecord;
 use Modules\Verification\Support\VerificationPolicy;
+use Modules\Verification\Support\VerificationUploadIntentRecord;
 
 /**
  * Document metadata registrar and reviewer-safe reader.
@@ -51,66 +52,72 @@ final class VerificationDocumentService
 
     public function registerValidatedMetadata(TrustedDocumentEvidence $evidence): DocumentMetadataProjection
     {
-        return $this->transactions->run(function (TransactionContext $tx) use ($evidence): DocumentMetadataProjection {
-            $this->store->lockCase($evidence->caseId);
-            $case = $this->store->findCaseById($evidence->caseId, true);
-            if (! $case instanceof VerificationCaseRecord) {
-                throw new AuthorizationDenied;
-            }
-            if ($case->status !== VerificationCaseStatus::Draft) {
-                throw new StateConflict;
-            }
+        return $this->transactions->run(
+            fn (TransactionContext $tx): DocumentMetadataProjection => $this->registerValidatedMetadataWithin($tx, $evidence),
+        );
+    }
 
-            if (! $this->policy->isKnownRequirement($case->caseType->value, $evidence->requirementCode)) {
-                throw new InvalidValueObject('Requirement code is not allowed.');
-            }
+    public function registerValidatedMetadataWithin(TransactionContext $tx, TrustedDocumentEvidence $evidence): DocumentMetadataProjection
+    {
+        $this->store->lockCase($evidence->caseId);
+        $case = $this->store->findCaseById($evidence->caseId, false);
+        if (! $case instanceof VerificationCaseRecord) {
+            throw new AuthorizationDenied;
+        }
+        if ($case->status !== VerificationCaseStatus::Draft) {
+            throw new StateConflict;
+        }
 
-            $applicantUserId = $this->authoritativeApplicantUserId($case);
+        if (! $this->policy->isKnownRequirement($case->caseType->value, $evidence->requirementCode)) {
+            throw new InvalidValueObject('Requirement code is not allowed.');
+        }
 
-            $now = $this->clock->now();
-            $stamp = $now->format('Y-m-d H:i:s.uP');
-            $id = $this->ids->next();
+        $applicantUserId = $this->authoritativeApplicantUserId($case, $evidence->uploadIntentId);
 
-            try {
-                $this->store->insertDocument([
-                    'id' => $id->value,
-                    'case_id' => $case->id->value,
-                    'requirement_code' => $evidence->requirementCode,
-                    'object_id' => $evidence->objectId->value,
-                    'sha256' => $evidence->sha256,
-                    'detected_mime' => $evidence->detectedMime,
-                    'size_bytes' => $evidence->sizeBytes,
-                    'scan_status' => $evidence->scanStatus->value,
-                    'status' => $evidence->status->value,
-                    'uploaded_at' => $stamp,
-                    'created_at' => $stamp,
-                    'updated_at' => $stamp,
-                ]);
-            } catch (DuplicateIdentity) {
-                throw new StateConflict;
-            }
+        $now = $this->clock->now();
+        $stamp = $now->format('Y-m-d H:i:s.uP');
+        $id = $this->ids->next();
 
-            $this->audit->append(
-                $tx,
-                'verification.document_registered',
-                'verification_document',
-                $id,
-                [
-                    'reason_code' => 'trusted_scanner_pipeline',
-                    'requirement_code' => $evidence->requirementCode,
-                    'scan_status' => $evidence->scanStatus->value,
-                    'status' => $evidence->status->value,
-                    'attributed_applicant_user_id' => $applicantUserId->value,
-                ],
-                null,
-                'system',
-            );
+        try {
+            $this->store->insertDocument([
+                'id' => $id->value,
+                'case_id' => $case->id->value,
+                'requirement_code' => $evidence->requirementCode,
+                'object_id' => $evidence->objectId->value,
+                'sha256' => $evidence->sha256,
+                'detected_mime' => $evidence->detectedMime,
+                'size_bytes' => $evidence->sizeBytes,
+                'scan_status' => $evidence->scanStatus->value,
+                'status' => $evidence->status->value,
+                'upload_intent_id' => $evidence->uploadIntentId?->value,
+                'uploaded_at' => $stamp,
+                'created_at' => $stamp,
+                'updated_at' => $stamp,
+            ]);
+        } catch (DuplicateIdentity) {
+            throw new StateConflict;
+        }
 
-            $row = $this->store->findDocumentById($id);
-            assert($row instanceof VerificationDocumentRecord);
+        $this->audit->append(
+            $tx,
+            'verification.document_registered',
+            'verification_document',
+            $id,
+            [
+                'reason_code' => 'trusted_scanner_pipeline',
+                'requirement_code' => $evidence->requirementCode,
+                'scan_status' => $evidence->scanStatus->value,
+                'status' => $evidence->status->value,
+                'attributed_applicant_user_id' => $applicantUserId->value,
+            ],
+            null,
+            'system',
+        );
 
-            return $this->project($row);
-        });
+        $row = $this->store->findDocumentById($id);
+        assert($row instanceof VerificationDocumentRecord);
+
+        return $this->project($row);
     }
 
     public function applyTrustedScanOutcome(TrustedDocumentEvidence $evidence): DocumentMetadataProjection
@@ -215,8 +222,15 @@ final class VerificationDocumentService
         throw new AuthorizationDenied;
     }
 
-    private function authoritativeApplicantUserId(VerificationCaseRecord $case): Identifier
+    private function authoritativeApplicantUserId(VerificationCaseRecord $case, ?Identifier $uploadIntentId): Identifier
     {
+        if ($uploadIntentId instanceof Identifier) {
+            $upload = $this->store->findUploadById($uploadIntentId, false);
+            if ($upload instanceof VerificationUploadIntentRecord) {
+                return $upload->createdByUserId;
+            }
+        }
+
         $doctor = $this->doctors->findById($case->applicantId, true);
         if (! $doctor instanceof DoctorApplicantProjection) {
             throw new AuthorizationDenied;

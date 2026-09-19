@@ -20,7 +20,7 @@ final class PlatformMetrics
         'service', 'version', 'method', 'route', 'status', 'status_class',
         'check', 'queue', 'error_class', 'connection', 'rule', 'le',
         'result', 'actor_class', 'purpose', 'client_class', 'action_group',
-        'reason_code', 'assurance_level',
+        'reason_code', 'assurance_level', 'detected_type', 'requirement_code',
     ];
 
     /** @var list<string> */
@@ -191,6 +191,11 @@ final class PlatformMetrics
         $this->families['clinic_audit_chain_verification_staleness_seconds'] = [
             'help' => 'Seconds since the last audit-chain verification execution. 0 if never run.',
             'type' => 'gauge',
+            'samples' => [],
+        ];
+        $this->families['clinic_secure_file_results_total'] = [
+            'help' => 'Secure-file pipeline results by bounded result, detected type, and requirement code',
+            'type' => 'counter',
             'samples' => [],
         ];
 

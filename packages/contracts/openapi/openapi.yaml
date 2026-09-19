@@ -14,8 +14,12 @@ info:
     (`POST /api/v1/doctors/onboarding`, `GET /api/v1/doctors/me/profile`).
     Phase 02 chunk 03 adds doctor verification case submit/status
     (`POST /api/v1/doctors/me/verification-submissions`,
-    `GET /api/v1/doctors/me/verification-status`). Secure document upload,
-    Admin UI, pharmacy, clinic, and AI capabilities remain absent.
+    `GET /api/v1/doctors/me/verification-status`). Phase 02 chunk 04 adds the
+    doctor verification secure-upload pipeline
+    (`POST /api/v1/verification-uploads`,
+    `POST /api/v1/verification-uploads/{upload_id}/complete`,
+    `GET /api/v1/verification-uploads/{upload_id}`). Admin UI, pharmacy, clinic,
+    and AI capabilities remain absent.
 
     Compatibility rules (ADR 0003):
       * Additive optional fields are compatible within a version.
@@ -63,11 +67,12 @@ tags:
       is write-only input and never returned. No public National ID lookup.
   - name: doctors
     description: |
-      Phase 02 doctor profile foundation plus Verification case submit/status.
-      Own-profile and own-case only. Creating a draft doctor profile does not
-      approve, list, or grant clinical capability. National ID and syndicate
-      number are write-only and never returned. Secure verification-document
-      upload is not part of this slice.
+      Phase 02 doctor profile foundation plus Verification case submit/status
+      and doctor-only secure verification-document upload. Own-profile and
+      own-case only. Creating a draft doctor profile does not approve, list, or
+      grant clinical capability. National ID and syndicate number are write-only
+      and never returned. Reviewer download URLs and Admin verification UI are
+      not part of this slice.
 
 paths:
   /live:
@@ -1152,9 +1157,9 @@ paths:
         Moves a draft doctor verification case to `pending_review` when every
         required document metadata record is `available` with a clean scan.
         Server-derived actor only. Reviewer identity, document availability,
-        and case status cannot be assigned by the client. There is no upload
-        endpoint in this slice. Idempotency-Key and optimistic case/profile
-        versions are required.
+        and case status cannot be assigned by the client. Upload completion is
+        not evidence of cleanliness. Idempotency-Key and optimistic
+        case/profile versions are required.
       security:
         - deviceToken: []
         - adminSession: []
@@ -1216,6 +1221,136 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/DoctorVerificationStatusResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/verification-uploads:
+    post:
+      tags: [doctors]
+      operationId: createOwnDoctorVerificationUpload
+      summary: Create a doctor verification upload intent
+      description: |
+        Doctor-only. Creates an opaque upload intent for the caller's own draft
+        `doctor_verification` case and a known requirement code. Returns a
+        short-lived private upload grant. The client cannot choose object keys,
+        scanner results, or lifecycle states. Idempotency-Key is required.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationUploadCreateRequest'
+      responses:
+        '201':
+          description: Upload intent created with a bounded upload grant.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/VerificationUploadCreateResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/verification-uploads/{upload_id}/complete:
+    post:
+      tags: [doctors]
+      operationId: completeOwnDoctorVerificationUpload
+      summary: Claim client upload completion so the server may observe the object
+      description: |
+        Completion is not evidence of size, MIME, hash, or malware cleanliness.
+        The server inspects the stored object asynchronously. Duplicate complete
+        calls are safe. Idempotency-Key is required. The body is a closed empty
+        object.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: upload_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationUploadCompleteRequest'
+      responses:
+        '200':
+          description: Completion accepted or already in progress.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/VerificationUploadStatusResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/verification-uploads/{upload_id}:
+    get:
+      tags: [doctors]
+      operationId: getOwnDoctorVerificationUpload
+      summary: Applicant-safe verification upload status
+      description: |
+        Own-upload projection only. Never returns object keys, buckets, signed
+        URLs, hashes, scanner payloads, National ID, or reviewer information.
+        Another doctor's upload ID is indistinguishable from missing.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: upload_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Own upload status projection.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/VerificationUploadStatusResult'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -2423,6 +2558,144 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DoctorVerificationDocumentStatus'
+
+    VerificationUploadCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [case_id, requirement_code, expected_size_bytes, declared_media_type]
+      properties:
+        case_id:
+          $ref: '#/components/schemas/Uuid'
+        requirement_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9_]+$'
+        expected_size_bytes:
+          type: integer
+          minimum: 1
+          maximum: 20971520
+        declared_media_type:
+          type: string
+          enum: [application/pdf, image/jpeg, image/png]
+        sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Optional client-declared digest. Server observation is authoritative.
+
+    VerificationUploadCompleteRequest:
+      type: object
+      additionalProperties: false
+      description: Empty closed object. Completion is not scan or availability evidence.
+      properties: {}
+
+    VerificationUploadStatusResult:
+      type: object
+      additionalProperties: false
+      description: |
+        Applicant-safe upload projection. Never includes object keys, buckets,
+        signed URLs, hashes, scanner payloads, National ID, or reviewer data.
+      required:
+        - upload_id
+        - requirement_code
+        - state
+        - rejection_reason
+        - expires_at
+        - completed_at
+      properties:
+        upload_id:
+          $ref: '#/components/schemas/Uuid'
+        requirement_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9_]+$'
+        state:
+          type: string
+          enum: [requested, uploading, quarantined, validating, scanning, available, rejected]
+        rejection_reason:
+          type: ['string', 'null']
+          enum:
+            - expired
+            - object_missing
+            - zero_byte
+            - oversized
+            - mime_mismatch
+            - unsupported_format
+            - malformed
+            - malware_detected
+            - toctou_mismatch
+            - case_not_draft
+            - processing_failed
+            - null
+        expires_at:
+          $ref: '#/components/schemas/Instant'
+        completed_at:
+          type: ['string', 'null']
+          format: date-time
+
+    VerificationUploadCreateResult:
+      type: object
+      additionalProperties: false
+      description: |
+        Create response: applicant-safe status plus a one-time bounded upload
+        grant. The grant URL is not persisted in later status GETs.
+      required:
+        - upload_id
+        - requirement_code
+        - state
+        - rejection_reason
+        - expires_at
+        - completed_at
+        - upload_target
+      properties:
+        upload_id:
+          $ref: '#/components/schemas/Uuid'
+        requirement_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9_]+$'
+        state:
+          type: string
+          enum: [requested, uploading, quarantined, validating, scanning, available, rejected]
+        rejection_reason:
+          type: ['string', 'null']
+          enum:
+            - expired
+            - object_missing
+            - zero_byte
+            - oversized
+            - mime_mismatch
+            - unsupported_format
+            - malformed
+            - malware_detected
+            - toctou_mismatch
+            - case_not_draft
+            - processing_failed
+            - null
+        expires_at:
+          $ref: '#/components/schemas/Instant'
+        completed_at:
+          type: ['string', 'null']
+          format: date-time
+        upload_target:
+          type: object
+          additionalProperties: false
+          required: [method, url, headers, expires_at]
+          properties:
+            method:
+              type: string
+              enum: [PUT]
+            url:
+              type: string
+              format: uri
+            headers:
+              type: object
+              additionalProperties:
+                type: string
+            expires_at:
+              $ref: '#/components/schemas/Instant'
 
   responses:
 

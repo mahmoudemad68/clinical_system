@@ -25,6 +25,7 @@ final readonly class TrustedDocumentEvidence
         public int $sizeBytes,
         public VerificationDocumentScanStatus $scanStatus,
         public VerificationDocumentStatus $status,
+        public ?Identifier $uploadIntentId,
     ) {}
 
     /**
@@ -36,7 +37,8 @@ final readonly class TrustedDocumentEvidence
      *     detected_mime: string,
      *     size_bytes: int,
      *     scan_status: string,
-     *     status: string
+     *     status: string,
+     *     upload_intent_id?: string|null
      * }  $observed
      */
     public static function hydrateFromIssuer(TrustedDocumentEvidenceIssuer $issuer, array $observed): self
@@ -47,6 +49,10 @@ final readonly class TrustedDocumentEvidence
             );
         }
 
+        $intent = isset($observed['upload_intent_id']) && is_string($observed['upload_intent_id']) && $observed['upload_intent_id'] !== ''
+            ? Identifier::fromString($observed['upload_intent_id'])
+            : null;
+
         return new self(
             Identifier::fromString($observed['case_id']),
             $observed['requirement_code'],
@@ -56,6 +62,7 @@ final readonly class TrustedDocumentEvidence
             $observed['size_bytes'],
             VerificationDocumentScanStatus::from($observed['scan_status']),
             VerificationDocumentStatus::from($observed['status']),
+            $intent,
         );
     }
 }

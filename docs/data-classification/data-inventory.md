@@ -33,7 +33,8 @@ Reconciled to committed Core migrations under
 `identity_profile_links`, `contextual_access_grants`, `audit_events`,
 `auth_refresh_consumptions`, `recovery_requests`, `patient_profiles`,
 `patient_demographic_revisions`, `specialties`, `doctor_profiles`,
-`verification_cases`, `verification_documents`, `verification_decisions`.
+`verification_cases`, `verification_documents`, `verification_decisions`,
+`verification_upload_intents`.
 
 **Laravel catalog (not created by an application `Schema::create`):**
 `migrations`.
@@ -398,6 +399,7 @@ Phase 00 status pages share only process liveness. No actor, tenant, host, check
 | `doctor.profile_created` | 1 | personal | `doctor_id`, `linked_user_id`, `source_type` | later projections | 7 days |
 | `doctor.verification_submitted` | 1 | internal | `doctor_id`, `case_id` | later projections | 7 days |
 | `doctor.verification_decided` | 1 | internal | `doctor_id`, `case_id`, `decision`, `reason_code` | later projections | 7 days |
+| `verification.upload_completed` | 1 | internal | `upload_id` | `verification.upload_processor` | 7 days |
 
 ---
 
@@ -457,6 +459,12 @@ Registered on `PlatformMetrics`. Call sites inspected 2026-08-28.
 | `clinic_active_sessions` | gauge | `client_class` (`all`) | `auth:prune-expired` | No. Count only |
 | `clinic_auth_latency_seconds` | gauge | *(family registered)* | **no production `set`/`increment` caller** | n/a until emitted |
 
+### Phase 02 secure-file families
+
+| Family | Type | Labels / values actually emitted | Callers | Personal/sensitive values? |
+| --- | --- | --- | --- | --- |
+| `clinic_secure_file_results_total` | counter | `result` (bounded reason/outcome), `detected_type` (MIME or `unknown`), `requirement_code` (allowlisted) | `VerificationUploadProcessor` | No. IDs, locators, hashes, and scanner payloads are forbidden labels |
+
 **No metric may be labelled** with a patient, doctor, appointment, file,
 prescription, user, or free-text value. `Classification::allowedAsMetricLabel()`
 encodes the rule; `PlatformMetrics::assertLabels()` enforces the allowlist.
@@ -485,8 +493,10 @@ they remain live schema objects.
 | Flutter `TokenStore` envelope | credential | OS secure storage via `ClinicSecureStorage` (`flutter_secure_storage`) | until `TokenStore.clear()` (logout / fail-closed wipe) | Key `auth.envelope.v1` holds JSON `{version, access, refresh}`. Legacy `auth.access` / `auth.refresh` are deleted after envelope write. Values must not go to Drift, analytics, or crash reports. Android `migrateWithBackup: false`; iOS/macOS `this_device` + `synchronizable: false`. |
 | Electron device token vault | credential | Main-process file `{userData}/{namespace}.bin` wrapped with `safeStorage.encryptString` | until `clearDeviceTokens()` | Doctor namespace `eg.clinic.doctor.device`; pharmacy `eg.clinic.pharmacy.device`. Payload is JSON `{access, refresh}` then base64 before OS wrap. Persist is refused when `assessLocalEncryption()` disallows (Linux `basic_text` / unknown backend). Renderer must not import this module. |
 | Phase 02 object files | — | private object storage | — | No product file type is defined until Phase 02. |
+| Doctor verification quarantine objects | sensitive | private S3-compatible store (`StoreObject`; local MinIO) | ENGINEERING_DEFAULT: rejected/expired objects become cleanup-eligible after 86400s; AVAILABLE/submitted evidence is never deleted by reconcile. Legal: **OPEN_LEGAL_DECISION** | Opaque locator under `verification/q/`. No public ACL. Bytes are never in PostgreSQL. Applicant APIs never return the locator. |
 
-Private object storage is provisioned; S3 object types remain Phase 02.
+Private object storage holds doctor-verification quarantine objects in this
+slice. Locators stay classified; HTTP/events/logs/metrics never include them.
 
 ---
 
@@ -821,8 +831,10 @@ Applicant identity is an opaque `(applicant_type, applicant_id)` pair. There is
 no foreign key to `doctor_profiles` (Verification must not take a persistence
 dependency on Doctors).
 
-**Writer.** Verification module via `clinic_app`. `clinic_worker` and
-`clinic_reporter` are revoked. `clinic_backup` is SELECT only.
+**Writer.** Verification module via `clinic_app`. `clinic_worker` has `SELECT`
+so the outbox processor can confirm the case is still `draft`; it cannot
+INSERT/UPDATE/DELETE cases. `clinic_reporter` is revoked. `clinic_backup` is
+SELECT only.
 
 **PII / sensitive.** This table is the case workflow record for professional
 identity verification. It does not store National ID, syndicate numbers, or
@@ -853,6 +865,11 @@ storage key. A row cannot be `available` unless `scan_status` is `clean`
 available over HTTP in this slice; only a trusted in-process registrar writes
 rows. Object keys, signed URLs, and file bytes are out of scope.
 
+**Writer.** Verification module via `clinic_app`. `clinic_worker` has
+`SELECT, INSERT` so the trusted processor can persist AVAILABLE metadata;
+UPDATE/DELETE remain revoked. `clinic_reporter` is revoked. `clinic_backup`
+is SELECT only.
+
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `id` | internal | UUIDv7 document metadata identity | app | until row deleted | at rest | Mahmoud | n/a |
@@ -865,6 +882,57 @@ rows. Object keys, signed URLs, and file bytes are out of scope.
 | `scan_status` | internal | `pending` / `clean` / `failed` | app | as row | at rest | Mahmoud | n/a |
 | `status` | internal | `quarantined` / `available` / `rejected` / `retired` | app | as row | at rest | Mahmoud | n/a |
 | `uploaded_at` | internal | Metadata registration time | app | as row | at rest | Mahmoud | n/a |
+| `upload_intent_id` | internal | Optional FK to the producing upload intent; unique when present | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `verification_upload_intents`
+
+Phase 02 chunk 04 secure verification-file ingestion
+(`2026_09_19_200000_create_verification_upload_intents.php`). One row per
+doctor-verification upload attempt. `storage_locator` is classified
+infrastructure: never a public identifier, never authorization, and never
+emitted in HTTP, events, logs, or metrics.
+
+**Writer.** HTTP create/complete via `clinic_app`. Outbox processor
+(`clinic_worker`) has `SELECT, UPDATE, DELETE` for observe/scan/promote and
+bounded cleanup. Worker cannot INSERT intents. `clinic_reporter` is revoked.
+`clinic_backup` is SELECT only.
+
+**PII / sensitive.** The row links an opaque object id to a verification case.
+`created_by_user_id` is the authenticated doctor user, used for audit
+attribution so the worker does not query `doctor_profiles`. It does not store
+National ID, filenames used as paths, file bytes, signed URLs, or scanner raw
+payloads.
+
+**Retention / deletion.** ENGINEERING_DEFAULT: expired `requested`/`uploading`
+intents and rejected objects become cleanup-eligible; AVAILABLE/submitted
+evidence is never deleted by reconcile. Legal retention: **OPEN_LEGAL_DECISION**.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 upload identity | app / applicant (as `upload_id`) | until row deleted | at rest | Mahmoud | n/a |
+| `case_id` | internal | FK to `verification_cases` | app | as row | at rest | Mahmoud | n/a |
+| `created_by_user_id` | personal | Authenticated doctor user; audit attribution; never in applicant HTTP | app / worker | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `requirement_code` | internal | Allowlisted requirement slot | app / applicant | as row | at rest | Mahmoud | n/a |
+| `object_id` | sensitive | Opaque object identifier; never in events, logs, URLs, or public DTOs | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `storage_locator` | sensitive | Classified internal object key; never authorization | storage adapter only | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `state` | internal | Trust flow state | app / applicant (safe) | as row | at rest | Mahmoud | n/a |
+| `expected_size_bytes` | internal | Client-declared bound; not observation | app | as row | at rest | Mahmoud | n/a |
+| `declared_media_type` | internal | Client-declared MIME; untrusted | app | as row | at rest | Mahmoud | n/a |
+| `expected_sha256` | sensitive | Optional client digest; server observation is authoritative | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `object_version` | sensitive | Immutable binding; currently the observed SHA-256 | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `observed_size_bytes` | internal | Server-observed size | app | as row | at rest | Mahmoud | n/a |
+| `observed_sha256` | sensitive | Server-streamed SHA-256 | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `detected_mime` | internal | Magic-byte MIME | app | as row | at rest | Mahmoud | n/a |
+| `scanner_identity` | internal | Scanner adapter name | app | as row | at rest | Mahmoud | n/a |
+| `scanner_version` | internal | Pinned scanner version string | app | as row | at rest | Mahmoud | n/a |
+| `rejection_reason` | internal | Safe reason code | app / applicant | as row | at rest | Mahmoud | n/a |
+| `expires_at` | internal | Upload grant / intent expiry | app / applicant | as row | at rest | Mahmoud | n/a |
+| `completed_at` | internal | Client completion accepted | app / applicant | as row | at rest | Mahmoud | n/a |
+| `available_at` | internal | Trusted promotion time | app | as row | at rest | Mahmoud | n/a |
+| `cleanup_eligible_at` | internal | Rejected-object cleanup eligibility | app | as row | at rest | Mahmoud | n/a |
+| `processing_attempts` | internal | Bounded processor attempts | app | as row | at rest | Mahmoud | n/a |
+| `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
 | `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
 ### `verification_decisions`
@@ -970,6 +1038,7 @@ Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
 | `doctor.profile_created` | 1 | personal | doctor_id, linked_user_id, source_type | later projections | 7 days |
 | `doctor.verification_submitted` | 1 | internal | doctor_id, case_id | later projections | 7 days |
 | `doctor.verification_decided` | 1 | internal | doctor_id, case_id, decision, reason_code | later projections | 7 days |
+| `verification.upload_completed` | 1 | internal | upload_id | verification.upload_processor | 7 days |
 
 `credential` classification is rejected by the outbox CHECK. Event retention
 above is the outbox `PROCESSED` engineering default, not a legal schedule.

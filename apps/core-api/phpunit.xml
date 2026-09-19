@@ -98,5 +98,7 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="AUDIT_CHECKPOINT_ENABLED" value="false" force="true"/>
         <env name="AUDIT_CHECKPOINT_REQUIRED" value="false" force="true"/>
+        <env name="CLAMAV_HOST" value=""/>
+        <env name="CLAMAV_PORT" value="3310"/>
     </php>
 </phpunit>

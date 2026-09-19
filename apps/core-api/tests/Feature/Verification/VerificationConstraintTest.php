@@ -230,3 +230,86 @@ it('freezes submitted documents and keeps content identity immutable', function 
         'updated_at' => $now,
     ])))->toThrow(QueryException::class, 'verification_documents is frozen after submission');
 });
+
+/**
+ * @return array{id: string, case_id: string}
+ */
+function verificationInsertUpload(string $caseId, string $state = 'uploading'): array
+{
+    $ids = app(IdentityGenerator::class);
+    $now = now('UTC');
+    $id = $ids->next()->value;
+    $created = $now->format('Y-m-d H:i:s.uP');
+    $expires = $now->modify('+15 minutes')->format('Y-m-d H:i:s.uP');
+    $completed = in_array($state, ['quarantined', 'validating', 'scanning', 'available', 'rejected'], true)
+        ? $created
+        : null;
+    $available = $state === 'available' ? $created : null;
+    $reason = $state === 'rejected' ? 'expired' : null;
+
+    DB::table('verification_upload_intents')->insert([
+        'id' => $id,
+        'case_id' => $caseId,
+        'created_by_user_id' => $ids->next()->value,
+        'requirement_code' => 'professional_id',
+        'object_id' => $ids->next()->value,
+        'storage_locator' => 'verification/q/'.bin2hex(random_bytes(16)),
+        'state' => $state,
+        'expected_size_bytes' => 128,
+        'declared_media_type' => 'application/pdf',
+        'expected_sha256' => null,
+        'object_version' => $state === 'available' ? str_repeat('ab', 32) : null,
+        'observed_size_bytes' => $state === 'available' ? 128 : null,
+        'observed_sha256' => $state === 'available' ? str_repeat('ab', 32) : null,
+        'detected_mime' => $state === 'available' ? 'application/pdf' : null,
+        'scanner_identity' => null,
+        'scanner_version' => null,
+        'rejection_reason' => $reason,
+        'expires_at' => $expires,
+        'completed_at' => $completed,
+        'available_at' => $available,
+        'cleanup_eligible_at' => $reason === null ? null : $created,
+        'processing_attempts' => 0,
+        'version' => 1,
+        'created_at' => $created,
+        'updated_at' => $created,
+    ]);
+
+    return ['id' => $id, 'case_id' => $caseId];
+}
+
+it('rejects illegal upload-intent states, hashes, and available-from-rejected transitions', function () {
+    $case = verificationInsertCase();
+
+    expect(fn () => DB::table('verification_upload_intents')->insert([
+        'id' => app(IdentityGenerator::class)->next()->value,
+        'case_id' => $case['id'],
+        'created_by_user_id' => app(IdentityGenerator::class)->next()->value,
+        'requirement_code' => 'professional_id',
+        'object_id' => app(IdentityGenerator::class)->next()->value,
+        'storage_locator' => 'verification/q/'.bin2hex(random_bytes(16)),
+        'state' => 'clean',
+        'expected_size_bytes' => 128,
+        'declared_media_type' => 'application/pdf',
+        'expires_at' => now('UTC')->addMinutes(15)->format('Y-m-d H:i:s.uP'),
+        'version' => 1,
+        'created_at' => now('UTC')->format('Y-m-d H:i:s.uP'),
+        'updated_at' => now('UTC')->format('Y-m-d H:i:s.uP'),
+    ]))->toThrow(QueryException::class);
+
+    $uploading = verificationInsertUpload($case['id'], 'uploading');
+    expect(fn () => DB::table('verification_upload_intents')->where('id', $uploading['id'])->update([
+        'expected_sha256' => 'not-a-hash',
+    ]))->toThrow(QueryException::class);
+
+    $rejected = verificationInsertUpload($case['id'], 'rejected');
+    expect(fn () => DB::table('verification_upload_intents')->where('id', $rejected['id'])->update([
+        'state' => 'available',
+        'observed_sha256' => str_repeat('ab', 32),
+        'observed_size_bytes' => 128,
+        'detected_mime' => 'application/pdf',
+        'available_at' => now('UTC')->format('Y-m-d H:i:s.uP'),
+        'completed_at' => now('UTC')->format('Y-m-d H:i:s.uP'),
+        'rejection_reason' => null,
+    ]))->toThrow(QueryException::class, 'verification_upload_intents rejected state cannot become available');
+});

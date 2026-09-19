@@ -665,9 +665,9 @@ export interface paths {
          * @description Moves a draft doctor verification case to `pending_review` when every
          *     required document metadata record is `available` with a clean scan.
          *     Server-derived actor only. Reviewer identity, document availability,
-         *     and case status cannot be assigned by the client. There is no upload
-         *     endpoint in this slice. Idempotency-Key and optimistic case/profile
-         *     versions are required.
+         *     and case status cannot be assigned by the client. Upload completion is
+         *     not evidence of cleanliness. Idempotency-Key and optimistic
+         *     case/profile versions are required.
          */
         post: operations["submitOwnDoctorVerification"];
         delete?: never;
@@ -690,6 +690,74 @@ export interface paths {
          *     Another doctor's case is not enumerable through this endpoint.
          */
         get: operations["getOwnDoctorVerificationStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/verification-uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a doctor verification upload intent
+         * @description Doctor-only. Creates an opaque upload intent for the caller's own draft
+         *     `doctor_verification` case and a known requirement code. Returns a
+         *     short-lived private upload grant. The client cannot choose object keys,
+         *     scanner results, or lifecycle states. Idempotency-Key is required.
+         */
+        post: operations["createOwnDoctorVerificationUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/verification-uploads/{upload_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Claim client upload completion so the server may observe the object
+         * @description Completion is not evidence of size, MIME, hash, or malware cleanliness.
+         *     The server inspects the stored object asynchronously. Duplicate complete
+         *     calls are safe. Idempotency-Key is required. The body is a closed empty
+         *     object.
+         */
+        post: operations["completeOwnDoctorVerificationUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/verification-uploads/{upload_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Applicant-safe verification upload status
+         * @description Own-upload projection only. Never returns object keys, buckets, signed
+         *     URLs, hashes, scanner payloads, National ID, or reviewer information.
+         *     Another doctor's upload ID is indistinguishable from missing.
+         */
+        get: operations["getOwnDoctorVerificationUpload"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1217,6 +1285,57 @@ export interface components {
             decision: "approved" | "rejected" | "changes_requested" | null;
             reason_code: string | null;
             documents: components["schemas"]["DoctorVerificationDocumentStatus"][];
+        };
+        VerificationUploadCreateRequest: {
+            case_id: components["schemas"]["Uuid"];
+            requirement_code: string;
+            expected_size_bytes: number;
+            /** @enum {string} */
+            declared_media_type: "application/pdf" | "image/jpeg" | "image/png";
+            /** @description Optional client-declared digest. Server observation is authoritative. */
+            sha256?: string;
+        };
+        /** @description Empty closed object. Completion is not scan or availability evidence. */
+        VerificationUploadCompleteRequest: Record<string, never>;
+        /**
+         * @description Applicant-safe upload projection. Never includes object keys, buckets,
+         *     signed URLs, hashes, scanner payloads, National ID, or reviewer data.
+         */
+        VerificationUploadStatusResult: {
+            upload_id: components["schemas"]["Uuid"];
+            requirement_code: string;
+            /** @enum {string} */
+            state: "requested" | "uploading" | "quarantined" | "validating" | "scanning" | "available" | "rejected";
+            /** @enum {string|null} */
+            rejection_reason: "expired" | "object_missing" | "zero_byte" | "oversized" | "mime_mismatch" | "unsupported_format" | "malformed" | "malware_detected" | "toctou_mismatch" | "case_not_draft" | "processing_failed" | null;
+            expires_at: components["schemas"]["Instant"];
+            /** Format: date-time */
+            completed_at: string | null;
+        };
+        /**
+         * @description Create response: applicant-safe status plus a one-time bounded upload
+         *     grant. The grant URL is not persisted in later status GETs.
+         */
+        VerificationUploadCreateResult: {
+            upload_id: components["schemas"]["Uuid"];
+            requirement_code: string;
+            /** @enum {string} */
+            state: "requested" | "uploading" | "quarantined" | "validating" | "scanning" | "available" | "rejected";
+            /** @enum {string|null} */
+            rejection_reason: "expired" | "object_missing" | "zero_byte" | "oversized" | "mime_mismatch" | "unsupported_format" | "malformed" | "malware_detected" | "toctou_mismatch" | "case_not_draft" | "processing_failed" | null;
+            expires_at: components["schemas"]["Instant"];
+            /** Format: date-time */
+            completed_at: string | null;
+            upload_target: {
+                /** @enum {string} */
+                method: "PUT";
+                /** Format: uri */
+                url: string;
+                headers: {
+                    [key: string]: string;
+                };
+                expires_at: components["schemas"]["Instant"];
+            };
         };
     };
     responses: {
@@ -2483,6 +2602,132 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Envelope"] & {
                         data?: components["schemas"]["DoctorVerificationStatusResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createOwnDoctorVerificationUpload: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationUploadCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Upload intent created with a bounded upload grant. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["VerificationUploadCreateResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    completeOwnDoctorVerificationUpload: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                upload_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationUploadCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Completion accepted or already in progress. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["VerificationUploadStatusResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getOwnDoctorVerificationUpload: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                upload_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Own upload status projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["VerificationUploadStatusResult"];
                     };
                 };
             };

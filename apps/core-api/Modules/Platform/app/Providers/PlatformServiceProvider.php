@@ -51,6 +51,7 @@ use Modules\Platform\Http\Middleware\InstrumentHttp;
 use Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
 use Modules\Platform\Http\Middleware\ResolveLocale;
 use Modules\Platform\Http\Middleware\SecureResponseHeaders;
+use Modules\Platform\Services\Adapters\ClamdScanObject;
 use Modules\Platform\Services\Adapters\DisabledGenerateText;
 use Modules\Platform\Services\Adapters\DisabledRetrieveKnowledge;
 use Modules\Platform\Services\Adapters\DisabledScanObject;
@@ -188,16 +189,35 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->bind(PlatformStatusQuery::class, static fn (): PlatformStatusQuery => new PlatformStatusQuery(
             (string) config('app.version', '0.0.0-dev'),
         ));
-        $this->app->singleton(ScanObject::class, DisabledScanObject::class);
+        $this->app->singleton(ScanObject::class, static function ($app): ScanObject {
+            $host = (string) config('platform.malware_scanner.host', '');
+            if ($host === '') {
+                return new DisabledScanObject;
+            }
+
+            return new ClamdScanObject(
+                $host,
+                (int) config('platform.malware_scanner.port', 3310),
+                (int) config('platform.malware_scanner.timeout_ms', 10_000),
+                (int) config('platform.malware_scanner.max_bytes', 20_971_520),
+                (string) config('platform.malware_scanner.version', '1.4.6'),
+            );
+        });
         $this->app->singleton(GenerateText::class, DisabledGenerateText::class);
         $this->app->singleton(RetrieveKnowledge::class, DisabledRetrieveKnowledge::class);
 
         $this->app->singleton(StoreObject::class, static function ($app): StoreObject {
             if ($app->environment('testing')) {
-                return new InMemoryStoreObject;
+                return new InMemoryStoreObject(
+                    (int) config('platform.object_store.max_bytes', 20_971_520),
+                    storage_path('framework/testing/objects'),
+                );
             }
 
-            return new S3StoreObject($app['filesystem']->disk('s3'));
+            return new S3StoreObject(
+                $app['filesystem']->disk('s3'),
+                (int) config('platform.object_store.max_bytes', 20_971_520),
+            );
         });
 
         $this->app->singleton(CacheWarmer::class, static fn ($app): CacheWarmer => new CacheWarmer(

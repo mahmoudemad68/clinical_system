@@ -34,6 +34,8 @@ final class ApprovedCoordinators
             'Modules\\Doctors\\Services\\RegisterDoctor',
             'Modules\\Verification\\Services\\VerificationService',
             'Modules\\Verification\\Services\\VerificationDocumentService',
+            'Modules\\Verification\\Services\\VerificationUploadService',
+            'Modules\\Verification\\Services\\VerificationUploadProcessor',
         ];
     }
 }

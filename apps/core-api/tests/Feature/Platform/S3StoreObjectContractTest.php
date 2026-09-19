@@ -45,6 +45,23 @@ final class S3StoreObjectContractTest extends TestCase
         $url = $store->temporaryUrl($ref, new DateTimeImmutable('+60 seconds', new DateTimeZone('UTC')));
         $this->assertNotSame('', $url);
 
+        $expires = new DateTimeImmutable('+60 seconds', new DateTimeZone('UTC'));
+        $grant = $store->createUploadGrant('phase00', 'live-object-grant', 16, 'text/plain', $expires);
+        $this->assertSame('PUT', $grant->method);
+        $this->assertNotSame('', $grant->url);
+        $this->assertStringNotContainsString($grant->storageLocator, json_encode($grant->__debugInfo(), JSON_THROW_ON_ERROR));
+
+        $store->writeAt($ref, 'text/plain', 'synthetic-bytes-2');
+        $observed = $store->observe($ref, 20_971_520);
+        $this->assertTrue($observed->exists);
+        $this->assertSame(hash('sha256', 'synthetic-bytes-2'), $observed->sha256);
+
+        try {
+            $store->anonymousList();
+            $this->fail('anonymous list must not succeed');
+        } catch (RuntimeException) {
+        }
+
         $this->expectException(RuntimeException::class);
         $store->anonymousGet($ref);
     }

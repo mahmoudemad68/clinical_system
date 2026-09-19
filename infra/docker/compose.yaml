@@ -170,6 +170,27 @@ services:
       timeout: 5s
       retries: 10
 
+  # Private clamd. Not a public service. Host bind is loopback-only for local
+  # PHP tests. Do not publish 7357. No application secrets. No host filesystem.
+  # Image digest verified from Docker Hub tag clamav/clamav:1.4.6 on 2026-09-19
+  # (linux/amd64 index sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200).
+  clamav:
+    <<: [*restart, *logging]
+    profiles: [core, full]
+    image: clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200
+    environment:
+      CLAMD_CONF_TCPSocket: "3310"
+    ports:
+      - "127.0.0.1:3310:3310"
+    healthcheck:
+      test: ["CMD-SHELL", "echo PING | nc 127.0.0.1 3310 | grep PONG"]
+      interval: 30s
+      timeout: 5s
+      retries: 20
+      start_period: 180s
+    security_opt:
+      - no-new-privileges:true
+
   # --------------------------------------------------------------------- ai
 
   qdrant:

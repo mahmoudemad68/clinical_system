@@ -7,6 +7,7 @@ namespace Tests\Unit\Platform;
 use DateTimeImmutable;
 use DateTimeZone;
 use Modules\Platform\Contracts\StoreObject;
+use Modules\Platform\Enums\ScanOutcome;
 use Modules\Platform\Exceptions\ProviderNotEnabled;
 use Modules\Platform\Services\Adapters\DisabledGenerateText;
 use Modules\Platform\Services\Adapters\DisabledRetrieveKnowledge;
@@ -14,7 +15,6 @@ use Modules\Platform\Services\Adapters\DisabledScanObject;
 use Modules\Platform\Services\Adapters\DisabledSendOtp;
 use Modules\Platform\Services\Adapters\DisabledSendPush;
 use Modules\Platform\Services\ObjectStorage\InMemoryStoreObject;
-use Modules\Platform\Support\StoredObjectRef;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -48,8 +48,15 @@ final class ProviderPortContractTest extends TestCase
     #[Test]
     public function disabled_scan_fails_closed(): void
     {
-        $this->expectException(ProviderNotEnabled::class);
-        (new DisabledScanObject)->scan(new StoredObjectRef('phase00', 'object-1'));
+        $stream = fopen('php://temp', 'r+');
+        $this->assertIsResource($stream);
+        fwrite($stream, 'synthetic');
+        rewind($stream);
+        $verdict = (new DisabledScanObject)->scanStream($stream, 9);
+        fclose($stream);
+
+        $this->assertSame(ScanOutcome::Unavailable, $verdict->outcome);
+        $this->assertFalse($verdict->isClean());
     }
 
     #[Test]
@@ -80,6 +87,21 @@ final class ProviderPortContractTest extends TestCase
         $url = $store->temporaryUrl($ref, $expires);
         $this->assertNotSame('', $url);
         $this->assertStringNotContainsString('synthetic-bytes', $url);
+        $this->assertStringNotContainsString($ref->key(), $url);
+
+        $grant = $store->createUploadGrant('phase00', 'object-2', 32, 'text/plain', $expires);
+        $this->assertSame('PUT', $grant->method);
+        $this->assertStringNotContainsString($grant->storageLocator, json_encode($grant->__debugInfo(), JSON_THROW_ON_ERROR));
+
+        $this->expectException(RuntimeException::class);
+        $store->anonymousList();
+    }
+
+    #[Test]
+    public function in_memory_store_denies_anonymous_get(): void
+    {
+        $store = new InMemoryStoreObject;
+        $ref = $store->put('phase00', 'object-1', 'text/plain', 'synthetic-bytes');
 
         $this->expectException(RuntimeException::class);
         $store->anonymousGet($ref);

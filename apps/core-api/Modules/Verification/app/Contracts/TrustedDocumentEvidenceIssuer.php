@@ -26,7 +26,8 @@ interface TrustedDocumentEvidenceIssuer
      *     detected_mime: string,
      *     size_bytes: int,
      *     scan_status: string,
-     *     status: string
+     *     status: string,
+     *     upload_intent_id?: string|null
      * }  $observed
      */
     public function issue(array $observed): TrustedDocumentEvidence;

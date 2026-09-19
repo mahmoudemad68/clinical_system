@@ -108,4 +108,29 @@ final class VerificationPolicy
     {
         return (int) config('verification_module.notes_max_length', 2000);
     }
+
+    public function uploadExpirySeconds(): int
+    {
+        return (int) config('verification_module.upload_expiry_seconds', 900);
+    }
+
+    public function maxActiveUploadsPerRequirement(): int
+    {
+        return (int) config('verification_module.max_active_uploads_per_requirement', 3);
+    }
+
+    public function cleanupRejectedAfterSeconds(): int
+    {
+        return (int) config('verification_module.cleanup_rejected_after_seconds', 86_400);
+    }
+
+    public function maxProcessingAttempts(): int
+    {
+        return (int) config('verification_module.max_processing_attempts', 8);
+    }
+
+    public function objectNamespace(): string
+    {
+        return 'verification';
+    }
 }

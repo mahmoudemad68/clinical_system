@@ -77,7 +77,12 @@ describe('doctor verification HTTP foundation', function () {
             ->assertNotFound();
         $this->getJson('/api/v1/admin/verification-cases', doctorsAuth($left['session']['token']))
             ->assertNotFound();
-        $this->postJson('/api/v1/verification-uploads', [], doctorsAuth($left['session']['token']) + doctorsIdem('ver-upload'))
+        $this->postJson('/api/v1/verification-uploads', [
+            'case_id' => $left['case_id'],
+            'requirement_code' => 'professional_id',
+            'expected_size_bytes' => 128,
+            'declared_media_type' => 'application/pdf',
+        ], doctorsAuth($right['session']['token']) + doctorsIdem('ver-upload-bola'))
             ->assertNotFound();
     });
 

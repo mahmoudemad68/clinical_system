@@ -28,4 +28,8 @@ return [
         'documents_illegible' => ['changes_requested'],
     ],
     'notes_max_length' => 2000,
+    'upload_expiry_seconds' => 900,
+    'max_active_uploads_per_requirement' => 3,
+    'cleanup_rejected_after_seconds' => 86_400,
+    'max_processing_attempts' => 8,
 ];
