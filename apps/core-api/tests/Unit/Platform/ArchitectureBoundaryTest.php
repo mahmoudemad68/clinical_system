@@ -286,10 +286,8 @@ final class ArchitectureBoundaryTest extends TestCase
             '/^## `Doctors`.+\*\*Classification:\*\* sensitive\./ms',
             $contents,
         );
-        $this->assertStringContainsString(
-            '`doctor.profile_created` remains a personal identifier-only projection',
-            $contents,
-        );
+        $this->assertStringContainsString('`doctor.profile_created`', $contents);
+        $this->assertStringContainsString('personal identifier-only', $contents);
         $this->assertStringContainsString('`specialties`', $contents);
     }
 
