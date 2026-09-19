@@ -191,6 +191,19 @@ jobs:
 
     expect_pass("O promotion isolation (current workflows)", ["promotion-isolation"])
     expect_pass("P/Q provenance wiring", ["provenance-wiring"])
+    expect_pass("P2 gh attestation CLI flags", ["gh-attestation-cli"])
+    with tempfile.TemporaryDirectory() as tmp:
+        tmpdir = Path(tmp)
+        current_script = (ROOT / "scripts" / "ci" / "verify-signed-images.sh").read_text(encoding="utf-8")
+        drifted = current_script.replace("--cert-identity-regex", "--cert-identity-regexp")
+        if drifted == current_script:
+            raise SystemExit("gh attestation flag fixture did not change --cert-identity-regex")
+        bad_script = write(tmpdir / "verify-signed-images.sh", drifted)
+        expect_fail(
+            "P2 typo --cert-identity-regexp fails closed",
+            ["gh-attestation-cli", "--script", str(bad_script)],
+            "must not pass --cert-identity-regexp",
+        )
     expect_pass("R CODEOWNERS coverage", ["codeowners-coverage"])
 
     vex = subprocess.run(

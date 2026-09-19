@@ -8,6 +8,8 @@ import datetime as dt
 import hashlib
 import json
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -21,6 +23,7 @@ PINS = REPO_ROOT / "infra" / "security" / "ci-executable-pins.json"
 LICENSE_BASELINE = REPO_ROOT / "infra" / "security" / "engineering-license-baseline.json"
 SF001 = REPO_ROOT / "infra" / "security" / "exceptions" / "SF-001.json"
 TRIVY_MERGE_IGNORE = REPO_ROOT / "infra" / "security" / "trivy-merge.ignore"
+SIGNED_IMAGES = REPO_ROOT / "scripts" / "ci" / "verify-signed-images.sh"
 
 ROOT_NODE_PATHS = ("package.json", "package-lock.json")
 CLIENT_FILTERS = ("admin_web", "desktop", "flutter")
@@ -541,6 +544,58 @@ def assert_provenance_wiring(workflow_path: Path | None = None) -> None:
     print("provenance-wiring: PASS")
 
 
+def gh_attestation_invocation(text: str) -> str:
+    captured: list[str] = []
+    grabbing = False
+    for line in text.splitlines():
+        if re.match(r"\s*gh attestation verify\b", line) and "--help" not in line:
+            grabbing = True
+        if grabbing:
+            captured.append(line)
+            if not line.rstrip().endswith("\\"):
+                break
+    if not captured:
+        fail("verify-signed-images.sh must invoke gh attestation verify")
+    return "\n".join(captured)
+
+
+def assert_gh_attestation_cli(script_path: Path | None = None) -> None:
+    path = script_path or SIGNED_IMAGES
+    text = path.read_text(encoding="utf-8")
+    if "--certificate-identity-regexp" not in text:
+        fail("cosign verify must keep --certificate-identity-regexp")
+    invocation = gh_attestation_invocation(text)
+    if "--cert-identity-regexp" in invocation:
+        fail(
+            "gh attestation verify must not pass --cert-identity-regexp; "
+            "GitHub CLI flag is --cert-identity-regex"
+        )
+    if not re.search(r"--cert-identity-regex(?:\s|$)", invocation):
+        fail("gh attestation verify must pass --cert-identity-regex")
+    if "--repo" not in invocation:
+        fail("gh attestation verify must keep --repo")
+    if "oci://" not in invocation:
+        fail("gh attestation verify must keep the oci:// digest subject")
+    if shutil.which("gh") is None:
+        fail("gh is required on PATH to validate attestation CLI flags")
+    proc = subprocess.run(
+        ["gh", "attestation", "verify", "--help"],
+        capture_output=True,
+        text=True,
+    )
+    help_text = (proc.stdout or "") + (proc.stderr or "")
+    if proc.returncode != 0:
+        fail(f"gh attestation verify --help failed rc={proc.returncode}\n{help_text}")
+    if not re.search(r"--cert-identity-regex(?:\s|$)", help_text):
+        fail("installed gh attestation verify --help does not list --cert-identity-regex")
+    if re.search(r"--cert-identity-regexp(?:\s|$)", help_text):
+        fail(
+            "installed gh attestation verify --help lists --cert-identity-regexp; "
+            "re-bind verify-signed-images.sh"
+        )
+    print("gh-attestation-cli: PASS")
+
+
 def codeowners_patterns() -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
     for raw in CODEOWNERS.read_text(encoding="utf-8").splitlines():
@@ -604,6 +659,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline")
     parser.add_argument("--workflow")
     parser.add_argument("--file")
+    parser.add_argument("--script")
     parser.add_argument("--sha256")
     args = parser.parse_args(argv)
     workflow = Path(args.workflow) if args.workflow else None
@@ -627,6 +683,9 @@ def main(argv: list[str] | None = None) -> int:
             assert_promotion_isolation(workflow)
         elif args.command == "provenance-wiring":
             assert_provenance_wiring(workflow)
+        elif args.command == "gh-attestation-cli":
+            script = Path(args.script) if args.script else None
+            assert_gh_attestation_cli(script)
         elif args.command == "codeowners-coverage":
             assert_codeowners_coverage()
         elif args.command == "checksum":
