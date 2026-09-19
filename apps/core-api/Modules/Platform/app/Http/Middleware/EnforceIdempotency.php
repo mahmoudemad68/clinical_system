@@ -209,6 +209,10 @@ final class EnforceIdempotency
                 'ref' => 'diagnostics',
                 'id' => $data['diagnostics_id'],
             ],
+            isset($data['upload_id']) => [
+                'ref' => 'verification_upload',
+                'id' => $data['upload_id'],
+            ],
             default => ['ref' => 'truncated'],
         };
 
@@ -234,6 +238,9 @@ final class EnforceIdempotency
             ],
             'diagnostics' => [
                 'diagnostics_id' => $decoded['id'] ?? null,
+            ],
+            'verification_upload' => [
+                'upload_id' => $decoded['id'] ?? null,
             ],
             default => $decoded,
         };

@@ -10,7 +10,6 @@ use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
-use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Enums\VerificationDocumentStatus;
 use Modules\Verification\Enums\VerificationUploadState;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
@@ -105,9 +104,7 @@ final class ReconcileVerificationUploadsCommand extends Command
         }
 
         foreach ($toDelete as $ref) {
-            if ($ref instanceof StoredObjectRef) {
-                $objects->deleteIfPresent($ref);
-            }
+            $objects->deleteIfPresent($ref);
         }
 
         $this->info('Reconciled '.count($eligible).' upload intents.');

@@ -193,26 +193,34 @@ Metric `clinic_secure_file_results_total` labels: `result`, `detected_type`,
 
 ## Commands actually executed
 
-Recorded after the local gate run on the evidence commit. GitHub PR CI on
-the final HEAD is the merge-review evidence; this file does not treat a
-local run as GitHub evidence.
+Recorded 2026-09-19 on host PHP 8.3 with `pdo_pgsql` against `clinic_test`.
+GitHub PR CI on the final HEAD is the merge-review evidence; this file does
+not treat a local run as GitHub evidence.
 
 | Command | Result |
 | --- | --- |
-| `./vendor/bin/pint --test` | pending local run |
-| `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | pending local run |
-| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | pending local run |
-| focused Verification/file Pest | pending local run |
-| `./vendor/bin/pest` (full Core suite) | pending local run |
-| `npm run contracts:lint` | pending local run |
-| `npm run contracts:events` | pending local run |
-| `npm run contracts:generate:ts` | pending local run |
-| `npm run contracts:breaking` vs `origin/main` | pending local run |
-| `python3 scripts/ci/run-isr015-validators.py` | pending local run |
+| `./vendor/bin/pint --test` | `{"tool":"pint","result":"passed"}` |
+| `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | `{"tool":"phpstan","result":"passed","errors":0}` |
+| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | 0 violations, 0 uncovered, **2019** allowed |
+| focused Verification/file Pest (`tests/Feature/Verification`, `tests/Unit/Verification`, `ArchitectureBoundaryTest`, `BoundedDocumentInspectorTest`, `ClamdScanObjectTest`, `ProviderPortContractTest`, `S3StoreObjectContractTest`) | **91 passed**, 2 skipped, 93 tests (2854 assertions) |
+| `./vendor/bin/pest` (full Core suite) | **625 passed**, 15 skipped, 640 tests (10947 assertions) |
+| `npm run contracts:lint` | OpenAPI valid |
+| `npm run contracts:events` | **19** event schemas checked |
+| `npm run contracts:generate:ts` | generated client matches commit (`TS_CLIENT_FRESH`) |
+| `npm run contracts:breaking` vs `origin/main` | no breaking changes against `origin/main` |
+| `python3 scripts/ci/run-isr015-validators.py` | **PASS** |
 
-Phase 02 as a whole is **not** PASS. GitHub PR CI is recorded on the
-evidence commit that follows this local run; this file does not claim
-production approval.
+Local skips on this host (Docker daemon unavailable):
+
+- `ClamdScanObjectTest::it scans a live clamd when one is reachable` — clamd not on `:3310`
+- `S3StoreObjectContractTest::Private objects are not anonymously readable` — MinIO not on `:9000`
+
+In-process coverage still ran: `clamd-stub.php` INSTREAM (clean / EICAR FOUND / timeout / malformed) and `InMemoryStoreObject` (including race workers via the shared persist directory). Pre-existing Auth Redis/Reverb/Octane/two-connection race skips remain opt-in.
+
+Gitleaks, Semgrep, Trivy filesystem/image, and SBOM remain GitHub PR `security` / `image-scan` jobs. This host could not pull `clamav/clamav:1.4.6` (no Docker). The compose sidecar is digest-pinned; it is **not** added as a GitHub Actions `services:` image (ISR-015 pin catalog / bidirectional workflow refs).
+
+Phase 02 as a whole is **not** PASS. GitHub PR CI binds to the pushed HEAD;
+this file does not claim production approval.
 
 ## Residual (this chunk)
 

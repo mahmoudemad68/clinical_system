@@ -12,8 +12,10 @@ uses(TestCase::class);
 
 function clamdStub(string $reply, int $sleepMs = 0): array
 {
-    $command = escapeshellarg(PHP_BINARY).' '.escapeshellarg(base_path('tests/Support/bin/clamd-stub.php')).' '
-        .escapeshellarg($reply).' '.escapeshellarg((string) $sleepMs);
+    $portFile = tempnam(sys_get_temp_dir(), 'clamdport');
+    assert(is_string($portFile));
+    file_put_contents($portFile, '');
+    $command = [PHP_BINARY, base_path('tests/Support/bin/clamd-stub.php'), $reply, (string) $sleepMs, $portFile];
     $process = proc_open($command, [
         0 => ['pipe', 'r'],
         1 => ['pipe', 'w'],
@@ -21,19 +23,19 @@ function clamdStub(string $reply, int $sleepMs = 0): array
     ], $pipes, base_path());
     assert(is_resource($process));
     fclose($pipes[0]);
-    $line = '';
+    $port = 0;
     $deadline = microtime(true) + 3;
     while (microtime(true) < $deadline) {
-        $line .= (string) stream_get_contents($pipes[1]);
-        if (str_contains($line, "\n")) {
+        $contents = trim((string) file_get_contents($portFile));
+        if (ctype_digit($contents) && (int) $contents > 0) {
+            $port = (int) $contents;
             break;
         }
         usleep(10_000);
     }
-    $address = trim($line);
-    $port = (int) substr($address, strrpos($address, ':') + 1);
+    expect($port)->toBeGreaterThan(0);
 
-    return ['process' => $process, 'stdout' => $pipes[1], 'stderr' => $pipes[2], 'port' => $port];
+    return ['process' => $process, 'stdout' => $pipes[1], 'stderr' => $pipes[2], 'port' => $port, 'portFile' => $portFile];
 }
 
 function clamdStubStop(array $stub): void
@@ -41,6 +43,9 @@ function clamdStubStop(array $stub): void
     fclose($stub['stdout']);
     fclose($stub['stderr']);
     proc_close($stub['process']);
+    if (isset($stub['portFile']) && is_string($stub['portFile']) && is_file($stub['portFile'])) {
+        unlink($stub['portFile']);
+    }
 }
 
 function clamdScan(ClamdScanObject $scanner, string $bytes): ScanVerdict

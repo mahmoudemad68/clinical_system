@@ -208,7 +208,7 @@ function verificationOutboxPayload(string $eventType): ?string
 
 function verificationBindCleanScanner(): void
 {
-    test()->app->instance(ScanObject::class, new FixtureScanObject);
+    app()->instance(ScanObject::class, new FixtureScanObject);
 }
 
 /**

@@ -281,7 +281,7 @@ function verificationInsertUpload(string $caseId, string $state = 'uploading'): 
 it('rejects illegal upload-intent states, hashes, and available-from-rejected transitions', function () {
     $case = verificationInsertCase();
 
-    expect(fn () => DB::table('verification_upload_intents')->insert([
+    expect(fn () => DB::transaction(fn () => DB::table('verification_upload_intents')->insert([
         'id' => app(IdentityGenerator::class)->next()->value,
         'case_id' => $case['id'],
         'created_by_user_id' => app(IdentityGenerator::class)->next()->value,
@@ -295,15 +295,15 @@ it('rejects illegal upload-intent states, hashes, and available-from-rejected tr
         'version' => 1,
         'created_at' => now('UTC')->format('Y-m-d H:i:s.uP'),
         'updated_at' => now('UTC')->format('Y-m-d H:i:s.uP'),
-    ]))->toThrow(QueryException::class);
+    ])))->toThrow(QueryException::class);
 
     $uploading = verificationInsertUpload($case['id'], 'uploading');
-    expect(fn () => DB::table('verification_upload_intents')->where('id', $uploading['id'])->update([
+    expect(fn () => DB::transaction(fn () => DB::table('verification_upload_intents')->where('id', $uploading['id'])->update([
         'expected_sha256' => 'not-a-hash',
-    ]))->toThrow(QueryException::class);
+    ])))->toThrow(QueryException::class);
 
     $rejected = verificationInsertUpload($case['id'], 'rejected');
-    expect(fn () => DB::table('verification_upload_intents')->where('id', $rejected['id'])->update([
+    expect(fn () => DB::transaction(fn () => DB::table('verification_upload_intents')->where('id', $rejected['id'])->update([
         'state' => 'available',
         'observed_sha256' => str_repeat('ab', 32),
         'observed_size_bytes' => 128,
@@ -311,5 +311,5 @@ it('rejects illegal upload-intent states, hashes, and available-from-rejected tr
         'available_at' => now('UTC')->format('Y-m-d H:i:s.uP'),
         'completed_at' => now('UTC')->format('Y-m-d H:i:s.uP'),
         'rejection_reason' => null,
-    ]))->toThrow(QueryException::class, 'verification_upload_intents rejected state cannot become available');
+    ])))->toThrow(QueryException::class, 'verification_upload_intents rejected state cannot become available');
 });

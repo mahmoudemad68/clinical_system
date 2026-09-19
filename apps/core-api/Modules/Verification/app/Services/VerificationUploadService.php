@@ -19,11 +19,11 @@ use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
 use Modules\Platform\Exceptions\AuthorizationDenied;
+use Modules\Platform\Exceptions\FeatureUnavailable;
 use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\StateConflict;
 use Modules\Platform\Support\Identifier;
 use Modules\Platform\Support\ObjectUploadGrant;
-use Modules\Verification\Enums\ApplicantType;
 use Modules\Verification\Enums\VerificationCaseStatus;
 use Modules\Verification\Enums\VerificationCaseType;
 use Modules\Verification\Enums\VerificationUploadState;
@@ -97,9 +97,6 @@ final class VerificationUploadService
             $this->store->lockCase($caseId);
             $case = $this->store->findCaseById($caseId, true);
             if (! $case instanceof VerificationCaseRecord || ! $case->applicantId->equals($doctor->doctorId)) {
-                throw new AuthorizationDenied;
-            }
-            if ($case->applicantType !== ApplicantType::Doctor || $case->caseType !== VerificationCaseType::DoctorVerification) {
                 throw new AuthorizationDenied;
             }
             if ($case->status !== VerificationCaseStatus::Draft) {
@@ -183,7 +180,8 @@ final class VerificationUploadService
             throw new AuthorizationDenied;
         }
 
-        return $this->transactions->run(function (TransactionContext $tx) use ($actor, $uploadId): VerificationUploadProjection {
+        $failure = null;
+        $projection = $this->transactions->run(function (TransactionContext $tx) use ($actor, $uploadId, &$failure): VerificationUploadProjection {
             $doctor = $this->requireDoctor($actor->userId);
             $this->store->lockUpload($uploadId);
             $upload = $this->store->findUploadById($uploadId, true);
@@ -212,15 +210,21 @@ final class VerificationUploadService
             }
             if ($upload->expiresAt <= $now) {
                 $this->rejectLocked($tx, $upload, 'expired', $now);
+                $failure = new StateConflict;
+                $fresh = $this->store->findUploadById($upload->id, false);
+                assert($fresh instanceof VerificationUploadIntentRecord);
 
-                throw new StateConflict;
+                return $this->project($fresh);
             }
 
             $ref = $upload->storedRef();
             if (! $this->objects->exists($ref)) {
                 $this->rejectLocked($tx, $upload, 'object_missing', $now);
+                $failure = new InvalidValueObject('Uploaded object was not found.');
+                $fresh = $this->store->findUploadById($upload->id, false);
+                assert($fresh instanceof VerificationUploadIntentRecord);
 
-                throw new InvalidValueObject('Uploaded object was not found.');
+                return $this->project($fresh);
             }
 
             $stamp = $now->format('Y-m-d H:i:s.uP');
@@ -254,6 +258,12 @@ final class VerificationUploadService
 
             return $this->project($fresh);
         });
+
+        if ($failure instanceof \Throwable) {
+            throw $failure;
+        }
+
+        return $projection;
     }
 
     public function doctorUploadStatus(ActorContext $actor, Identifier $uploadId): VerificationUploadProjection
@@ -320,8 +330,8 @@ final class VerificationUploadService
 
     private function assertDoctorActor(ActorContext $actor): void
     {
-        if ($actor->accountType !== AccountType::Doctor || ! $actor->accountStatus->isActive()) {
-            throw new AuthorizationDenied;
+        if ($actor->accountType !== AccountType::Doctor || ! $actor->status->canAccessBusinessEndpoints()) {
+            throw new FeatureUnavailable;
         }
     }
 

@@ -102,7 +102,7 @@ describe('verification upload intent HTTP', function () {
         ], doctorsAuth($left['session']['token']) + doctorsIdem('up-zip'))
             ->assertStatus(422);
 
-        test()->getJson('/api/v1/verification-uploads', doctorsAuth($left['session']['token']))
+        test()->getJson('/api/v1/verification-uploads/00000000-0000-7000-8000-000000000000', doctorsAuth($left['session']['token']))
             ->assertNotFound();
     });
 
@@ -206,7 +206,7 @@ describe('completion, validation, scan, and promotion', function () {
             ->and($payload)->not->toContain($created['storage_locator'])
             ->and($payload)->not->toContain($onboarded['national_id']);
 
-        $audit = json_encode(DB::table('audit_events')->where('event_name', 'verification.upload_available')->get()->all(), JSON_THROW_ON_ERROR);
+        $audit = json_encode(DB::table('audit_events')->where('event_name', 'verification.upload_available')->get(['event_name', 'metadata', 'object_id'])->all(), JSON_THROW_ON_ERROR);
         expect($audit)->not->toContain($created['storage_locator'])
             ->and($audit)->not->toContain($onboarded['national_id']);
     });
@@ -288,7 +288,7 @@ describe('completion, validation, scan, and promotion', function () {
         verificationProcessUpload($zip['upload_id']);
         expect((string) DB::table('verification_upload_intents')->where('id', $zip['upload_id'])->value('rejection_reason'))->toBe('unsupported_format');
 
-        $active = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-active');
+        $active = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-active', 'application/pdf', strlen(verificationActivePdf()));
         verificationPutUploadBytes($active['upload_id'], verificationActivePdf(), 'application/pdf');
         test()->postJson(
             '/api/v1/verification-uploads/'.$active['upload_id'].'/complete',
@@ -301,10 +301,10 @@ describe('completion, validation, scan, and promotion', function () {
     });
 
     it('rejects an antivirus test fixture and keeps scanner misses unavailable', function () {
-        test()->app->instance(ScanObject::class, new FixtureScanObject);
+        app()->instance(ScanObject::class, new FixtureScanObject);
         $onboarded = verificationOnboardDoctor('up-eicar');
         $opened = verificationOpenCase($onboarded['actor']);
-        $infected = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-eicar-c');
+        $infected = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-eicar-c', 'application/pdf', strlen(verificationEicarPdf()));
         verificationPutUploadBytes($infected['upload_id'], verificationEicarPdf(), 'application/pdf');
         test()->postJson(
             '/api/v1/verification-uploads/'.$infected['upload_id'].'/complete',
@@ -315,7 +315,7 @@ describe('completion, validation, scan, and promotion', function () {
         expect((string) DB::table('verification_upload_intents')->where('id', $infected['upload_id'])->value('rejection_reason'))->toBe('malware_detected')
             ->and(DB::table('verification_documents')->count())->toBe(0);
 
-        test()->app->instance(ScanObject::class, new DisabledScanObject);
+        app()->instance(ScanObject::class, new DisabledScanObject);
         $miss = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-scan-miss');
         verificationPutUploadBytes($miss['upload_id'], $miss['bytes'], 'application/pdf');
         test()->postJson(
@@ -334,7 +334,7 @@ describe('completion, validation, scan, and promotion', function () {
         $created = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-toctou-c');
         verificationPutUploadBytes($created['upload_id'], $created['bytes'], 'application/pdf');
         $ref = verificationStoredRef($created['upload_id']);
-        test()->app->instance(ScanObject::class, new class($ref) implements ScanObject
+        app()->instance(ScanObject::class, new class($ref) implements ScanObject
         {
             public function __construct(private StoredObjectRef $ref) {}
 
