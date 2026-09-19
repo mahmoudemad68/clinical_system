@@ -7,9 +7,11 @@ namespace Modules\Identity\Providers;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\ServiceProvider;
 use Modules\Identity\Console\RotateIdentityKeysCommand;
+use Modules\Identity\Contracts\DoctorSubjectPrivacy;
 use Modules\Identity\Contracts\PatientIdentityRegistry;
 use Modules\Identity\Contracts\PatientSubjectPrivacy;
 use Modules\Identity\Contracts\UserDirectory;
+use Modules\Identity\Services\Adapters\UnavailableDoctorSubjectPrivacy;
 use Modules\Identity\Services\Adapters\UnavailablePatientIdentityRegistry;
 use Modules\Identity\Services\Adapters\UnavailablePatientSubjectPrivacy;
 use Modules\Identity\Services\AuditedSensitiveDecryptor;
@@ -39,9 +41,10 @@ final class IdentityServiceProvider extends ServiceProvider
             (bool) config('identity.allow_synthetic_national_ids', false),
         ));
 
-        // Patients (priority 50) replaces this with PostgresPatientIdentityRegistry.
+        // Patients (priority 50) and Doctors (priority 52) replace these adapters.
         $this->app->singleton(PatientIdentityRegistry::class, UnavailablePatientIdentityRegistry::class);
         $this->app->singleton(PatientSubjectPrivacy::class, UnavailablePatientSubjectPrivacy::class);
+        $this->app->singleton(DoctorSubjectPrivacy::class, UnavailableDoctorSubjectPrivacy::class);
 
         $this->app->bind(ResolveActorContext::class);
         $this->app->bind(MeQuery::class);

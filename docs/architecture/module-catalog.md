@@ -25,7 +25,8 @@ event (ADR 0001, ADR 0004).
 | `Auth` | 01 | Backend + security | credential |
 | `Identity` | 01–02 | Backend + security | sensitive |
 | `Patients` | 02 | Backend + clinical | sensitive |
-| `Doctors` | 02 | Backend + clinical | personal |
+| `Doctors` | 02 | Backend + clinical | sensitive |
+| `Verification` | 02 | Backend + security | sensitive |
 | `Clinics` | 02 | Backend | personal |
 | `Appointments` | 03 | Backend + clinical | personal |
 | `Queue` | 04 | Backend + clinical | personal |
@@ -113,9 +114,10 @@ cookies. TOTP enrolment HTTP is not exposed; bootstrap inserts a verified factor
 **Public services:** `ResolveActorContext`, `NationalIdProtector`,
 `AuditedSensitiveDecryptor`, `RotateIdentityKeysService` (`identity:rotate-keys`),
 `PatientIdentityRegistry` (Patients adapter; claim still off), `PatientSubjectPrivacy`
-(Identity contract; Patients adapter only), `LinkVerifiedPatientAccount`
+(Identity contract; Patients adapter only), `DoctorSubjectPrivacy`
+(Identity contract; Doctors adapter only), `LinkVerifiedPatientAccount`
 (not enabled), `DisableIdentity`, `EraseSubject`, `ExportSubjectData`.
-Identity never queries Patients tables.
+Identity never queries Patients or Doctors tables.
 **Events:** `identity.account_registered`, `identity.phone_verified`,
 `identity.profile_linked`, `identity.status_changed`. Audit also records
 `identity.subject_erased` (append-only; not an outbox event type).
@@ -158,18 +160,49 @@ to `Clinical` and requires an access grant. Onboarding HTTP is compact (`status`
 Collisions return generic `manual_review_required`. Unlinked create/resolve
 are Access-gated and default-denied. `FEATURE_IDENTITY_PROFILE_CLAIM` remains off.
 
-## `Doctors` — clinician profiles and verification
+## `Doctors` — clinician profiles and specialties
 
-**Built in:** 02. **Owner:** backend + clinical.
-**Public ports:** `RegisterDoctor`, `SubmitVerificationDocuments`,
-`GetDoctorProfile`, `ListSpecialties`.
-**Events:** `doctor.verification_submitted`, `doctor.verified`,
-`doctor.verification_rejected`.
-**Tables:** `doctor_profiles`, `doctor_verification_documents`, `specialties`.
-**Classification:** personal; verification documents are sensitive and live
-behind the secure-files boundary.
-**Prohibited:** granting clinical access. Verification status is not an access
-grant.
+**Built in:** 02 (chunk 02: Doctors profile foundation). **Owner:** backend + clinical.
+**Public services:** `RegisterDoctor`, `GetDoctorProfile`, `ListSpecialties`,
+`DoctorSubjectPrivacy` (Identity erasure/export adapter).
+**Events:** `doctor.profile_created`. Verification-submitted/decided events are
+owned by `Verification` when that pipeline is implemented.
+**Tables:** `doctor_profiles`, `specialties`.
+**Classification:** sensitive. Peak is protected National ID and optional
+syndicate identifiers stored with Identity protection services. `specialties`
+catalogue fields remain public/internal. `doctor.profile_created` remains a
+personal identifier-only projection. HTTP projections never return National ID,
+syndicate number, ciphertext, HMAC, or key versions.
+**Prohibited:** owning verification cases, verification documents, reviewer
+assignment, or decisions (`Verification` owns that pipeline). Granting clinical
+access. Making a doctor `listed` or clinically capable from profile creation.
+`verification_status` is not an access grant. Direct access to Identity/Access
+tables. Fabricating a medical-specialty seed catalogue without an approved
+reference dataset. Onboarding HTTP is compact (`status`, `doctor_id`,
+`version`); `GET /doctors/me/profile` is the canonical projection. Collisions
+return generic `manual_review_required`. `ListSpecialties` is an in-process
+public service in this slice (no HTTP catalogue endpoint).
+
+## `Verification` — cases, documents, and decisions
+
+**Built in:** 02 (declared; not implemented in the Doctors profile-foundation
+slice). **Owner:** backend + security.
+**Public services (when implemented):** `VerificationService`,
+`VerificationDocumentService` (uses `MalwareScanner` and applicant-module
+services).
+**Events (when implemented):** `doctor.verification_submitted`,
+`doctor.verification_decided`, `pharmacy.verification_decided`.
+**Tables (when implemented):** `verification_cases`, `verification_documents`,
+`verification_decisions` (names may be refined by the implementing slice).
+**Classification:** sensitive. Document bytes live behind the secure-files
+boundary; this module owns the case/document/decision records.
+**Prohibited:** querying clinical modules; exposing object keys or document
+bodies on public URLs; letting Doctors or Pharmacies own the verification
+pipeline. Admin work-queue UI calls `VerificationService` rather than writing
+these tables.
+
+Earlier catalog drafts listed `doctor_verification_documents` under `Doctors`.
+Phase 02 module ownership is authoritative: verification documents belong here.
 
 ## `Clinics` — locations and staff
 

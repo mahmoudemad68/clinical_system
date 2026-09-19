@@ -593,6 +593,64 @@ export interface paths {
         patch: operations["updateOwnPatientDemographics"];
         trace?: never;
     };
+    "/api/v1/doctors/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create or resume the authenticated doctor's draft profile
+         * @description Authenticated, phone-verified doctor submits allowlisted professional
+         *     fields and a National ID. The server canonicalizes the identifier and
+         *     computes a blind index. Optional syndicate identifiers are stored with
+         *     the same Identity protection services. If no doctor profile exists for
+         *     the caller, one draft, non-public, non-approved profile is created and
+         *     attached. The successful body is compact (`status`, `doctor_id`,
+         *     `version`); `GET /api/v1/doctors/me/profile` is the canonical
+         *     projection. Collisions return the generic `manual_review_required`
+         *     outcome without disclosing another doctor's identity or protected
+         *     metadata.
+         *
+         *     Creating a profile does not grant clinical capabilities or listing.
+         *     Retries with the same Idempotency-Key replay the compact business
+         *     result. The request cannot set ownership, verification state, public
+         *     status, approval, suspension, version, or encryption metadata.
+         *     Actor eligibility is server-derived from Identity/Access context.
+         */
+        post: operations["onboardDoctorProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctors/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current user's doctor profile projection
+         * @description Server-derived from the authenticated user's attached doctor profile.
+         *     Never returns ciphertext, HMAC, key versions, National ID, syndicate
+         *     number, or another doctor's data. There is no GET-by-id doctor profile
+         *     API. Verification document status is not included in this slice.
+         */
+        get: operations["getOwnDoctorProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1004,6 +1062,52 @@ export interface components {
             status: "profile_ready" | "manual_review_required";
             patient_id?: components["schemas"]["Uuid"];
             version?: number;
+        };
+        /**
+         * @description Server-owned verification lifecycle. Creating a profile always starts
+         *     at `draft`. Status is not an access grant and does not list the doctor.
+         * @enum {string}
+         */
+        DoctorVerificationStatus: "draft" | "pending_review" | "changes_requested" | "approved" | "rejected" | "suspended";
+        /**
+         * @description Server-owned directory visibility. New profiles are `hidden`.
+         * @enum {string}
+         */
+        DoctorPublicStatus: "hidden" | "listed";
+        DoctorOnboardingRequest: {
+            /** @description Write-only. Canonicalized server-side. Never echoed. */
+            national_id: string;
+            professional_display_name: string;
+            specialty_id: components["schemas"]["Uuid"];
+            /**
+             * @description Optional write-only professional identifier. Stored with Identity
+             *     protection services. No checksum or syndicate-policy algorithm is
+             *     applied. Never echoed.
+             */
+            syndicate_number?: string | null;
+        };
+        DoctorOnboardingResult: {
+            /** @enum {string} */
+            status: "profile_ready" | "manual_review_required";
+            doctor_id?: components["schemas"]["Uuid"];
+            version?: number;
+        };
+        DoctorProfile: {
+            doctor_id: components["schemas"]["Uuid"];
+            professional_display_name: string;
+            specialty_id: components["schemas"]["Uuid"];
+            specialty_code: string;
+            specialty_label_ar: string;
+            specialty_label_en: string;
+            verification_status: components["schemas"]["DoctorVerificationStatus"];
+            public_status: components["schemas"]["DoctorPublicStatus"];
+            version: number;
+            /** Format: date-time */
+            approved_at: string | null;
+            /** Format: date-time */
+            suspended_at: string | null;
+            created_at: components["schemas"]["Instant"];
+            updated_at: components["schemas"]["Instant"];
         };
     };
     responses: {
@@ -2105,6 +2209,99 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    onboardDoctorProfile: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DoctorOnboardingRequest"];
+            };
+        };
+        responses: {
+            /**
+             * @description Idempotent replay of a compact own-profile result, retry of an
+             *     already-linked caller, or generic `manual_review_required` for
+             *     colliding National ID or syndicate identifiers. Pending-phone
+             *     callers remain 404. Non-doctor account types remain 404.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["DoctorOnboardingResult"];
+                    };
+                };
+            };
+            /** @description A new draft doctor profile was created. Body is compact. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["DoctorOnboardingResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getOwnDoctorProfile: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Own doctor profile projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["DoctorProfile"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
         };
     };
 }

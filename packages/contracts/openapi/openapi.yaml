@@ -10,8 +10,10 @@ info:
 
     Phase 01 adds authentication, identity projection, and deny-by-default
     capabilities. Phase 02 chunk 01 adds the Patients demographic profile
-    vertical slice. Clinical, pharmacy, doctor, verification, and AI
-    capabilities remain absent.
+    vertical slice. Phase 02 chunk 02 adds the Doctors profile foundation
+    (`POST /api/v1/doctors/onboarding`, `GET /api/v1/doctors/me/profile`).
+    Clinical, pharmacy, verification-document, clinic, and AI capabilities
+    remain absent.
 
     Compatibility rules (ADR 0003):
       * Additive optional fields are compatible within a version.
@@ -57,6 +59,12 @@ tags:
     description: |
       Phase 02 patient demographic profiles. Own-profile only. National ID
       is write-only input and never returned. No public National ID lookup.
+  - name: doctors
+    description: |
+      Phase 02 doctor profile foundation. Own-profile only. Creating a draft
+      doctor profile does not approve, list, or grant clinical capability.
+      National ID and syndicate number are write-only and never returned.
+      Verification document upload is not part of this slice.
 
 paths:
   /live:
@@ -1028,6 +1036,110 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /api/v1/doctors/onboarding:
+    post:
+      tags: [doctors]
+      operationId: onboardDoctorProfile
+      summary: Create or resume the authenticated doctor's draft profile
+      description: |
+        Authenticated, phone-verified doctor submits allowlisted professional
+        fields and a National ID. The server canonicalizes the identifier and
+        computes a blind index. Optional syndicate identifiers are stored with
+        the same Identity protection services. If no doctor profile exists for
+        the caller, one draft, non-public, non-approved profile is created and
+        attached. The successful body is compact (`status`, `doctor_id`,
+        `version`); `GET /api/v1/doctors/me/profile` is the canonical
+        projection. Collisions return the generic `manual_review_required`
+        outcome without disclosing another doctor's identity or protected
+        metadata.
+
+        Creating a profile does not grant clinical capabilities or listing.
+        Retries with the same Idempotency-Key replay the compact business
+        result. The request cannot set ownership, verification state, public
+        status, approval, suspension, version, or encryption metadata.
+        Actor eligibility is server-derived from Identity/Access context.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorOnboardingRequest'
+      responses:
+        '201':
+          description: A new draft doctor profile was created. Body is compact.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorOnboardingResult'
+        '200':
+          description: |
+            Idempotent replay of a compact own-profile result, retry of an
+            already-linked caller, or generic `manual_review_required` for
+            colliding National ID or syndicate identifiers. Pending-phone
+            callers remain 404. Non-doctor account types remain 404.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorOnboardingResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/doctors/me/profile:
+    get:
+      tags: [doctors]
+      operationId: getOwnDoctorProfile
+      summary: Current user's doctor profile projection
+      description: |
+        Server-derived from the authenticated user's attached doctor profile.
+        Never returns ciphertext, HMAC, key versions, National ID, syndicate
+        number, or another doctor's data. There is no GET-by-id doctor profile
+        API. Verification document status is not included in this slice.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: Own doctor profile projection.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorProfile'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
 
   securitySchemes:
@@ -1987,6 +2099,108 @@ components:
         version:
           type: integer
           minimum: 1
+
+    DoctorVerificationStatus:
+      type: string
+      description: |
+        Server-owned verification lifecycle. Creating a profile always starts
+        at `draft`. Status is not an access grant and does not list the doctor.
+      enum: [draft, pending_review, changes_requested, approved, rejected, suspended]
+
+    DoctorPublicStatus:
+      type: string
+      description: Server-owned directory visibility. New profiles are `hidden`.
+      enum: [hidden, listed]
+
+    DoctorOnboardingRequest:
+      type: object
+      required: [national_id, professional_display_name, specialty_id]
+      additionalProperties: false
+      properties:
+        national_id:
+          type: string
+          maxLength: 32
+          description: Write-only. Canonicalized server-side. Never echoed.
+        professional_display_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        specialty_id:
+          $ref: '#/components/schemas/Uuid'
+        syndicate_number:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 64
+          description: |
+            Optional write-only professional identifier. Stored with Identity
+            protection services. No checksum or syndicate-policy algorithm is
+            applied. Never echoed.
+
+    DoctorOnboardingResult:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [profile_ready, manual_review_required]
+        doctor_id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+
+    DoctorProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - doctor_id
+        - professional_display_name
+        - specialty_id
+        - specialty_code
+        - specialty_label_ar
+        - specialty_label_en
+        - verification_status
+        - public_status
+        - version
+        - approved_at
+        - suspended_at
+        - created_at
+        - updated_at
+      properties:
+        doctor_id:
+          $ref: '#/components/schemas/Uuid'
+        professional_display_name:
+          type: string
+          maxLength: 200
+        specialty_id:
+          $ref: '#/components/schemas/Uuid'
+        specialty_code:
+          type: string
+          maxLength: 64
+        specialty_label_ar:
+          type: string
+          maxLength: 200
+        specialty_label_en:
+          type: string
+          maxLength: 200
+        verification_status:
+          $ref: '#/components/schemas/DoctorVerificationStatus'
+        public_status:
+          $ref: '#/components/schemas/DoctorPublicStatus'
+        version:
+          type: integer
+          minimum: 1
+        approved_at:
+          type: [string, 'null']
+          format: date-time
+        suspended_at:
+          type: [string, 'null']
+          format: date-time
+        created_at:
+          $ref: '#/components/schemas/Instant'
+        updated_at:
+          $ref: '#/components/schemas/Instant'
 
   responses:
 

@@ -47,6 +47,11 @@ parameters:
         - type: directory
           value: Modules/Patients/.*
 
+    - name: Doctors
+      collectors:
+        - type: directory
+          value: Modules/Doctors/.*
+
     - name: Framework
       collectors:
         - type: classLike
@@ -128,6 +133,15 @@ parameters:
       - Providers
 
     Patients:
+      - Platform
+      - Identity
+      - Access
+      - Audit
+      - DomainSafeVendor
+      - Framework
+      - Providers
+
+    Doctors:
       - Platform
       - Identity
       - Access

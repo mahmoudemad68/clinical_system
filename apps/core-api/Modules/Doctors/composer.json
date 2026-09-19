@@ -1,0 +1,22 @@
+{
+    "name": "clinic/doctors",
+    "description": "Clinic Doctors module",
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Doctors\\": "app/",
+            "Modules\\Doctors\\Database\\Factories\\": "database/factories/",
+            "Modules\\Doctors\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Doctors\\Tests\\": "tests/"
+        }
+    }
+}

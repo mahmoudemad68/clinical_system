@@ -88,7 +88,9 @@ final class DefaultDenyAuthorizer implements Authorize
             || $action === Capabilities::MFA_MANAGE_SELF
             || $action === Capabilities::PATIENTS_ONBOARDING
             || $action === Capabilities::PATIENTS_PROFILE_READ_OWN
-            || $action === Capabilities::PATIENTS_PROFILE_UPDATE_OWN;
+            || $action === Capabilities::PATIENTS_PROFILE_UPDATE_OWN
+            || $action === Capabilities::DOCTORS_ONBOARDING
+            || $action === Capabilities::DOCTORS_PROFILE_READ_OWN;
     }
 
     private function requiresPrivilege(string $action): bool

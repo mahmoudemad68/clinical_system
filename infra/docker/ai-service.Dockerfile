@@ -12,9 +12,19 @@ FROM python:3.12-slim-bookworm@sha256:0f5b26b9518d002b6173fd61daad821fa340635ebf
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
+
+# The pinned python:3.12-slim-bookworm digest still ships libpcre2 10.42-1.
+# Debian has HIGH fixes in 10.42-1+deb12u1 (CVE-2026-86145 / 89157 / 89161).
+# Install that distro package without unpinning the base (same pattern as
+# core-api's Alpine OpenSSL apk upgrade). Unfixed util-linux / systemd IDs
+# stay on infra/security/trivy-image.ignore until Debian publishes a fix.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpcre2-8-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------- deps stage
 FROM base AS deps
