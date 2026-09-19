@@ -207,6 +207,63 @@ jobs:
         for line in vex_out.strip().splitlines():
             print(f"  {line}")
 
+    grpc_vex = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "ci" / "verify_core_api_grpc_openvex.py")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    grpc_out = (grpc_vex.stdout or "") + (grpc_vex.stderr or "")
+    if grpc_vex.returncode != 0:
+        raise SystemExit(f"core-api gRPC OpenVEX applicability: expected exit 0, got {grpc_vex.returncode}\n{grpc_out}")
+    print("S2 core-api gRPC OpenVEX document/wiring/narrowness: PASS")
+    if grpc_out.strip():
+        for line in grpc_out.strip().splitlines():
+            print(f"  {line}")
+
+    catalog = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "ci" / "verify_module_catalog_classification.py")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    catalog_out = (catalog.stdout or "") + (catalog.stderr or "")
+    if catalog.returncode != 0:
+        raise SystemExit(f"module-catalog classification: expected exit 0, got {catalog.returncode}\n{catalog_out}")
+    print("S3 module-catalog peak classification: PASS")
+    if catalog_out.strip():
+        for line in catalog_out.strip().splitlines():
+            print(f"  {line}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmpdir = Path(tmp)
+        current = (ROOT / "docs" / "architecture" / "module-catalog.md").read_text(encoding="utf-8")
+        drifted = current.replace(
+            "| `Doctors` | 02 | Backend + clinical | sensitive |",
+            "| `Doctors` | 02 | Backend + clinical | personal |",
+        )
+        if drifted == current:
+            raise SystemExit("catalog drift fixture did not change Doctors peak")
+        bad_catalog = write(tmpdir / "module-catalog.md", drifted)
+        drift = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "ci" / "verify_module_catalog_classification.py"),
+                "--catalog",
+                str(bad_catalog),
+                "--skip-inventory",
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        drift_out = (drift.stdout or "") + (drift.stderr or "")
+        if drift.returncode != 1 or "peak mismatch" not in drift_out:
+            raise SystemExit(
+                f"catalog drift fixture: expected exit 1 with peak mismatch, got {drift.returncode}\n{drift_out}"
+            )
+        print("S4 module-catalog Doctors peak drift fails closed: PASS")
+
     nid = subprocess.run(
         [
             sys.executable,

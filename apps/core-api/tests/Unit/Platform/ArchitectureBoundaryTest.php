@@ -269,6 +269,31 @@ final class ArchitectureBoundaryTest extends TestCase
     }
 
     #[Test]
+    public function doctors_module_catalog_peak_classification_is_sensitive(): void
+    {
+        $catalog = dirname(__DIR__, 3).'/../../docs/architecture/module-catalog.md';
+        $contents = (string) file_get_contents($catalog);
+
+        $this->assertMatchesRegularExpression(
+            '/^\| `Doctors` \| 02 \| Backend \+ clinical \| sensitive \|/m',
+            $contents,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/^\| `Doctors` \| 02 \| Backend \+ clinical \| personal \|/m',
+            $contents,
+        );
+        $this->assertMatchesRegularExpression(
+            '/^## `Doctors`.+\*\*Classification:\*\* sensitive\./ms',
+            $contents,
+        );
+        $this->assertStringContainsString(
+            '`doctor.profile_created` remains a personal identifier-only projection',
+            $contents,
+        );
+        $this->assertStringContainsString('`specialties`', $contents);
+    }
+
+    #[Test]
     public function committed_database_tests_truncate_after_each_case(): void
     {
         $file = dirname(__DIR__, 2).DIRECTORY_SEPARATOR.'CommittedDatabaseTestCase.php';

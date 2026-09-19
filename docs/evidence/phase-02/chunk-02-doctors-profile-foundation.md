@@ -47,7 +47,7 @@ Gitleaks, Trivy image scans, and OpenVEX were **not** weakened. ISR-015 static v
 PR CI on `298889e` reported two **pre-existing** fail-closed jobs that this Doctors diff did not introduce (same failures on patients PR #5):
 
 - **Security scans / SAST:** 117 `missing-integrity` hits on `designs/*/code.html` Tailwind Play CDN tags. Follow-up keeps `--error` and the four rulesets; CI `--exclude 'designs/**'` because those files are non-served mockups and the Play compiler cannot carry a stable SRI hash.
-- **Runtime image scan (ai-service):** 37 HIGH Debian findings. Follow-up installs distro `libpcre2` `10.42-1+deb12u1` in `ai-service.Dockerfile` and lists only unfixed util-linux/systemd IDs on `trivy-image.ignore`. `ignore-unfixed` stays false. OpenVEX remains core-api FrankenPHP `CVE-2026-56854` only.
+- **Runtime image scan (ai-service):** 37 HIGH Debian findings. Follow-up installs distro `libpcre2` `10.42-1+deb12u1` in `ai-service.Dockerfile` and lists only unfixed util-linux/systemd IDs on `trivy-image.ignore`. `ignore-unfixed` stays false. OpenVEX remains core-api FrankenPHP only (now `CVE-2026-56854` plus separate gRPC statements below).
 
 Phase 02 as a whole is **not** PASS.
 
@@ -61,3 +61,38 @@ Phase 02 as a whole is **not** PASS.
 - Syndicate identifiers are trimmed only; no syndicate checksum or professional-policy algorithm (none is specified in repository policy).
 - Egyptian National ID checksum remains ADR 0014 / synthetic-test policy; this slice does not invent one.
 - Exercised National-ID and syndicate canary sinks: HTTP body, outbox payload, audit metadata, Monolog `TestHandler` behind `RedactingLogTap` for National ID, in-process HTTP spans, and `PlatformMetrics::render()`. Syndicate is **not** added to Platform `PatternRedactor` (architecture test forbids Platform doctor business vocabulary).
+- Onboarding does **not** expose another doctor’s identity, National ID, syndicate identifier, HMAC, owner, or protected metadata. Duplicate/collision paths return generic `manual_review_required` with a compact body. This is **not** perfect non-enumeration: an eligible actor can still distinguish successful creation (`ready`) from `manual_review_required`. That outcome distinction is the same residual already accepted for Patients National-ID collisions.
+
+## Unrelated security diffs kept in this PR
+
+Splitting AI-image / SAST remediation onto a separate PR is not practical here:
+this branch cannot land first, and without those diffs GitHub CI on this Doctors
+PR fails the same pre-existing fail-closed jobs that failed on patients PR #5.
+Each change is independently scoped and was not broadened:
+
+- **SAST `designs/**` exclude** in `.github/workflows/pull-request.yaml`: keeps
+  `--error` and the four rulesets; skips non-served Stitch mockups. Rationale
+  lives in `infra/security/sast-designs-exclusion.md`. `designs/README.md` was
+  reverted to `main`; this slice does not modify `designs/`.
+- **`infra/docker/ai-service.Dockerfile`**: digest-pinned python slim unchanged;
+  installs Debian `libpcre2-8-0` `10.42-1+deb12u1` for CVE-2026-86145 / 89157 /
+  89161. Same pattern as core-api's Alpine OpenSSL apk upgrade.
+- **`infra/security/trivy-image.ignore`**: added only unfixed util-linux/systemd
+  IDs on the pinned python slim (`CVE-2026-76642`, `78408`, `78409`, `78410`,
+  `16742`). libpcre2 HIGH IDs are not listed. FrankenPHP gRPC IDs
+  `CVE-2026-84304` / `CVE-2026-84445` are not listed. `ignore-unfixed` stays
+  false.
+
+FrankenPHP gRPC reachability (not ignore):
+
+- `CVE-2026-84445`: xDS `xds.NewGRPCServer` path absent from the pinned binary
+  → OpenVEX `not_affected` / `vulnerable_code_not_present`.
+- `CVE-2026-84304`: `recvBuffer` compiled but not on the Octane `:8080`
+  execute path → OpenVEX `not_affected` / `vulnerable_code_not_in_execute_path`.
+
+Evidence: `docs/evidence/security-review/cve-2026-84445-openvex-2026-09-19.md`
+and `docs/evidence/security-review/cve-2026-84304-openvex-2026-09-19.md`.
+
+Doctors peak classification is **sensitive** (National ID / syndicate at rest).
+`specialties` remain public/internal; `doctor.profile_created` remains personal.
+Validator: `scripts/ci/verify_module_catalog_classification.py`.

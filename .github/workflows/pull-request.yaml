@@ -530,10 +530,10 @@ jobs:
       - name: SAST
         # Digest-pinned semgrep/semgrep:1.99.0. Same rulesets as the previous
         # SHA-pinned action input. Mutable scanner tags are not used.
-        # designs/ is a non-served Stitch mockup tree. Those HTML files load
-        # the Tailwind Play compiler, which cannot carry a stable SRI hash.
-        # Production Inertia/Electron/Flutter surfaces remain fully scanned.
-        # --error and the four rulesets stay fail-closed.
+        # designs/ is a non-served Stitch mockup tree. See
+        # infra/security/sast-designs-exclusion.md. Production Inertia,
+        # Electron, and Flutter surfaces remain fully scanned. --error and
+        # the four rulesets stay fail-closed.
         run: |
           docker run --rm -v "$PWD:/src" -w /src \
             semgrep/semgrep:1.99.0@sha256:ae27024c16f7848cdbfd49c24ed0b78b13f13b85fcd7b87c679aaa8b0c0dce98 \
@@ -604,7 +604,9 @@ jobs:
         run: bash scripts/ci/install-trivy.sh
       - name: Verify core-api OpenVEX applicability
         if: matrix.unit == 'core-api'
-        run: python3 scripts/ci/verify_core_api_openvex.py --image clinic-pr/${{ matrix.unit }}:scan
+        run: |
+          python3 scripts/ci/verify_core_api_openvex.py --image clinic-pr/${{ matrix.unit }}:scan
+          python3 scripts/ci/verify_core_api_grpc_openvex.py --image clinic-pr/${{ matrix.unit }}:scan
       - name: Prove core-api OpenVEX is not a blanket suppress
         if: matrix.unit == 'core-api'
         run: |
@@ -621,6 +623,20 @@ jobs:
             --skip-version-check \
             clinic-pr/${{ matrix.unit }}:scan
           python3 scripts/ci/verify_core_api_openvex.py --assert-narrow-json "${REPORT}"
+          GRPC_REPORT="${RUNNER_TEMP}/core-api-trivy-grpc-vex-narrow.json"
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --exit-code 0 \
+            --ignore-unfixed=false \
+            --vex infra/security/vex/core-api-frankenphp-cve-2026-56854.openvex.json \
+            --vex infra/security/vex/core-api-frankenphp-cve-2026-84304.openvex.json \
+            --vex infra/security/vex/core-api-frankenphp-cve-2026-84445.openvex.json \
+            --show-suppressed \
+            --format json \
+            --output "${GRPC_REPORT}" \
+            --skip-version-check \
+            clinic-pr/${{ matrix.unit }}:scan
+          python3 scripts/ci/verify_core_api_grpc_openvex.py --assert-narrow-json "${GRPC_REPORT}"
       - name: Scan the built core-api image
         if: matrix.unit == 'core-api'
         run: |
@@ -631,6 +647,8 @@ jobs:
             --ignore-unfixed=false \
             --ignorefile infra/security/trivy-image.ignore \
             --vex infra/security/vex/core-api-frankenphp-cve-2026-56854.openvex.json \
+            --vex infra/security/vex/core-api-frankenphp-cve-2026-84304.openvex.json \
+            --vex infra/security/vex/core-api-frankenphp-cve-2026-84445.openvex.json \
             --show-suppressed \
             --skip-version-check \
             clinic-pr/${{ matrix.unit }}:scan

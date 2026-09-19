@@ -25,7 +25,7 @@ event (ADR 0001, ADR 0004).
 | `Auth` | 01 | Backend + security | credential |
 | `Identity` | 01–02 | Backend + security | sensitive |
 | `Patients` | 02 | Backend + clinical | sensitive |
-| `Doctors` | 02 | Backend + clinical | personal |
+| `Doctors` | 02 | Backend + clinical | sensitive |
 | `Verification` | 02 | Backend + security | sensitive |
 | `Clinics` | 02 | Backend | personal |
 | `Appointments` | 03 | Backend + clinical | personal |
@@ -168,9 +168,11 @@ are Access-gated and default-denied. `FEATURE_IDENTITY_PROFILE_CLAIM` remains of
 **Events:** `doctor.profile_created`. Verification-submitted/decided events are
 owned by `Verification` when that pipeline is implemented.
 **Tables:** `doctor_profiles`, `specialties`.
-**Classification:** personal. National ID and optional syndicate identifiers are
-sensitive and stored with Identity protection services; HTTP projections never
-return them.
+**Classification:** sensitive. Peak is protected National ID and optional
+syndicate identifiers stored with Identity protection services. `specialties`
+catalogue fields remain public/internal. `doctor.profile_created` remains a
+personal identifier-only projection. HTTP projections never return National ID,
+syndicate number, ciphertext, HMAC, or key versions.
 **Prohibited:** owning verification cases, verification documents, reviewer
 assignment, or decisions (`Verification` owns that pipeline). Granting clinical
 access. Making a doctor `listed` or clinically capable from profile creation.
