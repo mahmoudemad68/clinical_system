@@ -15,6 +15,8 @@ use Modules\Platform\Support\Identifier;
 use Modules\Verification\Services\VerificationDocumentService;
 use Modules\Verification\Services\VerificationService;
 use Modules\Verification\Support\ApplicantCaseProjection;
+use Modules\Verification\Support\VerificationPolicy;
+use Tests\Support\TestingTrustedDocumentEvidenceIssuer;
 
 function verificationDoctorActor(string $userId): ActorContext
 {
@@ -114,24 +116,43 @@ function verificationRegisterDocument(
     $ids = app(IdentityGenerator::class);
     $objectId = $ids->next()->value;
     $sha = hash('sha256', 'synthetic-verification-bytes-'.$objectId);
+    $evidence = (new TestingTrustedDocumentEvidenceIssuer(app(VerificationPolicy::class)))->issue([
+        'case_id' => $caseId,
+        'requirement_code' => $requirement,
+        'object_id' => $objectId,
+        'sha256' => $sha,
+        'detected_mime' => 'application/pdf',
+        'size_bytes' => 2048,
+        'scan_status' => $scanStatus,
+        'status' => $status,
+    ]);
     $row = app(VerificationDocumentService::class)->registerValidatedMetadata(
-        $actor,
-        Identifier::fromTrusted($caseId),
-        [
-            'requirement_code' => $requirement,
-            'object_id' => $objectId,
-            'sha256' => $sha,
-            'detected_mime' => 'application/pdf',
-            'size_bytes' => 2048,
-            'scan_status' => $scanStatus,
-            'status' => $status,
-        ],
+        $evidence,
+        $actor->userId,
     );
 
     return [
         'document_id' => $row->documentId,
         'object_id' => $objectId,
         'sha256' => $sha,
+    ];
+}
+
+/**
+ * @return array{admin: array{user_id: string, actor: ActorContext}, version: int}
+ */
+function verificationClaimPending(array $draft, string $adminKey): array
+{
+    $admin = verificationSeedAdmin($adminKey);
+    $claimed = app(VerificationService::class)->claimCase(
+        $admin['actor'],
+        Identifier::fromTrusted($draft['case_id']),
+        $draft['case_version'] + 1,
+    );
+
+    return [
+        'admin' => $admin,
+        'version' => $claimed->version,
     ];
 }
 

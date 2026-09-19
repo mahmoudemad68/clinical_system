@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Verification\Services;
 
-use Illuminate\Validation\ValidationException;
+use DateTimeZone;
+use Modules\Access\Contracts\Authorize;
+use Modules\Access\Support\Capabilities;
 use Modules\Audit\Contracts\AppendAuditEvent;
+use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Doctors\Services\DoctorApplicantService;
 use Modules\Doctors\Support\DoctorApplicantProjection;
-use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
@@ -20,17 +22,18 @@ use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\StateConflict;
 use Modules\Platform\Support\Identifier;
 use Modules\Verification\Enums\VerificationCaseStatus;
-use Modules\Verification\Enums\VerificationDocumentScanStatus;
-use Modules\Verification\Enums\VerificationDocumentStatus;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
 use Modules\Verification\Support\DocumentMetadataProjection;
+use Modules\Verification\Support\TrustedDocumentEvidence;
 use Modules\Verification\Support\VerificationCaseRecord;
 use Modules\Verification\Support\VerificationDocumentRecord;
 use Modules\Verification\Support\VerificationPolicy;
 
 /**
- * Trusted in-process registrar for already-validated document metadata.
- * There is no HTTP surface that can mark a document AVAILABLE.
+ * Document metadata registrar and reviewer-safe reader.
+ *
+ * AVAILABLE/CLEAN rows are written only from TrustedDocumentEvidence issued by
+ * the scanner boundary. ActorContext is never scan authority.
  */
 final class VerificationDocumentService
 {
@@ -39,29 +42,20 @@ final class VerificationDocumentService
         private readonly PostgresVerificationStore $store,
         private readonly DoctorApplicantService $doctors,
         private readonly VerificationPolicy $policy,
+        private readonly Authorize $authorize,
+        private readonly RecordPrivilegedFailure $privilegedFailures,
         private readonly IdentityGenerator $ids,
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
     ) {}
 
-    /**
-     * @param  array{
-     *     requirement_code: string,
-     *     object_id: string,
-     *     sha256: string,
-     *     detected_mime: string,
-     *     size_bytes: int,
-     *     scan_status: string,
-     *     status: string
-     * }  $input
-     */
-    public function registerValidatedMetadata(ActorContext $actor, Identifier $caseId, array $input): DocumentMetadataProjection
-    {
-        $this->assertTrustedMetadata($input);
-
-        return $this->transactions->run(function (TransactionContext $tx) use ($actor, $caseId, $input): DocumentMetadataProjection {
-            $this->store->lockCase($caseId);
-            $case = $this->store->findCaseById($caseId, true);
+    public function registerValidatedMetadata(
+        TrustedDocumentEvidence $evidence,
+        ?Identifier $attributedApplicantId,
+    ): DocumentMetadataProjection {
+        return $this->transactions->run(function (TransactionContext $tx) use ($evidence, $attributedApplicantId): DocumentMetadataProjection {
+            $this->store->lockCase($evidence->caseId);
+            $case = $this->store->findCaseById($evidence->caseId, true);
             if (! $case instanceof VerificationCaseRecord) {
                 throw new AuthorizationDenied;
             }
@@ -69,34 +63,25 @@ final class VerificationDocumentService
                 throw new StateConflict;
             }
 
-            $doctor = $this->doctors->findById($case->applicantId, true);
-            if (! $doctor instanceof DoctorApplicantProjection) {
-                throw new AuthorizationDenied;
-            }
-            if (! $doctor->userId->equals($actor->userId) && $actor->accountType !== AccountType::Admin) {
-                throw new AuthorizationDenied;
-            }
-
-            if (! $this->policy->isKnownRequirement($case->caseType->value, $input['requirement_code'])) {
+            if (! $this->policy->isKnownRequirement($case->caseType->value, $evidence->requirementCode)) {
                 throw new InvalidValueObject('Requirement code is not allowed.');
             }
 
             $now = $this->clock->now();
             $stamp = $now->format('Y-m-d H:i:s.uP');
             $id = $this->ids->next();
-            $objectId = Identifier::fromString($input['object_id']);
 
             try {
                 $this->store->insertDocument([
                     'id' => $id->value,
                     'case_id' => $case->id->value,
-                    'requirement_code' => $input['requirement_code'],
-                    'object_id' => $objectId->value,
-                    'sha256' => $input['sha256'],
-                    'detected_mime' => $input['detected_mime'],
-                    'size_bytes' => $input['size_bytes'],
-                    'scan_status' => $input['scan_status'],
-                    'status' => $input['status'],
+                    'requirement_code' => $evidence->requirementCode,
+                    'object_id' => $evidence->objectId->value,
+                    'sha256' => $evidence->sha256,
+                    'detected_mime' => $evidence->detectedMime,
+                    'size_bytes' => $evidence->sizeBytes,
+                    'scan_status' => $evidence->scanStatus->value,
+                    'status' => $evidence->status->value,
                     'uploaded_at' => $stamp,
                     'created_at' => $stamp,
                     'updated_at' => $stamp,
@@ -111,13 +96,14 @@ final class VerificationDocumentService
                 'verification_document',
                 $id,
                 [
-                    'reason_code' => 'trusted_metadata',
-                    'requirement_code' => $input['requirement_code'],
-                    'scan_status' => $input['scan_status'],
-                    'status' => $input['status'],
+                    'reason_code' => 'trusted_scanner_pipeline',
+                    'requirement_code' => $evidence->requirementCode,
+                    'scan_status' => $evidence->scanStatus->value,
+                    'status' => $evidence->status->value,
+                    'attributed_applicant_user_id' => $attributedApplicantId?->value,
                 ],
-                $actor->userId,
-                'user',
+                null,
+                'system',
             );
 
             $row = $this->store->findDocumentById($id);
@@ -127,47 +113,120 @@ final class VerificationDocumentService
         });
     }
 
-    public function reviewSafeMetadata(Identifier $documentId): DocumentMetadataProjection
+    public function applyTrustedScanOutcome(TrustedDocumentEvidence $evidence): DocumentMetadataProjection
     {
-        $row = $this->store->findDocumentById($documentId);
-        if (! $row instanceof VerificationDocumentRecord) {
-            throw new AuthorizationDenied;
-        }
+        return $this->transactions->run(function (TransactionContext $tx) use ($evidence): DocumentMetadataProjection {
+            $this->store->lockCase($evidence->caseId);
+            $case = $this->store->findCaseById($evidence->caseId, true);
+            if (! $case instanceof VerificationCaseRecord) {
+                throw new AuthorizationDenied;
+            }
+            if ($case->status !== VerificationCaseStatus::Draft) {
+                throw new StateConflict;
+            }
 
-        return $this->project($row);
+            $row = $this->store->findDocumentByObjectId($evidence->objectId);
+            if (! $row instanceof VerificationDocumentRecord) {
+                throw new AuthorizationDenied;
+            }
+            if (! $row->caseId->equals($case->id) || $row->sha256 !== $evidence->sha256) {
+                throw new StateConflict;
+            }
+
+            $now = $this->clock->now();
+            $stamp = $now->format('Y-m-d H:i:s.uP');
+            $affected = $this->store->updateDocumentLifecycle(
+                $row->id,
+                $case->id,
+                $evidence->objectId->value,
+                $evidence->sha256,
+                $evidence->scanStatus->value,
+                $evidence->status->value,
+                $stamp,
+            );
+            if ($affected !== 1) {
+                throw new StateConflict;
+            }
+
+            $this->audit->append(
+                $tx,
+                'verification.document_scan_applied',
+                'verification_document',
+                $row->id,
+                [
+                    'reason_code' => 'trusted_scanner_pipeline',
+                    'scan_status' => $evidence->scanStatus->value,
+                    'status' => $evidence->status->value,
+                ],
+                null,
+                'system',
+            );
+
+            $fresh = $this->store->findDocumentById($row->id);
+            assert($fresh instanceof VerificationDocumentRecord);
+
+            return $this->project($fresh);
+        });
     }
 
-    /**
-     * @param  array<string, mixed>  $input
-     */
-    private function assertTrustedMetadata(array $input): void
+    public function reviewSafeMetadata(ActorContext $reviewer, Identifier $documentId): DocumentMetadataProjection
     {
-        $sha = (string) ($input['sha256'] ?? '');
-        if (preg_match('/^[a-f0-9]{64}$/', $sha) !== 1) {
-            throw new InvalidValueObject('Document digest is not a SHA-256 hex digest.');
+        $this->assertPrivilegedReviewer($reviewer, $documentId);
+
+        return $this->transactions->run(function () use ($reviewer, $documentId): DocumentMetadataProjection {
+            $row = $this->store->findDocumentById($documentId);
+            if (! $row instanceof VerificationDocumentRecord) {
+                throw new AuthorizationDenied;
+            }
+
+            $this->store->lockCase($row->caseId);
+            $case = $this->store->findCaseById($row->caseId, true);
+            if (! $case instanceof VerificationCaseRecord) {
+                throw new AuthorizationDenied;
+            }
+
+            $this->assertNotSelfReview($reviewer, $case);
+            $this->assertAssignedReviewer($reviewer, $case);
+
+            if (! $row->isReviewable()) {
+                throw new AuthorizationDenied;
+            }
+
+            return $this->project($row);
+        });
+    }
+
+    private function assertPrivilegedReviewer(ActorContext $reviewer, Identifier $objectId): void
+    {
+        $decision = $this->authorize->decide($reviewer, Capabilities::VERIFICATION_REVIEW);
+        if ($decision->allowed) {
+            return;
         }
 
-        $mime = (string) ($input['detected_mime'] ?? '');
-        if (! $this->policy->isAllowedMime($mime)) {
-            throw new InvalidValueObject('Detected MIME type is not allowed.');
-        }
+        $this->privilegedFailures->authorizationDenied(
+            $reviewer->userId,
+            $reviewer->accountType->value,
+            $reviewer->assuranceLevel->value,
+            Capabilities::VERIFICATION_REVIEW,
+            $decision->reasonCode,
+            $objectId,
+            'verification_document',
+        );
+        throw new AuthorizationDenied;
+    }
 
-        $size = (int) ($input['size_bytes'] ?? 0);
-        if ($size < 1 || $size > $this->policy->maxDocumentBytes()) {
-            throw new InvalidValueObject('Document size is outside the allowed bound.');
+    private function assertNotSelfReview(ActorContext $reviewer, VerificationCaseRecord $case): void
+    {
+        $doctor = $this->doctors->findById($case->applicantId, false);
+        if ($doctor instanceof DoctorApplicantProjection && $doctor->userId->equals($reviewer->userId)) {
+            throw new AuthorizationDenied;
         }
+    }
 
-        try {
-            $scan = VerificationDocumentScanStatus::from((string) ($input['scan_status'] ?? ''));
-            $status = VerificationDocumentStatus::from((string) ($input['status'] ?? ''));
-        } catch (\ValueError) {
-            throw new InvalidValueObject('Document status is not allowed.');
-        }
-
-        if ($status === VerificationDocumentStatus::Available && $scan !== VerificationDocumentScanStatus::Clean) {
-            throw ValidationException::withMessages([
-                'status' => 'A document cannot become available without a clean scan.',
-            ]);
+    private function assertAssignedReviewer(ActorContext $reviewer, VerificationCaseRecord $case): void
+    {
+        if (! $case->assignedReviewerId instanceof Identifier || ! $case->assignedReviewerId->equals($reviewer->userId)) {
+            throw new AuthorizationDenied;
         }
     }
 
@@ -182,7 +241,7 @@ final class VerificationDocumentService
             $row->sizeBytes,
             $row->scanStatus->value,
             $row->status->value,
-            $row->uploadedAt->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z'),
+            $row->uploadedAt->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z'),
         );
     }
 }

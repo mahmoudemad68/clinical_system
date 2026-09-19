@@ -222,6 +222,9 @@ auto-listing a doctor on approval; public APIs that mark documents scanned or
 these tables. Submit HTTP is compact (`status`, `doctor_id`, `case_id`,
 `case_status`, `case_version`, `profile_version`, `profile_verification_status`);
 `GET /doctors/me/verification-status` is the canonical projection.
+Production document registration is fail-closed through
+`DisabledTrustedDocumentEvidenceIssuer`; doctor or admin `ActorContext` cannot
+assert scan success. Submitted `verification_documents` are frozen after submission. Reviewer document evidence is assignment-gated.
 
 Earlier catalog drafts listed `doctor_verification_documents` under `Doctors`.
 Phase 02 module ownership is authoritative: verification documents belong here.

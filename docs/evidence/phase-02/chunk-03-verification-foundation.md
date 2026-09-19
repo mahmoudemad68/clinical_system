@@ -7,7 +7,9 @@ Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 verification cases, document metadata/references, and append-only reviewer
 decisions; narrow `DoctorApplicantService`; doctor own-status/submit HTTP;
 compact submit outcome sized for the Platform 255-byte idempotency pointer;
-versioned outbox events; architecture-boundary tests.
+fail-closed trusted document evidence issuer; PostgreSQL freeze of submitted
+document snapshots; assignment-gated reviewer evidence access; versioned
+outbox events; architecture-boundary tests.
 
 **Explicitly deferred:** secure upload/quarantine/malware scanner, Admin
 verification UI/HTTP, Pharmacy verification, Clinics/locations/memberships,
@@ -22,50 +24,47 @@ remains off. ADR 0014 and G-08-04 are not closed by this slice. Staging
 - **Branch:** `cursor/verification-foundation-cc7f`
 - **Recorded:** 2026-09-19
 - **Environment:** host PHP 8.3.6 with `pdo_pgsql`, database `clinic_test`.
-  Gates below were executed on this host after the compact-submit revision.
+  Gates below are filled after the security-review remediation.
 
 ## Commands actually executed
 
 | Command | Result |
 | --- | --- |
-| `./vendor/bin/pint --test` | **PASS** |
-| `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | **PASS** (0 errors) |
-| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | **PASS** (0 violations, 0 uncovered, 1845 allowed) |
-| `./vendor/bin/pest tests/Feature/Verification tests/Unit/Verification tests/Unit/Platform/ArchitectureBoundaryTest.php tests/Feature/Doctors tests/Unit/Doctors tests/Unit/Identity/IdentityRulesTest.php` | **91 passed** (2584 assertions) |
-| `./vendor/bin/pest` (full Core suite) | **591 passed**, 14 skipped (10277 assertions; 605 tests) |
-| `npm run contracts:lint` | **PASS** (`core@v1` valid) |
-| `npm run contracts:events` | **PASS** (18 schemas) |
-| `npm run contracts:ai-internal` | **PASS** (1 schema) |
-| `npm run contracts:generate:ts` | **PASS** (committed client not stale) |
-| `npm run contracts:breaking` | **PASS** (no breaking changes against `origin/main`) |
-| `python3 scripts/ci/run-isr015-validators.py` | **PASS** (path-filters, license-gate, OpenVEX including gRPC S2, catalog S3/S4, Gitleaks NID static, SF-001, promotion isolation) |
-| `php artisan module:list` | Verification enabled, priority 54 |
-
-Gitleaks, Trivy image scans, and OpenVEX were **not** weakened. ISR-015 static
-validators passed locally; container Gitleaks/Trivy remain CI jobs.
+| `./vendor/bin/pint --test` | pending this commit |
+| `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | pending this commit |
+| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | pending this commit |
+| `./vendor/bin/pest` focused Verification/Doctors/Identity/Architecture | pending this commit |
+| `./vendor/bin/pest` full Core suite | pending this commit |
+| `npm run contracts:lint` | pending this commit |
+| `npm run contracts:events` | pending this commit |
+| `npm run contracts:breaking` | pending this commit |
+| `python3 scripts/ci/run-isr015-validators.py` | pending this commit |
 
 Phase 02 as a whole is **not** PASS.
 
 ## Residual (this chunk)
 
-- Document requirement catalogue and rejection-reason catalogue are
+- Document requirement catalogue and rejection-reason catalogue remain
   `ENGINEERING_DEFAULT` (`professional_id`; `approved`, `evidence_incomplete`,
   `identity_mismatch`, `documents_illegible`). Unknown codes deny. Product and
   security owners have not approved a production policy catalogue.
-- There is no HTTP upload, complete callback, or scanner worker. Documents
-  become `available` only through the trusted in-process
-  `VerificationDocumentService::registerValidatedMetadata` seam. A client
-  cannot mark a document scanned or available.
-- Admin decision HTTP and the verification work-queue UI are deferred.
-  `recordDecision` / `claimCase` are testable at the service boundary.
-- Pharmacy verification, Clinics, locations, memberships, and scheduling are
-  out of scope.
+- Production cannot manufacture `AVAILABLE`/`CLEAN` evidence. The bound issuer
+  is `DisabledTrustedDocumentEvidenceIssuer` (`ProviderNotEnabled`). A doctor
+  or admin `ActorContext` is not scanner trust. Tests use
+  `TestingTrustedDocumentEvidenceIssuer` only as an explicit test fixture.
+- Secure upload, quarantine, malware scanning, magic-byte MIME enforcement on
+  real bytes, and signed review URLs remain deferred. There is no HTTP upload.
+- Document content identity is immutable. After the parent case leaves `draft`,
+  PostgreSQL rejects INSERT/UPDATE/DELETE on `verification_documents`.
+- Reviewer detailed evidence access is assignment-gated: claim, then inspect
+  only `AVAILABLE`+`CLEAN` metadata, then decide. Unassigned privileged
+  reviewers do not receive document evidence.
+- `recordDecision` requires the currently assigned reviewer. Reviewer identity
+  is server-derived.
+- Admin decision HTTP and the verification work-queue UI remain deferred.
 - Approval does **not** list the doctor or grant clinical capabilities.
-  Pending/rejected/suspended doctors remain without clinical privileges.
-- `object_id` is an opaque UUIDv7, never a storage key. Raw object keys must
-  not appear in events, logs, public DTOs, URLs, or analytics.
-- Secure-files quarantine, malware scanning, magic-byte MIME enforcement on
-  real bytes, and signed review URLs remain future work.
+- `object_id` is an opaque UUIDv7, never a storage key.
 - Subject erasure of a doctor profile does not automatically purge verification
   cases in this slice.
 - Staging remains unprovisioned; the post-merge deploy gate stays fail-closed.
+

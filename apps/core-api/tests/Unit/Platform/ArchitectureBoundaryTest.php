@@ -390,7 +390,36 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringContainsString('ENGINEERING_DEFAULT', $contents);
         $this->assertStringContainsString('DoctorApplicantService', $contents);
         $this->assertStringContainsString('Submit HTTP is compact', $contents);
+        $this->assertStringContainsString('DisabledTrustedDocumentEvidenceIssuer', $contents);
+        $this->assertStringContainsString('frozen after submission', $contents);
+        $this->assertStringContainsString('assignment-gated', $contents);
         $this->assertStringNotContainsString('READY_TO_MERGE', $contents);
+    }
+
+    #[Test]
+    public function verification_document_registration_is_fail_closed(): void
+    {
+        $provider = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Providers/VerificationServiceProvider.php',
+        );
+        $this->assertStringContainsString('DisabledTrustedDocumentEvidenceIssuer::class', $provider);
+        $this->assertStringContainsString('TrustedDocumentEvidenceIssuer::class', $provider);
+
+        $controller = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Http/Controllers/DoctorVerificationController.php',
+        );
+        $this->assertStringNotContainsString('registerValidatedMetadata', $controller);
+        $this->assertStringNotContainsString('TrustedDocumentEvidence', $controller);
+        $this->assertStringNotContainsString('reviewSafeMetadata', $controller);
+
+        $service = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Services/VerificationDocumentService.php',
+        );
+        $this->assertStringNotContainsString('account_type === AccountType::Admin', $service);
+        $this->assertDoesNotMatchRegularExpression(
+            '/function registerValidatedMetadata\(\s*ActorContext/',
+            $service,
+        );
     }
 
     #[Test]

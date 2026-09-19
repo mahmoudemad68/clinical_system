@@ -6,7 +6,9 @@ namespace Modules\Verification\Providers;
 
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\ServiceProvider;
+use Modules\Verification\Contracts\TrustedDocumentEvidenceIssuer;
 use Modules\Verification\Http\Controllers\DoctorVerificationController;
+use Modules\Verification\Services\Adapters\DisabledTrustedDocumentEvidenceIssuer;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
 use Modules\Verification\Services\VerificationDocumentService;
 use Modules\Verification\Services\VerificationService;
@@ -22,6 +24,7 @@ final class VerificationServiceProvider extends ServiceProvider
             $app->make(ConnectionInterface::class),
         ));
         $this->app->bind(VerificationPolicy::class);
+        $this->app->singleton(TrustedDocumentEvidenceIssuer::class, DisabledTrustedDocumentEvidenceIssuer::class);
         $this->app->bind(VerificationService::class);
         $this->app->bind(VerificationDocumentService::class);
         $this->app->bind(DoctorVerificationController::class);

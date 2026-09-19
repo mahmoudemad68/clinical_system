@@ -147,3 +147,86 @@ it('keeps decisions append-only and unique per case', function () {
     expect(fn () => DB::table('verification_decisions')->delete())
         ->toThrow(QueryException::class);
 });
+
+it('freezes submitted documents and keeps content identity immutable', function () {
+    $draft = verificationInsertCase();
+    $ids = app(IdentityGenerator::class);
+    $now = now('UTC')->format('Y-m-d H:i:s.uP');
+    $documentId = $ids->next()->value;
+    $objectId = $ids->next()->value;
+
+    DB::table('verification_documents')->insert([
+        'id' => $documentId,
+        'case_id' => $draft['id'],
+        'requirement_code' => 'professional_id',
+        'object_id' => $objectId,
+        'sha256' => str_repeat('ab', 32),
+        'detected_mime' => 'application/pdf',
+        'size_bytes' => 12,
+        'scan_status' => 'pending',
+        'status' => 'quarantined',
+        'uploaded_at' => $now,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    DB::table('verification_documents')->where('id', $documentId)->update([
+        'scan_status' => 'clean',
+        'status' => 'available',
+    ]);
+    expect((string) DB::table('verification_documents')->where('id', $documentId)->value('status'))->toBe('available');
+
+    expect(fn () => DB::transaction(fn () => DB::table('verification_documents')->where('id', $documentId)->update([
+        'sha256' => str_repeat('cd', 32),
+    ])))->toThrow(QueryException::class, 'verification_documents content identity is immutable');
+
+    expect(fn () => DB::transaction(fn () => DB::table('verification_documents')->where('id', $documentId)->update([
+        'object_id' => $ids->next()->value,
+    ])))->toThrow(QueryException::class, 'verification_documents content identity is immutable');
+
+    expect(fn () => DB::transaction(fn () => DB::table('verification_documents')->where('id', $documentId)->update([
+        'requirement_code' => 'medical_licence',
+    ])))->toThrow(QueryException::class, 'verification_documents content identity is immutable');
+
+    expect(fn () => DB::transaction(fn () => DB::table('verification_documents')->where('id', $documentId)->update([
+        'detected_mime' => 'image/jpeg',
+    ])))->toThrow(QueryException::class, 'verification_documents content identity is immutable');
+
+    expect(fn () => DB::transaction(fn () => DB::table('verification_documents')->where('id', $documentId)->update([
+        'size_bytes' => 4096,
+    ])))->toThrow(QueryException::class, 'verification_documents content identity is immutable');
+
+    expect(fn () => DB::transaction(fn () => DB::table('verification_documents')->where('id', $documentId)->update([
+        'uploaded_at' => now('UTC')->addMinute()->format('Y-m-d H:i:s.uP'),
+    ])))->toThrow(QueryException::class, 'verification_documents content identity is immutable');
+
+    $submittedAt = now('UTC')->format('Y-m-d H:i:s.uP');
+    DB::table('verification_cases')->where('id', $draft['id'])->update([
+        'status' => 'pending_review',
+        'submitted_at' => $submittedAt,
+        'updated_at' => $submittedAt,
+    ]);
+
+    expect(fn () => DB::transaction(fn () => DB::table('verification_documents')->where('id', $documentId)->update([
+        'scan_status' => 'failed',
+        'status' => 'rejected',
+    ])))->toThrow(QueryException::class, 'verification_documents is frozen after submission');
+
+    expect(fn () => DB::transaction(fn () => DB::table('verification_documents')->where('id', $documentId)->delete()))
+        ->toThrow(QueryException::class, 'verification_documents is frozen after submission');
+
+    expect(fn () => DB::transaction(fn () => DB::table('verification_documents')->insert([
+        'id' => $ids->next()->value,
+        'case_id' => $draft['id'],
+        'requirement_code' => 'professional_id',
+        'object_id' => $ids->next()->value,
+        'sha256' => str_repeat('ef', 32),
+        'detected_mime' => 'application/pdf',
+        'size_bytes' => 12,
+        'scan_status' => 'clean',
+        'status' => 'available',
+        'uploaded_at' => $now,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ])))->toThrow(QueryException::class, 'verification_documents is frozen after submission');
+});

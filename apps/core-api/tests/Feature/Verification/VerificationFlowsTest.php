@@ -4,15 +4,25 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Modules\Doctors\Enums\DoctorPublicStatus;
 use Modules\Doctors\Enums\DoctorVerificationStatus;
 use Modules\Identity\Enums\AssuranceLevel;
+use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Exceptions\AuthorizationDenied;
 use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Exceptions\ProviderNotEnabled;
 use Modules\Platform\Exceptions\StateConflict;
 use Modules\Platform\Support\Identifier;
+use Modules\Verification\Contracts\TrustedDocumentEvidenceIssuer;
+use Modules\Verification\Enums\VerificationDocumentScanStatus;
+use Modules\Verification\Enums\VerificationDocumentStatus;
+use Modules\Verification\Services\Adapters\DisabledTrustedDocumentEvidenceIssuer;
 use Modules\Verification\Services\VerificationDocumentService;
 use Modules\Verification\Services\VerificationService;
+use Modules\Verification\Support\TrustedDocumentEvidence;
+use Modules\Verification\Support\VerificationPolicy;
+use Tests\Support\TestingTrustedDocumentEvidenceIssuer;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -228,13 +238,13 @@ describe('reviewer decisions', function () {
             doctorsAuth($draft['session']['token']) + doctorsIdem('ver-ap-sub'),
         )->assertOk();
 
-        $admin = verificationSeedAdmin('approve');
+        $claimed = verificationClaimPending($draft, 'approve');
         $case = app(VerificationService::class)->recordDecision(
-            $admin['actor'],
+            $claimed['admin']['actor'],
             Identifier::fromTrusted($draft['case_id']),
             'approved',
             'approved',
-            $draft['case_version'] + 1,
+            $claimed['version'],
             'INTERNAL_NOTE_CANARY',
         );
 
@@ -283,13 +293,13 @@ describe('reviewer decisions', function () {
             doctorsAuth($draft['session']['token']) + doctorsIdem('ver-dec-'.$decision),
         )->assertOk();
 
-        $admin = verificationSeedAdmin('dec-'.$decision);
+        $claimed = verificationClaimPending($draft, 'dec-'.$decision);
         app(VerificationService::class)->recordDecision(
-            $admin['actor'],
+            $claimed['admin']['actor'],
             Identifier::fromTrusted($draft['case_id']),
             $decision,
             $reason,
-            $draft['case_version'] + 1,
+            $claimed['version'],
         );
 
         expect((string) DB::table('verification_cases')->where('id', $draft['case_id'])->value('status'))->toBe($decision)
@@ -308,13 +318,13 @@ describe('reviewer decisions', function () {
             doctorsAuth($draft['session']['token']) + doctorsIdem('ver-hist-sub'),
         )->assertOk();
 
-        $admin = verificationSeedAdmin('history');
+        $claimed = verificationClaimPending($draft, 'history');
         app(VerificationService::class)->recordDecision(
-            $admin['actor'],
+            $claimed['admin']['actor'],
             Identifier::fromTrusted($draft['case_id']),
             'changes_requested',
             'documents_illegible',
-            $draft['case_version'] + 1,
+            $claimed['version'],
         );
 
         $fresh = verificationOpenCase($draft['actor']);
@@ -436,21 +446,21 @@ describe('reviewer decisions', function () {
             verificationSubmitBody($draft['case_version'], $draft['profile_version']),
             doctorsAuth($draft['session']['token']) + doctorsIdem('ver-replay-sub'),
         )->assertOk();
-        $admin = verificationSeedAdmin('replay');
+        $claimed = verificationClaimPending($draft, 'replay');
         $service = app(VerificationService::class);
         $first = $service->recordDecision(
-            $admin['actor'],
+            $claimed['admin']['actor'],
             Identifier::fromTrusted($draft['case_id']),
             'approved',
             'approved',
-            $draft['case_version'] + 1,
+            $claimed['version'],
         );
         $second = $service->recordDecision(
-            $admin['actor'],
+            $claimed['admin']['actor'],
             Identifier::fromTrusted($draft['case_id']),
             'approved',
             'approved',
-            $draft['case_version'] + 1,
+            $claimed['version'],
         );
 
         expect($second->caseId)->toBe($first->caseId)
@@ -477,17 +487,18 @@ describe('reviewer decisions', function () {
             doctorsAuth($draft['session']['token']) + doctorsIdem('ver-rb-sub'),
         )->assertOk();
 
+        $claimed = verificationClaimPending($draft, 'rollback');
+
         DB::table('doctor_profiles')->where('id', $draft['doctor_id'])->update([
             'verification_status' => DoctorVerificationStatus::Draft->value,
         ]);
 
-        $admin = verificationSeedAdmin('rollback');
         expect(fn () => app(VerificationService::class)->recordDecision(
-            $admin['actor'],
+            $claimed['admin']['actor'],
             Identifier::fromTrusted($draft['case_id']),
             'approved',
             'approved',
-            $draft['case_version'] + 1,
+            $claimed['version'],
         ))->toThrow(StateConflict::class);
 
         expect(DB::table('verification_decisions')->count())->toBe(0)
@@ -497,8 +508,15 @@ describe('reviewer decisions', function () {
 
     it('omits object identifiers from review-safe document metadata', function () {
         $draft = verificationPrepareDraftWithAvailableDocument('meta');
+        $this->postJson(
+            '/api/v1/doctors/me/verification-submissions',
+            verificationSubmitBody($draft['case_version'], $draft['profile_version']),
+            doctorsAuth($draft['session']['token']) + doctorsIdem('ver-meta-sub'),
+        )->assertOk();
+        $claimed = verificationClaimPending($draft, 'meta');
         $row = DB::table('verification_documents')->where('case_id', $draft['case_id'])->first();
         $projection = app(VerificationDocumentService::class)->reviewSafeMetadata(
+            $claimed['admin']['actor'],
             Identifier::fromTrusted((string) $row->id),
         );
         $encoded = json_encode($projection->toArray(), JSON_THROW_ON_ERROR);
@@ -506,5 +524,232 @@ describe('reviewer decisions', function () {
         expect($encoded)->not->toContain($draft['object_id'])
             ->and($encoded)->not->toContain('object_id')
             ->and($projection->sha256)->toBe((string) $row->sha256);
+    });
+
+    it('denies a decision on an unclaimed case', function () {
+        $draft = verificationPrepareDraftWithAvailableDocument('unclaimed');
+        $this->postJson(
+            '/api/v1/doctors/me/verification-submissions',
+            verificationSubmitBody($draft['case_version'], $draft['profile_version']),
+            doctorsAuth($draft['session']['token']) + doctorsIdem('ver-unclaimed-sub'),
+        )->assertOk();
+
+        $admin = verificationSeedAdmin('unclaimed');
+        expect(fn () => app(VerificationService::class)->recordDecision(
+            $admin['actor'],
+            Identifier::fromTrusted($draft['case_id']),
+            'approved',
+            'approved',
+            $draft['case_version'] + 1,
+        ))->toThrow(AuthorizationDenied::class);
+
+        expect(DB::table('verification_decisions')->count())->toBe(0)
+            ->and(DB::table('outbox_events')->where('event_type', 'doctor.verification_decided')->count())->toBe(0)
+            ->and((string) DB::table('verification_cases')->where('id', $draft['case_id'])->value('assigned_reviewer_id'))->toBe('');
+    });
+});
+
+describe('trusted document registration', function () {
+    it('binds the fail-closed issuer in the production container', function () {
+        expect(app(TrustedDocumentEvidenceIssuer::class))->toBeInstanceOf(DisabledTrustedDocumentEvidenceIssuer::class)
+            ->and(app(TrustedDocumentEvidenceIssuer::class)->canIssue())->toBeFalse();
+    });
+
+    it('does not let a doctor or admin ActorContext issue AVAILABLE evidence', function () {
+        $onboarded = verificationOnboardDoctor('forge-doc');
+        $opened = verificationOpenCase($onboarded['actor']);
+        $admin = verificationSeedAdmin('forge-admin');
+        $payload = [
+            'case_id' => (string) $opened->caseId,
+            'requirement_code' => 'professional_id',
+            'object_id' => app(IdentityGenerator::class)->next()->value,
+            'sha256' => str_repeat('ab', 32),
+            'detected_mime' => 'application/pdf',
+            'size_bytes' => 2048,
+            'scan_status' => 'clean',
+            'status' => 'available',
+        ];
+
+        expect(fn () => app(TrustedDocumentEvidenceIssuer::class)->issue($payload))
+            ->toThrow(ProviderNotEnabled::class);
+        expect(fn () => TrustedDocumentEvidence::hydrateFromIssuer(app(TrustedDocumentEvidenceIssuer::class), $payload))
+            ->toThrow(ProviderNotEnabled::class);
+        expect(fn () => (new ReflectionClass(TrustedDocumentEvidence::class))->newInstanceArgs([
+            Identifier::fromTrusted($payload['case_id']),
+            $payload['requirement_code'],
+            Identifier::fromTrusted($payload['object_id']),
+            $payload['sha256'],
+            $payload['detected_mime'],
+            $payload['size_bytes'],
+            VerificationDocumentScanStatus::Clean,
+            VerificationDocumentStatus::Available,
+        ]))->toThrow(ReflectionException::class);
+
+        expect(DB::table('verification_documents')->count())->toBe(0);
+        unset($onboarded, $admin);
+    });
+
+    it('registers AVAILABLE evidence only through the test-only issuer', function () {
+        $onboarded = verificationOnboardDoctor('trusted-iss');
+        $opened = verificationOpenCase($onboarded['actor']);
+        $document = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId);
+
+        expect(DB::table('verification_documents')->where('id', $document['document_id'])->value('status'))->toBe('available')
+            ->and(DB::table('audit_events')->where('event_name', 'verification.document_registered')->value('actor_type'))->toBe('system')
+            ->and(DB::table('audit_events')->where('event_name', 'verification.document_registered')->value('actor_id'))->toBeNull()
+            ->and(app(TrustedDocumentEvidenceIssuer::class))->toBeInstanceOf(DisabledTrustedDocumentEvidenceIssuer::class);
+    });
+
+    it('applies a trusted scan outcome only while the case is draft', function () {
+        $onboarded = verificationOnboardDoctor('scan-life');
+        $opened = verificationOpenCase($onboarded['actor']);
+        $quarantined = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId, 'quarantined', 'pending');
+        $issuer = new TestingTrustedDocumentEvidenceIssuer(app(VerificationPolicy::class));
+        $promoted = $issuer->issue([
+            'case_id' => (string) $opened->caseId,
+            'requirement_code' => 'professional_id',
+            'object_id' => $quarantined['object_id'],
+            'sha256' => $quarantined['sha256'],
+            'detected_mime' => 'application/pdf',
+            'size_bytes' => 2048,
+            'scan_status' => 'clean',
+            'status' => 'available',
+        ]);
+
+        $updated = app(VerificationDocumentService::class)->applyTrustedScanOutcome($promoted);
+        expect($updated->status)->toBe('available')
+            ->and($updated->scanStatus)->toBe('clean');
+
+        $this->postJson(
+            '/api/v1/doctors/me/verification-submissions',
+            verificationSubmitBody((int) $opened->caseVersion, $opened->profileVersion),
+            doctorsAuth($onboarded['session']['token']) + doctorsIdem('ver-scan-life-sub'),
+        )->assertOk();
+
+        expect(fn () => app(VerificationDocumentService::class)->applyTrustedScanOutcome($promoted))
+            ->toThrow(StateConflict::class);
+    });
+});
+
+describe('reviewer document access', function () {
+    it('denies ordinary doctors and low-assurance admins', function () {
+        $draft = verificationPrepareDraftWithAvailableDocument('rev-deny');
+        $this->postJson(
+            '/api/v1/doctors/me/verification-submissions',
+            verificationSubmitBody($draft['case_version'], $draft['profile_version']),
+            doctorsAuth($draft['session']['token']) + doctorsIdem('ver-rev-deny-sub'),
+        )->assertOk();
+        $documentId = Identifier::fromTrusted((string) DB::table('verification_documents')->where('case_id', $draft['case_id'])->value('id'));
+
+        expect(fn () => app(VerificationDocumentService::class)->reviewSafeMetadata($draft['actor'], $documentId))
+            ->toThrow(AuthorizationDenied::class);
+
+        $weak = verificationSeedAdmin('rev-weak');
+        $weakActor = verificationOperatorActor($weak['user_id'], AssuranceLevel::Aal1Password);
+        expect(fn () => app(VerificationDocumentService::class)->reviewSafeMetadata($weakActor, $documentId))
+            ->toThrow(AuthorizationDenied::class);
+
+        expect(DB::table('audit_events')->where('event_name', 'auth.privileged_authorization_denied')->count())->toBeGreaterThan(0);
+    });
+
+    it('denies unassigned privileged reviewers and self-review', function () {
+        $draft = verificationPrepareDraftWithAvailableDocument('rev-unassigned');
+        $this->postJson(
+            '/api/v1/doctors/me/verification-submissions',
+            verificationSubmitBody($draft['case_version'], $draft['profile_version']),
+            doctorsAuth($draft['session']['token']) + doctorsIdem('ver-rev-unass-sub'),
+        )->assertOk();
+        $documentId = Identifier::fromTrusted((string) DB::table('verification_documents')->where('case_id', $draft['case_id'])->value('id'));
+        $admin = verificationSeedAdmin('rev-unassigned');
+
+        expect(fn () => app(VerificationDocumentService::class)->reviewSafeMetadata($admin['actor'], $documentId))
+            ->toThrow(AuthorizationDenied::class);
+
+        $header = app(VerificationService::class)->reviewerCase($admin['actor'], Identifier::fromTrusted($draft['case_id']));
+        expect($header->documents)->toBe([]);
+
+        $self = verificationOperatorActor($draft['session']['user_id']);
+        expect(fn () => app(VerificationDocumentService::class)->reviewSafeMetadata($self, $documentId))
+            ->toThrow(AuthorizationDenied::class);
+    });
+
+    it('lets the assigned reviewer read only AVAILABLE and CLEAN evidence', function () {
+        $onboarded = verificationOnboardDoctor('rev-ok');
+        $opened = verificationOpenCase($onboarded['actor']);
+        $quarantined = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId, 'quarantined', 'pending');
+        $failed = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId, 'rejected', 'failed');
+        $retired = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId, 'retired', 'clean');
+        $available = verificationRegisterDocument($onboarded['actor'], (string) $opened->caseId);
+        $draft = [
+            'session' => $onboarded['session'],
+            'case_id' => (string) $opened->caseId,
+            'case_version' => (int) $opened->caseVersion,
+            'profile_version' => $opened->profileVersion,
+            'object_id' => $available['object_id'],
+        ];
+        $this->postJson(
+            '/api/v1/doctors/me/verification-submissions',
+            verificationSubmitBody($draft['case_version'], $draft['profile_version']),
+            doctorsAuth($draft['session']['token']) + doctorsIdem('ver-rev-ok-sub'),
+        )->assertOk();
+        $claimed = verificationClaimPending($draft, 'rev-ok');
+
+        $ok = app(VerificationDocumentService::class)->reviewSafeMetadata(
+            $claimed['admin']['actor'],
+            Identifier::fromTrusted($available['document_id']),
+        );
+        expect($ok->status)->toBe('available')
+            ->and($ok->scanStatus)->toBe('clean')
+            ->and(json_encode($ok->toArray(), JSON_THROW_ON_ERROR))->not->toContain($available['object_id']);
+
+        expect(fn () => app(VerificationDocumentService::class)->reviewSafeMetadata(
+            $claimed['admin']['actor'],
+            Identifier::fromTrusted($quarantined['document_id']),
+        ))->toThrow(AuthorizationDenied::class);
+        expect(fn () => app(VerificationDocumentService::class)->reviewSafeMetadata(
+            $claimed['admin']['actor'],
+            Identifier::fromTrusted($failed['document_id']),
+        ))->toThrow(AuthorizationDenied::class);
+        expect(fn () => app(VerificationDocumentService::class)->reviewSafeMetadata(
+            $claimed['admin']['actor'],
+            Identifier::fromTrusted($retired['document_id']),
+        ))->toThrow(AuthorizationDenied::class);
+
+        $projection = app(VerificationService::class)->reviewerCase(
+            $claimed['admin']['actor'],
+            Identifier::fromTrusted($draft['case_id']),
+        );
+        expect($projection->documents)->toHaveCount(1)
+            ->and($projection->documents[0]['document_id'])->toBe($available['document_id']);
+    });
+
+    it('does not decide when submitted reviewable evidence is no longer valid', function () {
+        $draft = verificationPrepareDraftWithAvailableDocument('broken-ev');
+        $this->postJson(
+            '/api/v1/doctors/me/verification-submissions',
+            verificationSubmitBody($draft['case_version'], $draft['profile_version']),
+            doctorsAuth($draft['session']['token']) + doctorsIdem('ver-broken-sub'),
+        )->assertOk();
+        $claimed = verificationClaimPending($draft, 'broken-ev');
+
+        DB::statement('ALTER TABLE verification_documents DISABLE TRIGGER verification_documents_protect');
+        DB::table('verification_documents')->where('case_id', $draft['case_id'])->update([
+            'status' => 'quarantined',
+            'scan_status' => 'pending',
+        ]);
+        DB::statement('ALTER TABLE verification_documents ENABLE TRIGGER verification_documents_protect');
+
+        expect(fn () => app(VerificationService::class)->recordDecision(
+            $claimed['admin']['actor'],
+            Identifier::fromTrusted($draft['case_id']),
+            'approved',
+            'approved',
+            $claimed['version'],
+        ))->toThrow(ValidationException::class);
+
+        expect(DB::table('verification_decisions')->count())->toBe(0)
+            ->and(DB::table('outbox_events')->where('event_type', 'doctor.verification_decided')->count())->toBe(0)
+            ->and((string) DB::table('verification_cases')->where('id', $draft['case_id'])->value('status'))->toBe('pending_review')
+            ->and((string) DB::table('doctor_profiles')->where('id', $draft['doctor_id'])->value('verification_status'))->toBe('pending_review');
     });
 });

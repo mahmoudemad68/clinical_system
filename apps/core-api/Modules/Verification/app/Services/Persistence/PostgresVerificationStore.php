@@ -143,6 +143,38 @@ final class PostgresVerificationStore
         return $row instanceof stdClass ? $this->mapDocument($row) : null;
     }
 
+    public function findDocumentByObjectId(Identifier $objectId): ?VerificationDocumentRecord
+    {
+        $row = $this->connection->table('verification_documents')->where('object_id', $objectId->value)->first();
+
+        return $row instanceof stdClass ? $this->mapDocument($row) : null;
+    }
+
+    /**
+     * Lifecycle-only mutation. Content identity columns are not in the SET list;
+     * PostgreSQL still rejects the write after the parent case leaves draft.
+     */
+    public function updateDocumentLifecycle(
+        Identifier $id,
+        Identifier $caseId,
+        string $objectId,
+        string $sha256,
+        string $scanStatus,
+        string $status,
+        string $updatedAt,
+    ): int {
+        return $this->connection->table('verification_documents')
+            ->where('id', $id->value)
+            ->where('case_id', $caseId->value)
+            ->where('object_id', $objectId)
+            ->where('sha256', $sha256)
+            ->update([
+                'scan_status' => $scanStatus,
+                'status' => $status,
+                'updated_at' => $updatedAt,
+            ]);
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */

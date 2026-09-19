@@ -16,18 +16,17 @@ it('keeps one authoritative decision under concurrent reviewers', function () {
         doctorsAuth($draft['session']['token']) + doctorsIdem('ver-race-sub'),
     )->assertOk();
 
-    $left = verificationSeedAdmin('race-l');
+    $claimed = verificationClaimPending($draft, 'race-l');
     $right = verificationSeedAdmin('race-r');
-    $version = $draft['case_version'] + 1;
 
     $pair = ConcurrentHttpPair::run(
         [
             'op' => 'verification_decide',
-            'reviewer_user_id' => $left['user_id'],
+            'reviewer_user_id' => $claimed['admin']['user_id'],
             'case_id' => $draft['case_id'],
             'decision' => 'approved',
             'reason_code' => 'approved',
-            'expected_version' => $version,
+            'expected_version' => $claimed['version'],
         ],
         [
             'op' => 'verification_decide',
@@ -35,7 +34,7 @@ it('keeps one authoritative decision under concurrent reviewers', function () {
             'case_id' => $draft['case_id'],
             'decision' => 'rejected',
             'reason_code' => 'identity_mismatch',
-            'expected_version' => $version,
+            'expected_version' => $claimed['version'],
         ],
     );
 
@@ -45,7 +44,7 @@ it('keeps one authoritative decision under concurrent reviewers', function () {
         ->and(DB::table('outbox_events')->where('event_type', 'doctor.verification_decided')->count())->toBe(1);
 
     foreach ($statuses as $status) {
-        expect(in_array($status, [200, 409], true))->toBeTrue();
+        expect(in_array($status, [200, 404, 409], true))->toBeTrue();
     }
 
     $codes = [$pair['left']['error_code'], $pair['right']['error_code']];
@@ -60,25 +59,24 @@ it('replays identical concurrent decisions without a second row', function () {
         doctorsAuth($draft['session']['token']) + doctorsIdem('ver-race-same-sub'),
     )->assertOk();
 
-    $admin = verificationSeedAdmin('race-same');
-    $version = $draft['case_version'] + 1;
+    $claimed = verificationClaimPending($draft, 'race-same');
 
     $pair = ConcurrentHttpPair::run(
         [
             'op' => 'verification_decide',
-            'reviewer_user_id' => $admin['user_id'],
+            'reviewer_user_id' => $claimed['admin']['user_id'],
             'case_id' => $draft['case_id'],
             'decision' => 'approved',
             'reason_code' => 'approved',
-            'expected_version' => $version,
+            'expected_version' => $claimed['version'],
         ],
         [
             'op' => 'verification_decide',
-            'reviewer_user_id' => $admin['user_id'],
+            'reviewer_user_id' => $claimed['admin']['user_id'],
             'case_id' => $draft['case_id'],
             'decision' => 'approved',
             'reason_code' => 'approved',
-            'expected_version' => $version,
+            'expected_version' => $claimed['version'],
         ],
     );
 

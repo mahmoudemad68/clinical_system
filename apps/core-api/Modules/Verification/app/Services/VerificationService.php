@@ -280,7 +280,7 @@ final class VerificationService
             $fresh = $this->store->findCaseById($case->id, false);
             assert($fresh instanceof VerificationCaseRecord);
 
-            return $this->reviewerProjection($fresh);
+            return $this->reviewerProjection($reviewer, $fresh);
         });
     }
 
@@ -327,7 +327,9 @@ final class VerificationService
             $existing = $this->store->findDecisionByCaseId($case->id);
             if ($existing instanceof VerificationDecisionRecord) {
                 if ($existing->matches($decision, $reasonCode, $reviewer->userId)) {
-                    return $this->reviewerProjection($case, $existing);
+                    $this->assertAssignedReviewer($reviewer, $case);
+
+                    return $this->reviewerProjection($reviewer, $case, $existing);
                 }
                 throw new StateConflict;
             }
@@ -340,9 +342,8 @@ final class VerificationService
             }
 
             $this->assertNotSelfReview($reviewer, $case);
-            if ($case->assignedReviewerId instanceof Identifier && ! $case->assignedReviewerId->equals($reviewer->userId)) {
-                throw new StateConflict;
-            }
+            $this->assertAssignedReviewer($reviewer, $case);
+            $this->assertRequiredDocumentsAvailable($case);
 
             $doctor = $this->doctors->findById($case->applicantId, true);
             if (! $doctor instanceof DoctorApplicantProjection) {
@@ -370,7 +371,7 @@ final class VerificationService
             } catch (DuplicateIdentity) {
                 $replay = $this->store->findDecisionByCaseId($case->id);
                 if ($replay instanceof VerificationDecisionRecord && $replay->matches($decision, $reasonCode, $reviewer->userId)) {
-                    return $this->reviewerProjection($case, $replay);
+                    return $this->reviewerProjection($reviewer, $case, $replay);
                 }
                 throw new StateConflict;
             }
@@ -431,7 +432,7 @@ final class VerificationService
             $recorded = $this->store->findDecisionByCaseId($case->id);
             assert($recorded instanceof VerificationDecisionRecord);
 
-            return $this->reviewerProjection($fresh, $recorded);
+            return $this->reviewerProjection($reviewer, $fresh, $recorded);
         });
     }
 
@@ -444,7 +445,7 @@ final class VerificationService
         }
         $this->assertNotSelfReview($reviewer, $case);
 
-        return $this->reviewerProjection($case);
+        return $this->reviewerProjection($reviewer, $case);
     }
 
     private function assertKnownDoctorCaseType(): void
@@ -484,6 +485,13 @@ final class VerificationService
     {
         $doctor = $this->doctors->findById($case->applicantId, false);
         if ($doctor instanceof DoctorApplicantProjection && $doctor->userId->equals($reviewer->userId)) {
+            throw new AuthorizationDenied;
+        }
+    }
+
+    private function assertAssignedReviewer(ActorContext $reviewer, VerificationCaseRecord $case): void
+    {
+        if (! $case->assignedReviewerId instanceof Identifier || ! $case->assignedReviewerId->equals($reviewer->userId)) {
             throw new AuthorizationDenied;
         }
     }
@@ -579,21 +587,28 @@ final class VerificationService
         );
     }
 
-    private function reviewerProjection(VerificationCaseRecord $case, ?VerificationDecisionRecord $decision = null): ReviewerCaseProjection
+    private function reviewerProjection(ActorContext $reviewer, VerificationCaseRecord $case, ?VerificationDecisionRecord $decision = null): ReviewerCaseProjection
     {
         $decision ??= $this->store->findDecisionByCaseId($case->id);
+        $assigned = $case->assignedReviewerId instanceof Identifier
+            && $case->assignedReviewerId->equals($reviewer->userId);
         $documents = [];
-        foreach ($this->store->documentsForCase($case->id) as $document) {
-            $documents[] = [
-                'document_id' => $document->id->value,
-                'requirement_code' => $document->requirementCode,
-                'sha256' => $document->sha256,
-                'detected_mime' => $document->detectedMime,
-                'size_bytes' => $document->sizeBytes,
-                'scan_status' => $document->scanStatus->value,
-                'status' => $document->status->value,
-                'uploaded_at' => $this->iso($document->uploadedAt),
-            ];
+        if ($assigned) {
+            foreach ($this->store->documentsForCase($case->id) as $document) {
+                if (! $document->isReviewable()) {
+                    continue;
+                }
+                $documents[] = [
+                    'document_id' => $document->id->value,
+                    'requirement_code' => $document->requirementCode,
+                    'sha256' => $document->sha256,
+                    'detected_mime' => $document->detectedMime,
+                    'size_bytes' => $document->sizeBytes,
+                    'scan_status' => $document->scanStatus->value,
+                    'status' => $document->status->value,
+                    'uploaded_at' => $this->iso($document->uploadedAt),
+                ];
+            }
         }
 
         return new ReviewerCaseProjection(
