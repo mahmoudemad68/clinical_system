@@ -1,0 +1,22 @@
+{
+    "name": "clinic/verification",
+    "description": "Clinic Verification module",
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Verification\\": "app/",
+            "Modules\\Verification\\Database\\Factories\\": "database/factories/",
+            "Modules\\Verification\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Verification\\Tests\\": "tests/"
+        }
+    }
+}

@@ -36,6 +36,12 @@ final class Capabilities
 
     public const DOCTORS_PROFILE_READ_OWN = 'doctors.profile.read_own';
 
+    public const VERIFICATION_SUBMIT_OWN = 'verification.case.submit_own';
+
+    public const VERIFICATION_STATUS_READ_OWN = 'verification.case.read_own';
+
+    public const VERIFICATION_REVIEW = 'verification.case.review';
+
     public const MFA_MANAGE_SELF = 'auth.mfa.manage_self';
 
     public const ACCESS_GRANT_ISSUE = 'access.grant.issue';
@@ -69,6 +75,8 @@ final class Capabilities
         self::PATIENTS_PROFILE_UPDATE_OWN,
         self::DOCTORS_ONBOARDING,
         self::DOCTORS_PROFILE_READ_OWN,
+        self::VERIFICATION_SUBMIT_OWN,
+        self::VERIFICATION_STATUS_READ_OWN,
         self::MFA_MANAGE_SELF,
     ];
 
@@ -80,6 +88,7 @@ final class Capabilities
         self::IDENTITY_ERASE,
         self::IDENTITY_EXPORT,
         self::RECOVERY_APPLY,
+        self::VERIFICATION_REVIEW,
     ];
 
     /** @var list<string> */

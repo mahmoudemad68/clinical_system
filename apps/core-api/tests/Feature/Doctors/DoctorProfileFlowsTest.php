@@ -136,6 +136,9 @@ describe('doctor onboarding', function () {
         $caps->assertOk()->assertJsonMissing(['clinical.record.read', 'clinical.encounter.write']);
         expect($caps->json('data.capabilities'))->toContain(Capabilities::DOCTORS_ONBOARDING)
             ->and($caps->json('data.capabilities'))->toContain(Capabilities::DOCTORS_PROFILE_READ_OWN)
+            ->and($caps->json('data.capabilities'))->toContain(Capabilities::VERIFICATION_SUBMIT_OWN)
+            ->and($caps->json('data.capabilities'))->toContain(Capabilities::VERIFICATION_STATUS_READ_OWN)
+            ->and($caps->json('data.capabilities'))->not->toContain(Capabilities::VERIFICATION_REVIEW)
             ->and($caps->json('data.capabilities'))->not->toContain('clinical.record.read');
     });
 
@@ -370,9 +373,14 @@ describe('own doctor profile', function () {
         $this->getJson('/api/v1/doctors/'.$doctorId, doctorsAuth($other['token']))
             ->assertNotFound();
         $this->getJson('/api/v1/doctors/me/verification-status', doctorsAuth($session['token']))
-            ->assertNotFound();
+            ->assertOk()
+            ->assertJsonPath('data.doctor_id', $doctorId)
+            ->assertJsonPath('data.profile_verification_status', DoctorVerificationStatus::Draft->value)
+            ->assertJsonPath('data.case_id', null)
+            ->assertJsonMissingPath('data.national_id')
+            ->assertJsonMissingPath('data.object_id');
         $this->postJson('/api/v1/doctors/me/verification-submissions', [], doctorsAuth($session['token']) + doctorsIdem('don-ver'))
-            ->assertNotFound();
+            ->assertStatus(422);
         $this->getJson('/api/v1/specialties', doctorsAuth($session['token']))
             ->assertNotFound();
     });

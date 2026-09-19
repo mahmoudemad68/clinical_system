@@ -5,5 +5,6 @@
     "Auth": true,
     "Access": true,
     "Patients": true,
-    "Doctors": true
+    "Doctors": true,
+    "Verification": true
 }

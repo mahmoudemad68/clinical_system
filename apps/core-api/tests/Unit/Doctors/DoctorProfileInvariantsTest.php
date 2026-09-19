@@ -16,6 +16,20 @@ it('never treats verification status as a clinical grant', function () {
     }
 });
 
+it('allows a new case only from draft, changes requested, or rejected', function () {
+    expect(DoctorVerificationStatus::Draft->allowsNewVerificationCase())->toBeTrue()
+        ->and(DoctorVerificationStatus::ChangesRequested->allowsNewVerificationCase())->toBeTrue()
+        ->and(DoctorVerificationStatus::Rejected->allowsNewVerificationCase())->toBeTrue()
+        ->and(DoctorVerificationStatus::PendingReview->allowsNewVerificationCase())->toBeFalse()
+        ->and(DoctorVerificationStatus::Approved->allowsNewVerificationCase())->toBeFalse()
+        ->and(DoctorVerificationStatus::Suspended->allowsNewVerificationCase())->toBeFalse();
+});
+
+it('rejects invalid professional verification transitions', function () {
+    expect(DoctorVerificationStatus::Draft->canTransitionTo(DoctorVerificationStatus::Approved))->toBeFalse()
+        ->and(DoctorVerificationStatus::Approved->canTransitionTo(DoctorVerificationStatus::PendingReview))->toBeFalse();
+});
+
 it('keeps public listing as a closed vocabulary', function () {
     expect(DoctorPublicStatus::values())->toBe(['hidden', 'listed']);
 });

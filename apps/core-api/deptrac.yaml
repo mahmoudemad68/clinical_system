@@ -52,6 +52,11 @@ parameters:
         - type: directory
           value: Modules/Doctors/.*
 
+    - name: Verification
+      collectors:
+        - type: directory
+          value: Modules/Verification/.*
+
     - name: Framework
       collectors:
         - type: classLike
@@ -146,6 +151,16 @@ parameters:
       - Identity
       - Access
       - Audit
+      - DomainSafeVendor
+      - Framework
+      - Providers
+
+    Verification:
+      - Platform
+      - Identity
+      - Access
+      - Audit
+      - Doctors
       - DomainSafeVendor
       - Framework
       - Providers

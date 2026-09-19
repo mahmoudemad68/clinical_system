@@ -15,6 +15,7 @@ use Modules\Platform\Exceptions\AuthorizationDenied;
 use Modules\Platform\Exceptions\FeatureUnavailable;
 use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\RateLimited;
+use Modules\Platform\Exceptions\StateConflict;
 use Modules\Platform\Exceptions\VersionConflict;
 use Modules\Platform\Http\Responses\ErrorCode;
 use Modules\Platform\Http\Responses\ErrorEnvelope;
@@ -77,6 +78,8 @@ final class ExceptionRenderer
                 $requestId,
                 headers: array_filter(['Retry-After' => $e->getHeaders()['Retry-After'] ?? null]),
             ),
+
+            $e instanceof StateConflict => ErrorEnvelope::of(ErrorCode::StateConflict, $requestId),
 
             $e instanceof VersionConflict => ErrorEnvelope::of(ErrorCode::VersionConflict, $requestId),
 

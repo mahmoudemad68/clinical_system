@@ -32,7 +32,8 @@ Reconciled to committed Core migrations under
 `mfa_recovery_codes`, `mfa_challenges`, `auth_sessions`,
 `identity_profile_links`, `contextual_access_grants`, `audit_events`,
 `auth_refresh_consumptions`, `recovery_requests`, `patient_profiles`,
-`patient_demographic_revisions`, `specialties`, `doctor_profiles`.
+`patient_demographic_revisions`, `specialties`, `doctor_profiles`,
+`verification_cases`, `verification_documents`, `verification_decisions`.
 
 **Laravel catalog (not created by an application `Schema::create`):**
 `migrations`.
@@ -395,6 +396,8 @@ Phase 00 status pages share only process liveness. No actor, tenant, host, check
 | `patient.profile_created` | 1 | personal | `patient_id`, `linked_user_id` nullable, `source_type` | later projections | 7 days |
 | `patient.account_linked` | 1 | personal | `patient_id`, `user_id`, `assurance_level` | later projections | 7 days |
 | `doctor.profile_created` | 1 | personal | `doctor_id`, `linked_user_id`, `source_type` | later projections | 7 days |
+| `doctor.verification_submitted` | 1 | internal | `doctor_id`, `case_id` | later projections | 7 days |
+| `doctor.verification_decided` | 1 | internal | `doctor_id`, `case_id`, `decision`, `reason_code` | later projections | 7 days |
 
 ---
 
@@ -809,6 +812,79 @@ creation does not grant clinical capabilities.
 | `approved_at`, `suspended_at` | internal | Lifecycle instants | app | as row | at rest | Mahmoud | n/a |
 | `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
+### `verification_cases`
+
+Phase 02 chunk 03 Verification foundation
+(`2026_09_19_180000_create_verification_tables.php`). One row per verification
+attempt. Re-submission creates a new case; decided rows are not rewritten.
+Applicant identity is an opaque `(applicant_type, applicant_id)` pair. There is
+no foreign key to `doctor_profiles` (Verification must not take a persistence
+dependency on Doctors).
+
+**Writer.** Verification module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked. `clinic_backup` is SELECT only.
+
+**PII / sensitive.** This table is the case workflow record for professional
+identity verification. It does not store National ID, syndicate numbers, or
+document bytes. HTTP applicant projections are own-case only.
+
+**Retention / deletion.** Engineering default: retain with the applicant
+history. Legal retention: **OPEN_LEGAL_DECISION**. Subject erasure of the
+linked doctor profile does not automatically delete cases in this slice.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 case identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `applicant_type` | internal | Constrained; this slice is `doctor` | app | as row | at rest | Mahmoud | n/a |
+| `applicant_id` | personal | Opaque applicant profile id | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `case_type` | internal | Constrained; this slice is `doctor_verification` | app | as row | at rest | Mahmoud | n/a |
+| `status` | internal | `draft` / `pending_review` / `changes_requested` / `approved` / `rejected` | app | as row | at rest | Mahmoud | n/a |
+| `submitted_at` | internal | Set on submit; null while draft | app | as row | at rest | Mahmoud | n/a |
+| `assigned_reviewer_id` | personal | FK to `users`; server-derived | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `decided_at` | internal | Set when a decision is recorded | app | as row | at rest | Mahmoud | n/a |
+| `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `verification_documents`
+
+Foundation metadata/reference only. `object_id` is an opaque UUIDv7, never a
+storage key. A row cannot be `available` unless `scan_status` is `clean`
+(database CHECK plus service). Clients cannot mark a document scanned or
+available over HTTP in this slice; only a trusted in-process registrar writes
+rows. Object keys, signed URLs, and file bytes are out of scope.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 document metadata identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `case_id` | internal | FK to `verification_cases` | app | as row | at rest | Mahmoud | n/a |
+| `requirement_code` | internal | Allowlisted requirement slot | app | as row | at rest | Mahmoud | n/a |
+| `object_id` | sensitive | Opaque object identifier; never in events, logs, URLs, or public DTOs | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `sha256` | sensitive | Hex digest of validated bytes | app / reviewer projection | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `detected_mime` | internal | Server-observed MIME, not client Content-Type | app / reviewer projection | as row | at rest | Mahmoud | n/a |
+| `size_bytes` | internal | Observed size; bounded | app / reviewer projection | as row | at rest | Mahmoud | n/a |
+| `scan_status` | internal | `pending` / `clean` / `failed` | app | as row | at rest | Mahmoud | n/a |
+| `status` | internal | `quarantined` / `available` / `rejected` / `retired` | app | as row | at rest | Mahmoud | n/a |
+| `uploaded_at` | internal | Metadata registration time | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `verification_decisions`
+
+Append-only. Unique `(case_id)` so a case has one authoritative decision.
+UPDATE/DELETE are blocked by trigger; `clinic_app` is granted SELECT/INSERT
+only. Reviewer identity is taken from the server-derived actor, never from the
+client. `notes_ciphertext` is never returned to applicants or placed in events.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 decision identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `case_id` | internal | FK; unique | app | as row | at rest | Mahmoud | n/a |
+| `decision` | internal | `approved` / `rejected` / `changes_requested` | app | as row | at rest | Mahmoud | n/a |
+| `reason_code` | internal | Allowlisted ENGINEERING_DEFAULT code | app / applicant (safe code only) | as row | at rest | Mahmoud | n/a |
+| `reviewer_id` | personal | Server-derived user id | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `reviewer_assurance_level` | internal | Copied from actor; privileged review requires AAL2 | app | as row | at rest | Mahmoud | n/a |
+| `notes_ciphertext` | sensitive | Optional reviewer notes; never in events or applicant DTOs | app (audited decrypt later) | as row | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `created_at` | internal | Append time | app | as row | at rest | Mahmoud | n/a |
+
 ### `auth_refresh_consumptions`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
@@ -892,6 +968,8 @@ Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
 | `patient.profile_created` | 1 | personal | patient_id, linked_user_id nullable, source_type | later projections | 7 days |
 | `patient.account_linked` | 1 | personal | patient_id, user_id, assurance_level | later projections | 7 days |
 | `doctor.profile_created` | 1 | personal | doctor_id, linked_user_id, source_type | later projections | 7 days |
+| `doctor.verification_submitted` | 1 | internal | doctor_id, case_id | later projections | 7 days |
+| `doctor.verification_decided` | 1 | internal | doctor_id, case_id, decision, reason_code | later projections | 7 days |
 
 `credential` classification is rejected by the outbox CHECK. Event retention
 above is the outbox `PROCESSED` engineering default, not a legal schedule.
