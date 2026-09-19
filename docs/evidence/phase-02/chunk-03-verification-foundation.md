@@ -22,25 +22,29 @@ remains off. ADR 0014 and G-08-04 are not closed by this slice. Staging
 `Deploy to staging` remains fail-closed; this chunk does not bypass it.
 
 - **Branch:** `cursor/verification-foundation-cc7f`
+- **Reviewed HEAD before remediation:** `cdb5e5948535b7444b5cc86ffa6bb3a7898f5dcd`
+- **Remediation commit:** `f4a0cb304ce64e21e1abc770bc8d3592b41af71d`
 - **Recorded:** 2026-09-19
 - **Environment:** host PHP 8.3.6 with `pdo_pgsql`, database `clinic_test`.
-  Gates below are filled after the security-review remediation.
+  Gates below were re-run after the security-review remediation.
 
 ## Commands actually executed
 
 | Command | Result |
 | --- | --- |
-| `./vendor/bin/pint --test` | pending this commit |
-| `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | pending this commit |
-| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | pending this commit |
-| `./vendor/bin/pest` focused Verification/Doctors/Identity/Architecture | pending this commit |
-| `./vendor/bin/pest` full Core suite | pending this commit |
-| `npm run contracts:lint` | pending this commit |
-| `npm run contracts:events` | pending this commit |
-| `npm run contracts:breaking` | pending this commit |
-| `python3 scripts/ci/run-isr015-validators.py` | pending this commit |
+| `./vendor/bin/pint --test` | `{"tool":"pint","result":"passed"}` |
+| `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | `{"tool":"phpstan","result":"passed","errors":0}` |
+| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | 0 violations, 0 uncovered, **1868** allowed |
+| `./vendor/bin/pest tests/Feature/Verification tests/Unit/Verification tests/Unit/Platform/ArchitectureBoundaryTest.php` | **62 passed** (2305 assertions) |
+| `./vendor/bin/pest` (full Core suite) | **602 passed**, 14 skipped, 616 tests (10410 assertions) |
+| `npm run contracts:lint` | OpenAPI valid |
+| `npm run contracts:events` | **18** event schemas checked |
+| `npm run contracts:breaking` | no breaking changes against `origin/main` |
+| `python3 scripts/ci/run-isr015-validators.py` | **PASS** (path-filters, license-gate, OpenVEX including gRPC S2, catalog S3/S4, Gitleaks NID static, SF-001, promotion isolation) |
 
-Phase 02 as a whole is **not** PASS.
+Phase 02 as a whole is **not** PASS. GitHub PR CI is recorded on the evidence
+commit that follows this local run; this file does not claim production
+approval.
 
 ## Residual (this chunk)
 
@@ -67,4 +71,5 @@ Phase 02 as a whole is **not** PASS.
 - Subject erasure of a doctor profile does not automatically purge verification
   cases in this slice.
 - Staging remains unprovisioned; the post-merge deploy gate stays fail-closed.
-
+- Independent retest of the three foundation findings remains outstanding.
+  This implementer commit cannot close those findings.
