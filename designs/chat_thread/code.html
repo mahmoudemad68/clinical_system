@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html dir="ltr" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Chat with Dr. Sarah Jenkins</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "outline-variant": "#c1c6d4",
+                            "tertiary-fixed-dim": "#afcbd8",
+                            "surface": "#f7fafc",
+                            "surface-bright": "#f7fafc",
+                            "background": "#f7fafc",
+                            "tertiary": "#46606c",
+                            "primary-container": "#1976d2",
+                            "secondary": "#006b5f",
+                            "on-secondary-fixed": "#00201c",
+                            "on-error-container": "#93000a",
+                            "secondary-fixed": "#8df5e4",
+                            "primary-fixed-dim": "#a5c8ff",
+                            "error": "#ba1a1a",
+                            "inverse-primary": "#a5c8ff",
+                            "inverse-surface": "#2d3133",
+                            "on-primary-fixed": "#001c3a",
+                            "surface-dim": "#d7dadc",
+                            "tertiary-fixed": "#cbe7f5",
+                            "outline": "#717783",
+                            "surface-tint": "#005faf",
+                            "tertiary-container": "#5f7985",
+                            "on-tertiary": "#ffffff",
+                            "inverse-on-surface": "#eef1f3",
+                            "secondary-container": "#8df5e4",
+                            "on-primary-fixed-variant": "#004786",
+                            "surface-container": "#ebeef0",
+                            "on-secondary-container": "#007165",
+                            "error-container": "#ffdad6",
+                            "on-primary-container": "#fffdff",
+                            "surface-container-highest": "#e0e3e5",
+                            "primary-fixed": "#d4e3ff",
+                            "surface-variant": "#e0e3e5",
+                            "on-tertiary-container": "#fdfdff",
+                            "on-surface-variant": "#414752",
+                            "on-tertiary-fixed": "#021f29",
+                            "surface-container-low": "#f1f4f6",
+                            "on-secondary-fixed-variant": "#005048",
+                            "on-surface": "#181c1e",
+                            "primary": "#005dac",
+                            "on-background": "#181c1e",
+                            "on-primary": "#ffffff",
+                            "on-error": "#ffffff",
+                            "surface-container-lowest": "#ffffff",
+                            "on-secondary": "#ffffff",
+                            "secondary-fixed-dim": "#70d8c8",
+                            "surface-container-high": "#e5e9eb",
+                            "on-tertiary-fixed-variant": "#304a55"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "lg": "24px",
+                            "xl": "32px",
+                            "md": "16px",
+                            "margin-mobile": "16px",
+                            "xs": "4px",
+                            "base": "4px",
+                            "sm": "8px",
+                            "margin-tablet": "32px",
+                            "gutter": "16px"
+                    },
+                    "fontFamily": {
+                            "label-lg": ["Inter"],
+                            "body-lg": ["Inter"],
+                            "body-md": ["Inter"],
+                            "display-lg": ["Inter"],
+                            "label-sm": ["Inter"],
+                            "headline-lg-mobile": ["Inter"],
+                            "headline-md": ["Inter"],
+                            "headline-lg": ["Inter"],
+                            "title-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                            "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600"}],
+                            "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                            "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                            "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                            "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                            "headline-lg-mobile": ["28px", {"lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600"}],
+                            "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                            "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600"}],
+                            "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md h-screen flex flex-col overflow-hidden">
+<!-- Top App Bar (Custom for Chat) -->
+<header class="flex items-center justify-between px-md w-full h-16 z-50 bg-surface text-primary shadow-sm flex-shrink-0">
+<div class="flex items-center gap-sm">
+<button class="p-2 -ml-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined rtl:rotate-180" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant flex items-center justify-center relative">
+<img class="w-full h-full object-cover" data-alt="Professional headshot portrait of a female doctor in her 40s. She is wearing a white medical coat over a light blue collared shirt. Her expression is warm, empathetic, and trustworthy. The lighting is soft and natural, typical of a modern clinical office setting with light mode UI colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAAoFfi6PaVj68lvX8SFlSc5ghQF6g0VNMf11cN4d1HL3-ms4TLDQIJzJ5QLU6t99iIcfrpcNXY-leq_MR_6wfJjs4mdkQQIwHvmmX35vF_oWoPaHwDtTT8ZD5hi0FKdBASZG_kVmBQk47JFFJLm8rUme9_fqBstpq-MPGhah2ojzCe9fbZMXT8fULO2jSGepdUQCoo3BhQa_bxoGdcHB0GsNHlNxMfo7bYvljUEVb0g1gyEQx8agF"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-[#2E7D32] border-2 border-surface rounded-full"></div>
+</div>
+<div class="flex flex-col">
+<h1 class="font-title-lg text-title-lg text-on-surface line-clamp-1">Dr. Sarah Jenkins</h1>
+<span class="font-label-sm text-label-sm text-on-surface-variant line-clamp-1">Cardiology Specialist</span>
+</div>
+</div>
+</div>
+<button class="flex items-center gap-xs px-3 py-1.5 rounded-full border border-outline-variant hover:bg-surface-container-low transition-colors text-primary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]" data-icon="calendar_month">calendar_month</span>
+<span class="hidden sm:inline">View Appointment</span>
+</button>
+</header>
+<!-- Info Banner -->
+<div class="bg-tertiary-fixed text-on-tertiary-fixed px-md py-sm flex items-center gap-sm shadow-sm z-40 flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]" data-icon="info">info</span>
+<p class="font-label-sm text-label-sm flex-1">Non-emergency chat. Writable for 48h after visit (Oct 12).</p>
+</div>
+<!-- Message Stream (Scrollable) -->
+<main class="flex-1 overflow-y-auto p-md flex flex-col gap-lg bg-background">
+<!-- Date Divider -->
+<div class="flex items-center justify-center my-2">
+<span class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm px-3 py-1 rounded-full border border-outline-variant">Today, Oct 14</span>
+</div>
+<!-- Doctor Message (Received) -->
+<div class="flex flex-col gap-1 items-start max-w-[85%] self-start">
+<div class="flex items-end gap-2">
+<div class="w-6 h-6 rounded-full overflow-hidden bg-surface-variant flex-shrink-0 mb-1">
+<img class="w-full h-full object-cover" data-alt="Small circular avatar of the same female doctor from the header. Soft lighting, professional attire, warm expression." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9GvDfJi3nTnH3R62um_Nop0ZP6RUuf8gxJ9Qdtl4Xrh2F1bF1EAybCng3mzhdCMfWtcO1K5t9tQbV1NfJfBoCupdjp-Pq1zIt4lJJCdhwdQqJtepMWixkQc5RbV5W5gdCeGaNRQEO5zKCusA29A2BvVFfiEl9PxRjp_sHLFkwx-6mJENIU06X_WaIooP-SGN3jf-HaDSsmLwLb0lVCZycYzA1mtaKpr_EqmcAJxPgaCFywF7Fxy0o"/>
+</div>
+<div class="bg-surface-variant text-on-surface-variant rounded-2xl rounded-bl-sm p-3 shadow-sm border border-outline-variant/30">
+<p class="font-body-md text-body-md break-words">Hello Alex, I reviewed your recent lab results from our visit yesterday. Everything looks stable, but I'd like to adjust the dosage of your current medication slightly.</p>
+</div>
+</div>
+<div class="pl-8 flex items-center gap-1 text-on-surface-variant font-label-sm text-[10px]">
+<span>09:41 AM</span>
+</div>
+</div>
+<!-- Doctor Message (Received - Consecutive) -->
+<div class="flex flex-col gap-1 items-start max-w-[85%] self-start mt-[-16px]">
+<div class="flex items-end gap-2">
+<div class="w-6 h-6 flex-shrink-0 mb-1 opacity-0 pointer-events-none"></div>
+<div class="bg-surface-variant text-on-surface-variant rounded-2xl rounded-l-sm p-3 shadow-sm border border-outline-variant/30">
+<p class="font-body-md text-body-md break-words">Please start taking 10mg instead of 5mg starting tomorrow morning. Let me know if you experience any unusual dizziness.</p>
+</div>
+</div>
+<div class="pl-8 flex items-center gap-1 text-on-surface-variant font-label-sm text-[10px]">
+<span>09:42 AM</span>
+</div>
+</div>
+<!-- Patient Message (Sent) -->
+<div class="flex flex-col gap-1 items-end max-w-[85%] self-end">
+<div class="bg-primary text-on-primary rounded-2xl rounded-br-sm p-3 shadow-sm">
+<p class="font-body-md text-body-md break-words">Hi Dr. Jenkins, thanks for the update. I'll make the adjustment tomorrow. Just to confirm, should I still take it with breakfast?</p>
+</div>
+<div class="pr-2 flex items-center gap-1 text-on-surface-variant font-label-sm text-[10px]">
+<span>10:15 AM</span>
+<span class="material-symbols-outlined text-[14px] text-primary" data-icon="done_all">done_all</span>
+</div>
+</div>
+<!-- Doctor Message (Received) -->
+<div class="flex flex-col gap-1 items-start max-w-[85%] self-start">
+<div class="flex items-end gap-2">
+<div class="w-6 h-6 rounded-full overflow-hidden bg-surface-variant flex-shrink-0 mb-1">
+<img class="w-full h-full object-cover" data-alt="Small circular avatar of the same female doctor from the header. Soft lighting, professional attire, warm expression." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDARgeN7Ww42-p9cnbUc9HgXxAwsq8IQjVsuePlopDCYALlOIpS0yYpGOgNAnou0RlYIN5QafnsNrqlqmgtlwTg_oiO9wvA0U0rv17f2wpYt4wslSfnOuO9lkXdnhtTxNt-YoJWP7pUtPRYzWmwgdoTMvmMHjfbVCkpvjq1c8HNuuPkNUgbHA3jNToY2EJ_687pdbLmxR41cUNUe_2ngVuegk4fJK-RM1CsTMNGDKIHzUmtGcVG1U-M"/>
+</div>
+<div class="bg-surface-variant text-on-surface-variant rounded-2xl rounded-bl-sm p-3 shadow-sm border border-outline-variant/30">
+<p class="font-body-md text-body-md break-words">Yes, taking it with breakfast is perfect. It helps with absorption and prevents stomach upset.</p>
+</div>
+</div>
+<div class="pl-8 flex items-center gap-1 text-on-surface-variant font-label-sm text-[10px]">
+<span>10:30 AM</span>
+</div>
+</div>
+<!-- Spacer for composer to not overlap last message -->
+<div class="h-4 w-full"></div>
+</main>
+<!-- Composer Area (Active State) -->
+<footer class="bg-surface border-t border-outline-variant/30 p-sm flex-shrink-0 pb-safe shadow-[0_-4px_16px_rgba(0,0,0,0.05)] z-50">
+<div class="max-w-screen-md mx-auto w-full">
+<div class="flex items-end gap-sm bg-surface-container-lowest rounded-3xl border border-outline-variant/50 p-1 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<textarea class="flex-1 bg-transparent border-none focus:ring-0 resize-none max-h-32 min-h-[44px] py-3 px-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/70 scrollbar-hide" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" placeholder="Type a message..." rows="1"></textarea>
+<button aria-label="Send message" class="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center flex-shrink-0 hover:bg-on-primary-fixed-variant transition-colors active:scale-95 m-[2px]">
+<span class="material-symbols-outlined rtl:-scale-x-100" data-icon="send">send</span>
+</button>
+</div>
+<div class="text-center mt-2">
+<span class="font-label-sm text-[10px] text-outline">Text-only chat. Attachments are disabled for this channel.</span>
+</div>
+</div>
+</footer>
+<!-- 
+    NOTE: To show the read-only state, the footer above would be replaced with the following block:
+    
+    <footer class="bg-surface-container border-t border-outline-variant/30 p-md flex-shrink-0 pb-safe shadow-[0_-4px_16px_rgba(0,0,0,0.05)] z-50 flex items-center justify-center gap-2 text-on-surface-variant">
+        <span class="material-symbols-outlined" data-icon="lock">lock</span>
+        <span class="font-label-lg text-label-lg">This thread is now read-only.</span>
+    </footer>
+    -->
+</body></html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clinic Schedule Editor - Cairo Central Clinic</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-error-container": "#93000a",
+                        "status-consulting": "#008080",
+                        "inverse-surface": "#2f3131",
+                        "surface-container-low": "#f4f3f3",
+                        "on-error": "#ffffff",
+                        "on-background": "#1a1c1c",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "calendar-exception": "#fef2f2",
+                        "secondary-fixed-dim": "#cfbcff",
+                        "status-emergency": "#dc2626",
+                        "surface": "#f9f9f9",
+                        "primary-fixed": "#93f2f2",
+                        "surface-container-high": "#e8e8e8",
+                        "surface-variant": "#e2e2e2",
+                        "on-tertiary-container": "#fff9f7",
+                        "on-tertiary-fixed": "#341100",
+                        "on-tertiary-fixed-variant": "#733512",
+                        "tertiary-fixed": "#ffdbcb",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "primary": "#006565",
+                        "secondary-container": "#bba2fd",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#eeeeee",
+                        "on-surface-variant": "#3e4949",
+                        "on-primary-container": "#e3fffe",
+                        "surface-container-highest": "#e2e2e2",
+                        "outline": "#6e7979",
+                        "on-secondary-container": "#4b3486",
+                        "secondary": "#6750a4",
+                        "surface-tint": "#006a6a",
+                        "status-waiting": "#f59e0b",
+                        "background": "#f9f9f9",
+                        "inverse-on-surface": "#f1f1f1",
+                        "calendar-overlap": "#fff7ed",
+                        "on-surface": "#1a1c1c",
+                        "inverse-primary": "#76d6d5",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "secondary-fixed": "#e9ddff",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed": "#002020",
+                        "outline-variant": "#bdc9c8",
+                        "on-secondary-fixed": "#22005d",
+                        "surface-bright": "#f9f9f9",
+                        "surface-dim": "#dadada",
+                        "tertiary-container": "#a96039",
+                        "primary-container": "#008080",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#76d6d5",
+                        "privacy-mask": "#e5e7eb",
+                        "tertiary": "#8b4823",
+                        "on-secondary": "#ffffff",
+                        "status-completed": "#6b7280"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "hero-card-padding": "20px",
+                        "drawer-width": "380px",
+                        "calendar-interval-30": "80px",
+                        "calendar-interval-15": "40px",
+                        "table-row-height": "32px",
+                        "grid-gutter": "12px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Inter", "sans-serif"],
+                        "calendar-time": ["JetBrains Mono", "monospace"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "label-caps": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "data-mono-compact": ["JetBrains Mono", "monospace"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"]
+                    },
+                    fontSize: {
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "calendar-time": ["11px", { lineHeight: "12px", fontWeight: "500" }],
+                        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "label-caps": ["10px", { lineHeight: "14px", letterSpacing: "0.06em", fontWeight: "700" }],
+                        "body-md": ["13px", { lineHeight: "18px", fontWeight: "400" }],
+                        "data-mono-compact": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+                        "body-lg": ["15px", { lineHeight: "22px", fontWeight: "400" }],
+                        "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .grid-lines {
+            background-size: 100% var(--calendar-interval-30, 80px);
+            background-image: linear-gradient(to bottom, theme('colors.surface-variant') 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-full font-body-md text-body-md overflow-hidden flex">
+<!-- SideNavBar -->
+<nav class="bg-surface dark:bg-surface w-[380px] md:w-64 h-full border-r border-outline-variant dark:border-outline-variant flex flex-col py-6 shrink-0 z-20">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden shrink-0">
+<img alt="Clinic Staff Profile" class="w-full h-full object-cover" data-alt="Professional headshot of a female clinic manager with a subtle smile, wearing modern business casual attire, well-lit against a neutral grey background. The image should be sharp, high-resolution, and convey competence and warmth in a clinical setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYxoVvhEILWISe0vazujsca4HAYvgMqL4qWwuneC89awtLVbhH_QXLb8nviMtsEKGSJGe4yRI2Yfooxb1Wv-PwikkwEFYyXJvEXPadktlcR0mXcojr2-B6bBiwvrxs03Kx9UJFa6ve_n8Tc6_7c9NPxEWQE3BaLmyL0cGRx_mua4sZoXj8VXhRhXTYM_bQTKKowf9eJiV4NifLi9MFbcFogpUb8TJEbX8sTX9SXSZ7V8uyDrO9y8ra"/>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">Clinic Ops</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Dr. Sarah Mitchell</p>
+</div>
+</div>
+<div class="px-4 mb-6">
+<button class="w-full bg-primary text-on-primary py-2 px-4 rounded font-label-caps text-label-caps uppercase hover:bg-surface-tint transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Consultation
+            </button>
+</div>
+<ul class="flex-1 flex flex-col px-2 gap-1">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container transition-colors duration-200 ease-in-out font-label-caps text-label-caps uppercase" href="#">
+<span class="material-symbols-outlined" data-weight="fill">clinical_notes</span>
+                    Workspace
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary dark:text-primary-fixed font-bold border-l-4 border-primary dark:border-primary-fixed bg-surface-container-low transition-colors duration-200 ease-in-out font-label-caps text-label-caps uppercase" href="#">
+<span class="material-symbols-outlined" data-weight="fill">calendar_today</span>
+                    Schedule
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container transition-colors duration-200 ease-in-out font-label-caps text-label-caps uppercase" href="#">
+<span class="material-symbols-outlined" data-weight="fill">groups</span>
+                    Patients
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container transition-colors duration-200 ease-in-out font-label-caps text-label-caps uppercase" href="#">
+<span class="material-symbols-outlined" data-weight="fill">analytics</span>
+                    Reports
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container transition-colors duration-200 ease-in-out font-label-caps text-label-caps uppercase" href="#">
+<span class="material-symbols-outlined" data-weight="fill">settings</span>
+                    Settings
+                </a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 relative bg-surface-bright">
+<!-- Header -->
+<header class="h-[64px] shrink-0 border-b border-outline-variant flex items-center justify-between px-6 bg-surface">
+<div>
+<h2 class="font-headline-lg text-headline-md m-0">Cairo Central Clinic</h2>
+<div class="flex items-center gap-2 text-on-surface-variant mt-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span class="font-data-mono-compact text-data-mono-compact">Africa/Cairo (UTC+2)</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<span class="font-body-md text-body-md font-semibold">Oct 23 - Oct 29, 2023</span>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</header>
+<!-- Calendar Area -->
+<div class="flex-1 flex overflow-hidden relative">
+<!-- Time Column -->
+<div class="w-16 shrink-0 border-r border-outline-variant bg-surface flex flex-col z-10 pt-10">
+<div class="h-[80px] flex items-start justify-end pr-2 pt-2 border-b border-transparent">
+<span class="font-calendar-time text-calendar-time text-on-surface-variant">08:00</span>
+</div>
+<div class="h-[80px] flex items-start justify-end pr-2 pt-2 border-b border-transparent">
+<span class="font-calendar-time text-calendar-time text-on-surface-variant">09:00</span>
+</div>
+<div class="h-[80px] flex items-start justify-end pr-2 pt-2 border-b border-transparent">
+<span class="font-calendar-time text-calendar-time text-on-surface-variant">10:00</span>
+</div>
+<div class="h-[80px] flex items-start justify-end pr-2 pt-2 border-b border-transparent">
+<span class="font-calendar-time text-calendar-time text-on-surface-variant">11:00</span>
+</div>
+<div class="h-[80px] flex items-start justify-end pr-2 pt-2 border-b border-transparent">
+<span class="font-calendar-time text-calendar-time text-on-surface-variant">12:00</span>
+</div>
+<div class="h-[80px] flex items-start justify-end pr-2 pt-2 border-b border-transparent">
+<span class="font-calendar-time text-calendar-time text-on-surface-variant">13:00</span>
+</div>
+<div class="h-[80px] flex items-start justify-end pr-2 pt-2 border-b border-transparent">
+<span class="font-calendar-time text-calendar-time text-on-surface-variant">14:00</span>
+</div>
+</div>
+<!-- Grid Content -->
+<div class="flex-1 overflow-auto scrollbar-hide relative bg-background">
+<!-- Day Headers (Sticky) -->
+<div class="sticky top-0 z-20 flex bg-surface border-b border-outline-variant h-10 shadow-sm">
+<div class="flex-1 border-r border-outline-variant flex items-center justify-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">MON 23</span>
+</div>
+<div class="flex-1 border-r border-outline-variant flex items-center justify-center bg-surface-container-low">
+<span class="font-label-caps text-label-caps text-primary font-bold">TUE 24</span>
+</div>
+<div class="flex-1 border-r border-outline-variant flex items-center justify-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">WED 25</span>
+</div>
+<div class="flex-1 border-r border-outline-variant flex items-center justify-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">THU 26</span>
+</div>
+<div class="flex-1 border-r border-outline-variant flex items-center justify-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">FRI 27</span>
+</div>
+<div class="flex-1 border-r border-outline-variant flex items-center justify-center bg-surface-container-highest">
+<span class="font-label-caps text-label-caps text-on-surface-variant">SAT 28</span>
+</div>
+<div class="flex-1 flex items-center justify-center bg-surface-container-highest">
+<span class="font-label-caps text-label-caps text-on-surface-variant">SUN 29</span>
+</div>
+</div>
+<!-- Grid Matrix -->
+<div class="flex relative min-h-[560px] grid-lines" style="--calendar-interval-30: 80px;">
+<!-- Mon -->
+<div class="flex-1 border-r border-outline-variant relative">
+<div class="absolute top-[80px] left-1 right-1 h-[400px] bg-primary-container text-on-primary rounded-lg p-2 shadow-sm cursor-pointer hover:bg-primary transition-colors">
+<div class="font-body-sm text-body-sm font-semibold">General Consults</div>
+<div class="font-data-mono-compact text-data-mono-compact opacity-90">09:00 - 14:00</div>
+</div>
+</div>
+<!-- Tue (Active) -->
+<div class="flex-1 border-r border-outline-variant relative bg-surface-container-lowest">
+<!-- Current Time Indicator -->
+<div class="absolute top-[120px] left-0 right-0 h-px bg-status-consulting z-10 flex items-center">
+<div class="w-2 h-2 rounded-full bg-status-consulting -ml-1"></div>
+</div>
+<div class="absolute top-[80px] left-1 right-1 h-[240px] bg-primary-container text-on-primary rounded-lg p-2 shadow-sm border-2 border-primary ring-2 ring-primary-fixed cursor-pointer z-10">
+<div class="font-body-sm text-body-sm font-semibold">Specialist Block</div>
+<div class="font-data-mono-compact text-data-mono-compact opacity-90">09:00 - 12:00</div>
+</div>
+</div>
+<!-- Wed -->
+<div class="flex-1 border-r border-outline-variant relative">
+<div class="absolute top-[80px] left-1 right-1 h-[320px] bg-primary-container text-on-primary rounded-lg p-2 shadow-sm cursor-pointer hover:bg-primary transition-colors">
+<div class="font-body-sm text-body-sm font-semibold">General Consults</div>
+<div class="font-data-mono-compact text-data-mono-compact opacity-90">09:00 - 13:00</div>
+</div>
+</div>
+<!-- Thu -->
+<div class="flex-1 border-r border-outline-variant relative">
+<div class="absolute top-[160px] left-1 right-1 h-[240px] bg-calendar-overlap border border-dashed border-status-waiting text-status-waiting rounded-lg p-2 cursor-pointer hover:bg-orange-50 transition-colors">
+<div class="font-body-sm text-body-sm font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+                                Staff Meeting
+                            </div>
+<div class="font-data-mono-compact text-data-mono-compact opacity-90">10:00 - 13:00</div>
+</div>
+</div>
+<!-- Fri -->
+<div class="flex-1 border-r border-outline-variant relative">
+<div class="absolute top-[80px] left-1 right-1 h-[160px] bg-primary-container text-on-primary rounded-lg p-2 shadow-sm cursor-pointer hover:bg-primary transition-colors">
+<div class="font-body-sm text-body-sm font-semibold">Short Shift</div>
+<div class="font-data-mono-compact text-data-mono-compact opacity-90">09:00 - 11:00</div>
+</div>
+</div>
+<!-- Sat (Closed) -->
+<div class="flex-1 border-r border-outline-variant relative bg-calendar-exception flex items-center justify-center">
+<div class="text-on-surface-variant opacity-50 transform -rotate-90 whitespace-nowrap font-label-caps text-label-caps">CLINIC CLOSED</div>
+</div>
+<!-- Sun (Closed) -->
+<div class="flex-1 relative bg-calendar-exception flex items-center justify-center">
+<div class="text-on-surface-variant opacity-50 transform -rotate-90 whitespace-nowrap font-label-caps text-label-caps">CLINIC CLOSED</div>
+</div>
+</div>
+</div>
+<!-- Sticky Edit Drawer -->
+<aside class="w-[drawer-width] bg-surface border-l border-outline-variant flex flex-col shadow-[-4px_0_24px_rgba(0,0,0,0.08)] z-30 transform transition-transform duration-300">
+<div class="h-14 border-b border-outline-variant flex items-center justify-between px-6 bg-surface-container-lowest shrink-0">
+<h3 class="font-headline-md text-headline-md text-on-surface m-0">Edit Interval</h3>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-6">
+<!-- Type Selection -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">Block Type</label>
+<select class="w-full bg-surface-container-low border border-outline-variant rounded p-2 font-body-md text-body-md text-on-surface focus:ring-1 focus:ring-primary focus:border-primary">
+<option>Specialist Block</option>
+<option>General Consults</option>
+<option>Admin / Meeting</option>
+</select>
+</div>
+<!-- Time Pickers -->
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">Start Time</label>
+<div class="flex items-center bg-surface-container-low border border-outline-variant rounded px-3 py-2">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant mr-2">schedule</span>
+<input class="bg-transparent border-none p-0 focus:ring-0 w-full font-data-mono-compact text-data-mono-compact" type="text" value="09:00"/>
+</div>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">End Time</label>
+<div class="flex items-center bg-surface-container-low border border-outline-variant rounded px-3 py-2">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant mr-2">schedule</span>
+<input class="bg-transparent border-none p-0 focus:ring-0 w-full font-data-mono-compact text-data-mono-compact" type="text" value="12:00"/>
+</div>
+</div>
+</div>
+<!-- Capacity / Details -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">Max Capacity</label>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded p-2 font-data-mono-compact text-data-mono-compact text-on-surface focus:ring-1 focus:ring-primary focus:border-primary" type="number" value="6"/>
+</div>
+<!-- Recurring Options -->
+<div class="pt-4 border-t border-outline-variant">
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-center mt-0.5">
+<input checked="" class="peer sr-only" type="checkbox"/>
+<div class="w-4 h-4 border border-outline rounded bg-surface peer-checked:bg-primary peer-checked:border-primary transition-colors"></div>
+<span class="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[12px] text-on-primary opacity-0 peer-checked:opacity-100 transition-opacity">check</span>
+</div>
+<div>
+<span class="block font-body-md text-body-md text-on-surface font-semibold group-hover:text-primary transition-colors">Apply to all Tuesdays</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant mt-1">Changes will ripple to future schedules until altered.</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Drawer Actions -->
+<div class="p-4 border-t border-outline-variant bg-surface-container-lowest flex items-center justify-end gap-3 shrink-0">
+<button class="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded font-label-caps text-label-caps transition-colors uppercase">
+                        Discard
+                    </button>
+<button class="px-4 py-2 bg-primary text-on-primary rounded font-label-caps text-label-caps hover:bg-surface-tint transition-colors uppercase">
+                        Update Block
+                    </button>
+</div>
+</aside>
+</div>
+<!-- Global Save Bar -->
+<div class="h-14 bg-inverse-surface text-inverse-on-surface flex items-center justify-between px-6 shrink-0 z-40">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-inverse-primary">info</span>
+<span class="font-body-md text-body-md">You have unsaved changes to the weekly template.</span>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 text-inverse-on-surface hover:bg-white/10 rounded font-label-caps text-label-caps transition-colors uppercase">
+                    Revert All
+                </button>
+<button class="px-4 py-2 bg-inverse-primary text-on-primary-fixed rounded font-label-caps text-label-caps hover:bg-primary-fixed-dim transition-colors uppercase">
+                    Publish Schedule
+                </button>
+</div>
+</div>
+</main>
+</body></html>

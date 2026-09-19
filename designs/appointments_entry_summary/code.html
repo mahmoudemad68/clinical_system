@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HealthPath - Appointments</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary": "#006b5f",
+                        "on-primary-fixed": "#001c3a",
+                        "on-background": "#181c1e",
+                        "primary-fixed": "#d4e3ff",
+                        "background": "#f7fafc",
+                        "tertiary-fixed-dim": "#afcbd8",
+                        "surface-bright": "#f7fafc",
+                        "on-tertiary-fixed": "#021f29",
+                        "surface-variant": "#e0e3e5",
+                        "primary-container": "#1976d2",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#8df5e4",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#8df5e4",
+                        "surface-tint": "#005faf",
+                        "outline-variant": "#c1c6d4",
+                        "surface-container": "#ebeef0",
+                        "secondary-fixed-dim": "#70d8c8",
+                        "on-surface": "#181c1e",
+                        "surface": "#f7fafc",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#004786",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#cbe7f5",
+                        "inverse-surface": "#2d3133",
+                        "on-secondary-container": "#007165",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#304a55",
+                        "on-tertiary-container": "#fdfdff",
+                        "on-secondary-fixed": "#00201c",
+                        "surface-container-high": "#e5e9eb",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container-low": "#f1f4f6",
+                        "on-surface-variant": "#414752",
+                        "on-secondary-fixed-variant": "#005048",
+                        "inverse-on-surface": "#eef1f3",
+                        "tertiary": "#46606c",
+                        "outline": "#717783",
+                        "primary-fixed-dim": "#a5c8ff",
+                        "primary": "#005dac",
+                        "on-primary-container": "#fffdff",
+                        "surface-dim": "#d7dadc",
+                        "inverse-primary": "#a5c8ff",
+                        "tertiary-container": "#5f7985",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "margin-tablet": "32px",
+                        "xs": "4px",
+                        "margin-mobile": "16px",
+                        "gutter": "16px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "xl": "32px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Smooth scrolling and hide scrollbar for clean UI */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased h-screen w-full max-w-[390px] mx-auto relative overflow-hidden flex flex-col">
+<!-- TopAppBar Component -->
+<header class="bg-surface shadow-sm fixed top-0 w-full h-16 flex justify-between items-center px-margin-mobile z-50 max-w-[390px]">
+<div class="flex items-center gap-sm">
+<img class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A small, professional circular avatar portrait of a diverse patient looking forward with a neutral, pleasant expression, bright modern lighting, against a solid light blue background, conforming to a clean medical application style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeYnGyjiD_17XOE9JiLCaGFGl3lHVbtHmkpNoeD9J8xo88UixmHXQgDctmMdqUvqamqKr0m2cGyCAUTi8Tx6xtk7hIHC6GjOMa0kSgBtcvJE6m_B4aOAiwWkORItX0_2bAtQlcA0PL19sZVJXRNwmN-QZVme9Ke7k7TsgFfWOKSA0A4cykGwoHuRC4VUadefiE4H8PNT5X3rCCPa7MsZNKEtZWJv9gR6cGxsd4BA_kg8Hqpk7aNE7B"/>
+</div>
+<h1 class="font-headline-md text-headline-md font-semibold text-primary">HealthPath</h1>
+<button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-variant transition-colors active:scale-95 duration-100 ease-in-out text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto hide-scrollbar pt-[80px] pb-[100px] px-margin-mobile flex flex-col gap-lg">
+<!-- Next Appointment Hero Card -->
+<section class="flex flex-col gap-sm">
+<h2 class="font-title-lg text-title-lg text-on-surface">Next Appointment</h2>
+<div class="bg-surface border border-outline-variant shadow-sm rounded-xl p-md flex flex-col gap-md relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-fixed-dim opacity-20 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+<div class="flex justify-between items-start z-10">
+<div class="flex flex-col gap-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Tomorrow</span>
+<span class="font-headline-md text-headline-md text-on-surface">10:00 AM</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Cairo Local Time</span>
+</div>
+<div class="bg-secondary-container text-on-secondary-container px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">event_available</span>
+<span class="font-label-sm text-label-sm font-semibold">Confirmed</span>
+</div>
+</div>
+<hr class="border-t border-outline-variant opacity-50 z-10"/>
+<div class="flex items-center gap-md z-10">
+<img class="w-12 h-12 rounded-full object-cover border border-outline-variant" data-alt="A professional headshot of a male doctor in a white coat and stethoscope, smiling warmly, lit by soft natural light in a modern clinic setting, bright and high-trust medical style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPGwoZK7wiWyay7MLaJ1Cm3VYbvfZ7vfE_nCrQvWqqOZEKjanVO3YxjzrOBR-gaYbqBxZoBD6OQ_8b7-f1q8nPFPT9jVIOYwQBiDEUw-Xg6ErpByUoSOD0UMSdKLICRGg5r54pmTLjJYH1oV5QWYZNbvUj2FlDinYXLHTcA-LgyD06ZunbXokRQaoLT_dRUiaGURsD2DcK4w7y2_Zs7gnTztdpqmNipR3cUBLOAAQxE8kb0Y7VzYGZ"/>
+<div class="flex flex-col flex-1">
+<span class="font-label-lg text-label-lg text-on-surface">Dr. Ahmed Hassan</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Cardiology</span>
+</div>
+</div>
+<div class="flex gap-sm mt-xs z-10">
+<button class="flex-1 bg-surface border border-primary text-primary font-label-lg text-label-lg py-2 rounded-lg hover:bg-primary-fixed transition-colors text-center">Reschedule</button>
+<button class="flex-1 bg-primary text-on-primary font-label-lg text-label-lg py-2 rounded-lg shadow-sm hover:bg-on-primary-fixed-variant transition-colors text-center">Check-in Details</button>
+</div>
+</div>
+</section>
+<!-- Tabs -->
+<div class="bg-surface-container-low rounded-lg p-1 flex w-full border border-outline-variant shadow-sm">
+<button class="flex-1 bg-surface text-on-surface font-label-lg text-label-lg py-2 rounded-md shadow-sm transition-all text-center">Upcoming</button>
+<button class="flex-1 text-on-surface-variant font-label-lg text-label-lg py-2 rounded-md hover:bg-surface-container transition-all text-center">Past</button>
+</div>
+<!-- Appointment List -->
+<section class="flex flex-col gap-md">
+<!-- Appointment Card 1 -->
+<div class="bg-surface border border-outline-variant shadow-sm rounded-xl p-md flex flex-col gap-sm">
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary bg-primary-fixed p-1 rounded-full text-[20px]">calendar_month</span>
+<span class="font-label-lg text-label-lg text-on-surface">Oct 24, 2023 • 2:30 PM</span>
+</div>
+<span class="font-label-sm text-label-sm bg-surface-container text-on-surface-variant px-2 py-1 rounded-full border border-outline-variant">EGP 450</span>
+</div>
+<div class="flex items-center gap-md mt-sm">
+<img class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A professional headshot of a female doctor in a white coat, calm and reassuring expression, bright modern clinic background, corporate medical photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZD6nOGmF23xyjsrBIDIKfs8afdPfdEhrzbLxrmBpTOrfZJuVP0BoCa4vLMCUG49T_3Y88IW5B252va8zHz-bl5h9_EQPKCabQQwETvnjgx78X39u7IzKTlQZ-pEu7zCHipeX9fej-X3ndI8JviooFRcO9yLzImccnUk8iO0RhYNRD1KHS223hjNwbxS_liGLJRso7B9Lx9Vr6lEaJQgPkfLh5EF3BVTySVpZwwye5CLeejtW51AYO"/>
+<div class="flex flex-col flex-1">
+<span class="font-label-lg text-label-lg text-on-surface">Dr. Sarah Mansour</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Dermatology</span>
+</div>
+<div class="bg-secondary-fixed text-on-secondary-fixed-variant px-2 py-1 rounded-full flex items-center gap-1">
+<span class="font-label-sm text-label-sm">Booked</span>
+</div>
+</div>
+</div>
+<!-- Appointment Card 2 -->
+<div class="bg-surface border border-outline-variant shadow-sm rounded-xl p-md flex flex-col gap-sm">
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary bg-primary-fixed p-1 rounded-full text-[20px]">calendar_month</span>
+<span class="font-label-lg text-label-lg text-on-surface">Nov 02, 2023 • 11:00 AM</span>
+</div>
+<span class="font-label-sm text-label-sm bg-surface-container text-on-surface-variant px-2 py-1 rounded-full border border-outline-variant">EGP 300</span>
+</div>
+<div class="flex items-center gap-md mt-sm">
+<img class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A professional headshot of a mature male doctor with glasses, wearing a stethoscope, looking confident, soft well-lit clinical environment, premium healthcare visual style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5TfEWA_iUSswln8Tp7ylc3ppI3j2Hg2JTIv0YWJwC0DhtctV43jJ4zVsvnG9rHx9CYogj2plIGd4FWJXuvw1Ch9dsbAsxbHg-Vmye0TtSKcA20WcVZauaDXUdzMd3yy6P_ZsA_42fZ187ixKYNR1I0SdabdX7XPU05yUo_7OMKVyyGL40No5SYoz3jaelqdS92HyuR7WXaD_RHyLmVZj4WfUqH2vk7KfJHcf5_XWArNqGsYXYQutU"/>
+<div class="flex flex-col flex-1">
+<span class="font-label-lg text-label-lg text-on-surface">Dr. Youssef Ali</span>
+<span class="font-body-md text-body-md text-on-surface-variant">General Practice</span>
+</div>
+<div class="bg-surface-container-high text-on-surface-variant px-2 py-1 rounded-full flex items-center gap-1 border border-outline-variant">
+<span class="font-label-sm text-label-sm">Pending</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- FAB: Find Doctor -->
+<button class="fixed bottom-24 right-4 z-40 bg-primary text-on-primary rounded-[16px] px-5 py-4 shadow-lg flex items-center gap-2 hover:bg-on-primary-fixed-variant transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person_search</span>
+<span class="font-label-lg text-label-lg font-semibold">Find Doctor</span>
+</button>
+<!-- BottomNavBar Component -->
+<nav class="bg-surface-container shadow-lg fixed bottom-0 left-0 right-0 w-full flex justify-around items-center pt-2 pb-safe px-2 rounded-t-xl z-50 max-w-[390px] mx-auto border-t-0">
+<!-- Home (Active - Assuming Dashboard context for Appointments) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-2xl px-4 py-1 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-sm text-label-sm font-semibold mt-1">Home</span>
+</a>
+<!-- Records (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-label-sm text-label-sm mt-1">Records</span>
+</a>
+<!-- Messages (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="font-label-sm text-label-sm mt-1">Messages</span>
+</a>
+<!-- Profile (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm mt-1">Profile</span>
+</a>
+</nav>
+</body></html>

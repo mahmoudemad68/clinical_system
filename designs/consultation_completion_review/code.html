@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ClinicalWorkspace - End Consultation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#4c3386",
+                        "on-primary-container": "#e3fffe",
+                        "on-secondary-fixed": "#22005c",
+                        "surface-container": "#eeeeee",
+                        "split-divider": "#ece6ee",
+                        "outline-variant": "#bdc9c8",
+                        "inverse-surface": "#2f3131",
+                        "tertiary-fixed": "#e6e1e8",
+                        "requirement-border": "#cbc4d2",
+                        "secondary-fixed": "#e9ddff",
+                        "clinic-teal": "#008080",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-variant": "#e2e2e2",
+                        "primary": "#006565",
+                        "surface-dim": "#dadada",
+                        "on-background": "#1a1c1c",
+                        "primary-container": "#008080",
+                        "surface-tint": "#006a6a",
+                        "secondary": "#6750a4",
+                        "on-primary-fixed": "#002020",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f3f3f3",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#48464b",
+                        "primary-fixed-dim": "#76d6d5",
+                        "background": "#f9f9f9",
+                        "tertiary-container": "#757177",
+                        "inverse-on-surface": "#f1f1f1",
+                        "surface-container-highest": "#e2e2e2",
+                        "secondary-container": "#bca2fd",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#5c595f",
+                        "surface": "#f9f9f9",
+                        "on-tertiary-container": "#fdf7fe",
+                        "surface-bright": "#f9f9f9",
+                        "on-surface-variant": "#3e4949",
+                        "on-error": "#ffffff",
+                        "on-surface": "#1a1c1c",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e8e8e8",
+                        "outline": "#6e7979",
+                        "clinical-bg": "#fdf7ff",
+                        "primary-fixed": "#93f2f2",
+                        "on-tertiary-fixed": "#1d1b20",
+                        "tertiary-fixed-dim": "#cac5cc",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#76d6d5",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "margin": "32px",
+                        "preview-pane-min": "400px",
+                        "unit": "4px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "data-mono": ["jetbrainsMono"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "data-mono": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex items-center justify-center p-4">
+<!-- Modal Overlay -->
+<div aria-hidden="true" class="fixed inset-0 bg-inverse-surface/40 backdrop-blur-sm z-40"></div>
+<!-- Modal Container -->
+<div aria-labelledby="modal-title" aria-modal="true" class="relative bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-2xl z-50 overflow-hidden flex flex-col border border-outline-variant" role="dialog">
+<!-- Header: Patient Identity -->
+<div class="px-6 py-4 border-b border-split-divider bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-headline-md font-bold overflow-hidden">
+<img alt="Patient Identity" class="h-full w-full object-cover" data-alt="A clinical headshot portrait of a 42-year-old male patient with short dark hair, wearing a neutral grey collared shirt against a sterile white background. Soft, diffused lighting highlights his facial features, conveying a neutral expression typical of a medical file photo. The overall mood is clinical and professional, adhering strictly to the minimal, clean aesthetic of a high-fidelity healthcare dashboard." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAouf65Sbb3reQZLJ7Vo2rmbOSGOtvM38grmRZGNM7nIaqr3iQ-4_K35zN0QncEduem8ehDUoZkWKza8XoCbM7dAlDSqIxHylkccouq9FvuAuEMoeQupD0-6tbWupfe0Hxrin4XSo45BigxwyACg1sWjwp4Bnq-UfqOlFCTpTui828YcpIxLRIxMtkGJ5Mcre-2j1NYEHYb2MRy570YnTwLnSq17cZ7c-N5kMy_TsbKW2qfDv9n6wXe"/>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface m-0" id="modal-title">John Doe</h2>
+<p class="font-data-mono text-data-mono text-on-surface-variant m-0">ID: 4492-X | 42Y Male</p>
+</div>
+</div>
+<button aria-label="Close" class="text-on-surface-variant hover:text-on-surface transition-colors p-2 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Body: Completion Review -->
+<div class="p-6 overflow-y-auto max-h-[614px] flex flex-col gap-6">
+<div class="font-headline-md text-headline-md mb-2">Consultation Completion Review</div>
+<!-- Warning Banner -->
+<div class="bg-error-container text-on-error-container p-4 rounded-lg flex items-start gap-3 border-l-4 border-error">
+<span class="material-symbols-outlined mt-0.5 fill">warning</span>
+<div>
+<h3 class="font-body-md font-bold m-0 text-on-error-container">Unsynced Changes Detected</h3>
+<p class="font-body-sm text-body-sm m-0 mt-1 opacity-90">Network instability prevented the last autosave. Please ensure all notes are saved before ending the consultation to prevent data loss.</p>
+</div>
+</div>
+<!-- Checklist Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Clinical Notes Section -->
+<div class="border border-outline-variant rounded-lg p-4 bg-surface-container-lowest">
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">edit_note</span> Encounter Details
+                    </h4>
+<ul class="space-y-3">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-clinic-teal fill">check_circle</span>
+<span class="font-body-md text-body-md text-on-surface">Vitals Recorded</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-clinic-teal fill">check_circle</span>
+<span class="font-body-md text-body-md text-on-surface">Symptoms Logged</span>
+</li>
+<li class="flex items-center gap-3 p-2 bg-error-container/30 rounded-DEFAULT border border-error-container">
+<span class="material-symbols-outlined text-error">radio_button_unchecked</span>
+<span class="font-body-md text-body-md text-error font-medium">Clinical Notes Required</span>
+</li>
+</ul>
+</div>
+<!-- Diagnosis & Prescriptions Section -->
+<div class="border border-outline-variant rounded-lg p-4 bg-surface-container-lowest relative overflow-hidden">
+<!-- Subtle requirement accent -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-clinic-teal opacity-50"></div>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">medical_services</span> Outcomes
+                    </h4>
+<ul class="space-y-3">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-clinic-teal fill">check_circle</span>
+<span class="font-body-md text-body-md text-on-surface">Primary Diagnosis Set</span>
+</li>
+</ul>
+<div class="mt-4 pt-3 border-t border-split-divider">
+<h5 class="font-label-caps text-label-caps text-on-surface-variant mb-2">Prescription Drafts (2)</h5>
+<div class="font-data-mono text-data-mono text-on-surface text-sm space-y-1">
+<div class="flex justify-between">
+<span>Amoxicillin 500mg</span>
+<span class="text-on-surface-variant">Pending Sign</span>
+</div>
+<div class="flex justify-between">
+<span>Lisinopril 10mg</span>
+<span class="text-on-surface-variant">Pending Sign</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer: Actions -->
+<div class="px-6 py-4 border-t border-split-divider bg-surface-container-low flex items-center justify-between gap-4 mt-auto">
+<button class="px-4 py-2 font-body-md text-body-md font-medium text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors border border-outline-variant bg-surface-container-lowest">
+                Return to Editor
+            </button>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 font-body-md text-body-md font-medium text-primary hover:bg-primary-container/10 rounded-lg transition-colors border border-primary bg-surface-container-lowest">
+                    Save as Draft
+                </button>
+<!-- Destructive Action Container -->
+<div class="relative group" id="end-consultation-container">
+<button class="px-6 py-2 font-body-md text-body-md font-bold text-on-error bg-error hover:opacity-90 rounded-lg transition-opacity shadow-sm flex items-center gap-2" id="end-consultation-btn">
+<span class="material-symbols-outlined text-[20px]">exit_to_app</span>
+                        End Consultation
+                    </button>
+<!-- Simulated Confirmation Step (Hover to reveal for demonstration) -->
+<div class="absolute bottom-full right-0 mb-2 w-64 bg-surface-container-lowest border border-error rounded-lg shadow-lg p-3 hidden group-hover:block transition-all duration-200 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0">
+<p class="font-body-sm text-body-sm text-on-surface mb-3">Are you sure? Unsaved notes will be lost and prescriptions will remain drafts.</p>
+<div class="flex justify-end gap-2">
+<button class="px-3 py-1 font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-container rounded transition-colors">Cancel</button>
+<button class="px-3 py-1 font-body-sm text-body-sm font-bold text-on-error bg-error rounded transition-colors">Confirm End</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+        // Minimal interaction logic for demonstration
+        document.getElementById('end-consultation-btn').addEventListener('click', function(e) {
+            // In a real app, this would toggle the confirmation step via state, not just hover
+            const container = document.getElementById('end-consultation-container');
+            container.classList.toggle('group-hover:block'); // Reset hover state trick for click demo
+        });
+    </script>
+</body></html>

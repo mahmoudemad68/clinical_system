@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clinical Workspace - Encounter Editor</title>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#4c3386",
+                        "on-primary-container": "#e3fffe",
+                        "on-secondary-fixed": "#22005c",
+                        "surface-container": "#eeeeee",
+                        "split-divider": "#ece6ee",
+                        "outline-variant": "#bdc9c8",
+                        "inverse-surface": "#2f3131",
+                        "tertiary-fixed": "#e6e1e8",
+                        "requirement-border": "#cbc4d2",
+                        "secondary-fixed": "#e9ddff",
+                        "clinic-teal": "#008080",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-variant": "#e2e2e2",
+                        "primary": "#006565",
+                        "surface-dim": "#dadada",
+                        "on-background": "#1a1c1c",
+                        "primary-container": "#008080",
+                        "surface-tint": "#006a6a",
+                        "secondary": "#6750a4",
+                        "on-primary-fixed": "#002020",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f3f3f3",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#48464b",
+                        "primary-fixed-dim": "#76d6d5",
+                        "background": "#f9f9f9",
+                        "tertiary-container": "#757177",
+                        "inverse-on-surface": "#f1f1f1",
+                        "surface-container-highest": "#e2e2e2",
+                        "secondary-container": "#bca2fd",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#5c595f",
+                        "surface": "#f9f9f9",
+                        "on-tertiary-container": "#fdf7fe",
+                        "surface-bright": "#f9f9f9",
+                        "on-surface-variant": "#3e4949",
+                        "on-error": "#ffffff",
+                        "on-surface": "#1a1c1c",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e8e8e8",
+                        "outline": "#6e7979",
+                        "clinical-bg": "#fdf7ff",
+                        "primary-fixed": "#93f2f2",
+                        "on-tertiary-fixed": "#1d1b20",
+                        "tertiary-fixed-dim": "#cac5cc",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#76d6d5",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "margin": "32px",
+                        "preview-pane-min": "400px",
+                        "unit": "4px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "data-mono": ["jetbrainsMono"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "data-mono": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface h-screen overflow-hidden flex font-body-md text-body-md">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-lowest dark:bg-surface-container-low text-clinic-teal dark:text-primary-fixed font-label-caps text-label-caps font-headline-md text-headline-md text-primary docked left-0 w-sidebar-width h-screen border-r border-split-divider dark:border-outline flat no shadows transition-all duration-200 flex flex-col h-full py-margin z-10 shrink-0">
+<!-- Header Info -->
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3 mb-2">
+<img class="w-12 h-12 rounded-full object-cover border border-outline-variant" data-alt="A professional headshot of an adult male patient, softly lit with cool, sterile tones reflecting a clinical environment. Subtle shadow and sharp focus on the face." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeqDJyJqIBjw5lX_PcjkgbR2r1scuHP6kzoFK95w-eTJopl-yJ1zRKZLm3p107Bqg73gircAi5NRNDSVzIbDj9urCxJz3wn9CANq42UBFZOlZcqjPfaXCZOAC3gh7ulswU7DH8xleiiNPUSAF8I0B00ZeWU_fa1cZKNk1HfhumpKOnDpn4yi8FWHFfIQDx7ncf0QT2gpXBYoJL4_naVJ430WJvR3evJsDUqg4pko1XFjEjncr_CoTO"/>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">John Doe</h2>
+<p class="font-data-mono text-data-mono text-on-surface-variant">ID: 4492-X | 42Y Male</p>
+</div>
+</div>
+<button class="w-full mt-4 bg-primary text-on-primary py-2 rounded font-label-caps text-label-caps hover:opacity-90 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                New Encounter
+            </button>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto px-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">folder_shared</span>
+<span class="font-label-caps text-label-caps">Medical Records</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded bg-secondary-container dark:bg-on-secondary-container text-on-secondary-container dark:text-on-primary-container font-bold transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+<span class="font-label-caps text-label-caps">Encounter Editor</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">history</span>
+<span class="font-label-caps text-label-caps">Clinical History</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">biotech</span>
+<span class="font-label-caps text-label-caps">Lab Results</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">image</span>
+<span class="font-label-caps text-label-caps">Imaging</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">medication</span>
+<span class="font-label-caps text-label-caps">Prescriptions</span>
+</a>
+</div>
+<!-- Footer Links -->
+<div class="px-4 mt-auto space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">help</span>
+<span class="font-label-caps text-label-caps">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Workspace Area -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden bg-surface relative">
+<!-- Header (Steppers & Quick Actions) -->
+<header class="h-16 border-b border-split-divider bg-surface-container-lowest flex items-center justify-between px-6 shrink-0">
+<!-- Stepper -->
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-1">
+<div class="w-6 h-6 rounded-full bg-clinic-teal flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface">Vitals</span>
+</div>
+<div class="w-4 h-[2px] bg-split-divider"></div>
+<div class="flex items-center gap-1">
+<div class="w-6 h-6 rounded-full border-2 border-clinic-teal flex items-center justify-center text-clinic-teal font-label-caps text-label-caps">2</div>
+<span class="font-label-caps text-label-caps text-primary font-bold">Encounter</span>
+</div>
+<div class="w-4 h-[2px] bg-split-divider"></div>
+<div class="flex items-center gap-1 opacity-50">
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant flex items-center justify-center text-outline-variant font-label-caps text-label-caps">3</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Sign-off</span>
+</div>
+</div>
+<!-- Quick Actions -->
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-3 py-1.5 border border-outline-variant rounded hover:bg-surface-container text-on-surface font-body-sm text-body-sm transition-colors">
+<span class="material-symbols-outlined text-[18px]">vaccines</span>
+                    New Prescription
+                </button>
+<button class="flex items-center gap-2 px-3 py-1.5 border border-outline-variant rounded hover:bg-surface-container text-on-surface font-body-sm text-body-sm transition-colors">
+<span class="material-symbols-outlined text-[18px]">biotech</span>
+                    Request Lab
+                </button>
+</div>
+</header>
+<!-- Encounter Editor Canvas -->
+<div class="flex-1 overflow-y-auto p-6 scroll-smooth">
+<div class="max-w-4xl mx-auto space-y-6">
+<!-- Encounter Meta -->
+<div class="flex items-center justify-between mb-4">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Outpatient Visit - Follow Up</h1>
+<span class="font-data-mono text-data-mono text-on-surface-variant bg-surface-container px-2 py-1 rounded">2023-10-24 14:30 EST</span>
+</div>
+<!-- Section: Chief Complaint -->
+<section class="bg-surface-container-lowest rounded-lg border border-outline-variant p-5 shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">record_voice_over</span>
+                        Chief Complaint
+                    </h3>
+<div class="relative">
+<textarea class="w-full bg-surface border border-outline-variant rounded p-3 font-body-md text-body-md focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal outline-none min-h-[100px] resize-y" placeholder="Patient reports..."></textarea>
+</div>
+</section>
+<!-- Section: History of Present Illness (HPI) -->
+<section class="bg-surface-container-lowest rounded-lg border border-outline-variant p-5 shadow-sm border-l-2 border-l-requirement-border">
+<div class="flex items-center justify-between mb-3">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">history_edu</span>
+                            History of Present Illness
+                        </h3>
+<span class="font-label-caps text-label-caps text-error bg-error-container px-2 py-0.5 rounded">Required</span>
+</div>
+<textarea class="w-full bg-surface border border-outline-variant rounded p-3 font-body-md text-body-md focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal outline-none min-h-[120px] resize-y" placeholder="Detailed history..."></textarea>
+</section>
+<!-- Section: Review of Systems (Bento Layout) -->
+<section class="bg-surface-container-lowest rounded-lg border border-outline-variant p-5 shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">body_system</span>
+                        Review of Systems
+                    </h3>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+<!-- Card 1 -->
+<div class="border border-outline-variant rounded p-3 bg-surface hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Cardiovascular</span>
+<span class="material-symbols-outlined text-[16px] text-outline">favorite</span>
+</div>
+<div class="flex gap-2">
+<span class="bg-surface-container px-2 py-0.5 rounded font-body-sm text-body-sm text-on-surface">Normal</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="border border-clinic-teal rounded p-3 bg-clinical-bg transition-colors cursor-pointer relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-clinic-teal"></div>
+<div class="flex items-center justify-between mb-2 pl-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Respiratory</span>
+<span class="material-symbols-outlined text-[16px] text-clinic-teal">air</span>
+</div>
+<div class="flex gap-2 pl-1">
+<span class="bg-primary-container text-on-primary-container px-2 py-0.5 rounded font-body-sm text-body-sm">Mild Wheezing</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="border border-outline-variant rounded p-3 bg-surface hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Gastrointestinal</span>
+<span class="material-symbols-outlined text-[16px] text-outline">restaurant</span>
+</div>
+<div class="flex gap-2">
+<span class="bg-surface-container px-2 py-0.5 rounded font-body-sm text-body-sm text-on-surface">Normal</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Vitals Review -->
+<section class="bg-surface-container-lowest rounded-lg border border-outline-variant p-5 shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">monitor_heart</span>
+                        Vitals Snapshot
+                    </h3>
+<div class="grid grid-cols-4 gap-4">
+<div class="p-3 bg-surface rounded border border-split-divider">
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">BP (mmHg)</span>
+<span class="font-data-mono text-data-mono text-on-surface text-lg">120/80</span>
+</div>
+<div class="p-3 bg-surface rounded border border-split-divider">
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">HR (bpm)</span>
+<span class="font-data-mono text-data-mono text-on-surface text-lg">72</span>
+</div>
+<div class="p-3 bg-surface rounded border border-split-divider">
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Temp (F)</span>
+<span class="font-data-mono text-data-mono text-on-surface text-lg">98.6</span>
+</div>
+<div class="p-3 bg-surface rounded border border-split-divider">
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">SpO2 (%)</span>
+<span class="font-data-mono text-data-mono text-on-surface text-lg">99</span>
+</div>
+</div>
+</section>
+<div class="h-24"></div> <!-- Bottom padding for sticky footer -->
+</div>
+</div>
+<!-- Sticky Footer Action Bar -->
+<footer class="absolute bottom-0 left-0 right-0 h-16 bg-surface-container-highest border-t border-split-divider flex items-center justify-between px-6 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<div class="flex items-center gap-4 text-on-surface-variant">
+<div class="flex items-center gap-1 font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px] text-clinic-teal" style="font-variation-settings: 'FILL' 1;">cloud_done</span>
+                    Synced to server
+                </div>
+<div class="w-1 h-1 rounded-full bg-outline-variant"></div>
+<div class="flex items-center gap-1 font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+                    Autosave active
+                </div>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 rounded text-on-surface hover:bg-surface-variant font-body-md text-body-md transition-colors">
+                    Save Draft
+                </button>
+<button class="px-4 py-2 rounded bg-primary text-on-primary font-body-md text-body-md font-bold hover:bg-surface-tint transition-colors shadow-sm">
+                    Sign &amp; Close
+                </button>
+</div>
+</footer>
+</main>
+</body></html>

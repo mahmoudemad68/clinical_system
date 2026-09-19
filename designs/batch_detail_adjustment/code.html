@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PharmaCore OS - Batch Detail &amp; Adjustment</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-error": "#ffffff",
+                      "inverse-primary": "#bac3ff",
+                      "tertiary-fixed-dim": "#c4c6d2",
+                      "primary": "#24389c",
+                      "surface-variant": "#d7e4ec",
+                      "surface-container-low": "#e9f6fd",
+                      "secondary-fixed-dim": "#c4c7ca",
+                      "outline-variant": "#c5c5d4",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#dee0ff",
+                      "surface-tint": "#4355b9",
+                      "surface-container-high": "#ddeaf2",
+                      "on-background": "#111d23",
+                      "on-primary-fixed": "#00105c",
+                      "on-secondary-fixed": "#191c1e",
+                      "on-primary-container": "#cacfff",
+                      "on-error-container": "#93000a",
+                      "surface-container": "#e3f0f8",
+                      "outline": "#757684",
+                      "background": "#f4faff",
+                      "surface-dim": "#cfdce4",
+                      "on-surface-variant": "#454652",
+                      "error-container": "#ffdad6",
+                      "secondary": "#5b5f61",
+                      "on-secondary-container": "#626567",
+                      "on-secondary": "#ffffff",
+                      "surface": "#f4faff",
+                      "primary-container": "#3f51b5",
+                      "on-tertiary-fixed-variant": "#434750",
+                      "surface-bright": "#f4faff",
+                      "on-primary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "on-tertiary-fixed": "#181b24",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-fixed-variant": "#44474a",
+                      "on-surface": "#111d23",
+                      "secondary-container": "#e0e3e6",
+                      "inverse-on-surface": "#e6f3fb",
+                      "inverse-surface": "#263238",
+                      "tertiary": "#3f434c",
+                      "tertiary-container": "#575a64",
+                      "primary-fixed-dim": "#bac3ff",
+                      "on-tertiary-container": "#cfd2dd",
+                      "surface-container-highest": "#d7e4ec",
+                      "on-primary-fixed-variant": "#293ca0",
+                      "secondary-fixed": "#e0e3e6",
+                      "tertiary-fixed": "#e0e2ee"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "row-height-dense": "32px",
+                      "gutter": "16px",
+                      "sidebar-width": "260px",
+                      "unit": "4px",
+                      "row-height-standard": "48px",
+                      "container-padding": "24px"
+              },
+              "fontFamily": {
+                      "title-sm": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "data-mono": [
+                              "JetBrains Mono"
+                      ]
+              },
+              "fontSize": {
+                      "title-sm": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "data-mono": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-surface text-on-surface h-screen flex overflow-hidden">
+<!-- TopNavBar (Rendered via JSON Instructions) -->
+<header class="fixed top-0 left-0 w-full z-50 bg-surface-container-highest border-b border-outline-variant flex justify-between items-center px-gutter h-row-height-standard">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md text-primary font-bold">PharmaCore OS</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden md:flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface rounded-full border-none focus:ring-2 focus:ring-primary text-body-sm h-8 w-64" placeholder="Search..." type="text"/>
+</div>
+<span class="font-title-sm text-title-sm text-primary border-b-2 border-primary pb-1">Branch: Central Pharmacy</span>
+<span class="font-title-sm text-title-sm text-on-surface-variant">Online</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors p-1 rounded-full">settings_ethernet</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors p-1 rounded-full">sync</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors p-1 rounded-full">account_circle</span>
+</div>
+</header>
+<!-- SideNavBar (Rendered via JSON Instructions) -->
+<nav class="w-sidebar-width h-screen sticky left-0 pt-[64px] bg-surface-container flex flex-col py-container-padding flex-shrink-0 hidden md:flex">
+<div class="px-container-padding mb-8">
+<h2 class="font-body-md text-body-md text-on-surface-variant">System Mode</h2>
+<p class="font-title-sm text-title-sm text-primary">INTEGRATED</p>
+</div>
+<ul class="flex-grow flex flex-col gap-1">
+<li>
+<a class="flex items-center gap-4 px-container-padding py-2 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Workspace</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-container-padding py-2 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">point_of_sale</span>
+<span class="font-body-md text-body-md">POS</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-container-padding py-2 text-primary font-bold border-r-4 border-primary bg-primary-fixed-dim/10 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-body-md text-body-md">Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-container-padding py-2 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-body-md text-body-md">Memberships</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-container-padding py-2 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</li>
+</ul>
+<div class="px-container-padding mt-auto mb-4">
+<button class="w-full bg-primary text-on-primary py-2 rounded font-title-sm text-title-sm hover:bg-primary/90 transition-colors">
+                New Prescription
+            </button>
+</div>
+<ul class="flex flex-col gap-1 border-t border-outline-variant pt-4">
+<li>
+<a class="flex items-center gap-4 px-container-padding py-2 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-body-md text-body-md">Support</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-container-padding py-2 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-body-md text-body-md">Logs</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-[64px] overflow-y-auto bg-background p-container-padding flex">
+<!-- Left/Center Column: Details & Table -->
+<div class="flex-grow flex flex-col gap-6 max-w-[1200px]">
+<!-- Header Area -->
+<div class="flex justify-between items-start">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">arrow_back</span>
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Inventory / Medications / Batches</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-surface mb-1">Amoxicillin 500mg Capsule</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">NDC: 00093-3109-05 | Manufacturer: Teva Pharmaceuticals</p>
+</div>
+<div class="flex gap-4">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 min-w-[150px] shadow-[0_4px_12px_rgba(38,50,56,0.08)]">
+<span class="font-label-caps text-label-caps text-outline block mb-1">Total Stock (Units)</span>
+<span class="font-headline-md text-headline-md text-primary block">14,500</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 min-w-[150px] shadow-[0_4px_12px_rgba(38,50,56,0.08)]">
+<span class="font-label-caps text-label-caps text-outline block mb-1">Active Batches</span>
+<span class="font-headline-md text-headline-md text-on-surface block">3</span>
+</div>
+</div>
+</div>
+<!-- FEFO Batch Table -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden flex flex-col flex-grow shadow-[0_4px_12px_rgba(38,50,56,0.08)]">
+<div class="px-6 py-4 border-b border-outline-variant bg-surface-container-lowest flex justify-between items-center">
+<h2 class="font-title-sm text-title-sm text-on-surface">Batch Inventory (FEFO Ordered)</h2>
+<button class="flex items-center gap-2 text-primary hover:text-primary-container font-title-sm text-title-sm transition-colors">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                        Filter
+                    </button>
+</div>
+<div class="overflow-x-auto flex-grow">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low sticky top-0">
+<tr>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase border-b border-outline-variant font-bold">Batch #</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase border-b border-outline-variant font-bold">Expiry Date</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase border-b border-outline-variant font-bold">Status</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase border-b border-outline-variant font-bold text-right">Balance (Units)</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant uppercase border-b border-outline-variant font-bold text-center">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md">
+<!-- Row 1: Expiring Soon -->
+<tr class="hover:bg-surface-variant/50 transition-colors border-b border-outline-variant group">
+<td class="px-6 py-3 font-data-mono text-data-mono text-on-surface">BX-9942-A</td>
+<td class="px-6 py-3 text-error font-medium">2024-03-15</td>
+<td class="px-6 py-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-error-container text-on-error-container">
+                                        Expiring Soon
+                                    </span>
+</td>
+<td class="px-6 py-3 font-data-mono text-data-mono text-right">2,500.00</td>
+<td class="px-6 py-3 text-center">
+<button class="text-outline hover:text-primary transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]">edit_square</span>
+</button>
+</td>
+</tr>
+<!-- Row 2: Active -->
+<tr class="hover:bg-surface-variant/50 transition-colors border-b border-outline-variant group">
+<td class="px-6 py-3 font-data-mono text-data-mono text-on-surface">BX-8120-C</td>
+<td class="px-6 py-3 text-on-surface">2025-08-22</td>
+<td class="px-6 py-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-container-high text-primary">
+                                        Active
+                                    </span>
+</td>
+<td class="px-6 py-3 font-data-mono text-data-mono text-right">5,000.00</td>
+<td class="px-6 py-3 text-center">
+<button class="text-outline hover:text-primary transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]">edit_square</span>
+</button>
+</td>
+</tr>
+<!-- Row 3: Active -->
+<tr class="hover:bg-surface-variant/50 transition-colors border-b border-outline-variant group">
+<td class="px-6 py-3 font-data-mono text-data-mono text-on-surface">BX-7711-D</td>
+<td class="px-6 py-3 text-on-surface">2026-01-10</td>
+<td class="px-6 py-3">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-container-high text-primary">
+                                        Active
+                                    </span>
+</td>
+<td class="px-6 py-3 font-data-mono text-data-mono text-right">7,000.00</td>
+<td class="px-6 py-3 text-center">
+<button class="text-outline hover:text-primary transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]">edit_square</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Timeline -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-6 shadow-[0_4px_12px_rgba(38,50,56,0.08)]">
+<h3 class="font-title-sm text-title-sm text-on-surface mb-4">Recent Stock Movements (Amoxicillin 500mg)</h3>
+<div class="relative border-l-2 border-surface-variant ml-3 pl-6 pb-2 space-y-6">
+<!-- Event 1 -->
+<div class="relative">
+<div class="absolute -left-[31px] bg-surface-container-lowest p-1 rounded-full border-2 border-primary">
+<div class="w-2 h-2 bg-primary rounded-full"></div>
+</div>
+<p class="font-data-mono text-data-mono text-outline mb-1">Today, 08:14 AM</p>
+<p class="font-body-md text-body-md text-on-surface"><span class="font-bold">-150 Units</span> (Dispensed - Rx #44921)</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Batch: BX-9942-A | Pharmacist: J. Doe</p>
+</div>
+<!-- Event 2 -->
+<div class="relative">
+<div class="absolute -left-[31px] bg-surface-container-lowest p-1 rounded-full border-2 border-outline-variant">
+<div class="w-2 h-2 bg-outline-variant rounded-full"></div>
+</div>
+<p class="font-data-mono text-data-mono text-outline mb-1">Yesterday, 14:30 PM</p>
+<p class="font-body-md text-body-md text-on-surface"><span class="font-bold">+5,000 Units</span> (Received - PO #9910)</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Batch: BX-8120-C | Receiver: M. Smith</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Side Drawer: Adjustment -->
+<aside class="w-[360px] ml-6 bg-surface-container-lowest border border-outline-variant rounded-lg flex flex-col shadow-[0_4px_12px_rgba(38,50,56,0.08)] flex-shrink-0 h-full">
+<div class="p-6 border-b border-outline-variant">
+<h3 class="font-title-sm text-title-sm text-on-surface">Stock Adjustment</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Record a signed change to inventory balance.</p>
+</div>
+<div class="p-6 flex-grow overflow-y-auto flex flex-col gap-5">
+<!-- Batch Select -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">Target Batch</label>
+<select class="w-full bg-surface border border-outline-variant rounded px-3 py-2 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none appearance-none">
+<option>BX-9942-A (Exp: 2024-03-15)</option>
+<option>BX-8120-C (Exp: 2025-08-22)</option>
+<option>BX-7711-D (Exp: 2026-01-10)</option>
+</select>
+</div>
+<!-- Adjustment Type & Quantity -->
+<div class="flex gap-4">
+<div class="flex-1">
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">Type</label>
+<select class="w-full bg-surface border border-outline-variant rounded px-3 py-2 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none appearance-none text-error">
+<option value="deduct">Deduct (-)</option>
+<option value="add">Add (+)</option>
+</select>
+</div>
+<div class="flex-1">
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">Quantity</label>
+<input class="w-full bg-surface border border-outline-variant rounded px-3 py-2 text-data-mono font-data-mono text-right focus:ring-2 focus:ring-primary focus:border-primary outline-none" placeholder="0.00" type="number"/>
+</div>
+</div>
+<!-- Reason -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">Reason Code</label>
+<select class="w-full bg-surface border border-outline-variant rounded px-3 py-2 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none appearance-none">
+<option>Damaged/Spoiled</option>
+<option>Expired</option>
+<option>Count Discrepancy</option>
+<option>Recall</option>
+<option>Other</option>
+</select>
+</div>
+<!-- Evidence Upload -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">Evidence (Optional)</label>
+<div class="border-2 border-dashed border-outline-variant rounded-lg p-4 flex flex-col items-center justify-center text-center bg-surface hover:bg-surface-variant/50 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-outline mb-2">upload_file</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Drag drop or click to upload</span>
+<span class="font-label-caps text-label-caps text-outline mt-1 block">JPG, PNG, PDF up to 5MB</span>
+</div>
+</div>
+<!-- Signature/PIN -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">Pharmacist PIN</label>
+<input class="w-full bg-surface border border-outline-variant rounded px-3 py-2 text-center tracking-widest focus:ring-2 focus:ring-primary focus:border-primary outline-none" placeholder="••••" type="password"/>
+</div>
+</div>
+<div class="p-6 border-t border-outline-variant flex justify-end gap-3 bg-surface-container-low">
+<button class="px-4 py-2 border border-primary text-primary rounded font-title-sm text-title-sm hover:bg-primary/5 transition-colors">Cancel</button>
+<button class="px-4 py-2 bg-error text-on-error rounded font-title-sm text-title-sm hover:bg-error/90 transition-colors shadow-sm">Submit Adjustment</button>
+</div>
+</aside>
+</main>
+</body></html>

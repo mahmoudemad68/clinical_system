@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Doctor Profile Setup</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#1a1c1c",
+                      "primary-fixed": "#93f2f2",
+                      "surface-dim": "#dadada",
+                      "tertiary-fixed-dim": "#cac5cc",
+                      "on-primary-fixed": "#002020",
+                      "outline": "#6e7979",
+                      "primary-container": "#008080",
+                      "primary": "#006565",
+                      "on-primary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "on-surface": "#1a1c1c",
+                      "surface-container-highest": "#e2e2e2",
+                      "on-primary-container": "#e3fffe",
+                      "primary-fixed-dim": "#76d6d5",
+                      "surface-container": "#eeeeee",
+                      "outline-variant": "#bdc9c8",
+                      "surface-container-high": "#e8e8e8",
+                      "tertiary-container": "#757177",
+                      "surface-tint": "#006a6a",
+                      "surface-container-lowest": "#ffffff",
+                      "clinic-teal": "#008080",
+                      "on-secondary-container": "#4c3386",
+                      "background": "#f9f9f9",
+                      "error-container": "#ffdad6",
+                      "error": "#ba1a1a",
+                      "on-surface-variant": "#3e4949",
+                      "requirement-border": "#cbc4d2",
+                      "tertiary-fixed": "#e6e1e8",
+                      "on-tertiary": "#ffffff",
+                      "surface": "#f9f9f9",
+                      "surface-bright": "#f9f9f9",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed-dim": "#d0bcff",
+                      "inverse-primary": "#76d6d5",
+                      "surface-container-low": "#f3f3f3",
+                      "inverse-on-surface": "#f1f1f1",
+                      "on-secondary-fixed": "#22005c",
+                      "on-error-container": "#93000a",
+                      "on-secondary-fixed-variant": "#4f378a",
+                      "on-primary-fixed-variant": "#004f4f",
+                      "split-divider": "#ece6ee",
+                      "tertiary": "#5c595f",
+                      "surface-variant": "#e2e2e2",
+                      "secondary-fixed": "#e9ddff",
+                      "on-tertiary-fixed-variant": "#48464b",
+                      "inverse-surface": "#2f3131",
+                      "secondary": "#6750a4",
+                      "secondary-container": "#bca2fd",
+                      "clinical-bg": "#fdf7ff",
+                      "on-tertiary-fixed": "#1d1b20",
+                      "on-tertiary-container": "#fdf7fe"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "preview-pane-min": "400px",
+                      "unit": "4px",
+                      "margin": "32px",
+                      "sidebar-width": "260px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "data-mono": [
+                              "jetbrainsMono"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "data-mono": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.06em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+      </script>
+</head>
+<body class="bg-surface h-full flex flex-col font-body-md text-on-surface text-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- Header (Minimal for onboarding) -->
+<header class="bg-surface-bright flex justify-between items-center h-16 px-gutter border-b border-split-divider flex-shrink-0 z-10 sticky top-0">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-bold text-on-surface">Doctor Workspace</span>
+<span class="px-2 py-1 bg-surface-container rounded font-label-caps text-label-caps text-on-surface-variant">Setup</span>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 text-on-surface-variant hover:text-error transition-colors rounded">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+<span class="font-body-sm text-body-sm">Exit Safely</span>
+</button>
+</header>
+<!-- Main Layout -->
+<main class="flex flex-1 overflow-hidden">
+<!-- Left Vertical Stepper -->
+<aside class="w-[320px] bg-surface-container-lowest border-r border-split-divider flex-shrink-0 overflow-y-auto p-margin hidden md:block">
+<h2 class="font-headline-md text-headline-md mb-8">Profile Setup</h2>
+<nav aria-label="Progress">
+<ol class="overflow-hidden" role="list">
+<!-- Completed Step -->
+<li class="relative pb-10">
+<div aria-hidden="true" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-clinic-teal"></div>
+<a class="relative flex items-start group" href="#">
+<span class="h-9 flex items-center">
+<span class="relative z-10 w-8 h-8 flex items-center justify-center bg-clinic-teal rounded-full">
+<span class="material-symbols-outlined text-on-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">check</span>
+</span>
+</span>
+<span class="ml-4 min-w-0 flex flex-col">
+<span class="font-label-caps text-label-caps text-clinic-teal tracking-wide">Step 1</span>
+<span class="font-body-md text-body-md font-semibold text-on-surface">Personal Details</span>
+</span>
+</a>
+</li>
+<!-- Current Step -->
+<li class="relative pb-10">
+<div aria-hidden="true" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-outline-variant"></div>
+<a aria-current="step" class="relative flex items-start group" href="#">
+<span aria-hidden="true" class="h-9 flex items-center">
+<span class="relative z-10 w-8 h-8 flex items-center justify-center bg-surface-container-lowest border-2 border-clinic-teal rounded-full">
+<span class="h-2.5 w-2.5 bg-clinic-teal rounded-full"></span>
+</span>
+</span>
+<span class="ml-4 min-w-0 flex flex-col">
+<span class="font-label-caps text-label-caps text-clinic-teal tracking-wide">Step 2</span>
+<span class="font-body-md text-body-md font-semibold text-on-surface">Professional Details</span>
+</span>
+</a>
+</li>
+<!-- Upcoming Step -->
+<li class="relative pb-10">
+<div aria-hidden="true" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-outline-variant"></div>
+<a class="relative flex items-start group" href="#">
+<span aria-hidden="true" class="h-9 flex items-center">
+<span class="relative z-10 w-8 h-8 flex items-center justify-center bg-surface-container-lowest border-2 border-outline-variant rounded-full group-hover:border-outline">
+<span class="h-2.5 w-2.5 bg-transparent rounded-full group-hover:bg-outline"></span>
+</span>
+</span>
+<span class="ml-4 min-w-0 flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-wide group-hover:text-on-surface">Step 3</span>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Specialty</span>
+</span>
+</a>
+</li>
+<!-- Upcoming Step -->
+<li class="relative pb-10">
+<div aria-hidden="true" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-outline-variant"></div>
+<a class="relative flex items-start group" href="#">
+<span aria-hidden="true" class="h-9 flex items-center">
+<span class="relative z-10 w-8 h-8 flex items-center justify-center bg-surface-container-lowest border-2 border-outline-variant rounded-full group-hover:border-outline">
+<span class="h-2.5 w-2.5 bg-transparent rounded-full group-hover:bg-outline"></span>
+</span>
+</span>
+<span class="ml-4 min-w-0 flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-wide group-hover:text-on-surface">Step 4</span>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Documents</span>
+</span>
+</a>
+</li>
+<!-- Final Step -->
+<li class="relative">
+<a class="relative flex items-start group" href="#">
+<span aria-hidden="true" class="h-9 flex items-center">
+<span class="relative z-10 w-8 h-8 flex items-center justify-center bg-surface-container-lowest border-2 border-outline-variant rounded-full group-hover:border-outline">
+<span class="h-2.5 w-2.5 bg-transparent rounded-full group-hover:bg-outline"></span>
+</span>
+</span>
+<span class="ml-4 min-w-0 flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-wide group-hover:text-on-surface">Step 5</span>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Review</span>
+</span>
+</a>
+</li>
+</ol>
+</nav>
+</aside>
+<!-- Right Form Canvas -->
+<section class="flex-1 overflow-y-auto bg-surface relative">
+<div class="max-w-4xl mx-auto py-margin px-gutter pb-[120px]">
+<div class="mb-8">
+<h1 class="font-headline-lg text-headline-lg mb-2">Professional Details</h1>
+<p class="text-on-surface-variant font-body-lg text-body-lg">Enter your licensing and professional identification information. This data will be verified before activation.</p>
+</div>
+<!-- Server Requirements Card -->
+<div class="bg-surface-container-lowest border border-outline-variant border-l-4 border-l-clinic-teal rounded-r mb-8 p-4 flex gap-4 items-start shadow-sm">
+<span class="material-symbols-outlined text-clinic-teal mt-0.5">verified_user</span>
+<div>
+<h3 class="font-body-md text-body-md font-semibold text-on-surface mb-1">Verification Requirements</h3>
+<ul class="list-disc pl-5 text-on-surface-variant space-y-1 font-body-sm text-body-sm">
+<li>Valid State Medical License Number</li>
+<li>National Provider Identifier (NPI)</li>
+<li>Primary specialty declaration</li>
+</ul>
+</div>
+</div>
+<!-- Form Area -->
+<form class="space-y-6 bg-surface-container-lowest p-6 border border-outline-variant rounded">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- License Number -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1" for="license_num">State License Number <span class="text-error">*</span></label>
+<input class="w-full bg-surface border border-outline-variant rounded px-3 py-2 focus:ring-2 focus:ring-clinic-teal focus:border-clinic-teal outline-none font-data-mono text-data-mono text-on-surface" id="license_num" name="license_num" placeholder="e.g. MD12345678" type="text"/>
+</div>
+<!-- Professional Identifier -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1" for="npi_num">National Provider Identifier (NPI) <span class="text-error">*</span></label>
+<input class="w-full bg-surface border border-outline-variant rounded px-3 py-2 focus:ring-2 focus:ring-clinic-teal focus:border-clinic-teal outline-none font-data-mono text-data-mono text-on-surface" id="npi_num" name="npi_num" placeholder="10-digit number" type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Primary Specialty -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1" for="specialty">Primary Specialty <span class="text-error">*</span></label>
+<div class="relative">
+<select class="w-full bg-surface border border-outline-variant rounded px-3 py-2 appearance-none focus:ring-2 focus:ring-clinic-teal focus:border-clinic-teal outline-none font-body-md text-body-md text-on-surface pr-10" id="specialty" name="specialty">
+<option disabled="" selected="" value="">Select specialty...</option>
+<option value="cardiology">Cardiology</option>
+<option value="dermatology">Dermatology</option>
+<option value="general_practice">General Practice</option>
+<option value="neurology">Neurology</option>
+<option value="pediatrics">Pediatrics</option>
+<option value="psychiatry">Psychiatry</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Language Preference -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1" for="language">Primary Language Preference</label>
+<div class="relative">
+<select class="w-full bg-surface border border-outline-variant rounded px-3 py-2 appearance-none focus:ring-2 focus:ring-clinic-teal focus:border-clinic-teal outline-none font-body-md text-body-md text-on-surface pr-10" id="language" name="language">
+<option selected="" value="english">English</option>
+<option value="spanish">Spanish</option>
+<option value="mandarin">Mandarin</option>
+<option value="french">French</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Additional Details -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1" for="bio">Professional Bio (Optional)</label>
+<textarea class="w-full bg-surface border border-outline-variant rounded px-3 py-2 focus:ring-2 focus:ring-clinic-teal focus:border-clinic-teal outline-none font-body-md text-body-md text-on-surface resize-y" id="bio" name="bio" placeholder="Brief overview of your clinical experience..." rows="4"></textarea>
+</div>
+</form>
+</div>
+<!-- Action Bar (Sticky Footer) -->
+<div class="fixed bottom-0 right-0 w-full md:w-[calc(100%-320px)] bg-surface-bright border-t border-split-divider p-4 px-gutter flex justify-between items-center z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<button class="px-4 py-2 border border-outline-variant rounded text-on-surface font-body-md text-body-md hover:bg-surface-container transition-colors">
+                    Save Draft
+                </button>
+<div class="flex gap-3">
+<button class="px-4 py-2 text-on-surface-variant font-body-md text-body-md hover:text-on-surface transition-colors">
+                        Back
+                    </button>
+<button class="px-6 py-2 bg-clinic-teal text-on-primary rounded font-body-md text-body-md font-semibold hover:bg-primary transition-colors flex items-center gap-2 shadow-sm">
+                        Continue
+                        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+</body></html>

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Doctor AI Assistant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-fixed-variant": "#004f4f",
+                      "surface-dim": "#cbdbf5",
+                      "on-tertiary-fixed": "#07006c",
+                      "surface-bright": "#f8f9ff",
+                      "on-error-container": "#93000a",
+                      "secondary-container": "#d9dff5",
+                      "tertiary": "#4446d2",
+                      "inverse-primary": "#76d6d5",
+                      "outline": "#6e7979",
+                      "tertiary-fixed": "#e1e0ff",
+                      "on-tertiary-container": "#fcf8ff",
+                      "surface-container-low": "#eff4ff",
+                      "tertiary-fixed-dim": "#c0c1ff",
+                      "error": "#ba1a1a",
+                      "primary": "#006565",
+                      "surface-variant": "#d3e4fe",
+                      "on-surface-variant": "#3e4949",
+                      "primary-container": "#008080",
+                      "on-primary-container": "#e3fffe",
+                      "on-secondary-container": "#5c6274",
+                      "on-surface": "#0b1c30",
+                      "secondary": "#575e70",
+                      "on-tertiary": "#ffffff",
+                      "surface-container": "#e5eeff",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#bdc9c8",
+                      "inverse-surface": "#213145",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed-dim": "#76d6d5",
+                      "on-secondary-fixed-variant": "#404758",
+                      "surface-container-highest": "#d3e4fe",
+                      "secondary-fixed": "#dce2f7",
+                      "inverse-on-surface": "#eaf1ff",
+                      "on-background": "#0b1c30",
+                      "surface-tint": "#006a6a",
+                      "error-container": "#ffdad6",
+                      "secondary-fixed-dim": "#c0c6db",
+                      "primary-fixed": "#93f2f2",
+                      "on-primary-fixed": "#002020",
+                      "background": "#f8f9ff",
+                      "tertiary-container": "#5e61ec",
+                      "surface-container-high": "#dce9ff",
+                      "on-error": "#ffffff",
+                      "on-tertiary-fixed-variant": "#2f2ebe",
+                      "surface": "#f8f9ff",
+                      "on-secondary-fixed": "#141b2b",
+                      "surface-container-lowest": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "gutter": "12px",
+                      "unit": "4px",
+                      "container-margin": "16px",
+                      "row-padding": "8px",
+                      "compact-gap": "4px"
+              },
+              "fontFamily": {
+                      "ai-content": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "JetBrains Mono"
+                      ]
+              },
+              "fontSize": {
+                      "ai-content": [
+                              "14px",
+                              {
+                                      "lineHeight": "22px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ai-pulse-border {
+            animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: transparent; }
+            50% { border-color: #5e61ec; }
+        }
+        .ai-streaming-glow {
+            box-shadow: 0 0 8px 1px rgba(94, 97, 236, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md h-full flex flex-col overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center px-gutter w-full h-16 z-50 bg-surface border-b border-outline-variant shrink-0">
+<div class="flex items-center gap-4">
+<h1 class="font-headline-md text-headline-md text-primary">Doctor Workspace</h1>
+<nav class="hidden md:flex gap-6 ml-8">
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors cursor-pointer active:scale-95" href="#">Dashboard</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors cursor-pointer active:scale-95" href="#">Patients</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors cursor-pointer active:scale-95" href="#">Protocols</a>
+</nav>
+</div>
+<div class="flex items-center gap-compact-gap">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<img alt="Dr. Smith profile" class="w-8 h-8 rounded-full ml-4 border border-outline-variant object-cover" data-alt="A professional headshot portrait of a doctor in a well-lit clinic environment, wearing a white coat and subtle modern glasses. Clean, bright, and reassuring expression, optimized for a small UI avatar." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAalwRuQyVo5LHDZtGaT8XqLULKOgkatOK35xWbEHDpr1vkoShGJmT7AprL1NB-RXd9U8_BZtTkQjrpvN6sscv2ihK7chTszA6ksIFjS2SYSbV6kZuvqLdJgwZVPn-20rnIMJ92xLfj_8Gy7xbb2jZDJBIR4yQk0Sxah0qPTcybQRNV8kqz-aA4NBKEWNFgaw311WrRTGPw2OaDbtmxnipHXneKWkayoPt0LvefvnRlZ1tuYnssIXJj"/>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden relative w-full">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full bg-surface-container w-[240px] border-r border-outline-variant shrink-0 z-40">
+<div class="p-4 border-b border-outline-variant mb-2">
+<div class="flex items-center gap-3">
+<img alt="Patient Context Avatar" class="w-10 h-10 rounded-full border border-outline-variant object-cover" data-alt="A small UI avatar placeholder image showing a generic user silhouette or subtle abstract pattern suitable for a patient identity context in a clinical dashboard. Clean white and light gray tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnBffYv3U7iyfdmqaulj4VD_uCZLtl-cdRaL7E41hQwv2h_PrVZ3I8XEv8L9KiMDdgxLHC1qyTOGpuMWahtAU3AeSyh2k-RqEZ62qo0Gqfh0J3ItaYT7gIyg5jqrefz24hIcNJKE_YXA3q_RYEStSICZVpdkbpJNCtkBkrzdnvMfu_nhqkHi1KibQazcPHemfjmxEmCxsfmHrNCKNC7zJAco0PgOSaxdq27iQCVe6F6NBUu0WAlt5V"/>
+<div>
+<div class="font-headline-md text-[14px] leading-tight font-semibold text-primary">Patient Identity</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">DOB: 05/12/1984</div>
+</div>
+</div>
+</div>
+<button class="mx-4 my-2 h-9 bg-primary text-on-primary rounded font-body-md text-body-md font-medium hover:bg-primary-container transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span> New Encounter
+            </button>
+<div class="flex-1 overflow-y-auto mt-2 space-y-1 px-2">
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps cursor-pointer" href="#">
+<span class="material-symbols-outlined">home</span> Home
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps cursor-pointer" href="#">
+<span class="material-symbols-outlined">menu_book</span> Library
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-primary bg-surface-container-highest font-bold transition-all duration-200 ease-in-out font-label-caps text-label-caps cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-weight="fill">smart_toy</span> AI Assistant
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps cursor-pointer" href="#">
+<span class="material-symbols-outlined">chat_bubble</span> Encounter Chat
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps cursor-pointer" href="#">
+<span class="material-symbols-outlined">calendar_today</span> Schedule
+                </a>
+</div>
+<div class="p-2 border-t border-outline-variant space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps cursor-pointer" href="#">
+<span class="material-symbols-outlined">help</span> Help
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps cursor-pointer" href="#">
+<span class="material-symbols-outlined">logout</span> Logout
+                </a>
+</div>
+</nav>
+<!-- Main Content Canvas (Encounter Editor) -->
+<main class="flex-1 overflow-y-auto bg-surface p-container-margin relative">
+<div class="max-w-4xl mx-auto space-y-6">
+<!-- Header -->
+<div class="flex justify-between items-end border-b border-outline-variant pb-4">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface">Encounter Editor</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Drafting consultation notes for Review</p>
+</div>
+<div class="flex gap-2">
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-error-container text-on-error-container font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-[14px]">warning</span> Sign Due &lt; 2h
+                        </span>
+<button class="px-4 py-1.5 border border-outline bg-surface text-on-surface rounded font-body-md text-body-md hover:bg-surface-variant transition-colors">Save Draft</button>
+</div>
+</div>
+<!-- Structured Form -->
+<div class="space-y-4">
+<!-- HPI Section -->
+<div class="bg-surface-lowest border border-outline-variant rounded p-4">
+<div class="flex justify-between items-center mb-3">
+<h3 class="font-headline-md text-[16px] leading-tight font-semibold text-primary">History of Present Illness (HPI)</h3>
+<button class="text-tertiary hover:text-tertiary-container text-body-sm font-body-sm flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[16px]">edit_note</span> Use AI Draft
+                            </button>
+</div>
+<textarea class="w-full h-32 p-3 bg-surface-bright border border-outline-variant rounded font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-primary focus:outline-none resize-none transition-all" placeholder="Enter patient history here..."></textarea>
+</div>
+<!-- Assessment Section (AI Suggested) -->
+<div class="bg-surface-bright border border-tertiary-fixed-dim rounded p-4 relative overflow-hidden ai-streaming-glow">
+<div class="absolute top-0 left-0 w-full h-[2px] bg-tertiary ai-pulse-border border-t-2"></div>
+<div class="flex justify-between items-center mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">auto_awesome</span>
+<h3 class="font-headline-md text-[16px] leading-tight font-semibold text-on-surface">AI Assessment Draft</h3>
+</div>
+<span class="font-label-caps text-label-caps text-tertiary bg-tertiary-fixed px-2 py-0.5 rounded">[AI SOURCE: SYSTEM v2.4]</span>
+</div>
+<div class="font-ai-content text-ai-content text-on-surface p-3 bg-surface border border-outline-variant rounded shadow-sm relative">
+<p class="mb-2">Patient presents with symptoms consistent with acute exacerbation of chronic bronchitis, likely triggered by recent upper respiratory infection.</p>
+<ul class="list-disc pl-5 space-y-1 text-on-surface-variant">
+<li>Increased sputum production noted over past 48 hours.</li>
+<li>Denies fever or chills.</li>
+</ul>
+<div class="mt-4 pt-3 border-t border-outline-variant flex justify-between items-center">
+<span class="text-body-sm font-body-sm text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">info</span> Sources cited: Protocol 4A, Past Encounter (03/12)
+                                </span>
+<div class="flex gap-2">
+<button class="px-3 py-1 border border-outline-variant rounded text-on-surface-variant hover:bg-surface-variant transition-colors text-body-sm font-body-sm">Discard</button>
+<button class="px-3 py-1 bg-tertiary text-on-tertiary rounded hover:bg-tertiary-container transition-colors text-body-sm font-body-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check</span> Accept
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="h-32"></div> <!-- Spacer for scrolling -->
+</div>
+</main>
+<!-- Persistent AI Assistant Panel (Right) -->
+<aside class="w-[360px] bg-surface border-l border-outline-variant flex flex-col h-full shrink-0 relative z-30 shadow-[-4px_0_12px_rgba(0,0,0,0.02)]">
+<!-- Context Banner -->
+<div class="bg-tertiary-fixed px-3 py-2 flex items-center justify-center gap-2 border-b border-tertiary-fixed-dim">
+<span class="material-symbols-outlined text-tertiary text-[16px]">visibility_off</span>
+<span class="font-label-caps text-label-caps text-on-tertiary-fixed">Not saved to medical record</span>
+</div>
+<!-- Panel Header -->
+<div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<h2 class="font-headline-md text-[18px] leading-tight font-semibold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined" data-weight="fill">smart_toy</span> Assistant
+                </h2>
+<!-- Mode Selector -->
+<div class="flex bg-surface-variant rounded p-0.5">
+<button class="px-3 py-1 rounded-sm text-body-sm font-body-sm font-medium bg-surface text-primary shadow-sm">Current</button>
+<button class="px-3 py-1 rounded-sm text-body-sm font-body-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">General</button>
+</div>
+</div>
+<!-- Chat/Streaming Area -->
+<div class="flex-1 overflow-y-auto p-4 space-y-4 bg-surface-bright flex flex-col">
+<!-- User Message -->
+<div class="flex flex-col items-end w-full">
+<div class="bg-primary-container text-on-primary-container px-4 py-3 rounded-lg rounded-tr-sm max-w-[90%] font-body-md text-body-md shadow-sm">
+                        Summarize recent labs relevant to respiratory function.
+                    </div>
+<span class="font-body-sm text-[11px] text-on-surface-variant mt-1 flex items-center gap-1">
+                        10:42 AM
+                    </span>
+</div>
+<!-- AI Response (Streaming State) -->
+<div class="flex flex-col items-start w-full relative">
+<div class="absolute -top-1 left-2 bg-surface text-tertiary font-label-caps text-[9px] px-1 border border-outline-variant rounded z-10 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span> Analyzing Labs
+                    </div>
+<div class="bg-surface border border-tertiary-fixed-dim px-4 pt-5 pb-3 rounded-lg rounded-tl-sm w-full font-ai-content text-ai-content text-on-surface shadow-sm relative overflow-hidden ai-streaming-glow mt-2">
+<div class="absolute top-0 left-0 w-full h-[1px] bg-tertiary ai-pulse-border border-t"></div>
+<p class="mb-3">Based on the records from the past 3 months, here is a summary of relevant respiratory markers:</p>
+<div class="bg-surface-container-lowest border border-outline-variant rounded p-2 mb-3">
+<table class="w-full text-left text-body-sm font-body-sm">
+<thead>
+<tr class="border-b border-outline-variant text-on-surface-variant">
+<th class="pb-1 font-medium">Test</th>
+<th class="pb-1 font-medium">Date</th>
+<th class="pb-1 font-medium text-right">Result</th>
+</tr>
+</thead>
+<tbody class="text-on-surface">
+<tr class="border-b border-outline-variant/50">
+<td class="py-1">SpO2 (Resting)</td>
+<td class="py-1">Oct 12</td>
+<td class="py-1 text-right text-error font-medium">92% <span class="material-symbols-outlined text-[14px] align-middle">arrow_downward</span></td>
+</tr>
+<tr>
+<td class="py-1">PaO2</td>
+<td class="py-1">Oct 12</td>
+<td class="py-1 text-right">75 mmHg</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="text-on-surface-variant mb-4">The trend indicates a slight decrease in resting oxygen saturation compared to the baseline established in July (96%).</p>
+<!-- Scope Marker / Citation -->
+<div class="mt-2 flex flex-wrap gap-1">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-secondary font-label-caps text-[10px] border border-outline-variant">
+<span class="material-symbols-outlined text-[12px]">description</span> Lab Report 10/12
+                            </span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-secondary font-label-caps text-[10px] border border-outline-variant">
+<span class="material-symbols-outlined text-[12px]">description</span> Baseline 07/05
+                            </span>
+</div>
+</div>
+<div class="flex justify-between w-full mt-1 px-1">
+<span class="font-label-caps text-[10px] text-tertiary flex items-center gap-1">
+                            [AI SOURCE: SYSTEM v2.4]
+                        </span>
+<span class="font-body-sm text-[11px] text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px] text-primary">gpp_good</span> 10:42 AM
+                        </span>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-4 bg-surface border-t border-outline-variant">
+<div class="relative">
+<textarea class="w-full pl-4 pr-12 py-3 bg-surface-bright border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-tertiary focus:border-tertiary focus:outline-none resize-none shadow-sm min-h-[60px]" placeholder="Ask follow-up or command..."></textarea>
+<!-- Stop Generation (Visible during streaming) -->
+<button class="absolute right-2 top-2 p-1.5 bg-error-container text-on-error-container rounded hover:bg-error hover:text-on-error transition-colors shadow-sm flex items-center justify-center group" title="Stop Generation">
+<span class="material-symbols-outlined text-[18px]">stop_circle</span>
+</button>
+<!-- Usually this would toggle with a Send button when not streaming -->
+</div>
+<div class="mt-2 flex justify-between items-center text-on-surface-variant px-1">
+<span class="font-label-caps text-[10px]">Context: Current Patient</span>
+<button class="text-tertiary hover:text-tertiary-container text-body-sm font-body-sm flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[14px]">format_clear</span> Clear Context
+                    </button>
+</div>
+</div>
+<!-- Resizer Handle (Visual only for this static demo) -->
+<div class="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-tertiary-fixed-dim transition-colors group">
+<div class="absolute top-1/2 -translate-y-1/2 -left-3 w-6 h-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-outline text-[16px]">drag_indicator</span>
+</div>
+</div>
+</aside>
+</div>
+</body></html>

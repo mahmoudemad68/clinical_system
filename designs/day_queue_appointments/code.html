@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clinic Desk - Day Appointments</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-error-container": "#93000a",
+                    "status-consulting": "#008080",
+                    "inverse-surface": "#2f3131",
+                    "surface-container-low": "#f4f3f3",
+                    "on-error": "#ffffff",
+                    "on-background": "#1a1c1c",
+                    "error-container": "#ffdad6",
+                    "error": "#ba1a1a",
+                    "calendar-exception": "#fef2f2",
+                    "secondary-fixed-dim": "#cfbcff",
+                    "status-emergency": "#dc2626",
+                    "surface": "#f9f9f9",
+                    "primary-fixed": "#93f2f2",
+                    "surface-container-high": "#e8e8e8",
+                    "surface-variant": "#e2e2e2",
+                    "on-tertiary-container": "#fff9f7",
+                    "on-tertiary-fixed": "#341100",
+                    "on-tertiary-fixed-variant": "#733512",
+                    "tertiary-fixed": "#ffdbcb",
+                    "on-primary-fixed-variant": "#004f4f",
+                    "primary": "#006565",
+                    "secondary-container": "#bba2fd",
+                    "on-tertiary": "#ffffff",
+                    "surface-container": "#eeeeee",
+                    "on-surface-variant": "#3e4949",
+                    "on-primary-container": "#e3fffe",
+                    "surface-container-highest": "#e2e2e2",
+                    "outline": "#6e7979",
+                    "on-secondary-container": "#4b3486",
+                    "secondary": "#6750a4",
+                    "surface-tint": "#006a6a",
+                    "status-waiting": "#f59e0b",
+                    "background": "#f9f9f9",
+                    "inverse-on-surface": "#f1f1f1",
+                    "calendar-overlap": "#fff7ed",
+                    "on-surface": "#1a1c1c",
+                    "inverse-primary": "#76d6d5",
+                    "tertiary-fixed-dim": "#ffb692",
+                    "on-secondary-fixed-variant": "#4f378a",
+                    "secondary-fixed": "#e9ddff",
+                    "on-primary": "#ffffff",
+                    "on-primary-fixed": "#002020",
+                    "outline-variant": "#bdc9c8",
+                    "on-secondary-fixed": "#22005d",
+                    "surface-bright": "#f9f9f9",
+                    "surface-dim": "#dadada",
+                    "tertiary-container": "#a96039",
+                    "primary-container": "#008080",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed-dim": "#76d6d5",
+                    "privacy-mask": "#e5e7eb",
+                    "tertiary": "#8b4823",
+                    "on-secondary": "#ffffff",
+                    "status-completed": "#6b7280"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "hero-card-padding": "20px",
+                    "drawer-width": "380px",
+                    "calendar-interval-30": "80px",
+                    "calendar-interval-15": "40px",
+                    "table-row-height": "32px",
+                    "grid-gutter": "12px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Inter"],
+                    "calendar-time": ["jetbrainsMono"],
+                    "headline-md": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "body-md": ["Inter"],
+                    "data-mono-compact": ["jetbrainsMono"],
+                    "body-lg": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "calendar-time": ["11px", {"lineHeight": "12px", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-caps": ["10px", {"lineHeight": "14px", "letterSpacing": "0.06em", "fontWeight": "700"}],
+                    "body-md": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "data-mono-compact": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                    "body-lg": ["15px", {"lineHeight": "22px", "fontWeight": "400"}],
+                    "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Custom scrollbar for high-density tables */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: theme('colors.surface-container-low');
+        }
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.outline-variant');
+            border-radius: theme('borderRadius.DEFAULT');
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.outline');
+        }
+        /* Keyboard focus style */
+        .keyboard-focus:focus {
+            outline: none;
+            box-shadow: inset 0 0 0 2px theme('colors.status-consulting');
+        }
+        /* Privacy Mask */
+        .privacy-pill {
+            display: inline-block;
+            height: 12px;
+            background-color: theme('colors.privacy-mask');
+            border-radius: theme('borderRadius.full');
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-screen overflow-hidden flex font-body-md">
+<!-- SideNavBar -->
+<nav class="bg-surface text-primary border-r border-outline-variant h-full w-[380px] flex flex-col py-6 flex-shrink-0 z-20">
+<div class="px-6 mb-8">
+<div class="font-headline-md text-headline-md font-bold text-primary mb-6">Clinic Ops</div>
+<button class="w-full bg-primary text-on-primary font-label-caps text-label-caps py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-surface-tint transition-colors">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                New Consultation
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto px-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-container text-primary font-bold border-l-4 border-primary group" href="#">
+<span class="material-symbols-outlined fill group-hover:scale-110 transition-transform">calendar_today</span>
+<span>Schedule</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">clinical_notes</span>
+<span>Workspace</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">groups</span>
+<span>Patients</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">analytics</span>
+<span>Reports</span>
+</a>
+</div>
+<div class="mt-auto px-4 pt-4 border-t border-outline-variant mx-4">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group mb-4" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">settings</span>
+<span>Settings</span>
+</a>
+<div class="flex items-center gap-3 px-2">
+<img alt="Clinic Staff Profile" class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A small, professional headshot of a female doctor, Dr. Sarah Mitchell, in a clinical setting. High resolution, well lit, neutral background. Corporate modern style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0R6vIoOmCZROihrp8KlC5tf6sTVy4ByZPmBpYii6L9WYfEN2Pl6ZJ0bWhhIhsjiJXfJge0Ntnh6rY4xKb7l_uXzRj9otDheJPuFrALFYPjXpY3afHHruWdSwWch7EcvWd4mxf1me0J9LFX5aAZx3J8hBycV0bqwSpnCyLnAB9-sL8cDU5vi8GdyXkQDNz2zcnyI5lTY8byc373dnGKfABSwdpVmZ7rT2V40BjyzM7vnin3-m3fWJV"/>
+<div>
+<div class="font-bold text-sm">Dr. Sarah Mitchell</div>
+<div class="text-xs text-on-surface-variant">Attending Physician</div>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-full overflow-hidden relative">
+<!-- TopAppBar -->
+<header class="bg-surface border-b border-outline-variant flex justify-between items-center w-full px-grid-gutter h-16 flex-shrink-0 z-10">
+<div class="flex items-center gap-4">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">St. Jude Medical Center</h1>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<span class="text-status-consulting font-bold font-label-caps text-label-caps uppercase tracking-wider flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-status-consulting inline-block animate-pulse"></span>
+                    Realtime Online
+                </span>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="pl-9 pr-4 py-1.5 bg-surface-container-low border border-outline-variant rounded-full text-body-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-64 transition-all" placeholder="Search patient ID or name..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-status-emergency rounded-full border border-surface"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Desk Workspace (40/60 Split roughly) -->
+<div class="flex-1 flex overflow-hidden bg-surface-bright">
+<!-- Queue Management (Left - approx 45%) -->
+<div class="w-[45%] flex flex-col border-r border-outline-variant h-full bg-surface">
+<div class="p-4 border-b border-outline-variant bg-surface-container-lowest flex justify-between items-center sticky top-0 z-10">
+<h2 class="font-headline-md text-headline-md text-on-surface">Day Queue</h2>
+<div class="flex gap-2">
+<span class="bg-surface-container px-2 py-1 rounded text-body-sm text-on-surface-variant border border-outline-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">filter_list</span> All
+                         </span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto" tabindex="0">
+<!-- CURRENT SECTION -->
+<div class="mt-4 mb-2 px-4 flex justify-between items-end">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest border-b border-outline-variant w-full pb-1">Current (1)</h3>
+</div>
+<div class="px-2 mb-6">
+<!-- Hero Card for Current Patient -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-hero-card-padding shadow-sm relative overflow-hidden keyboard-focus" tabindex="0">
+<!-- Left Accent Border -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-status-consulting"></div>
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded bg-primary-container text-on-primary-container flex items-center justify-center font-headline-md font-bold">
+                                        JD
+                                    </div>
+<div>
+<div class="font-headline-md text-headline-md text-on-surface font-bold">John Doe</div>
+<div class="text-body-sm text-on-surface-variant flex items-center gap-2 mt-1">
+<span class="font-data-mono-compact text-data-mono-compact">ID: 84729-A</span>
+<span>•</span>
+<span>32M</span>
+</div>
+</div>
+</div>
+<div class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-label-caps font-label-caps flex items-center gap-1 animate-pulse">
+<span class="material-symbols-outlined text-[14px]">sensors</span> IN PROGRESS
+                                </div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-4 p-3 bg-surface-container-low rounded border border-outline-variant">
+<div>
+<div class="text-label-caps font-label-caps text-on-surface-variant mb-1">APPT TIME</div>
+<div class="font-data-mono-compact text-data-mono-compact text-on-surface">10:00 - 10:45 AM</div>
+</div>
+<div>
+<div class="text-label-caps font-label-caps text-on-surface-variant mb-1">TYPE</div>
+<div class="text-body-sm text-on-surface">Follow-up: Cardiology</div>
+</div>
+</div>
+<div class="flex justify-end gap-3 mt-4">
+<button class="px-4 py-2 border border-outline-variant text-on-surface rounded font-body-sm hover:bg-surface-container transition-colors keyboard-focus">
+                                    View Chart
+                                </button>
+<button class="px-4 py-2 bg-status-completed text-on-primary rounded font-body-sm hover:bg-opacity-90 transition-colors flex items-center gap-2 keyboard-focus shadow-sm">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+                                    End Session
+                                </button>
+</div>
+</div>
+</div>
+<!-- WAITING SECTION -->
+<div class="mb-2 px-4 flex justify-between items-end">
+<h3 class="font-label-caps text-label-caps text-status-waiting uppercase tracking-widest border-b border-outline-variant w-full pb-1 flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-status-waiting inline-block"></span>
+                            Waiting (4)
+                        </h3>
+</div>
+<!-- High Density Table for Waiting -->
+<div class="px-2 mb-6">
+<div class="border border-outline-variant rounded-lg overflow-hidden bg-surface-container-lowest">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low">
+<tr>
+<th class="font-label-caps text-label-caps text-on-surface-variant px-3 py-2 border-b border-outline-variant w-20">TIME</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant px-3 py-2 border-b border-outline-variant">PATIENT</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant px-3 py-2 border-b border-outline-variant">TYPE</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant px-3 py-2 border-b border-outline-variant w-24">STATUS</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant px-3 py-2 border-b border-outline-variant w-10"></th>
+</tr>
+</thead>
+<tbody>
+<!-- First Waiting Patient (Next) -->
+<tr class="h-table-row-height hover:bg-surface-container-low transition-colors group keyboard-focus cursor-pointer border-b border-outline-variant" tabindex="0">
+<td class="px-3 font-data-mono-compact text-data-mono-compact text-on-surface">10:45</td>
+<td class="px-3 text-body-sm font-semibold text-on-surface">
+                                            Sarah Jenkins
+                                        </td>
+<td class="px-3 text-body-sm text-on-surface-variant truncate max-w-[120px]">Initial Consult</td>
+<td class="px-3">
+<span class="inline-block px-2 py-0.5 bg-status-waiting/10 text-status-waiting rounded text-[10px] font-bold border border-status-waiting/20">WAITING 15m</span>
+</td>
+<td class="px-3 text-right">
+<button class="text-primary hover:bg-primary/10 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Start Next">
+<span class="material-symbols-outlined text-[16px]">play_arrow</span>
+</button>
+</td>
+</tr>
+<!-- Masked Patient Examples (Staff View Simulation) -->
+<tr class="h-table-row-height hover:bg-surface-container-low transition-colors group keyboard-focus cursor-pointer border-b border-outline-variant" tabindex="0">
+<td class="px-3 font-data-mono-compact text-data-mono-compact text-on-surface">11:00</td>
+<td class="px-3 text-body-sm text-on-surface flex items-center gap-2 h-table-row-height">
+<span class="privacy-pill w-16"></span> <span class="privacy-pill w-10"></span>
+<span class="material-symbols-outlined text-[12px] text-on-surface-variant ml-1" title="Masked for privacy">visibility_off</span>
+</td>
+<td class="px-3 text-body-sm text-on-surface-variant truncate max-w-[120px]">Lab Results</td>
+<td class="px-3">
+<span class="inline-block px-2 py-0.5 bg-status-waiting/10 text-status-waiting rounded text-[10px] font-bold border border-status-waiting/20">ARRIVED</span>
+</td>
+<td class="px-3 text-right">
+<span class="material-symbols-outlined text-[16px] text-outline opacity-0 group-hover:opacity-100">more_vert</span>
+</td>
+</tr>
+<tr class="h-table-row-height hover:bg-surface-container-low transition-colors group keyboard-focus cursor-pointer border-b border-outline-variant" tabindex="0">
+<td class="px-3 font-data-mono-compact text-data-mono-compact text-on-surface">11:30</td>
+<td class="px-3 text-body-sm text-on-surface flex items-center gap-2 h-table-row-height">
+<span class="privacy-pill w-20"></span>
+</td>
+<td class="px-3 text-body-sm text-on-surface-variant truncate max-w-[120px]">Routine Chk</td>
+<td class="px-3">
+<span class="inline-block px-2 py-0.5 bg-surface-container-highest text-on-surface-variant rounded text-[10px] font-bold border border-outline-variant">CHECK-IN</span>
+</td>
+<td class="px-3 text-right">
+<span class="material-symbols-outlined text-[16px] text-outline opacity-0 group-hover:opacity-100">more_vert</span>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Start Next Button Bar -->
+<div class="bg-surface-container p-2 flex justify-end border-t border-outline-variant">
+<button class="bg-primary text-on-primary text-body-sm py-1 px-4 rounded flex items-center gap-1 hover:bg-surface-tint keyboard-focus shadow-sm">
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                                    Start Next: S. Jenkins
+                                </button>
+</div>
+</div>
+</div>
+<!-- COMPLETED SECTION -->
+<div class="mb-2 px-4 flex justify-between items-end mt-6">
+<h3 class="font-label-caps text-label-caps text-status-completed uppercase tracking-widest border-b border-outline-variant w-full pb-1 flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">done_all</span>
+                            Completed (8)
+                        </h3>
+</div>
+<div class="px-2 mb-8">
+<div class="border border-outline-variant rounded-lg overflow-hidden bg-surface-container-lowest opacity-75">
+<table class="w-full text-left border-collapse">
+<tbody>
+<tr class="h-table-row-height hover:bg-surface-container-low transition-colors group keyboard-focus cursor-pointer border-b border-outline-variant" tabindex="0">
+<td class="px-3 font-data-mono-compact text-data-mono-compact text-on-surface-variant w-20">09:30</td>
+<td class="px-3 text-body-sm text-on-surface-variant line-through decoration-outline-variant">Robert Chen</td>
+<td class="px-3 text-body-sm text-on-surface-variant">BP Monitor</td>
+<td class="px-3 text-right w-24">
+<span class="text-status-completed text-[10px] font-bold">DONE</span>
+</td>
+</tr>
+<tr class="h-table-row-height hover:bg-surface-container-low transition-colors group keyboard-focus cursor-pointer border-b border-outline-variant" tabindex="0">
+<td class="px-3 font-data-mono-compact text-data-mono-compact text-on-surface-variant w-20">09:00</td>
+<td class="px-3 text-body-sm text-on-surface-variant line-through decoration-outline-variant">Maria Garcia</td>
+<td class="px-3 text-body-sm text-on-surface-variant">Prescription</td>
+<td class="px-3 text-right w-24">
+<span class="text-status-completed text-[10px] font-bold">DONE</span>
+</td>
+</tr>
+<tr class="h-table-row-height hover:bg-surface-container-low transition-colors group keyboard-focus cursor-pointer" tabindex="0">
+<td class="px-3 font-data-mono-compact text-data-mono-compact text-on-surface-variant w-20">08:15</td>
+<td class="px-3 text-body-sm text-on-surface-variant line-through decoration-outline-variant flex items-center gap-2 h-table-row-height">
+<span class="privacy-pill w-12 bg-outline-variant"></span>
+</td>
+<td class="px-3 text-body-sm text-on-surface-variant">Follow-up</td>
+<td class="px-3 text-right w-24">
+<span class="text-status-completed text-[10px] font-bold">DONE</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<!-- Contextual Hero/Doc Area (Right - approx 55%) -->
+<div class="w-[55%] flex flex-col h-full bg-surface-bright relative">
+<!-- Active Patient Header Overlay -->
+<div class="p-6 border-b border-outline-variant bg-surface flex justify-between items-start z-10 shadow-sm">
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">John Doe</h2>
+<span class="bg-error-container text-on-error-container px-2 py-0.5 rounded text-[10px] font-bold border border-error/20 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">warning</span> ALLERGIES
+                            </span>
+</div>
+<div class="flex gap-4 text-body-sm text-on-surface-variant font-data-mono-compact">
+<span>DOB: 1991-05-14 (32)</span>
+<span>ID: 84729-A</span>
+<span>Male</span>
+</div>
+</div>
+<button class="p-2 border border-outline-variant rounded hover:bg-surface-container-low transition-colors" title="Open Full Chart">
+<span class="material-symbols-outlined text-[20px]">open_in_new</span>
+</button>
+</div>
+<!-- Bento Grid Content Area -->
+<div class="flex-1 overflow-y-auto p-6 bg-surface-container-lowest">
+<div class="grid grid-cols-2 gap-4 max-w-4xl mx-auto">
+<!-- Vitals Widget -->
+<div class="col-span-2 md:col-span-1 bg-surface border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-center mb-4 pb-2 border-b border-outline-variant">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">favorite</span> VITALS (Last: 2d ago)
+                                </h3>
+<button class="text-primary hover:bg-primary/10 p-1 rounded"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<div class="text-[10px] text-outline mb-1">BP</div>
+<div class="font-data-mono-compact text-lg font-bold text-on-surface">120/80</div>
+</div>
+<div>
+<div class="text-[10px] text-outline mb-1">HR</div>
+<div class="font-data-mono-compact text-lg font-bold text-on-surface">72 <span class="text-xs font-normal text-outline">bpm</span></div>
+</div>
+<div>
+<div class="text-[10px] text-outline mb-1">TEMP</div>
+<div class="font-data-mono-compact text-lg font-bold text-on-surface">98.6 <span class="text-xs font-normal text-outline">°F</span></div>
+</div>
+<div>
+<div class="text-[10px] text-outline mb-1">O2</div>
+<div class="font-data-mono-compact text-lg font-bold text-on-surface">99 <span class="text-xs font-normal text-outline">%</span></div>
+</div>
+</div>
+</div>
+<!-- Current Medications Widget -->
+<div class="col-span-2 md:col-span-1 bg-surface border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-center mb-4 pb-2 border-b border-outline-variant">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">medication</span> MEDICATIONS
+                                </h3>
+</div>
+<ul class="space-y-3">
+<li class="flex justify-between items-start">
+<div>
+<div class="text-body-sm font-semibold text-on-surface">Lisinopril 10mg</div>
+<div class="text-[11px] text-on-surface-variant">1 tab daily</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-status-consulting">check_circle</span>
+</li>
+<li class="flex justify-between items-start">
+<div>
+<div class="text-body-sm font-semibold text-on-surface">Atorvastatin 20mg</div>
+<div class="text-[11px] text-on-surface-variant">1 tab at bedtime</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-status-consulting">check_circle</span>
+</li>
+</ul>
+</div>
+<!-- Clinical Notes Input Area (Spans full width) -->
+<div class="col-span-2 bg-surface border border-outline-variant rounded-xl p-0 shadow-sm flex flex-col h-[300px]">
+<div class="p-3 border-b border-outline-variant bg-surface-container-low flex justify-between items-center rounded-t-xl">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">edit_note</span> SESSION NOTES
+                                </h3>
+<div class="flex gap-2">
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-dim rounded bg-surface border border-outline-variant" title="Insert Template">
+<span class="material-symbols-outlined text-[16px]">text_snippet</span>
+</button>
+</div>
+</div>
+<textarea class="flex-1 w-full p-4 bg-surface text-body-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 border-none rounded-b-xl" placeholder="Begin typing consultation notes here..."></textarea>
+<div class="p-3 border-t border-outline-variant bg-surface-container-lowest flex justify-between items-center rounded-b-xl">
+<span class="text-[11px] text-outline font-data-mono-compact flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-status-waiting inline-block"></span> Draft saving...
+                                </span>
+<button class="bg-primary text-on-primary text-body-sm py-1.5 px-4 rounded hover:bg-surface-tint transition-colors">
+                                    Save &amp; Sign
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Optional: Inline script for basic interaction demo (tabindex focus logic usually handled by framework) -->
+<script>
+        // Simple script to demonstrate keyboard focus highlighting on rows
+        document.querySelectorAll('.keyboard-focus').forEach(el => {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    // Simulate action
+                    console.log('Action triggered on:', el);
+                }
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html dir="ltr" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Secure Lab Upload</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#fffdff",
+                        "background": "#f7fafc",
+                        "surface-container-high": "#e5e9eb",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface": "#f7fafc",
+                        "outline-variant": "#c1c6d4",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#5f7985",
+                        "surface-variant": "#e0e3e5",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "inverse-primary": "#a5c8ff",
+                        "on-primary-fixed": "#001c3a",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#414752",
+                        "primary-container": "#1976d2",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#006b5f",
+                        "primary-fixed-dim": "#a5c8ff",
+                        "on-tertiary-fixed": "#021f29",
+                        "primary-fixed": "#d4e3ff",
+                        "inverse-on-surface": "#eef1f3",
+                        "tertiary-fixed-dim": "#afcbd8",
+                        "on-tertiary-container": "#fdfdff",
+                        "on-primary-fixed-variant": "#004786",
+                        "primary": "#005dac",
+                        "error-container": "#ffdad6",
+                        "surface-container-low": "#f1f4f6",
+                        "surface-bright": "#f7fafc",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#8df5e4",
+                        "on-secondary-container": "#007165",
+                        "on-surface": "#181c1e",
+                        "on-secondary-fixed-variant": "#005048",
+                        "tertiary": "#46606c",
+                        "surface-container": "#ebeef0",
+                        "secondary-container": "#8df5e4",
+                        "surface-tint": "#005faf",
+                        "on-secondary-fixed": "#00201c",
+                        "on-tertiary-fixed-variant": "#304a55",
+                        "surface-dim": "#d7dadc",
+                        "on-background": "#181c1e",
+                        "tertiary-fixed": "#cbe7f5",
+                        "secondary-fixed-dim": "#70d8c8",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "outline": "#717783"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "margin-tablet": "32px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "xl": "32px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen font-body-lg flex flex-col items-center pt-[64px] pb-[80px] md:pb-[64px]">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full h-16 bg-surface opacity-95 shadow-sm z-50 flex items-center justify-between px-md">
+<div class="flex items-center gap-sm">
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors active:scale-95 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-title-lg text-title-lg text-primary font-bold">Clinical Clarity</h1>
+</div>
+<div class="flex items-center">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A small, professional profile portrait of a modern healthcare worker in soft studio lighting. Minimalist background. Professional aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgFj9ztXtWw53I4FGTmTrqXSkqQPySnQRjoTA-TPQ6qK4IPTWJ2QVjdpZregp4po9YOx6NLya3Yn37p6JQHQE-KJOHWPjxe5o-wgpghUaa78ew8do5rV28h4z14QVltBZl__7eWMFd9684gv0wjA2nbLdjTmAQbmgzhlacdgVjWRkzKX2FQi8U0hAPQkbXw-m3wDlid5P0lVV-LFO7EAMcqv_79vohG2U7tkkiIYPyDUQE5kc60ur7"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="w-full max-w-2xl px-margin-mobile md:px-margin-tablet mt-lg flex flex-col gap-lg pb-xl">
+<!-- Header Section -->
+<section class="flex flex-col gap-xs">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background">Secure Lab Upload</h2>
+<span class="bg-surface-container-low text-on-surface-variant font-label-lg text-label-lg px-3 py-1 rounded-full border border-outline-variant shadow-sm">Lab #8821</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Please upload your requested lab results or diagnostic imagery. Ensure all personal identifying information matches the patient record.</p>
+</section>
+<!-- Upload Drop Zone (Bento Grid style card) -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant p-md shadow-sm flex flex-col items-center justify-center border-dashed border-2 bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer min-h-[200px] relative overflow-hidden group">
+<div class="flex flex-col items-center gap-sm text-center z-10">
+<div class="w-16 h-16 rounded-full bg-primary-container/10 flex items-center justify-center mb-sm group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-4xl" data-icon="cloud_upload">cloud_upload</span>
+</div>
+<h3 class="font-title-lg text-title-lg text-on-surface">Click to Browse or Drag File Here</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Supported formats: PDF, JPG, PNG (Max size: 10MB)</p>
+</div>
+<!-- Subtle background pattern suggestion -->
+<div class="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary to-transparent z-0 pointer-events-none"></div>
+</section>
+<!-- Selected File State (Glassmorphism inspired card) -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant p-md shadow-sm relative overflow-hidden">
+<!-- Simulated Glass Effect Background Element -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
+<div class="flex flex-col gap-md relative z-10">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-lg bg-tertiary-container/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary-container icon-filled" data-icon="description">description</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface truncate max-w-[200px] md:max-w-[300px]" title="CBC_Blood_Panel_Jan2024.pdf">CBC_Blood_Panel_Jan2024.pdf</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">4.2 MB • PDF Document</span>
+</div>
+</div>
+<button class="p-1 hover:bg-error-container/20 rounded-full text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="close">close</span>
+</button>
+</div>
+<!-- Progress & Status -->
+<div class="flex flex-col gap-xs">
+<div class="flex items-center justify-between mb-xs">
+<div class="flex items-center gap-xs">
+<!-- Scanning Badge -->
+<div class="flex items-center gap-1 bg-[#FFF8E1] text-[#F57C00] px-2 py-0.5 rounded-full border border-[#FFE082]">
+<span class="material-symbols-outlined text-[14px]" data-icon="policy">policy</span>
+<span class="font-label-sm text-[10px] uppercase tracking-wider">Malware Scan in Progress</span>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-bold">45%</span>
+</div>
+<!-- Progress Bar Track -->
+<div class="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<!-- Progress Bar Fill -->
+<div class="h-full bg-primary rounded-full relative overflow-hidden" style="width: 45%;">
+<!-- Shimmer Effect for active scanning -->
+<div class="absolute top-0 left-0 bottom-0 right-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Actions -->
+<section class="flex flex-col md:flex-row-reverse gap-sm pt-sm mt-auto">
+<button class="w-full md:w-auto px-lg py-3 bg-surface-container-highest text-outline-variant font-label-lg text-label-lg rounded-full flex items-center justify-center gap-2 cursor-not-allowed opacity-70" disabled="">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+                Upload File
+            </button>
+<button class="w-full md:w-auto px-lg py-3 bg-transparent text-primary font-label-lg text-label-lg rounded-full border border-primary hover:bg-primary/5 transition-colors flex items-center justify-center">
+                Cancel Request
+            </button>
+</section>
+</main>
+<style>
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</body></html>

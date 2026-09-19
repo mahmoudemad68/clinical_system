@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Platform Health Status - Admin Web</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#cbc4d2",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#e7c365",
+                        "on-background": "#1d1b20",
+                        "on-surface": "#1d1b20",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#ffdf93",
+                        "surface-tint": "#6750a4",
+                        "surface": "#fdf7ff",
+                        "error": "#ba1a1a",
+                        "secondary-container": "#e1d4fd",
+                        "on-error-container": "#93000a",
+                        "tertiary": "#765b00",
+                        "surface-container-highest": "#e6e0e9",
+                        "on-tertiary-fixed-variant": "#594400",
+                        "surface-variant": "#e6e0e9",
+                        "inverse-primary": "#cfbcff",
+                        "on-primary-container": "#e0d2ff",
+                        "on-surface-variant": "#494551",
+                        "outline": "#7a7582",
+                        "surface-container-high": "#ece6ee",
+                        "on-primary-fixed-variant": "#4f378a",
+                        "primary-fixed-dim": "#cfbcff",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#322f35",
+                        "surface-dim": "#ded8e0",
+                        "primary": "#4f378a",
+                        "tertiary-container": "#c9a74d",
+                        "background": "#fdf7ff",
+                        "primary-fixed": "#e9ddff",
+                        "on-secondary-fixed-variant": "#4b4263",
+                        "secondary-fixed-dim": "#cdc0e9",
+                        "secondary": "#63597c",
+                        "surface-container": "#f2ecf4",
+                        "on-tertiary-fixed": "#241a00",
+                        "inverse-on-surface": "#f5eff7",
+                        "on-secondary-fixed": "#1f1635",
+                        "on-secondary-container": "#645a7d",
+                        "primary-container": "#6750a4",
+                        "on-primary-fixed": "#22005d",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#fdf7ff",
+                        "surface-container-low": "#f8f2fa",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#e9ddff",
+                        "on-tertiary-container": "#503d00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "gutter-desktop": "24px",
+                        "xs": "4px",
+                        "sm": "8px",
+                        "xl": "32px",
+                        "lg": "24px",
+                        "2xl": "48px",
+                        "md": "16px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "mono-data": ["jetbrainsMono", "monospace"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "h1-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "h2-desktop": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "h1-desktop": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "mono-data": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-screen w-full flex overflow-hidden font-sans">
+<!-- Shared Component: SideNavBar -->
+<nav class="bg-surface-container-highest text-primary font-mono-data text-mono-data w-64 h-screen flex flex-col p-md flat transition-none">
+<!-- Header -->
+<div class="mb-xl">
+<h2 class="font-h2-desktop text-h2-desktop font-bold text-on-surface">Admin Console</h2>
+<p class="font-mono-data text-mono-data text-on-surface-variant mt-sm">System Root</p>
+</div>
+<!-- Navigation Links -->
+<div class="flex flex-col gap-unit flex-1">
+<a class="flex items-center gap-sm px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-none" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+                Overview
+            </a>
+<a class="flex items-center gap-sm px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-none" href="#">
+<span class="material-symbols-outlined">manage_accounts</span>
+                Users
+            </a>
+<!-- Active State: "Systems" maps to Platform Health Status -->
+<a class="flex items-center gap-sm px-md py-sm rounded-lg bg-inverse-surface text-inverse-on-surface font-bold transition-none" href="#">
+<span class="material-symbols-outlined">dns</span>
+                Systems
+            </a>
+<a class="flex items-center gap-sm px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-none" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+                Logs
+            </a>
+<a class="flex items-center gap-sm px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-none" href="#">
+<span class="material-symbols-outlined">payments</span>
+                Billing
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-screen overflow-y-auto relative">
+<!-- Subtle Ambient Background -->
+<div class="absolute inset-0 z-0 pointer-events-none opacity-20">
+
+</div>
+<div class="relative z-10 flex-1 flex flex-col p-gutter-desktop max-w-[1200px] w-full mx-auto">
+<!-- Header Section -->
+<header class="flex justify-between items-end mb-xl pb-md border-b border-outline-variant">
+<div>
+<div class="flex items-center gap-md mb-xs">
+<h1 class="font-h1-desktop text-h1-desktop text-on-background">System Health</h1>
+<span class="inline-flex items-center gap-xs px-3 py-1 rounded-full bg-primary-container text-on-primary-container font-label-caps text-label-caps">
+<span class="w-2 h-2 rounded-full bg-on-primary-container"></span>
+                            Overall Status: Operational
+                        </span>
+</div>
+</div>
+<button class="flex items-center gap-sm bg-primary hover:bg-on-primary-fixed-variant text-on-primary px-lg py-sm rounded-full font-label-caps text-label-caps transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+                    Refresh Probes
+                </button>
+</header>
+<!-- Component List Table (Styled as a modern metrics grid) -->
+<div class="flex flex-col gap-sm flex-1">
+<!-- Table Header (Visual alignment for grid) -->
+<div class="grid grid-cols-12 gap-gutter-desktop px-lg py-sm text-on-surface-variant font-label-caps text-label-caps border-b border-surface-variant">
+<div class="col-span-4">Service Component</div>
+<div class="col-span-4">Status</div>
+<div class="col-span-4 text-right">Primary Metric</div>
+</div>
+<!-- Item 1: Core Service -->
+<div class="grid grid-cols-12 gap-gutter-desktop items-center px-lg py-md bg-surface border border-outline-variant rounded-xl hover:shadow-md transition-shadow">
+<div class="col-span-4 flex items-center gap-md">
+<div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined" data-weight="fill">dns</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-surface font-medium">Core Service</span>
+</div>
+<div class="col-span-4 flex items-center gap-sm text-primary">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+<span class="font-mono-data text-mono-data">Healthy</span>
+</div>
+<div class="col-span-4 text-right font-mono-data text-mono-data text-on-surface-variant">
+                        Lat: 24ms
+                    </div>
+</div>
+<!-- Item 2: Realtime Sync -->
+<div class="grid grid-cols-12 gap-gutter-desktop items-center px-lg py-md bg-surface border border-outline-variant rounded-xl hover:shadow-md transition-shadow">
+<div class="col-span-4 flex items-center gap-md">
+<div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined" data-weight="fill">sync</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-surface font-medium">Realtime Sync</span>
+</div>
+<div class="col-span-4 flex items-center gap-sm text-primary">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+<span class="font-mono-data text-mono-data">Connected</span>
+</div>
+<div class="col-span-4 text-right font-mono-data text-mono-data text-on-surface-variant">
+                        99.9% uptime
+                    </div>
+</div>
+<!-- Item 3: AI Diagnostics -->
+<div class="grid grid-cols-12 gap-gutter-desktop items-center px-lg py-md bg-surface border border-outline-variant rounded-xl hover:shadow-md transition-shadow relative overflow-hidden">
+<!-- Warning highlight indicator -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-tertiary-fixed"></div>
+<div class="col-span-4 flex items-center gap-md">
+<div class="w-10 h-10 rounded-lg bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined" data-weight="fill">troubleshoot</span>
+</div>
+<span class="font-body-lg text-body-lg text-on-surface font-medium">AI Diagnostics</span>
+</div>
+<div class="col-span-4 flex items-center gap-sm text-tertiary">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+<span class="font-mono-data text-mono-data">Degraded</span>
+</div>
+<div class="col-span-4 text-right font-mono-data text-mono-data text-tertiary">
+                        High latency detected
+                    </div>
+</div>
+</div>
+<!-- Footer Section -->
+<footer class="mt-xl pt-lg border-t border-outline-variant flex justify-between items-center text-on-surface-variant font-mono-data text-mono-data">
+<div>Version v1.4.2</div>
+<div>Server Time: 14:20:00 UTC</div>
+</footer>
+</div>
+</main>
+</body></html>

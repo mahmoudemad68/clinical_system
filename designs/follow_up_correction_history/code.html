@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+
+<html class="light" dir="ltr" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Correction History - HealthPath</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#f7fafc",
+                        "surface-dim": "#d7dadc",
+                        "surface": "#f7fafc",
+                        "surface-bright": "#f7fafc",
+                        "inverse-surface": "#2d3133",
+                        "outline-variant": "#c1c6d4",
+                        "on-secondary-container": "#007165",
+                        "inverse-on-surface": "#eef1f3",
+                        "on-background": "#181c1e",
+                        "secondary-fixed": "#8df5e4",
+                        "secondary": "#006b5f",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#cbe7f5",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-tertiary-container": "#fdfdff",
+                        "on-secondary-fixed": "#00201c",
+                        "surface-container-low": "#f1f4f6",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#a5c8ff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#46606c",
+                        "on-tertiary-fixed-variant": "#304a55",
+                        "surface-container": "#ebeef0",
+                        "surface-tint": "#005faf",
+                        "on-primary-fixed": "#001c3a",
+                        "tertiary-container": "#5f7985",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#70d8c8",
+                        "primary-fixed": "#d4e3ff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed-variant": "#004786",
+                        "secondary-container": "#8df5e4",
+                        "on-error-container": "#93000a",
+                        "primary": "#005dac",
+                        "on-error": "#ffffff",
+                        "primary-container": "#1976d2",
+                        "inverse-primary": "#a5c8ff",
+                        "on-surface": "#181c1e",
+                        "surface-container-high": "#e5e9eb",
+                        "on-tertiary-fixed": "#021f29",
+                        "on-primary-container": "#fffdff",
+                        "outline": "#717783",
+                        "on-surface-variant": "#414752",
+                        "surface-variant": "#e0e3e5",
+                        "tertiary-fixed-dim": "#afcbd8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "margin-tablet": "32px",
+                        "xs": "4px",
+                        "xl": "32px",
+                        "base": "4px",
+                        "md": "16px",
+                        "gutter": "16px",
+                        "lg": "24px",
+                        "sm": "8px"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen font-body-md antialiased selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Sub-page Header (Task-Focused: Suppresses Global Shell) -->
+<header class="sticky top-0 z-50 bg-surface/90 backdrop-blur-md border-b border-surface-variant flex items-center h-16 px-md shadow-sm">
+<button aria-label="Go Back" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container-high transition-colors active:scale-95 group">
+<span class="material-symbols-outlined text-on-surface group-hover:text-primary transition-colors" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="ml-sm font-title-lg text-title-lg text-on-surface">Record History</h1>
+</header>
+<main class="max-w-3xl mx-auto px-margin-mobile md:px-margin-tablet py-lg pb-xl space-y-lg">
+<!-- Current Version Banner -->
+<section class="bg-primary-fixed rounded-xl p-md border border-primary-fixed-dim shadow-sm flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+<div class="flex-shrink-0 w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary shadow-sm">
+<span class="material-symbols-outlined" data-icon="description" data-weight="fill">description</span>
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-2 mb-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-primary text-on-primary font-label-sm text-label-sm">Active</span>
+<h2 class="font-title-lg text-title-lg text-on-primary-fixed font-semibold">Current Version</h2>
+</div>
+<p class="font-body-md text-body-md text-on-primary-fixed-variant">Clinical Note &amp; Prescription Plan</p>
+<p class="font-label-sm text-label-sm text-primary mt-1">Last updated today at 10:42 AM</p>
+</div>
+</section>
+<!-- Version History Timeline -->
+<section class="pt-sm">
+<h3 class="font-title-lg text-title-lg text-on-surface mb-lg">Version History</h3>
+<div class="relative pl-6 sm:pl-8 border-l-2 border-surface-variant ml-3 sm:ml-4 space-y-10">
+<!-- Entry 1: Latest Update -->
+<div class="relative group">
+<div class="absolute -left-[35px] sm:-left-[43px] top-1.5 w-4 h-4 rounded-full bg-primary border-4 border-background ring-2 ring-primary/20 transition-all group-hover:scale-110"></div>
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<!-- Decorative top accent -->
+<div class="absolute top-0 left-0 w-full h-1 bg-primary"></div>
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="calendar_today">calendar_today</span>
+                                    Oct 24, 2023 • 10:42 AM
+                                </span>
+<h4 class="font-title-lg text-title-lg text-on-surface mt-1">Dr. Sarah Mansour</h4>
+</div>
+<span class="inline-flex items-center px-2.5 py-1 rounded-md bg-surface-container-high text-on-surface font-label-sm text-label-sm border border-outline-variant/50 w-fit">
+<span class="material-symbols-outlined text-[16px] mr-1.5 text-primary" data-icon="edit">edit</span>
+                                Updated version
+                            </span>
+</div>
+<div class="bg-surface-container-low rounded-lg p-3 border border-surface-variant">
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Reason for Update</p>
+<p class="font-body-md text-body-md text-on-surface">Typo in dosage instructions corrected. Changed "50mg" to "500mg" for Amoxicillin based on lab results.</p>
+</div>
+</div>
+</div>
+<!-- Entry 2: Intermediate Update -->
+<div class="relative group">
+<div class="absolute -left-[35px] sm:-left-[43px] top-1.5 w-4 h-4 rounded-full bg-surface-variant border-4 border-background group-hover:bg-outline transition-colors"></div>
+<div class="bg-surface-container-lowest rounded-xl p-md border border-surface-variant shadow-sm hover:border-outline-variant transition-colors">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="calendar_today">calendar_today</span>
+                                    Oct 24, 2023 • 09:15 AM
+                                </span>
+<h4 class="font-title-lg text-title-lg text-on-surface mt-1">Dr. Ahmed Ali</h4>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant w-fit">Revision</span>
+</div>
+<div class="bg-surface-container-low rounded-lg p-3 border border-surface-variant/50">
+<p class="font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Reason for Update</p>
+<p class="font-body-md text-body-md text-on-surface">Added newly reported patient allergy information (Penicillin alternative noted).</p>
+</div>
+</div>
+</div>
+<!-- Entry 3: Original -->
+<div class="relative group">
+<div class="absolute -left-[35px] sm:-left-[43px] top-1.5 w-4 h-4 rounded-full bg-tertiary border-4 border-background"></div>
+<div class="bg-surface-container rounded-xl p-md border border-surface-variant">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-4">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="calendar_today">calendar_today</span>
+                                    Oct 24, 2023 • 08:30 AM
+                                </span>
+<h4 class="font-title-lg text-title-lg text-on-surface mt-1">Dr. Sarah Mansour</h4>
+</div>
+<span class="inline-flex items-center px-2.5 py-1 rounded-md bg-tertiary-container text-on-tertiary-container font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px] mr-1.5" data-icon="history">history</span>
+                                Original preserved
+                            </span>
+</div>
+<div class="flex items-center justify-between border-t border-outline-variant/30 pt-3">
+<p class="font-body-md text-body-md text-on-surface-variant">Initial record creation.</p>
+<button class="font-label-lg text-label-lg text-primary hover:text-primary-container transition-colors flex items-center gap-1 active:scale-95">
+                                View Original
+                                <span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Follow-up Card (Appears because plan changed) -->
+<section class="mt-xl bg-secondary-container rounded-xl p-md shadow-sm border border-secondary/20 flex flex-col sm:flex-row gap-4 items-start relative overflow-hidden">
+<!-- Decorative background pattern for the card -->
+<div class="absolute -right-4 -top-4 opacity-10 pointer-events-none text-secondary">
+<span class="material-symbols-outlined text-[120px]" data-icon="medical_information">medical_information</span>
+</div>
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-on-secondary-container/10 flex items-center justify-center text-on-secondary-container z-10">
+<span class="material-symbols-outlined" data-icon="assignment_late">assignment_late</span>
+</div>
+<div class="flex-grow z-10">
+<h3 class="font-title-lg text-title-lg text-on-secondary-container mb-1">Follow-up Required</h3>
+<p class="font-body-md text-body-md text-on-secondary-fixed-variant mb-4">
+                    The treatment plan was significantly altered in the recent update. Please ensure the patient is notified of the new dosage instructions before their next pharmacy visit.
+                </p>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg bg-secondary text-on-secondary font-label-lg text-label-lg hover:bg-on-secondary-container transition-colors shadow-sm active:scale-95">
+                        Notify Patient
+                    </button>
+<button class="px-4 py-2 rounded-lg border border-secondary text-on-secondary-container font-label-lg text-label-lg hover:bg-secondary/10 transition-colors active:scale-95">
+                        Dismiss
+                    </button>
+</div>
+</div>
+</section>
+</main>
+</body></html>

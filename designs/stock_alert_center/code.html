@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stock Alert Center - PharmaOps</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#f4faff",
+                        "status-error": "#ba1a1a",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#cacfff",
+                        "on-secondary-fixed-variant": "#004f4f",
+                        "on-primary-fixed": "#00105c",
+                        "surface-container": "#e9eff4",
+                        "secondary": "#006a6a",
+                        "primary-fixed-dim": "#bac3ff",
+                        "on-surface": "#161c20",
+                        "on-surface-variant": "#454652",
+                        "surface-variant": "#dde3e8",
+                        "tertiary-container": "#505c63",
+                        "inverse-surface": "#2b3135",
+                        "inverse-primary": "#bac3ff",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed": "#93f2f2",
+                        "surface-border": "#ddeaf2",
+                        "on-background": "#161c20",
+                        "surface-tint": "#4355b9",
+                        "on-secondary-fixed": "#002020",
+                        "secondary-fixed-dim": "#76d6d5",
+                        "on-secondary-container": "#006e6e",
+                        "tertiary-fixed": "#d7e4ed",
+                        "surface": "#f4faff",
+                        "surface-dim": "#d5dbe0",
+                        "on-primary-fixed-variant": "#293ca0",
+                        "on-error-container": "#93000a",
+                        "primary": "#24389c",
+                        "status-success": "#1b5e20",
+                        "on-tertiary-fixed-variant": "#3c484f",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#90efef",
+                        "primary-fixed": "#dee0ff",
+                        "status-warning": "#e65100",
+                        "surface-container-high": "#e3e9ee",
+                        "on-tertiary-fixed": "#111d23",
+                        "data-fill": "#e9f6fd",
+                        "error": "#ba1a1a",
+                        "outline-variant": "#c5c5d4",
+                        "surface-container-highest": "#dde3e8",
+                        "surface-bright": "#f4faff",
+                        "tertiary-fixed-dim": "#bcc8d1",
+                        "error-container": "#ffdad6",
+                        "outline": "#757684",
+                        "tertiary": "#38454b",
+                        "inverse-on-surface": "#ebf1f6",
+                        "on-tertiary-container": "#c7d4dc",
+                        "surface-container-low": "#eef4f9",
+                        "primary-container": "#3f51b5",
+                        "on-tertiary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "24px",
+                        "row-dense": "32px",
+                        "sidebar-collapsed": "64px",
+                        "row-standard": "40px",
+                        "gutter": "16px",
+                        "sidebar-width": "260px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "data-mono": ["JetBrains Mono"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "title-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "data-mono": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom scrollbar for high-density tables */
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #dde3e8;
+            border-radius: 3px;
+        }
+        .row-dense {
+            height: 32px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-sm text-body-sm min-h-screen flex antialiased">
+<!-- SideNavBar (Shared Component) -->
+<nav class="bg-surface-container dark:bg-surface-container-lowest text-primary dark:text-primary-fixed-dim font-label-caps text-label-caps border-r border-surface-border dark:border-outline-variant fixed left-0 top-0 h-screen w-sidebar-width flex flex-col py-4 z-40">
+<!-- Header -->
+<div class="px-6 pb-6 mb-2 border-b border-surface-border">
+<h2 class="font-headline-md text-headline-md text-primary font-bold tracking-tight">Admin Panel</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">PharmaCloud v2.4</p>
+</div>
+<!-- Main Navigation -->
+<div class="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1 mt-4">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-surface-variant px-4 py-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+                Workspace
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-surface-variant px-4 py-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">point_of_sale</span>
+                POS
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-surface-variant px-4 py-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">inventory_2</span>
+                Inventory
+            </a>
+<!-- ACTIVE TAB -->
+<a class="flex items-center gap-3 bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary px-4 py-2 rounded-lg transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
+                Alerts
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-surface-variant px-4 py-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">local_shipping</span>
+                Suppliers
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-surface-variant px-4 py-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">shopping_cart</span>
+                Purchasing
+            </a>
+</div>
+<!-- Footer Navigation -->
+<div class="px-3 pt-4 border-t border-surface-border space-y-1">
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-surface-variant px-4 py-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">support_agent</span>
+                Support
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant dark:text-on-surface-variant px-4 py-2 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+                Settings
+            </a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col ml-sidebar-width min-w-0">
+<!-- TopNavBar (Shared Component - Adjusted width to sit next to fixed sidebar) -->
+<header class="flex justify-between items-center px-margin-desktop h-14 z-30 bg-surface dark:bg-surface-dim border-b border-surface-border dark:border-outline-variant sticky top-0 font-body-md text-body-md text-primary dark:text-primary-fixed-dim">
+<!-- Brand / Nav Area -->
+<div class="flex items-center h-full gap-8">
+<div class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">PharmaOps</div>
+<div class="flex h-full gap-6">
+<a class="flex items-center h-full text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors" href="#">Organization</a>
+<a class="flex items-center h-full text-primary dark:text-primary-fixed-dim font-bold border-b-2 border-primary" href="#">Main Branch</a>
+</div>
+</div>
+<!-- Search & Actions -->
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="pl-9 pr-4 py-1.5 bg-surface-container border-none rounded-DEFAULT text-body-sm font-body-sm focus:ring-2 focus:ring-primary w-64 placeholder:text-on-surface-variant" placeholder="Search system..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-highest transition-colors active:opacity-80 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-highest transition-colors active:opacity-80 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">help</span>
+</button>
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-highest transition-colors active:opacity-80 flex items-center justify-center relative">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-status-error rounded-full border border-surface"></span>
+</button>
+</div>
+<div class="h-8 w-px bg-surface-border mx-2"></div>
+<img alt="Pharmacist Profile" class="w-8 h-8 rounded-full border border-surface-border object-cover" data-alt="A small, professional headshot of a pharmacist wearing a white coat, isolated on a light neutral gray background. The lighting is bright and even, indicating a clinical setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCePf1kRoDuCZv9vXhlQ9_wwyyCQi8Cx2d5MJOKq1gBSvBFXo6AxECLGuvxwzr-CM5gcPVoHYP8AaQCUgnifGzTo4dGq-yESZHiLnm-IlEgVTiL3Ea_VGTla2xuJN9nXRsfjAiJmXswuCtTBX0TxqfcYKMtWSrPxLexk5i_7dCvRMUkiHhnAwiE2rUNzwmlh8Gm-jnkbikG6d29hNYrPykr6WMbSOd-aoekhvNYI3sB4AyEZXHgz52o"/>
+</div>
+</header>
+<!-- Page Content Canvas -->
+<main class="flex-1 p-margin-desktop overflow-x-hidden flex flex-col gap-6">
+<!-- Header Section -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-background">Stock Alert Center</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Real-time inventory triage and expiry monitoring.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-DEFAULT border border-surface-border text-on-surface hover:bg-surface-container font-title-sm text-title-sm transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                        Export Log
+                    </button>
+<button class="px-4 py-2 rounded-DEFAULT bg-primary text-on-primary hover:bg-primary-container font-title-sm text-title-sm transition-colors shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+                        Run Sync
+                    </button>
+</div>
+</div>
+<!-- Triage Summary Cards (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Critical Card -->
+<div class="bg-surface-container-lowest border border-surface-border rounded-lg p-5 flex flex-col gap-2 relative overflow-hidden shadow-sm">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-status-error"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Critical Low Stock</span>
+<span class="material-symbols-outlined text-status-error text-[20px]">warning</span>
+</div>
+<div class="flex items-end gap-3 mt-2">
+<span class="font-display-lg text-display-lg text-status-error leading-none">14</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mb-1">SKUs require immediate reorder</span>
+</div>
+</div>
+<!-- Warning Card -->
+<div class="bg-surface-container-lowest border border-surface-border rounded-lg p-5 flex flex-col gap-2 relative overflow-hidden shadow-sm">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-status-warning"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Expiring &lt; 30 Days</span>
+<span class="material-symbols-outlined text-status-warning text-[20px]">event_busy</span>
+</div>
+<div class="flex items-end gap-3 mt-2">
+<span class="font-display-lg text-display-lg text-status-warning leading-none">08</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mb-1">Items nearing expiration</span>
+</div>
+</div>
+<!-- Info Card -->
+<div class="bg-surface-container-lowest border border-surface-border rounded-lg p-5 flex flex-col gap-2 relative overflow-hidden shadow-sm">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Recently Restocked</span>
+<span class="material-symbols-outlined text-primary text-[20px]">inventory</span>
+</div>
+<div class="flex items-end gap-3 mt-2">
+<span class="font-display-lg text-display-lg text-primary leading-none">42</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mb-1">Items cleared from alerts</span>
+</div>
+</div>
+</div>
+<!-- Filters & Controls -->
+<div class="bg-surface-container-lowest border border-surface-border rounded-lg p-3 flex flex-wrap gap-4 items-center justify-between">
+<div class="flex gap-4 items-center">
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">filter_list</span>
+<input class="w-full pl-9 pr-3 py-1.5 bg-surface rounded-DEFAULT border border-surface-border text-body-sm font-body-sm focus:ring-2 focus:ring-primary outline-none" placeholder="Filter by NDC or Name..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant">TYPE:</label>
+<select class="py-1.5 pl-3 pr-8 bg-surface rounded-DEFAULT border border-surface-border text-body-sm font-body-sm focus:ring-2 focus:ring-primary outline-none appearance-none">
+<option>All Alerts</option>
+<option>Low Stock</option>
+<option>Expiring</option>
+</select>
+</div>
+<div class="flex items-center gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant">STATUS:</label>
+<select class="py-1.5 pl-3 pr-8 bg-surface rounded-DEFAULT border border-surface-border text-body-sm font-body-sm focus:ring-2 focus:ring-primary outline-none appearance-none">
+<option>Action Needed</option>
+<option>Pending Order</option>
+<option>Ignored</option>
+</select>
+</div>
+</div>
+<div class="font-data-mono text-data-mono text-on-surface-variant">
+                    Showing 22 active alerts
+                </div>
+</div>
+<!-- High-Density Data Table -->
+<div class="bg-surface-container-lowest border border-surface-border rounded-lg overflow-hidden flex-1 min-h-[400px] flex flex-col shadow-sm">
+<div class="overflow-x-auto custom-scrollbar flex-1">
+<table class="w-full text-left whitespace-nowrap border-collapse">
+<thead class="bg-surface-container-low border-b border-surface-border sticky top-0 z-10">
+<tr class="font-label-caps text-label-caps text-on-surface-variant">
+<th class="px-4 py-2 font-semibold">Medication (NDC)</th>
+<th class="px-4 py-2 font-semibold w-32">Alert Type</th>
+<th class="px-4 py-2 font-semibold text-right w-32">Current Bal.</th>
+<th class="px-4 py-2 font-semibold text-right w-32">Threshold</th>
+<th class="px-4 py-2 font-semibold text-right w-40">Expiry / Trigger</th>
+<th class="px-4 py-2 font-semibold text-center w-24">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-border font-body-sm text-body-sm text-on-surface">
+<!-- Row 1: Critical -->
+<tr class="hover:bg-surface-container-low transition-colors row-dense group">
+<td class="px-4 py-1 flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-status-error"></div>
+<span class="font-medium">Amoxicillin 500mg Cap</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant ml-2">00093-3147-01</span>
+</td>
+<td class="px-4 py-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps">Critical Low</span>
+</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-status-error font-medium">12 bt</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface-variant">50 bt</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface-variant">--</td>
+<td class="px-4 py-1 text-center">
+<button class="text-primary hover:text-primary-container p-1 rounded-DEFAULT opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+</button>
+</td>
+</tr>
+<!-- Row 2: Warning Expiring -->
+<tr class="hover:bg-surface-container-low transition-colors row-dense group">
+<td class="px-4 py-1 flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-status-warning"></div>
+<span class="font-medium">Lisinopril 10mg Tab</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant ml-2">00378-0131-01</span>
+</td>
+<td class="px-4 py-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full border border-status-warning text-status-warning font-label-caps text-label-caps">Expiring (14d)</span>
+</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface">300 tb</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface-variant">--</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-status-warning font-medium">2023-11-15</td>
+<td class="px-4 py-1 text-center">
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded-DEFAULT opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Row 3: Standard Low -->
+<tr class="hover:bg-surface-container-low transition-colors row-dense group bg-data-fill/30">
+<td class="px-4 py-1 flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary"></div>
+<span class="font-medium">Metformin HCL 1000mg</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant ml-2">68382-0136-10</span>
+</td>
+<td class="px-4 py-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container text-on-surface font-label-caps text-label-caps">Low Stock</span>
+</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface">45 bt</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface-variant">50 bt</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface-variant">--</td>
+<td class="px-4 py-1 text-center">
+<button class="text-primary hover:text-primary-container p-1 rounded-DEFAULT opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+</button>
+</td>
+</tr>
+<!-- Row 4: Expired -->
+<tr class="hover:bg-surface-container-low transition-colors row-dense group">
+<td class="px-4 py-1 flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-status-error"></div>
+<span class="font-medium">Epinephrine Auto-Inj 0.3mg</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant ml-2">49502-0500-02</span>
+</td>
+<td class="px-4 py-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-error text-on-error font-label-caps text-label-caps">Expired</span>
+</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface">2 ea</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface-variant">--</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-status-error font-bold">2023-10-01</td>
+<td class="px-4 py-1 text-center flex justify-center gap-1">
+<button class="text-status-error hover:text-error-container p-1 rounded-DEFAULT opacity-0 group-hover:opacity-100 transition-opacity" title="Remove from inventory">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 5: Critical -->
+<tr class="hover:bg-surface-container-low transition-colors row-dense group">
+<td class="px-4 py-1 flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-status-error"></div>
+<span class="font-medium">Albuterol Sulfate HFA</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant ml-2">00069-0205-01</span>
+</td>
+<td class="px-4 py-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps">Critical Low</span>
+</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-status-error font-medium">0 ea</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface-variant">20 ea</td>
+<td class="px-4 py-1 text-right font-data-mono text-data-mono text-on-surface-variant">--</td>
+<td class="px-4 py-1 text-center">
+<button class="text-primary hover:text-primary-container p-1 rounded-DEFAULT opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Pagination -->
+<div class="border-t border-surface-border bg-surface-container-lowest p-3 flex justify-between items-center text-on-surface-variant font-body-sm text-body-sm">
+<div class="flex items-center gap-4">
+<span>Rows per page: <strong>50</strong></span>
+<span class="material-symbols-outlined text-[16px] cursor-pointer">arrow_drop_down</span>
+</div>
+<div class="flex items-center gap-4">
+<span>1-5 of 22</span>
+<div class="flex gap-2">
+<button class="p-1 rounded-DEFAULT hover:bg-surface-container text-outline transition-colors" disabled="">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+<button class="p-1 rounded-DEFAULT hover:bg-surface-container text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

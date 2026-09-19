@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html class="light" dir="ltr" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Find My Medicines - Coverage Results</title>
+<!-- Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "error-container": "#ffdad6",
+                  "secondary-container": "#9cefdf",
+                  "on-secondary-container": "#0b6f63",
+                  "primary-fixed-dim": "#a6c8ff",
+                  "on-tertiary-fixed-variant": "#304a56",
+                  "surface": "#f9f9ff",
+                  "on-surface-variant": "#414752",
+                  "on-primary-fixed-variant": "#004786",
+                  "surface-tint": "#065fae",
+                  "status-active": "#006b5f",
+                  "on-primary": "#ffffff",
+                  "inverse-surface": "#2e3036",
+                  "on-primary-fixed": "#001c3a",
+                  "primary-container": "#005dac",
+                  "secondary-fixed-dim": "#83d5c6",
+                  "on-secondary": "#ffffff",
+                  "surface-container": "#ecedf5",
+                  "primary": "#004583",
+                  "background": "#f9f9ff",
+                  "surface-dim": "#d8dae1",
+                  "on-surface": "#191c21",
+                  "on-background": "#191c21",
+                  "status-uncertain": "#46606c",
+                  "surface-bright": "#f9f9ff",
+                  "surface-variant": "#e1e2e9",
+                  "primary-fixed": "#d4e3ff",
+                  "on-error": "#ffffff",
+                  "on-error-container": "#93000a",
+                  "on-secondary-fixed-variant": "#005047",
+                  "tertiary": "#2e4854",
+                  "inverse-primary": "#a6c8ff",
+                  "surface-container-lowest": "#ffffff",
+                  "secondary-fixed": "#9ff2e2",
+                  "tertiary-container": "#46606c",
+                  "status-corrected": "#1976d2",
+                  "secondary": "#006b5f",
+                  "surface-container-high": "#e7e8ef",
+                  "error": "#ba1a1a",
+                  "on-primary-container": "#bfd7ff",
+                  "on-tertiary-container": "#bedae8",
+                  "outline": "#727783",
+                  "on-secondary-fixed": "#00201c",
+                  "on-tertiary-fixed": "#011f29",
+                  "surface-container-highest": "#e1e2e9",
+                  "tertiary-fixed-dim": "#afcbd9",
+                  "inverse-on-surface": "#eff0f8",
+                  "outline-variant": "#c1c6d3",
+                  "status-expired": "#ba1a1a",
+                  "surface-container-low": "#f2f3fb",
+                  "on-tertiary": "#ffffff",
+                  "tertiary-fixed": "#cbe7f5"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "xl": "32px",
+                  "md": "16px",
+                  "base": "4px",
+                  "margin-mobile": "16px",
+                  "touch-target": "48px",
+                  "xs": "4px",
+                  "gutter": "16px",
+                  "sm": "8px",
+                  "lg": "24px"
+          },
+          "fontFamily": {
+                  "headline-lg": ["Inter"],
+                  "label-lg": ["Inter"],
+                  "display-lg": ["Inter"],
+                  "body-lg": ["Inter"],
+                  "title-lg": ["Inter"],
+                  "label-sm": ["Inter"],
+                  "headline-md": ["Inter"],
+                  "headline-lg-mobile": ["Inter"],
+                  "body-md": ["Inter"]
+          },
+          "fontSize": {
+                  "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600"}],
+                  "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600"}],
+                  "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                  "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                  "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "500"}],
+                  "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                  "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                  "headline-lg-mobile": ["28px", {"lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600"}],
+                  "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+          }
+        },
+      }
+    }
+  </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col font-sans antialiased pb-24 md:pb-0">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim docked full-width top-0 sticky z-40 transition-transform duration-150">
+<div class="flex justify-between items-center w-full px-md h-touch-target border-b border-outline-variant/30">
+<button aria-label="Go back" class="w-touch-target h-touch-target flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-variant/50 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-title-lg font-title-lg font-bold text-on-surface dark:text-inverse-on-surface truncate flex-1 text-center">
+        Prescription Coverage
+      </h1>
+<button aria-label="Help" class="w-touch-target h-touch-target flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-variant/50 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-3xl mx-auto p-gutter space-y-lg md:pt-xl">
+<!-- Prescription Summary Header -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md">
+<div class="flex items-start justify-between mb-sm">
+<div>
+<h2 class="text-title-lg font-title-lg text-on-surface">Rx #9402-A</h2>
+<p class="text-body-md font-body-md text-on-surface-variant">Dr. Sarah Jenkins • Issued Oct 12, 2023</p>
+</div>
+<div class="bg-secondary-container/20 text-on-secondary-container px-sm py-xs rounded-full flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]" data-icon="medication" data-weight="fill">medication</span>
+<span class="text-label-sm font-label-sm">3 Items</span>
+</div>
+</div>
+<!-- Requested Items List -->
+<div class="mt-md space-y-sm">
+<h3 class="text-label-sm font-label-sm text-outline uppercase tracking-wider">Requested Medications</h3>
+<ul class="text-body-md font-body-md text-on-surface flex flex-wrap gap-sm">
+<li class="bg-surface-container py-1 px-3 rounded-full border border-outline-variant/50">Lisinopril 10mg</li>
+<li class="bg-surface-container py-1 px-3 rounded-full border border-outline-variant/50">Atorvastatin 20mg</li>
+<li class="bg-surface-container py-1 px-3 rounded-full border border-outline-variant/50">Metformin 500mg</li>
+</ul>
+</div>
+</section>
+<!-- Results Section -->
+<section class="space-y-md">
+<div class="flex items-center justify-between">
+<h2 class="text-headline-md font-headline-md text-on-surface">Nearby Pharmacies</h2>
+<span class="text-label-sm font-label-sm text-on-surface-variant bg-surface-variant px-2 py-1 rounded">Sorted by Match</span>
+</div>
+<!-- Result Card 1: Full Coverage -->
+<article class="bg-surface-container-lowest border border-status-active/30 shadow-[0_4px_8px_rgba(0,107,95,0.04)] rounded-xl p-md relative overflow-hidden group">
+<!-- Highlight Strip -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-status-active"></div>
+<div class="flex flex-col md:flex-row md:items-start gap-md">
+<!-- Branch Info -->
+<div class="flex-1">
+<div class="flex items-center gap-sm mb-xs">
+<h3 class="text-title-lg font-title-lg text-on-surface font-semibold">CityHealth Pharmacy</h3>
+<span class="bg-status-active/10 text-status-active text-label-sm font-label-sm px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="check_circle">check_circle</span>
+                Full Coverage
+              </span>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+              1.2 miles away • 456 Oak Street
+            </p>
+<p class="text-label-sm font-label-sm text-outline mt-1 flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="update">update</span>
+              Inventory updated 15m ago
+            </p>
+</div>
+<!-- Availability Matrix -->
+<div class="bg-surface-container p-sm rounded-lg flex-shrink-0 md:w-48">
+<div class="text-label-sm font-label-sm text-center mb-2 font-semibold">3 of 3 Available</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between text-body-md font-body-md text-on-surface text-sm">
+<span class="truncate pr-2">Lisinopril</span>
+<span class="material-symbols-outlined text-status-active text-[18px]" data-icon="check">check</span>
+</div>
+<div class="flex items-center justify-between text-body-md font-body-md text-on-surface text-sm">
+<span class="truncate pr-2">Atorvastatin</span>
+<span class="material-symbols-outlined text-status-active text-[18px]" data-icon="check">check</span>
+</div>
+<div class="flex items-center justify-between text-body-md font-body-md text-on-surface text-sm">
+<span class="truncate pr-2">Metformin</span>
+<span class="material-symbols-outlined text-status-active text-[18px]" data-icon="check">check</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="mt-md pt-md border-t border-outline-variant/30 flex gap-sm">
+<button class="flex-1 bg-secondary-container hover:bg-secondary-container/80 text-on-secondary-container text-label-lg font-label-lg py-2 px-4 rounded-full flex items-center justify-center gap-2 transition-colors min-h-[48px]">
+<span class="material-symbols-outlined" data-icon="directions">directions</span>
+             Directions
+           </button>
+<button aria-label="Call Pharmacy" class="w-12 h-12 bg-surface-container-high hover:bg-surface-variant text-on-surface border border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined" data-icon="call">call</span>
+</button>
+</div>
+</article>
+<!-- Result Card 2: Partial Coverage -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md relative overflow-hidden group">
+<div class="flex flex-col md:flex-row md:items-start gap-md">
+<!-- Branch Info -->
+<div class="flex-1">
+<div class="flex items-center gap-sm mb-xs">
+<h3 class="text-title-lg font-title-lg text-on-surface font-semibold">Valley Meds</h3>
+<span class="bg-surface-variant text-on-surface-variant text-label-sm font-label-sm px-2 py-0.5 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="info">info</span>
+                Partial Match
+              </span>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+              0.8 miles away • 789 Pine Road
+            </p>
+<p class="text-label-sm font-label-sm text-outline mt-1 flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="update">update</span>
+              Inventory updated 1h ago
+            </p>
+</div>
+<!-- Availability Matrix -->
+<div class="bg-surface-container p-sm rounded-lg flex-shrink-0 md:w-48">
+<div class="text-label-sm font-label-sm text-center mb-2 font-semibold">2 of 3 Available</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between text-body-md font-body-md text-on-surface text-sm">
+<span class="truncate pr-2">Lisinopril</span>
+<span class="material-symbols-outlined text-status-active text-[18px]" data-icon="check">check</span>
+</div>
+<div class="flex items-center justify-between text-body-md font-body-md text-on-surface text-sm opacity-50">
+<span class="truncate pr-2 line-through">Atorvastatin</span>
+<span class="material-symbols-outlined text-error text-[18px]" data-icon="close">close</span>
+</div>
+<div class="flex items-center justify-between text-body-md font-body-md text-on-surface text-sm">
+<span class="truncate pr-2">Metformin</span>
+<span class="material-symbols-outlined text-status-active text-[18px]" data-icon="check">check</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="mt-md pt-md border-t border-outline-variant/30 flex gap-sm">
+<button class="flex-1 bg-surface-container-high hover:bg-surface-variant text-on-surface text-label-lg font-label-lg py-2 px-4 rounded-full flex items-center justify-center gap-2 transition-colors min-h-[48px] border border-outline-variant">
+<span class="material-symbols-outlined" data-icon="directions">directions</span>
+             Directions
+           </button>
+<button aria-label="Call Pharmacy" class="w-12 h-12 bg-surface-container-high hover:bg-surface-variant text-on-surface border border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined" data-icon="call">call</span>
+</button>
+</div>
+</article>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline shadow-lg dark:shadow-none fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-gutter pb-sm pt-xs rounded-t-xl pb-safe">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-lg py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-full transition-all duration-200">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="text-label-sm font-label-sm">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-on-secondary-container text-on-secondary-container dark:text-secondary-container rounded-full px-lg py-1 scale-95 transition-all duration-200">
+<span class="material-symbols-outlined mb-1" data-icon="description" data-weight="fill">description</span>
+<span class="text-label-sm font-label-sm">Records</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-lg py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-full transition-all duration-200">
+<span class="material-symbols-outlined mb-1" data-icon="chat_bubble">chat_bubble</span>
+<span class="text-label-sm font-label-sm">Messages</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-lg py-1 hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-full transition-all duration-200">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="text-label-sm font-label-sm">Profile</span>
+</button>
+</nav>
+</body></html>

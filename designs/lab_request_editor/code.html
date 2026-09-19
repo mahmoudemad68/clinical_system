@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lab Request Editor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#bdc9c8",
+                        "on-error": "#ffffff",
+                        "clinic-teal": "#008080",
+                        "surface-container-low": "#f3f3f3",
+                        "tertiary-container": "#757177",
+                        "background": "#f9f9f9",
+                        "on-primary-fixed": "#002020",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-container-highest": "#e2e2e2",
+                        "on-primary-container": "#e3fffe",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#4c3386",
+                        "surface-tint": "#006a6a",
+                        "tertiary": "#5c595f",
+                        "surface-container-high": "#e8e8e8",
+                        "on-tertiary-fixed-variant": "#48464b",
+                        "primary-container": "#008080",
+                        "on-secondary-fixed": "#22005c",
+                        "inverse-primary": "#76d6d5",
+                        "inverse-surface": "#2f3131",
+                        "secondary-container": "#bca2fd",
+                        "on-error-container": "#93000a",
+                        "secondary": "#6750a4",
+                        "requirement-border": "#cbc4d2",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#1a1c1c",
+                        "primary-fixed-dim": "#76d6d5",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fdf7fe",
+                        "surface-bright": "#f9f9f9",
+                        "primary-fixed": "#93f2f2",
+                        "surface-variant": "#e2e2e2",
+                        "surface-dim": "#dadada",
+                        "tertiary-fixed": "#e6e1e8",
+                        "primary": "#006565",
+                        "surface-container": "#eeeeee",
+                        "inverse-on-surface": "#f1f1f1",
+                        "on-tertiary-fixed": "#1d1b20",
+                        "secondary-fixed": "#e9ddff",
+                        "clinical-bg": "#fdf7ff",
+                        "outline": "#6e7979",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "tertiary-fixed-dim": "#cac5cc",
+                        "surface": "#f9f9f9",
+                        "on-surface-variant": "#3e4949",
+                        "on-surface": "#1a1c1c",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "split-divider": "#ece6ee",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin": "32px",
+                        "preview-pane-min": "400px",
+                        "unit": "4px",
+                        "sidebar-width": "260px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "data-mono": ["jetbrainsMono"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                        "data-mono": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen overflow-hidden flex">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[260px] bg-surface flex flex-col py-margin px-4 border-r border-outline-variant z-20">
+<div class="flex items-center gap-3 mb-8 px-2">
+<span class="material-symbols-outlined text-clinic-teal text-3xl">medical_services</span>
+<span class="font-headline-md text-headline-md font-bold text-clinic-teal">ClinCore</span>
+</div>
+<div class="flex items-center gap-4 mb-8 px-2">
+<img class="w-12 h-12 rounded-full object-cover border border-outline-variant" data-alt="A professional headshot of a mature female doctor wearing a white lab coat and stethoscope, looking confident against a clean clinical background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDS2FA-Q5jM53xw8zCftl4QwjKY7Uzo1seEgyr-cTI3uCGyEhTNtNT5lSzF5pp7fpUOLb11DEkWF6kTveLYUmuDF1eVthYgy9oS7JdRTCzQyonJ1Sr85IsagfAZTw-Qa4alYUZf4EF_N-D_Fd0bsVQIeoizwSlvsW3xp9iOUj4AkHXHKktxlcLIFsEYWVcSr1t8DEPT253N_EtIZ0XLoGEcdWumrk7DVcOfnV-V6wyZv-ZWHLNdc6NA"/>
+<div>
+<p class="font-headline-md text-headline-md text-base leading-tight">Dr. Jameson</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Senior Clinician</p>
+</div>
+</div>
+<button class="w-full bg-clinic-teal text-on-primary font-body-md text-body-md py-2 px-4 rounded mb-6 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm">add</span>
+            New Consultation
+        </button>
+<div class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span>Patients</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">event</span>
+<span>Appointments</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-clinic-teal font-bold border-r-4 border-clinic-teal bg-primary-container/10" href="#">
+<span class="material-symbols-outlined">medical_services</span>
+<span>Clinical Records</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span>Staff Management</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors mt-auto mb-4" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 ml-[260px] flex flex-col h-full bg-background relative z-10">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center h-16 px-gutter bg-surface-bright border-b border-split-divider">
+<div class="font-headline-md text-headline-md font-bold text-on-surface">
+                Doctor Workspace
+            </div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="w-64 pl-9 pr-4 py-1.5 bg-surface-container-lowest border border-outline-variant rounded font-body-sm text-body-sm focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal outline-none transition-shadow" placeholder="Search workspace..." type="text"/>
+</div>
+<div class="flex items-center gap-2 text-clinic-teal">
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">location_on</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Context Banner -->
+<div class="bg-surface-container-lowest border-b border-outline-variant px-gutter py-3 flex items-center justify-between">
+<div class="flex items-center gap-6">
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Patient</span>
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-base font-semibold">Robert Chen</span>
+<span class="font-data-mono text-data-mono text-outline bg-surface-container-high px-1.5 py-0.5 rounded">ID: MRN-84729</span>
+</div>
+</div>
+<div class="h-8 w-px bg-split-divider"></div>
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Encounter</span>
+<span class="font-data-mono text-data-mono text-on-surface">ENC-2023-11-04-A</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-clinic-teal"></span>
+<span class="font-label-caps text-label-caps text-clinic-teal">Active Session</span>
+</div>
+</div>
+<!-- Split Workspace -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Left Pane: Catalog -->
+<div class="w-1/2 flex flex-col border-r border-split-divider bg-surface">
+<div class="p-gutter border-b border-outline-variant bg-surface-container-lowest shrink-0">
+<h2 class="font-headline-md text-xl mb-4">Lab Catalog</h2>
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container border border-outline-variant rounded focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal outline-none transition-shadow font-body-md" placeholder="Search tests or categories (e.g., CBC, Lipid)..." type="text"/>
+</div>
+<div class="flex gap-2 mt-4 overflow-x-auto pb-1">
+<button class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full font-body-sm whitespace-nowrap border border-clinic-teal">All</button>
+<button class="px-3 py-1 bg-surface-container-highest text-on-surface rounded-full font-body-sm whitespace-nowrap border border-outline-variant hover:bg-surface-variant transition-colors">Hematology</button>
+<button class="px-3 py-1 bg-surface-container-highest text-on-surface rounded-full font-body-sm whitespace-nowrap border border-outline-variant hover:bg-surface-variant transition-colors">Chemistry</button>
+<button class="px-3 py-1 bg-surface-container-highest text-on-surface rounded-full font-body-sm whitespace-nowrap border border-outline-variant hover:bg-surface-variant transition-colors">Microbiology</button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-gutter space-y-2">
+<!-- Catalog Item -->
+<div class="flex items-center justify-between p-3 bg-surface-container-lowest border border-outline-variant rounded hover:border-clinic-teal transition-colors group cursor-pointer">
+<div>
+<h3 class="font-headline-md text-sm mb-0.5">Complete Blood Count (CBC) w/ Diff</h3>
+<p class="font-body-sm text-on-surface-variant">Hematology • Routine</p>
+</div>
+<button class="text-clinic-teal p-1 rounded hover:bg-primary-container/10 transition-colors">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+</div>
+<!-- Catalog Item -->
+<div class="flex items-center justify-between p-3 bg-surface-container-lowest border border-outline-variant rounded hover:border-clinic-teal transition-colors group cursor-pointer opacity-50 pointer-events-none">
+<div>
+<h3 class="font-headline-md text-sm mb-0.5">Comprehensive Metabolic Panel (CMP)</h3>
+<p class="font-body-sm text-on-surface-variant">Chemistry • Routine <span class="text-error ml-2 text-xs">Already added</span></p>
+</div>
+<span class="material-symbols-outlined text-outline">check_circle</span>
+</div>
+<!-- Catalog Item -->
+<div class="flex items-center justify-between p-3 bg-surface-container-lowest border border-outline-variant rounded hover:border-clinic-teal transition-colors group cursor-pointer">
+<div>
+<h3 class="font-headline-md text-sm mb-0.5">Lipid Panel</h3>
+<p class="font-body-sm text-on-surface-variant">Chemistry • Fasting Req.</p>
+</div>
+<button class="text-clinic-teal p-1 rounded hover:bg-primary-container/10 transition-colors">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+</div>
+<!-- Catalog Item -->
+<div class="flex items-center justify-between p-3 bg-surface-container-lowest border border-outline-variant rounded hover:border-clinic-teal transition-colors group cursor-pointer opacity-50 pointer-events-none">
+<div>
+<h3 class="font-headline-md text-sm mb-0.5">Hemoglobin A1C</h3>
+<p class="font-body-sm text-on-surface-variant">Chemistry • Routine <span class="text-error ml-2 text-xs">Already added</span></p>
+</div>
+<span class="material-symbols-outlined text-outline">check_circle</span>
+</div>
+</div>
+</div>
+<!-- Right Pane: Selected -->
+<div class="w-1/2 flex flex-col bg-surface-container-lowest">
+<div class="p-gutter border-b border-outline-variant flex justify-between items-end shrink-0">
+<div>
+<h2 class="font-headline-md text-xl mb-1">Selected Tests</h2>
+<p class="font-body-sm text-on-surface-variant">2 items queued for requisition</p>
+</div>
+<button class="text-error font-body-sm text-body-sm hover:underline">Clear All</button>
+</div>
+<div class="flex-1 overflow-y-auto p-gutter space-y-4">
+<!-- Selected Item -->
+<div class="border-l-2 border-clinic-teal bg-surface p-4 rounded-r border border-outline-variant shadow-sm relative group">
+<button class="absolute top-3 right-3 text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg">close</span>
+</button>
+<div class="mb-3 pr-8">
+<h3 class="font-headline-md text-base mb-1">Comprehensive Metabolic Panel (CMP)</h3>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-surface-container-highest text-on-surface-variant rounded font-label-caps text-[10px]">Chemistry</span>
+<span class="font-data-mono text-[11px] text-outline">CODE: CMP-80053</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Special Instructions / Diagnosis</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-3 py-1.5 font-body-sm focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal outline-none" placeholder="e.g., Fasting required, R/O Diabetes..." type="text" value="Routine annual check"/>
+</div>
+</div>
+<!-- Selected Item -->
+<div class="border-l-2 border-clinic-teal bg-surface p-4 rounded-r border border-outline-variant shadow-sm relative group">
+<button class="absolute top-3 right-3 text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg">close</span>
+</button>
+<div class="mb-3 pr-8">
+<h3 class="font-headline-md text-base mb-1">Hemoglobin A1C</h3>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-surface-container-highest text-on-surface-variant rounded font-label-caps text-[10px]">Chemistry</span>
+<span class="font-data-mono text-[11px] text-outline">CODE: HBA1C-83036</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Special Instructions / Diagnosis</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-3 py-1.5 font-body-sm focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal outline-none" placeholder="e.g., Fasting required, R/O Diabetes..." type="text" value="Monitor pre-diabetic status"/>
+</div>
+</div>
+</div>
+<!-- Action Footer -->
+<div class="p-gutter border-t border-split-divider bg-surface-bright flex justify-end gap-3 shrink-0">
+<button class="px-6 py-2 border border-outline-variant text-on-surface font-body-md rounded hover:bg-surface-container-highest transition-colors">
+                        Save as Draft
+                    </button>
+<button class="px-6 py-2 bg-clinic-teal text-on-primary font-body-md rounded flex items-center gap-2 hover:bg-surface-tint transition-colors shadow-sm">
+<span class="material-symbols-outlined text-sm">send</span>
+                        Submit Lab Request
+                    </button>
+</div>
+</div>
+</main>
+</div>
+</body></html>

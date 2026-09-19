@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clinical Documents</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#fffdff",
+                        "background": "#f7fafc",
+                        "surface-container-high": "#e5e9eb",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface": "#f7fafc",
+                        "outline-variant": "#c1c6d4",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#5f7985",
+                        "surface-variant": "#e0e3e5",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "inverse-primary": "#a5c8ff",
+                        "on-primary-fixed": "#001c3a",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#414752",
+                        "primary-container": "#1976d2",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#006b5f",
+                        "primary-fixed-dim": "#a5c8ff",
+                        "on-tertiary-fixed": "#021f29",
+                        "primary-fixed": "#d4e3ff",
+                        "inverse-on-surface": "#eef1f3",
+                        "tertiary-fixed-dim": "#afcbd8",
+                        "on-tertiary-container": "#fdfdff",
+                        "on-primary-fixed-variant": "#004786",
+                        "primary": "#005dac",
+                        "error-container": "#ffdad6",
+                        "surface-container-low": "#f1f4f6",
+                        "surface-bright": "#f7fafc",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#8df5e4",
+                        "on-secondary-container": "#007165",
+                        "on-surface": "#181c1e",
+                        "on-secondary-fixed-variant": "#005048",
+                        "tertiary": "#46606c",
+                        "surface-container": "#ebeef0",
+                        "secondary-container": "#8df5e4",
+                        "surface-tint": "#005faf",
+                        "on-secondary-fixed": "#00201c",
+                        "on-tertiary-fixed-variant": "#304a55",
+                        "surface-dim": "#d7dadc",
+                        "on-background": "#181c1e",
+                        "tertiary-fixed": "#cbe7f5",
+                        "secondary-fixed-dim": "#70d8c8",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "outline": "#717783"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "margin-tablet": "32px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "xl": "32px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col md:pb-0 pb-[80px]">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full h-16 bg-surface dark:bg-on-background flex items-center justify-between px-md z-50 shadow-sm shadow-[0_1px_2px_rgba(0,0,0,0.05)] border-b-0">
+<div class="flex items-center gap-4">
+<button class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors active:scale-95 text-on-surface-variant">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">menu</span>
+</button>
+<h1 class="font-title-lg text-title-lg font-bold text-primary dark:text-primary-fixed-dim">Clinical Clarity</h1>
+</div>
+<div class="flex items-center">
+<button class="w-10 h-10 rounded-full overflow-hidden hover:bg-surface-container-high transition-colors active:scale-95 border border-outline-variant">
+<img alt="User profile picture" class="w-full h-full object-cover" data-alt="A professional headshot of a female doctor wearing a white coat and a light blue shirt, smiling gently in a well-lit, modern clinic setting. The lighting is soft and bright, emphasizing a clean, trustworthy medical environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1NYfdD0Z16QiBlOydNiU61TeOJ3CU7yPyHbWncQSwZBa6sD-7ZQSxNVAQk0tbwucrUgMNEpo5uP9gpQRtGjYE-6ZCbnBtuzfJ89yvdvEDN1dT0xUIT_e2w8U8QxUa9rpuyJMXg38We5Rn8jnC-bmEZcJDM1IBxq6pzwkBXpzLXe4zcNvPogsRRJZuG-rBplP8R5lUTtBpNjzoOLpRYCl4tDnYgoFloSvIBs2GWyngwAUYeHAT5-4X"/>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow pt-24 px-margin-mobile md:px-margin-tablet max-w-5xl mx-auto w-full">
+<div class="mb-lg">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-background mb-sm">Clinical Documents</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">View and manage your reports, sick leave, and referrals.</p>
+</div>
+<!-- Filter Chips (Horizontal Scrollable) -->
+<div class="flex gap-sm overflow-x-auto hide-scrollbar pb-sm mb-lg">
+<button class="px-4 py-2 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-lg whitespace-nowrap active:scale-95 transition-transform">All</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-lg text-label-lg whitespace-nowrap hover:bg-surface-container-highest active:scale-95 transition-all">Reports</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-lg text-label-lg whitespace-nowrap hover:bg-surface-container-highest active:scale-95 transition-all">Sick Leave</button>
+<button class="px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-lg text-label-lg whitespace-nowrap hover:bg-surface-container-highest active:scale-95 transition-all">Referrals</button>
+</div>
+<!-- Document List -->
+<div class="space-y-md">
+<!-- Card 1: Report -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center gap-md">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">description</span>
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">Lab Report</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary/10 text-secondary font-label-sm text-label-sm border border-secondary/20">Current</span>
+</div>
+<h3 class="font-title-lg text-title-lg text-on-background mb-1">Comprehensive Metabolic Panel</h3>
+<div class="flex flex-col sm:flex-row sm:gap-lg text-on-surface-variant font-body-md text-body-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">person</span> Dr. Sarah Jenkins</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">calendar_today</span> Oct 12, 2023</span>
+</div>
+</div>
+<button class="w-full sm:w-auto mt-4 sm:mt-0 px-6 py-2.5 rounded-full bg-transparent border border-primary text-primary font-label-lg text-label-lg hover:bg-primary/5 active:scale-95 transition-all whitespace-nowrap">View Document</button>
+</div>
+<!-- Card 2: Sick Leave -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center gap-md">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">sick</span>
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">Sick Leave</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary/10 text-secondary font-label-sm text-label-sm border border-secondary/20">Current</span>
+</div>
+<h3 class="font-title-lg text-title-lg text-on-background mb-1">Medical Certificate</h3>
+<div class="flex flex-col sm:flex-row sm:gap-lg text-on-surface-variant font-body-md text-body-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">person</span> Dr. Marcus Thorne</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">calendar_today</span> Oct 05, 2023</span>
+</div>
+</div>
+<button class="w-full sm:w-auto mt-4 sm:mt-0 px-6 py-2.5 rounded-full bg-transparent border border-primary text-primary font-label-lg text-label-lg hover:bg-primary/5 active:scale-95 transition-all whitespace-nowrap">View Document</button>
+</div>
+<!-- Card 3: Referral (Corrected) -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center gap-md">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">forward</span>
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">Referral</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-error/10 text-error font-label-sm text-label-sm border border-error/20">Corrected</span>
+</div>
+<h3 class="font-title-lg text-title-lg text-on-background mb-1">Cardiology Consultation</h3>
+<div class="flex flex-col sm:flex-row sm:gap-lg text-on-surface-variant font-body-md text-body-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">person</span> Dr. Emily Chen</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">calendar_today</span> Sep 28, 2023</span>
+</div>
+</div>
+<button class="w-full sm:w-auto mt-4 sm:mt-0 px-6 py-2.5 rounded-full bg-transparent border border-primary text-primary font-label-lg text-label-lg hover:bg-primary/5 active:scale-95 transition-all whitespace-nowrap">View Document</button>
+</div>
+<!-- Card 4: Report -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center gap-md opacity-75">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">image</span>
+</div>
+<div class="flex-grow">
+<div class="flex items-center gap-2 mb-1">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-wider">Imaging Report</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm border border-outline-variant">Historical</span>
+</div>
+<h3 class="font-title-lg text-title-lg text-on-background mb-1">Chest X-Ray</h3>
+<div class="flex flex-col sm:flex-row sm:gap-lg text-on-surface-variant font-body-md text-body-md">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">person</span> Dr. Alan Grant</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[18px]">calendar_today</span> Jan 15, 2023</span>
+</div>
+</div>
+<button class="w-full sm:w-auto mt-4 sm:mt-0 px-6 py-2.5 rounded-full bg-transparent border border-outline-variant text-on-surface-variant font-label-lg text-label-lg hover:bg-surface-container-low active:scale-95 transition-all whitespace-nowrap">View Document</button>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-sm pb-safe bg-surface dark:bg-on-background shadow-[0_-2px_4px_rgba(0,0,0,0.05)] border-t-0 rounded-t-xl md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 duration-150 rounded-lg">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container dark:bg-on-primary-fixed-variant text-on-primary-container dark:text-primary-fixed rounded-full px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 duration-150">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">description</span>
+<span class="font-label-sm text-label-sm">Records</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 duration-150 rounded-lg">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">chat_bubble</span>
+<span class="font-label-sm text-label-sm">Messages</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 duration-150 rounded-lg">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</button>
+</nav>
+<script>
+        // Simple filter interaction for visual feedback
+        document.querySelectorAll('.overflow-x-auto button').forEach(button => {
+            button.addEventListener('click', function() {
+                // Reset all
+                document.querySelectorAll('.overflow-x-auto button').forEach(btn => {
+                    btn.className = 'px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-lg text-label-lg whitespace-nowrap hover:bg-surface-container-highest active:scale-95 transition-all';
+                });
+                // Set active
+                this.className = 'px-4 py-2 rounded-full bg-primary-container text-on-primary-container font-label-lg text-label-lg whitespace-nowrap active:scale-95 transition-transform';
+            });
+        });
+    </script>
+</body></html>

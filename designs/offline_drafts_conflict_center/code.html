@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clinical Sync Conflict Resolution</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#4c3386",
+                        "on-primary-container": "#e3fffe",
+                        "on-secondary-fixed": "#22005c",
+                        "surface-container": "#eeeeee",
+                        "split-divider": "#ece6ee",
+                        "outline-variant": "#bdc9c8",
+                        "inverse-surface": "#2f3131",
+                        "tertiary-fixed": "#e6e1e8",
+                        "requirement-border": "#cbc4d2",
+                        "secondary-fixed": "#e9ddff",
+                        "clinic-teal": "#008080",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-variant": "#e2e2e2",
+                        "primary": "#006565",
+                        "surface-dim": "#dadada",
+                        "on-background": "#1a1c1c",
+                        "primary-container": "#008080",
+                        "surface-tint": "#006a6a",
+                        "secondary": "#6750a4",
+                        "on-primary-fixed": "#002020",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f3f3f3",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#48464b",
+                        "primary-fixed-dim": "#76d6d5",
+                        "background": "#f9f9f9",
+                        "tertiary-container": "#757177",
+                        "inverse-on-surface": "#f1f1f1",
+                        "surface-container-highest": "#e2e2e2",
+                        "secondary-container": "#bca2fd",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#5c595f",
+                        "surface": "#f9f9f9",
+                        "on-tertiary-container": "#fdf7fe",
+                        "surface-bright": "#f9f9f9",
+                        "on-surface-variant": "#3e4949",
+                        "on-error": "#ffffff",
+                        "on-surface": "#1a1c1c",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e8e8e8",
+                        "outline": "#6e7979",
+                        "clinical-bg": "#fdf7ff",
+                        "primary-fixed": "#93f2f2",
+                        "on-tertiary-fixed": "#1d1b20",
+                        "tertiary-fixed-dim": "#cac5cc",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#76d6d5",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "margin": "32px",
+                        "preview-pane-min": "400px",
+                        "unit": "4px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "data-mono": ["jetbrainsMono"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "data-mono": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-full font-body-md overflow-hidden flex">
+<!-- Dimmed Workspace Background (Simulated) -->
+<div class="fixed inset-0 bg-surface-container/80 backdrop-blur-sm z-40 flex justify-end">
+<!-- Conflict Resolution Drawer -->
+<div class="w-full max-w-[600px] h-full bg-surface-container-lowest shadow-xl flex flex-col z-50 transform transition-transform duration-300 translate-x-0 border-l border-outline-variant">
+<!-- Drawer Header -->
+<div class="px-gutter py-6 border-b border-split-divider flex justify-between items-center bg-surface-container-low">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Sync Conflict Detected</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Encounter: Routine Checkup (Patient: Jane Doe)</p>
+</div>
+<button aria-label="Close drawer" class="p-2 rounded hover:bg-surface-variant transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Warning Banner -->
+<div class="bg-error-container/20 border-l-4 border-error p-4 mx-gutter mt-6 rounded flex items-start gap-3">
+<span class="material-symbols-outlined text-error mt-0.5" style="font-variation-settings: 'FILL' 1;">warning</span>
+<div>
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">Version Conflict</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Changes were made simultaneously on the server and your local device. Choosing a version will overwrite the other. Please review carefully.</p>
+</div>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-gutter space-y-8">
+<!-- Local vs Server Overview -->
+<div class="grid grid-cols-2 gap-4">
+<!-- Local Card -->
+<div class="bg-surface rounded-lg p-4 border border-clinic-teal/30 ring-1 ring-clinic-teal/20 relative">
+<div class="absolute -top-3 left-4 bg-clinic-teal text-on-primary font-label-caps text-label-caps px-2 py-0.5 rounded-sm">Your Draft (Local)</div>
+<div class="mt-2 space-y-3">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">schedule</span>
+<span class="font-data-mono text-data-mono text-xs">Today, 10:42 AM</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">person</span>
+<span class="font-body-sm text-body-sm">Dr. Smith (You)</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded border border-outline-variant/30 mt-2">
+<span class="font-label-caps text-label-caps text-outline block mb-1">Status</span>
+<span class="font-body-sm text-body-sm font-semibold text-clinic-teal">Draft Saved</span>
+</div>
+</div>
+</div>
+<!-- Server Card -->
+<div class="bg-surface rounded-lg p-4 border border-outline-variant relative">
+<div class="absolute -top-3 left-4 bg-surface-variant text-on-surface-variant font-label-caps text-label-caps px-2 py-0.5 rounded-sm border border-outline-variant">System Record (Server)</div>
+<div class="mt-2 space-y-3">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">schedule</span>
+<span class="font-data-mono text-data-mono text-xs">Today, 10:35 AM</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">clinical_notes</span>
+<span class="font-body-sm text-body-sm">Nurse T. Adams</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded border border-outline-variant/30 mt-2">
+<span class="font-label-caps text-label-caps text-outline block mb-1">Status</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Finalized</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Conflicting Fields Details -->
+<div>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-4 uppercase tracking-wider">Conflicting Fields</h4>
+<div class="space-y-4">
+<!-- Conflict Item 1 -->
+<div class="border border-split-divider rounded-lg overflow-hidden">
+<div class="bg-surface-container-low px-4 py-2 border-b border-split-divider flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-sm">stethoscope</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Diagnosis Assessment</span>
+</div>
+<div class="grid grid-cols-2 divide-x divide-split-divider">
+<div class="p-3 bg-clinic-teal/5">
+<span class="font-label-caps text-label-caps text-clinic-teal block mb-1">Local Value</span>
+<p class="font-body-sm text-body-sm text-on-surface">Acute Bronchitis - Prescribed rest and hydration.</p>
+</div>
+<div class="p-3 bg-surface">
+<span class="font-label-caps text-label-caps text-outline block mb-1">Server Value</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant italic">Pending physician review.</p>
+</div>
+</div>
+</div>
+<!-- Conflict Item 2 -->
+<div class="border border-split-divider rounded-lg overflow-hidden">
+<div class="bg-surface-container-low px-4 py-2 border-b border-split-divider flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-sm">monitor_heart</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Vitals: Blood Pressure</span>
+</div>
+<div class="grid grid-cols-2 divide-x divide-split-divider">
+<div class="p-3 bg-clinic-teal/5">
+<span class="font-label-caps text-label-caps text-clinic-teal block mb-1">Local Value</span>
+<p class="font-data-mono text-data-mono text-sm text-on-surface">120/80 mmHg</p>
+</div>
+<div class="p-3 bg-surface">
+<span class="font-label-caps text-label-caps text-outline block mb-1">Server Value</span>
+<p class="font-data-mono text-data-mono text-sm text-on-surface-variant">122/82 mmHg</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Operation History Log (Optional context) -->
+<div>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-4 uppercase tracking-wider">Recent Activity</h4>
+<ul class="space-y-3 relative before:absolute before:inset-y-0 before:left-2.5 before:w-px before:bg-split-divider pl-8">
+<li class="relative">
+<span class="absolute -left-[27px] top-1 w-2 h-2 rounded-full bg-clinic-teal ring-4 ring-surface-container-lowest"></span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Diagnosis Updated (Local)</span>
+<span class="font-data-mono text-data-mono text-[11px] text-on-surface-variant mt-0.5">10:42 AM</span>
+</div>
+</li>
+<li class="relative">
+<span class="absolute -left-[27px] top-1 w-2 h-2 rounded-full bg-outline-variant ring-4 ring-surface-container-lowest"></span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Vitals Recorded by Nurse (Server)</span>
+<span class="font-data-mono text-data-mono text-[11px] text-on-surface-variant mt-0.5">10:35 AM</span>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<!-- Drawer Footer Actions -->
+<div class="p-gutter border-t border-split-divider bg-surface flex items-center justify-between gap-4 mt-auto">
+<button class="font-body-md text-body-md px-4 py-2 border border-outline rounded text-on-surface hover:bg-surface-container-low transition-colors">
+                    Compare &amp; Edit
+                </button>
+<div class="flex gap-3">
+<button class="font-body-md text-body-md px-4 py-2 bg-surface-variant text-on-surface rounded hover:bg-surface-container-high transition-colors font-medium">
+                        Use Server Version
+                    </button>
+<button class="font-body-md text-body-md px-4 py-2 bg-primary text-on-primary rounded hover:bg-primary/90 transition-colors shadow-sm font-medium">
+                        Keep Local Draft
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

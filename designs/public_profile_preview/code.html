@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Doctor Workspace - Public Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#1a1c1c",
+                        "primary-fixed": "#93f2f2",
+                        "surface-dim": "#dadada",
+                        "tertiary-fixed-dim": "#cac5cc",
+                        "on-primary-fixed": "#002020",
+                        "outline": "#6e7979",
+                        "primary-container": "#008080",
+                        "primary": "#006565",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-surface": "#1a1c1c",
+                        "surface-container-highest": "#e2e2e2",
+                        "on-primary-container": "#e3fffe",
+                        "primary-fixed-dim": "#76d6d5",
+                        "surface-container": "#eeeeee",
+                        "outline-variant": "#bdc9c8",
+                        "surface-container-high": "#e8e8e8",
+                        "tertiary-container": "#757177",
+                        "surface-tint": "#006a6a",
+                        "surface-container-lowest": "#ffffff",
+                        "clinic-teal": "#008080",
+                        "on-secondary-container": "#4c3386",
+                        "background": "#f9f9f9",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#3e4949",
+                        "requirement-border": "#cbc4d2",
+                        "tertiary-fixed": "#e6e1e8",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f9f9f9",
+                        "surface-bright": "#f9f9f9",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "inverse-primary": "#76d6d5",
+                        "surface-container-low": "#f3f3f3",
+                        "inverse-on-surface": "#f1f1f1",
+                        "on-secondary-fixed": "#22005c",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "split-divider": "#ece6ee",
+                        "tertiary": "#5c595f",
+                        "surface-variant": "#e2e2e2",
+                        "secondary-fixed": "#e9ddff",
+                        "on-tertiary-fixed-variant": "#48464b",
+                        "inverse-surface": "#2f3131",
+                        "secondary": "#6750a4",
+                        "secondary-container": "#bca2fd",
+                        "clinical-bg": "#fdf7ff",
+                        "on-tertiary-fixed": "#1d1b20",
+                        "on-tertiary-container": "#fdf7fe"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "preview-pane-min": "400px",
+                        "unit": "4px",
+                        "margin": "32px",
+                        "sidebar-width": "260px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "data-mono": ["jetbrainsMono"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "data-mono": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full bg-background text-on-surface font-body-md overflow-hidden flex selection:bg-clinic-teal/20">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[260px] bg-surface dark:bg-inverse-surface border-r border-outline-variant dark:border-outline flex flex-col py-margin px-4 z-20">
+<div class="mb-8">
+<h1 class="font-headline-md text-headline-md font-bold text-clinic-teal">Dr. Jameson</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Senior Clinician</p>
+</div>
+<button class="w-full bg-clinic-teal text-on-primary py-2 px-4 rounded-lg font-label-caps text-label-caps hover:opacity-90 transition-opacity mb-8 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+            New Consultation
+        </button>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant dark:text-on-tertiary-fixed-variant hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-on-surface transition-colors" data-icon="dashboard">dashboard</span>
+<span class="font-body-md text-body-md group-hover:text-on-surface transition-colors">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant dark:text-on-tertiary-fixed-variant hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-on-surface transition-colors" data-icon="person">person</span>
+<span class="font-body-md text-body-md group-hover:text-on-surface transition-colors">Patients</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant dark:text-on-tertiary-fixed-variant hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-on-surface transition-colors" data-icon="event">event</span>
+<span class="font-body-md text-body-md group-hover:text-on-surface transition-colors">Appointments</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant dark:text-on-tertiary-fixed-variant hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-on-surface transition-colors" data-icon="medical_services">medical_services</span>
+<span class="font-body-md text-body-md group-hover:text-on-surface transition-colors">Clinical Records</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant dark:text-on-tertiary-fixed-variant hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-on-surface transition-colors" data-icon="group">group</span>
+<span class="font-body-md text-body-md group-hover:text-on-surface transition-colors">Staff Management</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-clinic-teal font-bold border-r-4 border-clinic-teal bg-primary-container/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[260px] flex-1 flex flex-col h-full bg-background relative">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center h-16 px-gutter bg-surface-bright dark:bg-surface-dim border-b border-split-divider dark:border-outline-variant shrink-0 z-10 w-full">
+<div class="font-headline-md text-headline-md font-bold text-on-surface flex items-center gap-3">
+<span class="material-symbols-outlined text-clinic-teal text-[24px]">workspace_premium</span>
+                Doctor Workspace
+            </div>
+<div class="flex items-center gap-6">
+<!-- Search -->
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-full text-body-sm focus:outline-none focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal w-64 transition-all" placeholder="Search patients, records..." type="text"/>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:text-clinic-teal transition-all hover:scale-110 active:scale-95 duration-100 flex relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="hover:text-clinic-teal transition-all hover:scale-110 active:scale-95 duration-100 flex">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<button class="hover:text-clinic-teal transition-all hover:scale-110 active:scale-95 duration-100 flex">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+</button>
+</div>
+<div class="h-8 w-8 rounded-full overflow-hidden border-2 border-outline-variant shrink-0">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a mature male doctor wearing a white clinical coat and stethoscope around his neck. The background is a slightly blurred, modern and brightly lit hospital corridor. The lighting is soft and neutral, conveying trust and medical expertise in a high-key, modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLmHEo4k1ZW7jrASMWLh7nv8nYhZpkRtEi63Ok3VSLaXSaiV7Dfmpl7Vkt7-9jLAGrZvVmj192nCbbVm6mCyz5t3D3qIDfPE2_8MI5sKTis2ujbfGcfn1BFcX545iAYPAd1ol0-TyfvR1XSrGElj-IuRck7mLp_I6OZA2E2VT6QSSbWioDSkfVyduVgFvRAFXD95eoYac--kSs9d7XkUB4K6iWzWheJ6BQDQVLU5q65JsOj_AeAzQE"/>
+</div>
+</div>
+</header>
+<!-- Split Screen Layout -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Left Pane: Profile Preview (Mobile Style) -->
+<div class="flex-1 overflow-y-auto bg-surface-container flex justify-center py-8 px-4 border-r border-split-divider">
+<!-- Mobile Frame -->
+<div class="w-full max-w-[375px] bg-surface-container-lowest rounded-[2rem] shadow-sm border-[4px] border-surface-variant overflow-hidden flex flex-col relative h-[812px] shrink-0">
+<!-- Mobile Status Bar Mock -->
+<div class="h-6 w-full flex justify-between items-center px-4 bg-surface-container-lowest text-xs font-semibold text-on-surface-variant z-10 shrink-0">
+<span>9:41</span>
+<div class="flex gap-1">
+<span class="material-symbols-outlined text-[14px]">signal_cellular_4_bar</span>
+<span class="material-symbols-outlined text-[14px]">wifi</span>
+<span class="material-symbols-outlined text-[14px]">battery_full</span>
+</div>
+</div>
+<!-- App Header -->
+<div class="h-12 flex items-center justify-between px-4 bg-surface-container-lowest border-b border-split-divider shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant">arrow_back</span>
+<span class="font-body-md text-body-md font-semibold">Doctor Profile</span>
+<span class="material-symbols-outlined text-on-surface-variant">share</span>
+</div>
+<!-- Scrollable Profile Content -->
+<div class="flex-1 overflow-y-auto pb-6">
+<!-- Hero Section -->
+<div class="px-5 pt-6 pb-4 flex flex-col items-center text-center">
+<div class="w-24 h-24 rounded-full overflow-hidden border-4 border-surface-container-lowest shadow-sm mb-3 relative">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a mature male doctor wearing a white clinical coat and stethoscope around his neck. The background is a slightly blurred, modern and brightly lit hospital corridor. The lighting is soft and neutral, conveying trust and medical expertise in a high-key, modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQAyc99AwwFQE9ULYURHkMCb9N4TRg2ZbsMHuduP4ZqJjwcImY-NxoSBtnvprgJcXIjdJaPa5VzrYBMstwgPWg8utAWKJ7OQFsla4qirHg9afYwZWkTRrwbxZOGrtYgnEZv_5TMKlK46Octdg5fdb4VKdxcPj5rkktNz3wy5HgOuxeXk0INfO9ePuL9-sg_1ZPrPDzBuK0l6VlUxGIQX0CobJV5i2je-4xKH0l6-kdhP-3rxPnyVpA"/>
+<div class="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-1">Dr. Jameson</h2>
+<p class="font-body-sm text-body-sm text-clinic-teal font-medium mb-3">Cardiology Specialist</p>
+<div class="flex items-center gap-1 bg-surface-container py-1 px-3 rounded-full mb-4">
+<span class="material-symbols-outlined text-[16px] text-yellow-500" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-body-sm text-body-sm font-bold">4.9</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">(128 reviews)</span>
+</div>
+<div class="flex gap-2 w-full">
+<button class="flex-1 bg-clinic-teal text-on-primary py-2.5 rounded-xl font-body-sm font-semibold hover:bg-clinic-teal/90 transition-colors">Book Visit</button>
+<button class="w-12 h-11 border border-outline-variant rounded-xl flex items-center justify-center text-clinic-teal hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">message</span>
+</button>
+</div>
+</div>
+<!-- Bio -->
+<div class="px-5 py-4 border-t border-split-divider">
+<h3 class="font-body-md text-body-md font-semibold mb-2">About</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed line-clamp-3">
+                                Dr. Jameson is a board-certified cardiologist with over 15 years of experience treating complex heart conditions. He specializes in preventative cardiology and echocardiography, focusing on comprehensive patient education...
+                            </p>
+<button class="text-clinic-teal font-body-sm text-body-sm font-medium mt-1">Read more</button>
+</div>
+<!-- Specialties -->
+<div class="px-5 py-4 border-t border-split-divider">
+<h3 class="font-body-md text-body-md font-semibold mb-3">Specialties</h3>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-primary-fixed/30 text-on-primary-fixed-variant rounded-full font-body-sm text-body-sm">Echocardiography</span>
+<span class="px-3 py-1 bg-primary-fixed/30 text-on-primary-fixed-variant rounded-full font-body-sm text-body-sm">Arrhythmia</span>
+<span class="px-3 py-1 bg-primary-fixed/30 text-on-primary-fixed-variant rounded-full font-body-sm text-body-sm">Hypertension</span>
+</div>
+</div>
+<!-- Location -->
+<div class="px-5 py-4 border-t border-split-divider">
+<h3 class="font-body-md text-body-md font-semibold mb-3">Location</h3>
+<div class="flex gap-3 items-start p-3 bg-surface-container-lowest border border-outline-variant rounded-xl">
+<div class="w-12 h-12 bg-surface-container rounded-lg flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-clinic-teal">local_hospital</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-semibold">City General Hospital</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">123 Medical Row, Block C</p>
+<p class="font-body-sm text-body-sm text-clinic-teal mt-1">0.5 mi away</p>
+</div>
+</div>
+</div>
+<!-- Reviews Preview -->
+<div class="px-5 py-4 border-t border-split-divider">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-body-md text-body-md font-semibold">Patient Reviews</h3>
+<button class="text-clinic-teal font-body-sm text-body-sm font-medium">See all</button>
+</div>
+<div class="space-y-4">
+<div class="bg-surface-container-low p-3 rounded-xl">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed font-semibold text-xs">M.S.</div>
+<div>
+<div class="font-body-sm text-body-sm font-semibold">Verified Patient</div>
+<div class="text-[10px] text-on-surface-variant">2 weeks ago</div>
+</div>
+</div>
+<div class="flex">
+<span class="material-symbols-outlined text-[14px] text-yellow-500" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px] text-yellow-500" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px] text-yellow-500" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px] text-yellow-500" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px] text-yellow-500" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">"Dr. Jameson was incredibly thorough and took the time to explain my test results in a way I could understand. Highly recommend."</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Pane: Completeness Panel & Actions -->
+<div class="w-preview-pane-min bg-surface-container-lowest flex flex-col shadow-[-4px_0_15px_-5px_rgba(0,0,0,0.05)] z-10 shrink-0">
+<div class="p-6 border-b border-split-divider">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-headline-md text-headline-md text-on-surface">Profile Setup</h2>
+<!-- Language Toggle -->
+<div class="flex bg-surface-container rounded-lg p-1">
+<button class="px-3 py-1 bg-surface-container-lowest shadow-sm rounded font-label-caps text-label-caps text-clinic-teal transition-all">EN</button>
+<button class="px-3 py-1 rounded font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-all">AR</button>
+</div>
+</div>
+<!-- Completeness Tracker -->
+<div class="bg-primary-fixed/20 border border-primary-fixed-dim rounded-xl p-4 mb-6">
+<div class="flex justify-between items-center mb-2">
+<span class="font-body-md text-body-md font-semibold text-on-primary-fixed-variant">Profile Completeness</span>
+<span class="font-body-md text-body-md font-bold text-clinic-teal">85%</span>
+</div>
+<div class="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-clinic-teal w-[85%] rounded-full"></div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-3 flex items-start gap-1">
+<span class="material-symbols-outlined text-[16px] text-error mt-0.5">error</span>
+                            Add your accepted insurance providers to reach 100% and appear in more patient searches.
+                        </p>
+</div>
+<!-- Primary Actions -->
+<div class="space-y-3">
+<button class="w-full bg-clinic-teal text-on-primary py-2.5 rounded-lg font-body-md text-body-md font-semibold hover:bg-clinic-teal/90 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+                            Edit Profile Details
+                        </button>
+<div class="w-full border border-outline-variant py-3 px-4 rounded-lg flex items-center justify-between">
+<div>
+<div class="font-body-md text-body-md font-semibold">Public Directory Visibility</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Patients can find you in search</div>
+</div>
+<!-- Toggle Switch (Mock) -->
+<div class="w-10 h-6 bg-clinic-teal rounded-full relative cursor-pointer">
+<div class="w-4 h-4 bg-white rounded-full absolute right-1 top-1 shadow-sm"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Requirement Cards List -->
+<div class="flex-1 overflow-y-auto p-6 bg-surface">
+<h3 class="font-body-lg text-body-lg font-semibold mb-4 text-on-surface">Action Required</h3>
+<div class="space-y-3">
+<!-- Requirement Card -->
+<div class="bg-surface-container-lowest border border-requirement-border border-l-4 border-l-error rounded-lg p-4 shadow-sm">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-error mt-0.5">verified_user</span>
+<div>
+<h4 class="font-body-md text-body-md font-semibold">Verify Medical License</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 mb-3">Your license documentation expires in 14 days. Please upload current documents to remain visible.</p>
+<button class="font-label-caps text-label-caps text-error border border-error rounded px-3 py-1.5 hover:bg-error/10 transition-colors">UPLOAD NOW</button>
+</div>
+</div>
+</div>
+<!-- Suggestion Card -->
+<div class="bg-surface-container-lowest border border-outline-variant border-l-2 border-l-clinic-teal rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-clinic-teal mt-0.5">add_photo_alternate</span>
+<div>
+<h4 class="font-body-md text-body-md font-semibold">Add Clinic Photos</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Profiles with clinic photos receive 30% more appointment requests.</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant ml-auto">chevron_right</span>
+</div>
+</div>
+<!-- Suggestion Card -->
+<div class="bg-surface-container-lowest border border-outline-variant border-l-2 border-l-clinic-teal rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-clinic-teal mt-0.5">article</span>
+<div>
+<h4 class="font-body-md text-body-md font-semibold">Add Publications</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Link your recent medical journal articles to build trust.</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant ml-auto">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

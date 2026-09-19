@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Catalog &amp; Barcode Lookup - PharmaOps AI</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Style Guidance & Theme Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#dde3e8",
+                    "on-background": "#161c20",
+                    "sync-running": "#3f51b5",
+                    "on-secondary-fixed-variant": "#004f4f",
+                    "surface-container-low": "#eef4f9",
+                    "primary-container": "#24389c",
+                    "tertiary-container": "#38454b",
+                    "primary-fixed-dim": "#bac3ff",
+                    "on-error-container": "#93000a",
+                    "surface": "#f4faff",
+                    "confidence-low": "#ba1a1a",
+                    "on-primary": "#ffffff",
+                    "surface-border": "#ddeaf2",
+                    "on-tertiary-fixed-variant": "#3c494f",
+                    "inverse-primary": "#bac3ff",
+                    "tertiary": "#222f34",
+                    "on-secondary": "#ffffff",
+                    "on-primary-container": "#9dabff",
+                    "secondary-fixed-dim": "#84d4d3",
+                    "on-surface": "#161c20",
+                    "on-secondary-container": "#0b6e6e",
+                    "primary-fixed": "#dee0ff",
+                    "secondary-container": "#9deeed",
+                    "surface-dim": "#d5dbe0",
+                    "confidence-high": "#1b5e20",
+                    "tertiary-fixed-dim": "#bbc9d0",
+                    "surface-bright": "#f4faff",
+                    "ai-live": "#006a6a",
+                    "sync-fresh": "#1b5e20",
+                    "surface-container-high": "#e3e9ee",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed": "#101d23",
+                    "sync-stale": "#757684",
+                    "sync-failed": "#ba1a1a",
+                    "surface-tint": "#4355b9",
+                    "outline-variant": "#c5c5d4",
+                    "surface-container": "#e9eff4",
+                    "surface-container-lowest": "#ffffff",
+                    "inverse-surface": "#2b3135",
+                    "secondary": "#006a6a",
+                    "background": "#f4faff",
+                    "on-tertiary-container": "#a4b2b9",
+                    "on-error": "#ffffff",
+                    "outline": "#757684",
+                    "confidence-medium": "#e65100",
+                    "on-primary-fixed": "#00105b",
+                    "error-container": "#ffdad6",
+                    "surface-variant": "#dde3e8",
+                    "primary": "#011d86",
+                    "on-surface-variant": "#454652",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed": "#002020",
+                    "on-primary-fixed-variant": "#283ca0",
+                    "secondary-fixed": "#a0f0f0",
+                    "inverse-on-surface": "#ebf1f6",
+                    "ai-knowledge": "#4355b9",
+                    "tertiary-fixed": "#d7e5ec"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "base-unit": "4px",
+                    "gutter": "16px",
+                    "margin": "24px",
+                    "row-dense": "32px",
+                    "row-standard": "40px",
+                    "sidebar-width": "260px",
+                    "sidebar-collapsed": "64px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "title-sm": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "data-mono": ["JetBrains Mono"],
+                    "body-md": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                    "title-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                    "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                    "data-mono": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                    "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                    "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+            }
+          },
+        },
+      }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md flex h-full overflow-hidden">
+<!-- SideNavBar Component (Semantic Mapping: "Catalog" is active) -->
+<nav class="hidden md:flex flex-col h-full border-r border-surface-border py-gutter bg-surface-container-low docked left-0 w-sidebar-width shrink-0">
+<!-- Header -->
+<div class="px-gutter mb-margin">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container-high border border-surface-border">
+<img alt="Pharmacist Profile" class="object-cover w-full h-full" data-alt="A macro shot of a sleek, modern pharmacy robotic dispensing arm gently picking up a small white vial, bathed in clean, clinical lighting with subtle blue undertones, sharp focus, professional medical environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDk1RxowjHLqgn-gHWezTChVDGLVDTdrNMq_ZRJTi6DHYLguFclYpTCvHK3-JXDqW3fHlVu-ZLCndpFl5QVoX_mvw5MnNHidxMK3NTgS7i722tUBwOzScwSuIT1Vz5sCXzRgHPOAlGq50-wpyU7ve38BGrDuH9FkdHZRQuX42NF17L1npRFKpohq7TGj_SymoUwHPjapUpRMh13kYmZdwokojEQI2bCRSRPz-ONrLScRdqqbDDcV-z3"/>
+</div>
+<div>
+<h1 class="font-title-sm text-title-sm font-bold text-primary">PharmaOps AI</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Clinical Precision</p>
+</div>
+</div>
+<button class="mt-4 w-full bg-primary text-on-primary font-body-sm text-body-sm py-2 rounded-DEFAULT flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+                Quick Sync
+            </button>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto px-base-unit">
+<ul class="space-y-1">
+<!-- Workspace -->
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                        Workspace
+                    </a>
+</li>
+<!-- Catalog (ACTIVE) -->
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-primary font-semibold bg-surface-container-highest scale-[0.98] transition-transform font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">medication</span>
+                        Catalog
+                    </a>
+</li>
+<!-- POS -->
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined" data-icon="point_of_sale">point_of_sale</span>
+                        POS
+                    </a>
+</li>
+<!-- Inventory -->
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+                        Inventory
+                    </a>
+</li>
+<!-- Integrations -->
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+                        Integrations
+                    </a>
+</li>
+<!-- Assistant -->
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+                        Assistant
+                    </a>
+</li>
+</ul>
+</div>
+<!-- Footer Links -->
+<div class="px-base-unit mt-auto pt-gutter border-t border-surface-border">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                        Settings
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                        Support
+                    </a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
+<!-- TopNavBar Component -->
+<header class="bg-surface flex justify-between items-center w-full px-margin h-row-standard border-b border-surface-border shrink-0">
+<div class="flex items-center gap-margin flex-1">
+<span class="text-title-sm font-title-sm font-bold text-primary md:hidden">PharmaOps</span>
+<!-- Search Bar -->
+<div class="relative w-full max-w-2xl hidden md:flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant">barcode_scanner</span>
+<input class="w-full pl-10 pr-4 py-1.5 bg-surface-container-lowest border border-primary ring-2 ring-primary ring-opacity-20 rounded-DEFAULT font-data-mono text-data-mono text-on-background focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary focus:ring-offset-0 transition-all" placeholder="Scan barcode or search medication..." type="text" value="0300450539112"/>
+<!-- High Confidence Tag -->
+<div class="absolute right-3 flex items-center gap-1 bg-[#1b5e20] bg-opacity-10 text-confidence-high px-2 py-0.5 rounded-DEFAULT">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+<span class="font-data-mono text-data-mono text-[10px]">Exact Match</span>
+</div>
+</div>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-3 ml-auto">
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-low rounded-DEFAULT transition-colors">
+<span class="material-symbols-outlined">cloud_done</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-low rounded-DEFAULT transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Catalog Workspace -->
+<main class="flex-1 flex overflow-hidden p-margin gap-margin">
+<!-- Left Side: Data Grid -->
+<div class="flex-[2] flex flex-col bg-surface-container-lowest border border-surface-border rounded-lg overflow-hidden flex-shrink-0 min-w-[600px]">
+<!-- Table Header -->
+<div class="bg-surface-container-low px-4 py-2 border-b border-surface-border flex items-center justify-between sticky top-0 z-10">
+<h2 class="font-title-sm text-title-sm text-on-background">Master Catalog</h2>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Showing 1 result for '0300450539112'</span>
+</div>
+</div>
+<!-- Table Content -->
+<div class="flex-1 overflow-auto">
+<table class="w-full text-left whitespace-nowrap">
+<thead class="bg-surface-container-lowest sticky top-0 z-10 shadow-[0_1px_0_0_#ddeaf2]">
+<tr class="font-label-caps text-label-caps text-on-surface-variant">
+<th class="px-4 py-3 font-normal">Medication / Brand</th>
+<th class="px-4 py-3 font-normal">Generic Ingredients</th>
+<th class="px-4 py-3 text-right font-normal">Strength</th>
+<th class="px-4 py-3 font-normal">Form</th>
+<th class="px-4 py-3 text-right font-normal">Pack Size</th>
+<th class="px-4 py-3 font-normal">Status</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm">
+<!-- Active/Selected Row -->
+<tr class="bg-primary bg-opacity-5 border-l-2 border-primary cursor-pointer hover:bg-surface-container transition-colors">
+<td class="px-4 py-2 border-b border-surface-border">
+<div class="font-semibold text-primary">Lipitor</div>
+<div class="font-data-mono text-[10px] text-on-surface-variant">NDC: 0071-0155-23</div>
+</td>
+<td class="px-4 py-2 border-b border-surface-border text-on-surface-variant">Atorvastatin Calcium</td>
+<td class="px-4 py-2 border-b border-surface-border text-right font-data-mono text-data-mono">10mg</td>
+<td class="px-4 py-2 border-b border-surface-border">Tablet</td>
+<td class="px-4 py-2 border-b border-surface-border text-right font-data-mono text-data-mono">90</td>
+<td class="px-4 py-2 border-b border-surface-border">
+<span class="inline-flex items-center gap-1 text-sync-fresh">
+<span class="material-symbols-outlined text-[14px]">radio_button_checked</span>
+<span class="font-data-mono text-[10px]">Active</span>
+</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Right Side: Detail Panel -->
+<div class="flex-[1] flex flex-col gap-4 min-w-[320px] max-w-[400px]">
+<!-- Live Data Card (Secondary / Teal accent) -->
+<div class="bg-surface-container-lowest border border-surface-border border-l-4 border-l-secondary rounded-lg overflow-hidden flex flex-col shadow-[0_4px_12px_rgba(0,106,106,0.08)]">
+<div class="px-4 py-3 border-b border-surface-border bg-surface-bright flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-background mb-1">Lipitor 10mg</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Atorvastatin Calcium Tablet</p>
+</div>
+<button class="text-secondary hover:bg-secondary-container bg-opacity-20 p-1.5 rounded-DEFAULT transition-colors" title="Edit Master Record">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+</div>
+<div class="p-4 space-y-5 flex-1 overflow-y-auto">
+<!-- AI Insights Section -->
+<div class="bg-surface-container-low p-3 rounded-DEFAULT">
+<div class="flex items-center gap-2 mb-2 text-primary">
+<span class="material-symbols-outlined text-[16px]">psychology</span>
+<span class="font-label-caps text-label-caps font-bold">Catalog AI Insight</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                                Exact barcode match. High frequency dispensing item. Current inventory levels suggest a restock is required within 48 hours based on historical dispensing velocity.
+                            </p>
+</div>
+<!-- Data Points -->
+<div class="grid grid-cols-2 gap-4">
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1">Manufacturer</div>
+<div class="font-body-sm text-body-sm">Pfizer U.S. Pharmaceuticals Group</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1">DEA Schedule</div>
+<div class="font-body-sm text-body-sm">Rx Only (Not Scheduled)</div>
+</div>
+<div class="col-span-2">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1">Master Reference ID / NDC</div>
+<div class="flex items-center justify-between bg-surface p-2 rounded-DEFAULT border border-surface-border">
+<span class="font-data-mono text-data-mono tracking-wider">0071-0155-23</span>
+<button class="text-primary hover:bg-primary-fixed p-1 rounded transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+<span class="font-body-sm text-[11px]">Copy</span>
+</button>
+</div>
+</div>
+</div>
+<hr class="border-surface-border"/>
+<!-- Packaging Hierarchy -->
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-3">Packaging Conversions</div>
+<div class="space-y-2 font-data-mono text-data-mono text-sm">
+<div class="flex items-center justify-between p-2 rounded-DEFAULT bg-surface border border-surface-border">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">inventory_2</span>
+<span>1 Bottle (BT)</span>
+</div>
+<span class="text-on-surface-variant">=</span>
+<span class="font-bold">90 Tablets (TB)</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-DEFAULT bg-surface border border-surface-border">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">medication</span>
+<span>1 Tablet (TB)</span>
+</div>
+<span class="text-on-surface-variant">=</span>
+<span class="font-bold">Base Unit</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="px-4 py-3 border-t border-surface-border bg-surface-container-lowest flex gap-3">
+<button class="flex-1 bg-surface-container text-on-surface-variant font-title-sm text-title-sm py-2 rounded-DEFAULT hover:bg-surface-container-high transition-colors text-center border border-surface-border">
+                            View History
+                        </button>
+<button class="flex-1 bg-primary text-on-primary font-title-sm text-title-sm py-2 rounded-DEFAULT hover:bg-opacity-90 transition-colors text-center">
+                            Queue for Rx
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

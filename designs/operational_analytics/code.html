@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Health System Oversight - Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#091426",
+                    "tertiary": "#1e1200",
+                    "secondary": "#515f74",
+                    "tertiary-container": "#35260c",
+                    "on-secondary-fixed-variant": "#3a485c",
+                    "background": "#fbf8fa",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed": "#fadfb8",
+                    "inverse-primary": "#bcc7de",
+                    "on-primary-fixed": "#111c2d",
+                    "surface-container-highest": "#e4e2e3",
+                    "on-tertiary-fixed": "#271902",
+                    "on-secondary-fixed": "#0d1c2f",
+                    "surface-bright": "#fbf8fa",
+                    "on-tertiary-fixed-variant": "#564427",
+                    "secondary-fixed-dim": "#b9c7e0",
+                    "surface-container-high": "#eae7e9",
+                    "primary-container": "#1e293b",
+                    "surface-tint": "#545f73",
+                    "on-primary": "#ffffff",
+                    "surface-dim": "#dcd9db",
+                    "inverse-on-surface": "#f3f0f2",
+                    "outline": "#75777d",
+                    "surface-variant": "#e4e2e3",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#3c475a",
+                    "surface-container-lowest": "#ffffff",
+                    "outline-variant": "#c5c6cd",
+                    "primary-fixed": "#d8e3fb",
+                    "inverse-surface": "#303032",
+                    "tertiary-fixed-dim": "#ddc39d",
+                    "on-surface": "#1b1b1d",
+                    "surface-container": "#f0edef",
+                    "secondary-container": "#d5e3fd",
+                    "surface": "#fbf8fa",
+                    "on-surface-variant": "#45474c",
+                    "secondary-fixed": "#d5e3fd",
+                    "primary-fixed-dim": "#bcc7de",
+                    "surface-container-low": "#f5f3f4",
+                    "on-tertiary-container": "#a38c6a",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "on-secondary-container": "#57657b",
+                    "on-background": "#1b1b1d",
+                    "on-primary-container": "#8590a6",
+                    "on-error": "#ffffff",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "margin_lg": "24px",
+                    "sidebar_width": "260px",
+                    "stack_gap": "12px",
+                    "margin_md": "16px",
+                    "container_max_width": "1440px",
+                    "header_height": "64px",
+                    "margin_sm": "8px"
+            },
+            "fontFamily": {
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "code-md": [
+                            "jetbrainsMono"
+                    ],
+                    "headline-md": [
+                            "Inter"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "headline-sm": [
+                            "Inter"
+                    ],
+                    "headline-lg": [
+                            "Inter"
+                    ],
+                    "label-md": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "code-md": [
+                            "13px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-sm": [
+                            "18px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "30px",
+                            {
+                                    "lineHeight": "38px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-md": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        /* Custom scrollbar for data tables to maintain clean look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        .e-chart-placeholder {
+            background: repeating-linear-gradient(
+                45deg,
+                #f8fafc,
+                #f8fafc 10px,
+                #f1f5f9 10px,
+                #f1f5f9 20px
+            );
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex antialiased">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[260px] bg-surface border-r border-outline-variant flex flex-col py-margin_md z-20">
+<div class="px-margin_md mb-stack_gap">
+<h1 class="text-headline-sm font-headline-sm text-primary">Health Oversight</h1>
+<p class="text-label-md font-label-md text-on-surface-variant">Admin Console</p>
+</div>
+<div class="px-margin_md mb-margin_lg">
+<button class="w-full bg-primary-container text-on-primary h-9 rounded flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span class="font-label-md text-label-md">New Report</span>
+</button>
+</div>
+<ul class="flex-1 space-y-1 px-margin_sm">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-body-md text-body-md">Knowledge</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded bg-secondary-container text-on-secondary-container font-semibold cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="settings_applications">settings_applications</span>
+<span class="font-body-md text-body-md">Operations</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="health_and_safety">health_and_safety</span>
+<span class="font-body-md text-body-md">System Health</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto px-margin_sm border-t border-outline-variant pt-margin_md">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="font-body-md text-body-md">Support</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="ml-[260px] flex-1 flex flex-col min-h-screen relative w-[calc(100%-260px)]">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-header_height bg-surface border-b border-outline-variant flex items-center justify-between px-margin_lg z-10">
+<div class="flex items-center gap-6 h-full">
+<span class="text-headline-sm font-headline-sm font-bold text-primary">Health System Oversight</span>
+<nav class="hidden md:flex h-full items-center gap-6 ml-8">
+<a class="font-label-md text-label-md text-secondary hover:text-primary transition-colors h-full flex items-center border-b-2 border-transparent" href="#">Dashboard</a>
+<a class="font-label-md text-label-md text-primary border-b-2 border-primary pb-1 h-full flex items-center mt-[4px]" href="#">Analytics</a>
+<a class="font-label-md text-label-md text-secondary hover:text-primary transition-colors h-full flex items-center border-b-2 border-transparent" href="#">Reports</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-outline-variant text-[18px]">search</span>
+<input class="pl-8 pr-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded font-body-sm text-body-sm w-64 focus:border-primary-container focus:ring-2 focus:ring-surface-variant outline-none transition-all" placeholder="Search operational data..." type="text"/>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<button class="p-2 hover:bg-surface-container-low rounded transition-all"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button>
+<button class="p-2 hover:bg-surface-container-low rounded transition-all"><span class="material-symbols-outlined" data-icon="history">history</span></button>
+<button class="p-2 hover:bg-surface-container-low rounded transition-all"><span class="material-symbols-outlined" data-icon="help">help</span></button>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-variant border border-outline-variant overflow-hidden ml-2">
+<img alt="Administrator Profile" class="w-full h-full object-cover" data-alt="A professional headshot of an administrator in a clinical setting, sharp focus, neutral background, high resolution, soft lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAc70lDB-jFIgTsKuhVAuhHGHgGj6F7-5nWX_zDDGoT6WPE_3S48tNl6RjNErFQdBMBOh9D6xzhkCULGoUHhFN_nIneu3HMW0BkgwcADzq-8t2IaWKnuncRz2pxoP366d2rn2MJewKAl9jUpdKsSPjvt81DVPtqY4utbP0UsCdg9sXYwpOV5reKQOf2R4wEAkNQe1a8fKYOjY6-O8rnk-_tbtbhptoCKqAzoOEmvhgTS4cOomfF7otu"/>
+</div>
+</div>
+</header>
+<!-- Dashboard Canvas -->
+<main class="mt-header_height p-margin_lg flex-1 max-w-container_max_width mx-auto w-full">
+<!-- Filters & Context Bar -->
+<div class="flex flex-wrap items-center justify-between gap-4 mb-margin_lg bg-surface-container-lowest p-4 rounded border border-outline-variant shadow-sm">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[18px]">calendar_today</span>
+<select class="bg-transparent border-none text-body-md font-body-md font-semibold text-primary focus:ring-0 cursor-pointer py-1 pl-0 pr-6">
+<option>Last 30 Days (Oct 1 - Oct 30)</option>
+<option>Last Quarter</option>
+<option>Year to Date</option>
+</select>
+</div>
+<div class="h-4 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-2">
+<span class="text-body-sm font-body-sm text-outline">Granularity:</span>
+<div class="flex bg-surface-container-low rounded p-0.5 border border-outline-variant">
+<button class="px-3 py-1 rounded text-body-sm font-body-sm font-semibold bg-surface-container-lowest shadow-sm text-primary">Daily</button>
+<button class="px-3 py-1 rounded text-body-sm font-body-sm text-on-surface-variant hover:text-primary">Weekly</button>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative">
+<select class="appearance-none bg-surface-container-lowest border border-outline-variant rounded pl-3 pr-8 py-1.5 text-body-sm font-body-sm focus:border-primary-container focus:ring-2 focus:ring-surface-variant outline-none">
+<option>All Specialties</option>
+<option>Cardiology</option>
+<option>Neurology</option>
+<option>Oncology</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] pointer-events-none text-outline">arrow_drop_down</span>
+</div>
+<button class="bg-surface-container-lowest border border-outline-variant text-primary px-3 py-1.5 rounded text-body-sm font-label-md flex items-center gap-2 hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px]">download</span> Export
+                    </button>
+</div>
+</div>
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-stack_gap mb-margin_lg">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded p-4 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-4xl">groups</span>
+</div>
+<h3 class="text-body-sm font-body-sm text-on-surface-variant mb-1 uppercase tracking-wider">Total Encounters</h3>
+<div class="flex items-end gap-3 mb-2">
+<span class="text-headline-lg font-headline-lg text-primary">124,592</span>
+<span class="text-body-sm font-label-md text-[#166534] bg-[#dcfce7] px-1.5 py-0.5 rounded flex items-center gap-0.5 mb-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> 4.2%
+                        </span>
+</div>
+<p class="text-[10px] text-outline font-code-md">Target: 120,000 | Variance: +4,592</p>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded p-4 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-4xl">schedule</span>
+</div>
+<h3 class="text-body-sm font-body-sm text-on-surface-variant mb-1 uppercase tracking-wider">Avg Wait Time (ED)</h3>
+<div class="flex items-end gap-3 mb-2">
+<span class="text-headline-lg font-headline-lg text-primary">42m</span>
+<span class="text-body-sm font-label-md text-[#991b1b] bg-[#fee2e2] px-1.5 py-0.5 rounded flex items-center gap-0.5 mb-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> 12m
+                        </span>
+</div>
+<p class="text-[10px] text-outline font-code-md">Target: &lt; 35m | Status: Critical</p>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded p-4 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-4xl">medication</span>
+</div>
+<h3 class="text-body-sm font-body-sm text-on-surface-variant mb-1 uppercase tracking-wider">Prescription Vol.</h3>
+<div class="flex items-end gap-3 mb-2">
+<span class="text-headline-lg font-headline-lg text-primary">89.2k</span>
+<span class="text-body-sm font-label-md text-[#166534] bg-[#dcfce7] px-1.5 py-0.5 rounded flex items-center gap-0.5 mb-1">
+<span class="material-symbols-outlined text-[14px]">trending_flat</span> 0.5%
+                        </span>
+</div>
+<p class="text-[10px] text-outline font-code-md">Est. Cost: $4.2M | Stable</p>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded p-4 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-4xl">assignment_turned_in</span>
+</div>
+<h3 class="text-body-sm font-body-sm text-on-surface-variant mb-1 uppercase tracking-wider">Compliance Rate</h3>
+<div class="flex items-end gap-3 mb-2">
+<span class="text-headline-lg font-headline-lg text-primary">98.4%</span>
+<span class="text-body-sm font-label-md text-outline bg-surface-variant px-1.5 py-0.5 rounded flex items-center gap-0.5 mb-1">
+<span class="material-symbols-outlined text-[14px]">horizontal_rule</span> 0.0%
+                        </span>
+</div>
+<p class="text-[10px] text-outline font-code-md">Audit Level: Tier 1 Passed</p>
+</div>
+</div>
+<!-- Main Charts Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-margin_lg mb-margin_lg">
+<!-- Time Series Chart Area -->
+<div class="lg:col-span-2 flex flex-col gap-margin_md">
+<div class="bg-surface-container-lowest border border-outline-variant rounded p-4 flex flex-col h-[400px]">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h2 class="text-headline-sm font-headline-sm text-primary">Encounter Volume Trend</h2>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Daily aggregate across all primary facilities.</p>
+</div>
+<span class="text-[10px] font-code-md text-outline bg-surface px-2 py-1 rounded border border-outline-variant">AS_OF: 2023-10-31T08:00Z</span>
+</div>
+<!-- Pseudo EChart -->
+<div class="flex-1 e-chart-placeholder rounded relative border border-surface-variant flex items-end p-4 gap-2">
+<div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+<span class="font-headline-lg text-4xl rotate-[-20deg] text-primary">DE-IDENTIFIED AGGREGATE</span>
+</div>
+<!-- Mock Bars -->
+<div class="w-full flex items-end justify-between h-full gap-1">
+<div class="w-full bg-[#94a3b8] rounded-t opacity-70 hover:opacity-100 transition-opacity h-[40%]"></div>
+<div class="w-full bg-[#94a3b8] rounded-t opacity-70 hover:opacity-100 transition-opacity h-[45%]"></div>
+<div class="w-full bg-[#94a3b8] rounded-t opacity-70 hover:opacity-100 transition-opacity h-[35%]"></div>
+<div class="w-full bg-[#64748b] rounded-t opacity-70 hover:opacity-100 transition-opacity h-[60%]"></div>
+<div class="w-full bg-[#94a3b8] rounded-t opacity-70 hover:opacity-100 transition-opacity h-[50%]"></div>
+<div class="w-full bg-[#94a3b8] rounded-t opacity-70 hover:opacity-100 transition-opacity h-[55%]"></div>
+<div class="w-full bg-[#1e293b] rounded-t opacity-90 hover:opacity-100 transition-opacity h-[80%] relative">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] px-2 py-1 rounded hidden group-hover:block">Peak</div>
+</div>
+<div class="w-full bg-[#94a3b8] rounded-t opacity-70 hover:opacity-100 transition-opacity h-[65%]"></div>
+<div class="w-full bg-[#94a3b8] rounded-t opacity-70 hover:opacity-100 transition-opacity h-[40%]"></div>
+<div class="w-full bg-[#94a3b8] rounded-t opacity-70 hover:opacity-100 transition-opacity h-[30%]"></div>
+</div>
+<!-- Mock Axes Labels -->
+<div class="absolute bottom-1 left-4 text-[9px] text-outline font-code-md">Oct 1</div>
+<div class="absolute bottom-1 right-4 text-[9px] text-outline font-code-md">Oct 30</div>
+<div class="absolute top-4 left-2 text-[9px] text-outline font-code-md rotate-[-90deg] origin-left">Volume (k)</div>
+</div>
+</div>
+<!-- Accessible Data Table for Time Series -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+<div class="bg-slate-100 px-4 py-2 border-b border-outline-variant flex justify-between items-center">
+<span class="font-label-md text-label-md text-primary">Tabular Data: Encounter Volume</span>
+<button class="text-[12px] text-secondary hover:text-primary underline">Expand All</button>
+</div>
+<div class="max-h-[150px] overflow-y-auto">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-slate-100 shadow-[0_1px_0_#e2e8f0]">
+<tr>
+<th class="px-4 py-2 font-label-md text-label-md text-on-surface-variant w-1/3">Date</th>
+<th class="px-4 py-2 font-label-md text-label-md text-on-surface-variant text-right">Inpatient</th>
+<th class="px-4 py-2 font-label-md text-label-md text-on-surface-variant text-right">Outpatient</th>
+<th class="px-4 py-2 font-label-md text-label-md text-on-surface-variant text-right">Total</th>
+</tr>
+</thead>
+<tbody class="text-body-sm font-code-md">
+<tr class="border-b border-slate-200 hover:bg-slate-50">
+<td class="px-4 py-1.5">2023-10-30</td>
+<td class="px-4 py-1.5 text-right">1,240</td>
+<td class="px-4 py-1.5 text-right">4,502</td>
+<td class="px-4 py-1.5 text-right font-semibold">5,742</td>
+</tr>
+<tr class="border-b border-slate-200 hover:bg-slate-50">
+<td class="px-4 py-1.5">2023-10-29</td>
+<td class="px-4 py-1.5 text-right">1,310</td>
+<td class="px-4 py-1.5 text-right">3,890</td>
+<td class="px-4 py-1.5 text-right font-semibold">5,200</td>
+</tr>
+<tr class="border-b border-slate-200 hover:bg-slate-50">
+<td class="px-4 py-1.5">2023-10-28</td>
+<td class="px-4 py-1.5 text-right">1,285</td>
+<td class="px-4 py-1.5 text-right">4,105</td>
+<td class="px-4 py-1.5 text-right font-semibold">5,390</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Ranking Chart Area -->
+<div class="flex flex-col gap-margin_md">
+<div class="bg-surface-container-lowest border border-outline-variant rounded p-4 flex flex-col h-[400px]">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h2 class="text-headline-sm font-headline-sm text-primary">Top Medications</h2>
+<p class="text-body-sm font-body-sm text-on-surface-variant">By usage frequency (Rx count).</p>
+</div>
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary">more_vert</span>
+</div>
+<div class="flex-1 overflow-y-auto pr-2 space-y-4">
+<!-- Rank Item 1 -->
+<div>
+<div class="flex justify-between text-body-sm mb-1">
+<span class="font-semibold text-primary">Atorvastatin</span>
+<span class="font-code-md text-outline">12,450 Rx</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2">
+<div class="bg-primary-container h-2 rounded-full" style="width: 100%"></div>
+</div>
+</div>
+<!-- Rank Item 2 -->
+<div>
+<div class="flex justify-between text-body-sm mb-1">
+<span class="font-semibold text-primary">Lisinopril</span>
+<span class="font-code-md text-outline">10,820 Rx</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2">
+<div class="bg-primary-container h-2 rounded-full" style="width: 85%"></div>
+</div>
+</div>
+<!-- Rank Item 3 -->
+<div>
+<div class="flex justify-between text-body-sm mb-1">
+<span class="font-semibold text-primary">Metformin</span>
+<span class="font-code-md text-outline">9,105 Rx</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2">
+<div class="bg-[#515f74] h-2 rounded-full" style="width: 72%"></div>
+</div>
+</div>
+<!-- Rank Item 4 -->
+<div>
+<div class="flex justify-between text-body-sm mb-1">
+<span class="font-semibold text-primary">Amlodipine</span>
+<span class="font-code-md text-outline">8,400 Rx</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2">
+<div class="bg-[#515f74] h-2 rounded-full" style="width: 65%"></div>
+</div>
+</div>
+<!-- Rank Item 5 -->
+<div>
+<div class="flex justify-between text-body-sm mb-1">
+<span class="font-semibold text-primary">Levothyroxine</span>
+<span class="font-code-md text-outline">7,230 Rx</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2">
+<div class="bg-[#515f74] h-2 rounded-full" style="width: 58%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Accessible Data Table for Rankings -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden">
+<div class="bg-slate-100 px-4 py-2 border-b border-outline-variant flex justify-between items-center">
+<span class="font-label-md text-label-md text-primary">Tabular Data: Medications</span>
+</div>
+<div class="max-h-[150px] overflow-y-auto">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-slate-100 shadow-[0_1px_0_#e2e8f0]">
+<tr>
+<th class="px-4 py-2 font-label-md text-label-md text-on-surface-variant w-12">Rank</th>
+<th class="px-4 py-2 font-label-md text-label-md text-on-surface-variant">Medication</th>
+<th class="px-4 py-2 font-label-md text-label-md text-on-surface-variant text-right">Count</th>
+</tr>
+</thead>
+<tbody class="text-body-sm font-body-sm">
+<tr class="border-b border-slate-200 hover:bg-slate-50">
+<td class="px-4 py-1.5 font-code-md text-outline">1</td>
+<td class="px-4 py-1.5 font-semibold">Atorvastatin</td>
+<td class="px-4 py-1.5 text-right font-code-md">12,450</td>
+</tr>
+<tr class="border-b border-slate-200 hover:bg-slate-50">
+<td class="px-4 py-1.5 font-code-md text-outline">2</td>
+<td class="px-4 py-1.5 font-semibold">Lisinopril</td>
+<td class="px-4 py-1.5 text-right font-code-md">10,820</td>
+</tr>
+<tr class="border-b border-slate-200 hover:bg-slate-50">
+<td class="px-4 py-1.5 font-code-md text-outline">3</td>
+<td class="px-4 py-1.5 font-semibold">Metformin</td>
+<td class="px-4 py-1.5 text-right font-code-md">9,105</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

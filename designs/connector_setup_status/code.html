@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PharmaOps - Integrations Connector Setup</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#dde3e8",
+                        "on-background": "#161c20",
+                        "sync-running": "#3f51b5",
+                        "on-secondary-fixed-variant": "#004f4f",
+                        "surface-container-low": "#eef4f9",
+                        "primary-container": "#24389c",
+                        "tertiary-container": "#38454b",
+                        "primary-fixed-dim": "#bac3ff",
+                        "on-error-container": "#93000a",
+                        "surface": "#f4faff",
+                        "confidence-low": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "surface-border": "#ddeaf2",
+                        "on-tertiary-fixed-variant": "#3c494f",
+                        "inverse-primary": "#bac3ff",
+                        "tertiary": "#222f34",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#9dabff",
+                        "secondary-fixed-dim": "#84d4d3",
+                        "on-surface": "#161c20",
+                        "on-secondary-container": "#0b6e6e",
+                        "primary-fixed": "#dee0ff",
+                        "secondary-container": "#9deeed",
+                        "surface-dim": "#d5dbe0",
+                        "confidence-high": "#1b5e20",
+                        "tertiary-fixed-dim": "#bbc9d0",
+                        "surface-bright": "#f4faff",
+                        "ai-live": "#006a6a",
+                        "sync-fresh": "#1b5e20",
+                        "surface-container-high": "#e3e9ee",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#101d23",
+                        "sync-stale": "#757684",
+                        "sync-failed": "#ba1a1a",
+                        "surface-tint": "#4355b9",
+                        "outline-variant": "#c5c5d4",
+                        "surface-container": "#e9eff4",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2b3135",
+                        "secondary": "#006a6a",
+                        "background": "#f4faff",
+                        "on-tertiary-container": "#a4b2b9",
+                        "on-error": "#ffffff",
+                        "outline": "#757684",
+                        "confidence-medium": "#e65100",
+                        "on-primary-fixed": "#00105b",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#dde3e8",
+                        "primary": "#011d86",
+                        "on-surface-variant": "#454652",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#002020",
+                        "on-primary-fixed-variant": "#283ca0",
+                        "secondary-fixed": "#a0f0f0",
+                        "inverse-on-surface": "#ebf1f6",
+                        "ai-knowledge": "#4355b9",
+                        "tertiary-fixed": "#d7e5ec"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "base-unit": "4px",
+                        "gutter": "16px",
+                        "margin": "24px",
+                        "row-dense": "32px",
+                        "row-standard": "40px",
+                        "sidebar-width": "260px",
+                        "sidebar-collapsed": "64px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "title-sm": ["Inter", "sans-serif"],
+                        "label-caps": ["Inter", "sans-serif"],
+                        "data-mono": ["JetBrains Mono", "monospace"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "title-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "data-mono": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill-1 {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="docked left-0 h-screen w-sidebar-width bg-surface-container-low dark:bg-inverse-surface flex flex-col border-r border-surface-border dark:border-outline-variant py-gutter hidden md:flex shrink-0">
+<!-- Header -->
+<div class="px-margin mb-8 flex items-center space-x-3">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0 overflow-hidden">
+<img class="object-cover w-full h-full" data-alt="A macro shot of a sleek, glowing blue AI node in a futuristic clinical setting. The node pulses with light, suggesting data transfer, set against a pristine, white laboratory background with subtle medical motifs. Clinical and sterile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-gWqnTutAg_uFdNH0ZjxmD0Cg-Nhqm9nLLLOGfSJDbC5jqnrRd9CfFLIzWMFJ9H3BlYLy1baeuDFAcdv3nJ5MhzvYEFE31iH4cdfL5FJJ7Tw-RFSdHsn3zD05lT0yYiVNR--DbDL7-2whAlaXYCLcGsv8H_2iv66-En0P2_QsjQzEQLoibXOnkQUBzZYj-O4S7tLFQ7RDmAYmezJPcDykgV86rbR4nFD1AlBwxDV_EZpquRVb5239"/>
+</div>
+<div>
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary-fixed leading-none">PharmaOps AI</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Clinical Precision</p>
+</div>
+</div>
+<!-- CTA -->
+<div class="px-margin mb-6">
+<button class="w-full bg-primary text-on-primary font-title-sm text-title-sm py-2 rounded flex items-center justify-center space-x-2 hover:bg-surface-tint transition-colors">
+<span class="material-symbols-outlined icon-fill-1">sync</span>
+<span>Quick Sync</span>
+</button>
+</div>
+<!-- Navigation Links -->
+<ul class="flex-1 space-y-1 px-4">
+<li>
+<a class="flex items-center space-x-3 px-4 py-2 rounded hover:bg-surface-container dark:hover:bg-tertiary transition-colors text-on-surface-variant dark:text-outline-variant font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Workspace</span>
+</a>
+</li>
+<li>
+<a class="flex items-center space-x-3 px-4 py-2 rounded hover:bg-surface-container dark:hover:bg-tertiary transition-colors text-on-surface-variant dark:text-outline-variant font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">medication</span>
+<span>Catalog</span>
+</a>
+</li>
+<li>
+<a class="flex items-center space-x-3 px-4 py-2 rounded hover:bg-surface-container dark:hover:bg-tertiary transition-colors text-on-surface-variant dark:text-outline-variant font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">point_of_sale</span>
+<span>POS</span>
+</a>
+</li>
+<li>
+<a class="flex items-center space-x-3 px-4 py-2 rounded hover:bg-surface-container dark:hover:bg-tertiary transition-colors text-on-surface-variant dark:text-outline-variant font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span>Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center space-x-3 px-4 py-2 rounded text-primary dark:text-primary-fixed font-semibold bg-surface-container-highest dark:bg-tertiary-container font-label-caps text-label-caps Active: scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined icon-fill-1">hub</span>
+<span>Integrations</span>
+</a>
+</li>
+<li>
+<a class="flex items-center space-x-3 px-4 py-2 rounded hover:bg-surface-container dark:hover:bg-tertiary transition-colors text-on-surface-variant dark:text-outline-variant font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span>Assistant</span>
+</a>
+</li>
+</ul>
+<!-- Footer Links -->
+<ul class="space-y-1 px-4 mt-auto">
+<li>
+<a class="flex items-center space-x-3 px-4 py-2 rounded hover:bg-surface-container dark:hover:bg-tertiary transition-colors text-on-surface-variant dark:text-outline-variant font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center space-x-3 px-4 py-2 rounded hover:bg-surface-container dark:hover:bg-tertiary transition-colors text-on-surface-variant dark:text-outline-variant font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">help</span>
+<span>Support</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0">
+<!-- TopNavBar -->
+<header class="docked full-width top-0 bg-surface dark:bg-on-background flex justify-between items-center w-full px-margin h-row-standard border-b border-surface-border dark:border-outline-variant flat no shadows">
+<div class="flex items-center space-x-4">
+<div class="md:hidden">
+<h1 class="text-title-sm font-title-sm font-bold text-primary dark:text-primary-fixed">PharmaOps</h1>
+</div>
+<div class="hidden md:block">
+<nav class="flex space-x-6">
+<a class="text-on-surface-variant dark:text-outline hover:bg-surface-container-low dark:hover:bg-tertiary-container transition-colors py-2 px-1" href="#">Branch A</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">cloud_done</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 overflow-auto p-margin p-gutter bg-background">
+<div class="max-w-4xl mx-auto space-y-6">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Connector Setup</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Configure secure integrations (Owner Only).</p>
+</div>
+<div class="bg-surface-container-low px-3 py-1 rounded flex items-center space-x-2 border border-surface-border">
+<span class="w-2 h-2 rounded-full bg-sync-running animate-pulse"></span>
+<span class="font-data-mono text-data-mono text-sync-running">System Status: OK</span>
+</div>
+</div>
+<div class="bg-surface rounded-lg border border-surface-border shadow-sm overflow-hidden">
+<!-- Stepper Header -->
+<div class="bg-surface-container-low border-b border-surface-border p-gutter flex justify-between">
+<div class="flex flex-col items-center flex-1 relative">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-title-sm text-title-sm z-10 ring-4 ring-surface-container-low">1</div>
+<span class="font-label-caps text-label-caps mt-2 text-primary">Adapter</span>
+<div class="absolute top-4 left-1/2 w-full h-[2px] bg-primary z-0"></div>
+</div>
+<div class="flex flex-col items-center flex-1 relative">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-title-sm text-title-sm z-10 ring-4 ring-surface-container-low">2</div>
+<span class="font-label-caps text-label-caps mt-2 text-primary">Credentials</span>
+<div class="absolute top-4 left-1/2 w-full h-[2px] bg-surface-border z-0"></div>
+</div>
+<div class="flex flex-col items-center flex-1 relative">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-title-sm text-title-sm z-10 ring-4 ring-surface-container-low">3</div>
+<span class="font-label-caps text-label-caps mt-2 text-on-surface-variant">Probe</span>
+<div class="absolute top-4 left-1/2 w-full h-[2px] bg-surface-border z-0"></div>
+</div>
+<div class="flex flex-col items-center flex-1 relative">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-title-sm text-title-sm z-10 ring-4 ring-surface-container-low">4</div>
+<span class="font-label-caps text-label-caps mt-2 text-on-surface-variant">Dry Run</span>
+<div class="absolute top-4 left-1/2 w-full h-[2px] bg-surface-border z-0"></div>
+</div>
+<div class="flex flex-col items-center flex-1">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center font-title-sm text-title-sm z-10 ring-4 ring-surface-container-low">5</div>
+<span class="font-label-caps text-label-caps mt-2 text-on-surface-variant">Activate</span>
+</div>
+</div>
+<!-- Step Content: Adapter & Credentials -->
+<div class="p-margin space-y-8">
+<!-- Security Warning -->
+<div class="bg-error-container/20 border-l-4 border-error p-4 rounded-r">
+<div class="flex items-start space-x-3">
+<span class="material-symbols-outlined text-error mt-0.5">security</span>
+<div>
+<h4 class="font-title-sm text-title-sm text-on-surface">Zero-Trust Environment</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Raw records never enter the renderer. Secret values are hashed client-side and never displayed in plain text after submission.</p>
+</div>
+</div>
+</div>
+<!-- Adapter Selection -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="md:col-span-1">
+<h3 class="font-title-sm text-title-sm text-on-surface">Adapter Target</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Select the 3rd-party ERP or specialized clinical software to bridge.</p>
+</div>
+<div class="md:col-span-2">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1" for="adapter-select">Connector Protocol</label>
+<select class="block w-full border-surface-border bg-surface-container-lowest text-on-surface rounded-lg shadow-sm focus:border-primary focus:ring focus:ring-primary/20 focus:ring-opacity-50 font-body-md text-body-md h-row-standard px-3" id="adapter-select">
+<option>Odoo Connector v2.1 (Clinical Fork)</option>
+<option>Epic Systems FHIR Bridge</option>
+<option>SAP HealthCare Sync</option>
+</select>
+</div>
+</div>
+<hr class="border-surface-border"/>
+<!-- Credentials -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="md:col-span-1">
+<h3 class="font-title-sm text-title-sm text-on-surface">Credential Handoff</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Provide API access keys. These will be encrypted instantly.</p>
+</div>
+<div class="md:col-span-2 space-y-4">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1">Endpoint URL</label>
+<div class="flex">
+<span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-surface-border bg-surface-container-low text-on-surface-variant font-data-mono text-data-mono">
+                                            https://
+                                        </span>
+<input class="flex-1 block w-full border-surface-border rounded-none rounded-r-md bg-surface-container-lowest text-on-surface focus:border-primary focus:ring focus:ring-primary/20 h-row-standard px-3 font-data-mono text-data-mono" type="text" value="api.odoo.internal/v2/clinic"/>
+</div>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1">Auth Token / Secret</label>
+<div class="relative">
+<input class="block w-full border-surface-border bg-surface-container-low text-on-surface-variant rounded-lg h-row-standard px-3 font-data-mono text-data-mono cursor-not-allowed" disabled="" type="password" value="*************************"/>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-success text-confidence-high">lock</span>
+</div>
+</div>
+<p class="mt-1 font-body-sm text-body-sm text-on-surface-variant flex items-center">
+<span class="material-symbols-outlined text-[14px] mr-1">encrypted</span> Hashed and secured.
+                                    </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="bg-surface-container-low p-gutter border-t border-surface-border flex justify-end space-x-3">
+<button class="px-4 py-2 border border-surface-border rounded text-on-surface font-title-sm text-title-sm hover:bg-surface-container transition-colors">Back</button>
+<button class="px-6 py-2 bg-primary text-on-primary rounded font-title-sm text-title-sm hover:bg-surface-tint transition-colors flex items-center">
+<span>Execute Probe</span>
+<span class="material-symbols-outlined ml-2 text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

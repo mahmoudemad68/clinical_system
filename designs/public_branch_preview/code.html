@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PharmaOps - Public Branch Availability Preview</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#dde3e8",
+                        "on-background": "#161c20",
+                        "sync-running": "#3f51b5",
+                        "on-secondary-fixed-variant": "#004f4f",
+                        "surface-container-low": "#eef4f9",
+                        "primary-container": "#24389c",
+                        "tertiary-container": "#38454b",
+                        "primary-fixed-dim": "#bac3ff",
+                        "on-error-container": "#93000a",
+                        "surface": "#f4faff",
+                        "confidence-low": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "surface-border": "#ddeaf2",
+                        "on-tertiary-fixed-variant": "#3c494f",
+                        "inverse-primary": "#bac3ff",
+                        "tertiary": "#222f34",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#9dabff",
+                        "secondary-fixed-dim": "#84d4d3",
+                        "on-surface": "#161c20",
+                        "on-secondary-container": "#0b6e6e",
+                        "primary-fixed": "#dee0ff",
+                        "secondary-container": "#9deeed",
+                        "surface-dim": "#d5dbe0",
+                        "confidence-high": "#1b5e20",
+                        "tertiary-fixed-dim": "#bbc9d0",
+                        "surface-bright": "#f4faff",
+                        "ai-live": "#006a6a",
+                        "sync-fresh": "#1b5e20",
+                        "surface-container-high": "#e3e9ee",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#101d23",
+                        "sync-stale": "#757684",
+                        "sync-failed": "#ba1a1a",
+                        "surface-tint": "#4355b9",
+                        "outline-variant": "#c5c5d4",
+                        "surface-container": "#e9eff4",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2b3135",
+                        "secondary": "#006a6a",
+                        "background": "#f4faff",
+                        "on-tertiary-container": "#a4b2b9",
+                        "on-error": "#ffffff",
+                        "outline": "#757684",
+                        "confidence-medium": "#e65100",
+                        "on-primary-fixed": "#00105b",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#dde3e8",
+                        "primary": "#011d86",
+                        "on-surface-variant": "#454652",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#002020",
+                        "on-primary-fixed-variant": "#283ca0",
+                        "secondary-fixed": "#a0f0f0",
+                        "inverse-on-surface": "#ebf1f6",
+                        "ai-knowledge": "#4355b9",
+                        "tertiary-fixed": "#d7e5ec"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "base-unit": "4px",
+                        "gutter": "16px",
+                        "margin": "24px",
+                        "row-dense": "32px",
+                        "row-standard": "40px",
+                        "sidebar-width": "260px",
+                        "sidebar-collapsed": "64px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "data-mono": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "title-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "data-mono": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen flex overflow-hidden selection:bg-primary-fixed-dim selection:text-on-primary-fixed">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full border-r border-surface-border bg-surface-container-low docked left-0 w-sidebar-width py-gutter shrink-0">
+<div class="px-margin mb-8">
+<h1 class="font-display-lg text-display-lg text-primary tracking-tight">PharmaOps AI</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant mt-1">Clinical Precision</p>
+</div>
+<div class="flex flex-col gap-1 px-4 flex-1">
+<a class="flex items-center gap-3 px-4 h-row-standard rounded hover:bg-surface-container transition-colors text-on-surface-variant font-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+                Workspace
+            </a>
+<a class="flex items-center gap-3 px-4 h-row-standard rounded hover:bg-surface-container transition-colors text-primary font-semibold bg-surface-container-highest scale-[0.98] transition-transform font-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">medication</span>
+                Catalog
+            </a>
+<a class="flex items-center gap-3 px-4 h-row-standard rounded hover:bg-surface-container transition-colors text-on-surface-variant font-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">point_of_sale</span>
+                POS
+            </a>
+<a class="flex items-center gap-3 px-4 h-row-standard rounded hover:bg-surface-container transition-colors text-on-surface-variant font-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">inventory_2</span>
+                Inventory
+            </a>
+<a class="flex items-center gap-3 px-4 h-row-standard rounded hover:bg-surface-container transition-colors text-on-surface-variant font-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">hub</span>
+                Integrations
+            </a>
+<a class="flex items-center gap-3 px-4 h-row-standard rounded hover:bg-surface-container transition-colors text-on-surface-variant font-body-md" href="#">
+<span class="material-symbols-outlined text-[20px]">smart_toy</span>
+                Assistant
+            </a>
+</div>
+<div class="px-4 mt-auto">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary h-row-standard rounded font-title-sm text-title-sm hover:opacity-90 transition-opacity mb-4 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+                Quick Sync
+            </button>
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 h-row-dense rounded hover:bg-surface-container transition-colors text-on-surface-variant font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+                    Settings
+                </a>
+<a class="flex items-center gap-3 px-4 h-row-dense rounded hover:bg-surface-container transition-colors text-on-surface-variant font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]">help</span>
+                    Support
+                </a>
+</div>
+<div class="mt-6 flex items-center gap-3 px-4">
+<img class="w-8 h-8 rounded-full bg-surface-variant object-cover border border-surface-border" data-alt="A small, professional avatar placeholder image for a pharmacist profile. Clean, light background, minimalist style. Corporate modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGww5ROlnY6g3ZLo2ykancAioEW4S227wSN7gzPQN2jAsUJs4dRwdtJ_VCrPL2MBuPGuPUORn3D_VTtJlT6_4U0KFxSPXOsS-lBgMOv0XqCMq-Zpgh7cGfnSWfVnj-V7Zeo4w3n_lDnhku9zYXEzmBqoyMq2XaUIMt1353fRH8jSEwW935urnPOCkB3Ht2kcNzeFCj8jXY9Isv8nyQp8Zzy23yGKkOisdoVz60aQgeQYiGutGlbnQQ"/>
+<span class="font-body-sm text-body-sm text-on-surface">Pharmacist Profile</span>
+</div>
+</div>
+</nav>
+<div class="flex-1 flex flex-col min-w-0 bg-background">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-margin h-row-standard docked full-width top-0 bg-surface border-b border-surface-border shrink-0 z-10">
+<div class="flex items-center gap-4">
+<span class="md:hidden font-display-lg text-display-lg text-primary tracking-tight">PharmaOps</span>
+<div class="hidden md:flex items-center gap-6 h-full">
+<a class="h-full flex items-center text-primary font-bold border-b-2 border-primary opacity-80 transition-all duration-150 font-title-sm text-title-sm" href="#">Branch A</a>
+</div>
+</div>
+<div class="flex-1 max-w-md mx-6 hidden md:flex items-center bg-surface-container-low rounded px-3 h-row-dense border border-surface-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<span class="material-symbols-outlined text-on-surface-variant mr-2 text-[18px]">search</span>
+<input class="w-full bg-transparent border-none p-0 focus:ring-0 text-body-sm font-body-sm text-on-surface placeholder:text-on-surface-variant" placeholder="Search branch records..." type="text"/>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[20px]">cloud_done</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[20px]">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-auto p-margin">
+<div class="max-w-7xl mx-auto h-full flex flex-col gap-6">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-background">Public Branch Availability Preview</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Live representation of patient-facing catalog data.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded font-title-sm text-title-sm border border-secondary text-secondary hover:bg-surface-container-low transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">history</span>
+                             Revert
+                         </button>
+<button class="px-4 py-2 rounded font-title-sm text-title-sm bg-primary text-on-primary hover:opacity-90 transition-opacity shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">publish</span>
+                             Publish Updates
+                         </button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full min-h-0">
+<!-- Left: Patient-Facing Preview (Clinical & Clean) -->
+<div class="lg:col-span-8 flex flex-col bg-surface-container-lowest rounded-xl border border-surface-border shadow-sm overflow-hidden h-full">
+<div class="bg-surface-container-low border-b border-surface-border px-6 py-4 flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-[24px]">visibility</span>
+<h3 class="font-title-sm text-title-sm text-on-background">Patient Portal View</h3>
+</div>
+<div class="p-8 flex-1 overflow-auto bg-white flex flex-col items-center justify-center">
+<!-- Mock Mobile Device Frame -->
+<div class="w-full max-w-sm rounded-[2rem] border-[8px] border-surface-container-low bg-white shadow-xl overflow-hidden flex flex-col h-[600px] relative">
+<!-- Top Bar -->
+<div class="bg-primary text-on-primary px-4 py-6 text-center">
+<h4 class="font-title-sm text-title-sm">City Center Pharmacy</h4>
+<p class="font-body-sm text-body-sm opacity-80 mt-1">123 Health Ave, Suite 100</p>
+</div>
+<div class="p-6 flex-1 flex flex-col gap-6 overflow-y-auto">
+<!-- Status -->
+<div class="flex items-center gap-3 bg-surface-container-low p-4 rounded-lg border border-surface-border">
+<div class="w-3 h-3 rounded-full bg-sync-fresh"></div>
+<div>
+<p class="font-title-sm text-title-sm text-on-surface">Open Now</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Closes at 9:00 PM</p>
+</div>
+</div>
+<!-- Services -->
+<div>
+<h5 class="font-label-caps text-label-caps text-on-surface-variant mb-3 uppercase tracking-wider">Services</h5>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 rounded-full bg-surface text-primary border border-primary-fixed text-body-sm font-body-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">local_pharmacy</span>
+                                                Available for Pickup
+                                            </span>
+<span class="px-3 py-1 rounded-full bg-surface text-primary border border-primary-fixed text-body-sm font-body-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">vaccines</span>
+                                                Vaccinations
+                                            </span>
+</div>
+</div>
+<!-- Payment -->
+<div>
+<h5 class="font-label-caps text-label-caps text-on-surface-variant mb-3 uppercase tracking-wider">Accepted Payment</h5>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<span class="material-symbols-outlined text-[28px]">credit_card</span>
+<span class="material-symbols-outlined text-[28px]">payments</span>
+<span class="material-symbols-outlined text-[28px]">account_balance_wallet</span>
+</div>
+</div>
+<!-- Map Placeholder -->
+<div class="mt-auto h-32 bg-surface-container rounded-lg border border-surface-border flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A stylized map showing a location pin for a pharmacy in a city center. Clean, light mode map aesthetic with subtle indigo routing lines." data-location="New York" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaBbQseK1pIeA6lJVb76sK1foxZSJ3mbFknDzvN9ibtXeXBMhmlBouG9YfJt52NpjOXZbIwXxDaB9YZku0jhqonDBr45MoPEmoItpe_y0bNNxMSYwltQ79eirsVuTS5ir3PFFNMWTs-rK8G7_7sqX8bXFYIS-uPJSQlqkaD_h_mgA-kj-Kag5__cW5_mcTuFyqclV30rdiSzH7iQWpQA-_ZihtWyzpV9maXG6v89jOJO4mubMe3B1l"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: Pharmacy-Only Metadata (Dense & Technical) -->
+<div class="lg:col-span-4 flex flex-col gap-4 h-full">
+<!-- Sync Status Panel -->
+<div class="bg-surface-container-lowest rounded-lg border-l-[3px] border-l-secondary border border-surface-border shadow-sm p-5">
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-title-sm text-title-sm text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">sync</span>
+                                    Catalog Synchronization
+                                </h3>
+<span class="px-2 py-1 bg-surface text-sync-fresh rounded font-data-mono text-data-mono flex items-center gap-1 border border-surface-border">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                    Fresh
+                                </span>
+</div>
+<div class="space-y-3 font-data-mono text-data-mono">
+<div class="flex justify-between border-b border-surface-border pb-2">
+<span class="text-on-surface-variant">Last Sync</span>
+<span class="text-on-surface text-right">2m ago (14:32:01)</span>
+</div>
+<div class="flex justify-between border-b border-surface-border pb-2">
+<span class="text-on-surface-variant">Upstream API</span>
+<span class="text-on-surface text-right">v2.branch_catalog.live</span>
+</div>
+<div class="flex justify-between border-b border-surface-border pb-2">
+<span class="text-on-surface-variant">Latency</span>
+<span class="text-on-surface text-right">42ms</span>
+</div>
+<div class="flex justify-between pt-1">
+<span class="text-on-surface-variant">Items Synced</span>
+<span class="text-on-surface text-right">14,208</span>
+</div>
+</div>
+</div>
+<!-- Language & Localization -->
+<div class="bg-surface-container-lowest rounded-lg border-l-[3px] border-l-primary border border-surface-border shadow-sm p-5 flex-1">
+<h3 class="font-title-sm text-title-sm text-on-background flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary text-[20px]">language</span>
+                                Localization Rules
+                            </h3>
+<div class="space-y-4">
+<div>
+<label class="font-label-caps text-label-caps text-on-surface-variant block mb-2 uppercase">Default Language</label>
+<div class="flex bg-surface-container-low rounded border border-surface-border overflow-hidden">
+<button class="flex-1 py-2 font-body-sm text-body-sm font-semibold bg-white text-primary border-r border-surface-border shadow-sm">English</button>
+<button class="flex-1 py-2 font-body-sm text-body-sm text-on-surface-variant hover:bg-surface-variant transition-colors">Arabic</button>
+</div>
+</div>
+<div>
+<label class="font-label-caps text-label-caps text-on-surface-variant block mb-2 uppercase">Terminology Mapping Confidence</label>
+<div class="flex items-center gap-2 mb-1">
+<div class="flex-1 h-2 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-confidence-high w-[94%]"></div>
+</div>
+<span class="font-data-mono text-data-mono text-confidence-high">94%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">AI has auto-mapped generic terms to clinical standards for public display.</p>
+</div>
+<div class="pt-4 mt-auto">
+<a class="flex items-center gap-2 font-title-sm text-title-sm text-primary hover:underline" href="#">
+<span class="material-symbols-outlined text-[18px]">settings_suggest</span>
+                                        Manage Authoritative Settings
+                                    </a>
+</div>
+</div>
+</div>
+<!-- Safety Override -->
+<div class="bg-error-container rounded-lg border border-error shadow-sm p-4 flex gap-3 items-start">
+<span class="material-symbols-outlined text-error text-[20px] mt-0.5">security</span>
+<div>
+<h4 class="font-title-sm text-title-sm text-on-error-container">Safety Protocol Active</h4>
+<p class="font-body-sm text-body-sm text-on-error-container opacity-90 mt-1">Internal quantities, wholesale costs, and supplier data are strictly filtered from this view layer.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

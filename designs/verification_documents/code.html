@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Verification Documents Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#1a1c1c",
+                        "primary-fixed": "#93f2f2",
+                        "surface-dim": "#dadada",
+                        "tertiary-fixed-dim": "#cac5cc",
+                        "on-primary-fixed": "#002020",
+                        "outline": "#6e7979",
+                        "primary-container": "#008080",
+                        "primary": "#006565",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-surface": "#1a1c1c",
+                        "surface-container-highest": "#e2e2e2",
+                        "on-primary-container": "#e3fffe",
+                        "primary-fixed-dim": "#76d6d5",
+                        "surface-container": "#eeeeee",
+                        "outline-variant": "#bdc9c8",
+                        "surface-container-high": "#e8e8e8",
+                        "tertiary-container": "#757177",
+                        "surface-tint": "#006a6a",
+                        "surface-container-lowest": "#ffffff",
+                        "clinic-teal": "#008080",
+                        "on-secondary-container": "#4c3386",
+                        "background": "#f9f9f9",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#3e4949",
+                        "requirement-border": "#cbc4d2",
+                        "tertiary-fixed": "#e6e1e8",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f9f9f9",
+                        "surface-bright": "#f9f9f9",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "inverse-primary": "#76d6d5",
+                        "surface-container-low": "#f3f3f3",
+                        "inverse-on-surface": "#f1f1f1",
+                        "on-secondary-fixed": "#22005c",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "split-divider": "#ece6ee",
+                        "tertiary": "#5c595f",
+                        "surface-variant": "#e2e2e2",
+                        "secondary-fixed": "#e9ddff",
+                        "on-tertiary-fixed-variant": "#48464b",
+                        "inverse-surface": "#2f3131",
+                        "secondary": "#6750a4",
+                        "secondary-container": "#bca2fd",
+                        "clinical-bg": "#fdf7ff",
+                        "on-tertiary-fixed": "#1d1b20",
+                        "on-tertiary-container": "#fdf7fe"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "preview-pane-min": "400px",
+                        "unit": "4px",
+                        "margin": "32px",
+                        "sidebar-width": "260px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "data-mono": ["jetbrainsMono"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "data-mono": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background h-full font-body-md text-body-md flex flex-col items-center antialiased">
+<div class="w-full max-w-[1440px] min-h-screen bg-background relative pb-[100px] flex flex-col">
+<!-- Minimal Header for Onboarding -->
+<header class="h-16 px-gutter flex justify-between items-center border-b border-split-divider bg-surface-bright shrink-0">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md text-on-surface">Doctor Workspace</span>
+<span class="text-outline-variant">|</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Onboarding</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant">STEP 2 OF 4</span>
+</div>
+</header>
+<!-- Stepper -->
+<div class="w-full bg-surface-container-lowest border-b border-split-divider py-4 px-gutter flex justify-center shrink-0">
+<div class="flex items-center gap-8 max-w-2xl w-full">
+<!-- Step 1 Complete -->
+<div class="flex items-center gap-2 flex-1">
+<div class="w-6 h-6 rounded-full bg-clinic-teal text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface">PROFILE</span>
+<div class="h-[1px] bg-clinic-teal flex-1"></div>
+</div>
+<!-- Step 2 Active -->
+<div class="flex items-center gap-2 flex-1">
+<div class="w-6 h-6 rounded-full border-2 border-clinic-teal bg-surface-container-lowest text-clinic-teal flex items-center justify-center font-label-caps text-label-caps">2</div>
+<span class="font-label-caps text-label-caps text-clinic-teal">DOCUMENTS</span>
+<div class="h-[1px] bg-split-divider flex-1"></div>
+</div>
+<!-- Step 3 Inactive -->
+<div class="flex items-center gap-2 flex-1">
+<div class="w-6 h-6 rounded-full border border-outline-variant bg-surface-container-lowest text-outline flex items-center justify-center font-label-caps text-label-caps">3</div>
+<span class="font-label-caps text-label-caps text-outline">CLINIC</span>
+<div class="h-[1px] bg-split-divider flex-1"></div>
+</div>
+<!-- Step 4 Inactive -->
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full border border-outline-variant bg-surface-container-lowest text-outline flex items-center justify-center font-label-caps text-label-caps">4</div>
+<span class="font-label-caps text-label-caps text-outline">REVIEW</span>
+</div>
+</div>
+</div>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-4xl mx-auto px-gutter py-12 flex flex-col gap-8">
+<div class="flex flex-col gap-2">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Verification Documents</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Please provide the required clinical documentation to verify your credentials. These are necessary to finalize your workspace setup.</p>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Requirement Card: License Certificate (Missing/Required) -->
+<div class="bg-surface-container-lowest border border-outline-variant border-l-2 border-l-error rounded p-4 flex items-start gap-4">
+<div class="bg-error-container text-on-error-container p-2 rounded">
+<span class="material-symbols-outlined">assignment_late</span>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-[16px] leading-[24px] text-on-surface">License Certificate</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Valid state or national medical license.</p>
+</div>
+<span class="font-label-caps text-label-caps text-error bg-error-container px-2 py-1 rounded">REQUIRED</span>
+</div>
+<div class="mt-4 flex items-center gap-2">
+<button class="bg-clinic-teal text-on-primary px-4 py-2 rounded font-label-caps text-label-caps hover:bg-primary transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">upload_file</span>
+                                CHOOSE FILE
+                            </button>
+<span class="font-body-sm text-body-sm text-outline">PDF, JPG, PNG up to 10MB</span>
+</div>
+</div>
+</div>
+<!-- Requirement Card: National ID (Uploaded/Complete) -->
+<div class="bg-surface-container-lowest border border-outline-variant border-l-2 border-l-clinic-teal rounded p-4 flex items-start gap-4">
+<div class="bg-primary-container/10 text-clinic-teal p-2 rounded">
+<span class="material-symbols-outlined">badge</span>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-[16px] leading-[24px] text-on-surface">National ID</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Government-issued photo identification.</p>
+</div>
+<span class="font-label-caps text-label-caps text-clinic-teal bg-primary-container/10 px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                UPLOADED
+                            </span>
+</div>
+<div class="mt-4 flex items-center gap-4 bg-surface-container-low p-3 rounded border border-split-divider">
+<span class="material-symbols-outlined text-outline">description</span>
+<div class="flex-1">
+<p class="font-body-sm text-body-sm font-semibold text-on-surface">national_id_front.jpg</p>
+<p class="font-data-mono text-data-mono text-outline">1.2 MB</p>
+</div>
+<div class="flex gap-2">
+<button class="text-clinic-teal font-label-caps text-label-caps hover:text-primary px-2 py-1">REPLACE</button>
+<button class="text-error font-label-caps text-label-caps hover:text-on-error-container px-2 py-1">REMOVE</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Requirement Card: Specialty Certification (Scanning/Progress) -->
+<div class="bg-surface-container-lowest border border-outline-variant border-l-2 border-l-clinic-teal rounded p-4 flex items-start gap-4">
+<div class="bg-surface-container text-on-surface-variant p-2 rounded">
+<span class="material-symbols-outlined">school</span>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-[16px] leading-[24px] text-on-surface">Specialty Certification</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Board certification in your primary specialty.</p>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant bg-surface-container px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] animate-spin">sync</span>
+                                SCANNING
+                            </span>
+</div>
+<div class="mt-4 flex flex-col gap-2 bg-surface-container-low p-3 rounded border border-split-divider">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-outline">description</span>
+<div class="flex-1">
+<p class="font-body-sm text-body-sm font-semibold text-on-surface">board_cert_2023.pdf</p>
+<p class="font-data-mono text-data-mono text-outline">Scanning for clarity and validity...</p>
+</div>
+</div>
+<!-- Progress Bar -->
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 mt-2 overflow-hidden">
+<div class="bg-clinic-teal h-1.5 rounded-full" style="width: 65%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Action Bar (Footer) -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-split-divider p-4 px-gutter flex justify-between items-center z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Progress summary</span>
+<span class="font-body-md text-body-md font-semibold text-on-surface">1 of 3 required documents uploaded</span>
+</div>
+<div class="flex gap-4">
+<button class="px-6 py-2 border border-outline-variant text-on-surface font-label-caps text-label-caps rounded hover:bg-surface-container-low transition-colors">BACK</button>
+<button class="px-6 py-2 bg-surface-container-highest text-outline font-label-caps text-label-caps rounded cursor-not-allowed flex items-center gap-2">
+                    CONTINUE
+                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

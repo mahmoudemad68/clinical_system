@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-background dark:bg-background" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Multi-branch Overview - PharmaOps</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "background": "#f4faff",
+                      "status-error": "#ba1a1a",
+                      "on-error": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-container": "#cacfff",
+                      "on-secondary-fixed-variant": "#004f4f",
+                      "on-primary-fixed": "#00105c",
+                      "surface-container": "#e9eff4",
+                      "secondary": "#006a6a",
+                      "primary-fixed-dim": "#bac3ff",
+                      "on-surface": "#161c20",
+                      "on-surface-variant": "#454652",
+                      "surface-variant": "#dde3e8",
+                      "tertiary-container": "#505c63",
+                      "inverse-surface": "#2b3135",
+                      "inverse-primary": "#bac3ff",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed": "#93f2f2",
+                      "surface-border": "#ddeaf2",
+                      "on-background": "#161c20",
+                      "surface-tint": "#4355b9",
+                      "on-secondary-fixed": "#002020",
+                      "secondary-fixed-dim": "#76d6d5",
+                      "on-secondary-container": "#006e6e",
+                      "tertiary-fixed": "#d7e4ed",
+                      "surface": "#f4faff",
+                      "surface-dim": "#d5dbe0",
+                      "on-primary-fixed-variant": "#293ca0",
+                      "on-error-container": "#93000a",
+                      "primary": "#24389c",
+                      "status-success": "#1b5e20",
+                      "on-tertiary-fixed-variant": "#3c484f",
+                      "on-primary": "#ffffff",
+                      "secondary-container": "#90efef",
+                      "primary-fixed": "#dee0ff",
+                      "status-warning": "#e65100",
+                      "surface-container-high": "#e3e9ee",
+                      "on-tertiary-fixed": "#111d23",
+                      "data-fill": "#e9f6fd",
+                      "error": "#ba1a1a",
+                      "outline-variant": "#c5c5d4",
+                      "surface-container-highest": "#dde3e8",
+                      "surface-bright": "#f4faff",
+                      "tertiary-fixed-dim": "#bcc8d1",
+                      "error-container": "#ffdad6",
+                      "outline": "#757684",
+                      "tertiary": "#38454b",
+                      "inverse-on-surface": "#ebf1f6",
+                      "on-tertiary-container": "#c7d4dc",
+                      "surface-container-low": "#eef4f9",
+                      "primary-container": "#3f51b5",
+                      "on-tertiary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-desktop": "24px",
+                      "row-dense": "32px",
+                      "sidebar-collapsed": "64px",
+                      "row-standard": "40px",
+                      "gutter": "16px",
+                      "sidebar-width": "260px",
+                      "unit": "4px"
+              },
+              "fontFamily": {
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "title-sm": [
+                              "Inter"
+                      ],
+                      "data-mono": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "title-sm": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "data-mono": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+</head>
+<body class="flex flex-col h-full overflow-hidden text-on-surface font-body-sm selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<nav class="flex justify-between items-center w-full px-margin-desktop h-14 z-50 bg-surface dark:bg-surface-dim border-b border-surface-border dark:border-outline-variant flat no shadows shrink-0">
+<div class="flex items-center gap-8 h-full">
+<div class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">
+                PharmaOps
+            </div>
+<!-- Search Bar on Left -->
+<div class="hidden md:flex relative items-center w-64 h-8 bg-surface-container-low rounded border border-surface-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant ml-2">search</span>
+<input class="w-full h-full bg-transparent border-none focus:ring-0 text-body-sm font-body-sm px-2 text-on-surface placeholder:text-on-surface-variant/70" placeholder="Search organization..." type="text"/>
+</div>
+<div class="hidden md:flex h-full gap-1 ml-4">
+<a class="h-full flex items-center px-4 text-primary dark:text-primary-fixed-dim font-bold border-b-2 border-primary font-body-md text-body-md" href="#">
+                    Organization
+                </a>
+<a class="h-full flex items-center px-4 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-highest transition-colors active:opacity-80 font-body-md text-body-md" href="#">
+                    Main Branch
+                </a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors active:opacity-80">
+<span class="material-symbols-outlined" data-weight="fill">settings</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors active:opacity-80">
+<span class="material-symbols-outlined">help</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors active:opacity-80 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-status-error rounded-full ring-2 ring-surface"></span>
+</button>
+</div>
+<div class="h-6 w-px bg-surface-border mx-1"></div>
+<div class="flex gap-2">
+<button class="px-4 py-1.5 border border-primary text-primary font-body-md text-body-md rounded hover:bg-primary-container/10 transition-colors">
+                    ONLINE
+                </button>
+<button class="px-4 py-1.5 bg-primary text-on-primary font-body-md text-body-md rounded hover:bg-primary/90 transition-colors shadow-sm">
+                    NATIVE
+                </button>
+</div>
+<div class="h-8 w-8 rounded-full bg-surface-container-highest border border-surface-border overflow-hidden ml-2 cursor-pointer">
+<img alt="Pharmacist Profile" class="w-full h-full object-cover" data-alt="A highly professional headshot of a pharmacist or medical administrator in a bright, modern clinical setting. White coat, neutral expression, crisp lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIRVJ_A2iIrAIXraXbWG-RXai8BKtnolEcuQX969znA3raxNak2hhnCe2F5fOKO84OpZ8VkaO9vx0J8c8s5y-JxZg6At-Jpa-ZrHTuLVqQjhrK_q4zCFZtphKSrkZVmJ-OXw_FG_fmbJonl_dmDOydFi0ijnquqYrdSxR28GC73avjGxbvHgwilv01HJyjdIwdgukbqJO_Hfe8Y-TMqmzbfOzFlhR17povv0En_NN8_LjzPh1mpWLX"/>
+</div>
+</div>
+</nav>
+<!-- Main Layout Content -->
+<div class="flex flex-1 overflow-hidden h-full">
+<!-- Sidebar Placeholder for Layout Context (Hidden on this view or assumed collapsed/absent for pure dashboard) -->
+<!-- Content Canvas -->
+<main class="flex-1 overflow-y-auto bg-background p-margin-desktop space-y-6">
+<!-- Header Section -->
+<header class="flex justify-between items-end pb-4 border-b border-surface-border">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface">Organization Overview</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Multi-branch aggregate metrics and operational status.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-3 py-1.5 bg-surface-container text-on-surface font-body-sm text-body-sm rounded border border-surface-border hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                        Export Report
+                    </button>
+<div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low border border-surface-border rounded">
+<span class="w-2 h-2 rounded-full bg-status-success"></span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">System: Optimal</span>
+</div>
+</div>
+</header>
+<!-- Aggregate Metric Cards (Bento style) -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<!-- Total Branches -->
+<div class="bg-surface-container-lowest p-5 rounded-lg border border-surface-border shadow-sm flex flex-col justify-between">
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Total Branches</h3>
+<div class="p-1.5 bg-primary-container/20 rounded text-primary">
+<span class="material-symbols-outlined text-[20px]">store</span>
+</div>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-display-lg text-display-lg text-on-surface">12</span>
+<span class="font-body-sm text-body-sm text-status-success flex items-center"><span class="material-symbols-outlined text-[14px]">arrow_upward</span> Active</span>
+</div>
+</div>
+<!-- Stock Alerts -->
+<div class="bg-surface-container-lowest p-5 rounded-lg border border-surface-border shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div class="absolute right-0 bottom-0 w-24 h-24 bg-status-error/5 rounded-tl-full -z-0"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Critical Stock Alerts</h3>
+<div class="p-1.5 bg-error-container/50 rounded text-status-error">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+</div>
+</div>
+<div class="flex items-baseline gap-2 relative z-10">
+<span class="font-display-lg text-display-lg text-on-surface">47</span>
+<span class="font-body-sm text-body-sm text-status-error">Across 4 locations</span>
+</div>
+</div>
+<!-- Monthly Sales -->
+<div class="bg-surface-container-lowest p-5 rounded-lg border border-surface-border shadow-sm flex flex-col justify-between md:col-span-2 bg-gradient-to-br from-surface-container-lowest to-surface-container-low">
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Aggregate Monthly Volume</h3>
+<div class="p-1.5 bg-secondary-container/30 rounded text-secondary">
+<span class="material-symbols-outlined text-[20px]">monitoring</span>
+</div>
+</div>
+<div class="flex justify-between items-end">
+<div class="flex flex-col">
+<span class="font-display-lg text-display-lg text-on-surface font-data-mono tracking-tight">$1.24M</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-1">+8.4% vs last month</span>
+</div>
+<div class="flex gap-4">
+<div class="text-right">
+<p class="font-label-caps text-label-caps text-on-surface-variant">Invoices</p>
+<p class="font-data-mono text-data-mono text-on-surface">14,203</p>
+</div>
+<div class="text-right border-l border-surface-border pl-4">
+<p class="font-label-caps text-label-caps text-on-surface-variant">Fulfillments</p>
+<p class="font-data-mono text-data-mono text-on-surface">8,992</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Branch Comparison Table -->
+<section class="bg-surface-container-lowest border border-surface-border rounded-lg shadow-sm overflow-hidden flex flex-col">
+<div class="px-5 py-4 border-b border-surface-border bg-surface-container-low flex justify-between items-center">
+<h2 class="font-title-sm text-title-sm text-on-surface">Branch Status Overview</h2>
+<div class="flex gap-2">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2 top-1.5 text-[16px] text-on-surface-variant">filter_list</span>
+<select class="pl-8 pr-8 py-1 bg-surface border border-surface-border rounded text-body-sm font-body-sm text-on-surface focus:ring-1 focus:ring-primary focus:border-primary appearance-none">
+<option>All Regions</option>
+<option>North</option>
+<option>South</option>
+</select>
+</div>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-surface-border bg-surface-container-low/50">
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold">Branch Name</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold">Region</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold text-right">Inventory Value</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold">Health Score</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold">Status</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold text-right">Last Sync</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-border">
+<tr class="hover:bg-surface-container-low/30 transition-colors h-row-dense">
+<td class="py-2 px-5 font-title-sm text-body-sm text-primary">Downtown Metro</td>
+<td class="py-2 px-5 font-body-sm text-body-sm text-on-surface-variant">North</td>
+<td class="py-2 px-5 font-data-mono text-data-mono text-on-surface text-right">$245,000</td>
+<td class="py-2 px-5">
+<div class="w-24 h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-[92%] h-full bg-status-success"></div>
+</div>
+</td>
+<td class="py-2 px-5">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-status-success/10 text-status-success font-label-caps text-[10px]">
+<span class="w-1.5 h-1.5 rounded-full bg-status-success"></span>
+                                        Online
+                                    </span>
+</td>
+<td class="py-2 px-5 font-data-mono text-data-mono text-on-surface-variant text-right">Just now</td>
+</tr>
+<tr class="hover:bg-surface-container-low/30 transition-colors h-row-dense bg-surface-container-lowest">
+<td class="py-2 px-5 font-title-sm text-body-sm text-primary">Westside Clinic</td>
+<td class="py-2 px-5 font-body-sm text-body-sm text-on-surface-variant">West</td>
+<td class="py-2 px-5 font-data-mono text-data-mono text-on-surface text-right">$182,400</td>
+<td class="py-2 px-5">
+<div class="w-24 h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-[65%] h-full bg-status-warning"></div>
+</div>
+</td>
+<td class="py-2 px-5">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-status-warning/10 text-status-warning font-label-caps text-[10px]">
+<span class="w-1.5 h-1.5 rounded-full bg-status-warning"></span>
+                                        Low Stock
+                                    </span>
+</td>
+<td class="py-2 px-5 font-data-mono text-data-mono text-on-surface-variant text-right">2m ago</td>
+</tr>
+<tr class="hover:bg-surface-container-low/30 transition-colors h-row-dense">
+<td class="py-2 px-5 font-title-sm text-body-sm text-primary">North Hills</td>
+<td class="py-2 px-5 font-body-sm text-body-sm text-on-surface-variant">North</td>
+<td class="py-2 px-5 font-data-mono text-data-mono text-on-surface text-right">$310,200</td>
+<td class="py-2 px-5">
+<div class="w-24 h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-[88%] h-full bg-status-success"></div>
+</div>
+</td>
+<td class="py-2 px-5">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-status-success/10 text-status-success font-label-caps text-[10px]">
+<span class="w-1.5 h-1.5 rounded-full bg-status-success"></span>
+                                        Online
+                                    </span>
+</td>
+<td class="py-2 px-5 font-data-mono text-data-mono text-on-surface-variant text-right">5m ago</td>
+</tr>
+<tr class="hover:bg-surface-container-low/30 transition-colors h-row-dense bg-error-container/10 border-l-4 border-l-status-error">
+<td class="py-2 px-5 font-title-sm text-body-sm text-primary">Southside Terminal</td>
+<td class="py-2 px-5 font-body-sm text-body-sm text-on-surface-variant">South</td>
+<td class="py-2 px-5 font-data-mono text-data-mono text-on-surface text-right">$95,100</td>
+<td class="py-2 px-5">
+<div class="w-24 h-2 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-[30%] h-full bg-status-error"></div>
+</div>
+</td>
+<td class="py-2 px-5">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-status-error/10 text-status-error font-label-caps text-[10px]">
+<span class="w-1.5 h-1.5 rounded-full bg-status-error"></span>
+                                        Critical Alert
+                                    </span>
+</td>
+<td class="py-2 px-5 font-data-mono text-data-mono text-on-surface-variant text-right">12m ago</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-5 py-3 border-t border-surface-border bg-surface-container-lowest flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Showing 4 of 12 branches</span>
+<button class="font-body-sm text-body-sm text-primary hover:underline">View All Branches</button>
+</div>
+</section>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clinic Locations - Doctor Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#1a1c1c",
+                        "primary-fixed": "#93f2f2",
+                        "surface-dim": "#dadada",
+                        "tertiary-fixed-dim": "#cac5cc",
+                        "on-primary-fixed": "#002020",
+                        "outline": "#6e7979",
+                        "primary-container": "#008080",
+                        "primary": "#006565",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-surface": "#1a1c1c",
+                        "surface-container-highest": "#e2e2e2",
+                        "on-primary-container": "#e3fffe",
+                        "primary-fixed-dim": "#76d6d5",
+                        "surface-container": "#eeeeee",
+                        "outline-variant": "#bdc9c8",
+                        "surface-container-high": "#e8e8e8",
+                        "tertiary-container": "#757177",
+                        "surface-tint": "#006a6a",
+                        "surface-container-lowest": "#ffffff",
+                        "clinic-teal": "#008080",
+                        "on-secondary-container": "#4c3386",
+                        "background": "#f9f9f9",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#3e4949",
+                        "requirement-border": "#cbc4d2",
+                        "tertiary-fixed": "#e6e1e8",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#f9f9f9",
+                        "surface-bright": "#f9f9f9",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "inverse-primary": "#76d6d5",
+                        "surface-container-low": "#f3f3f3",
+                        "inverse-on-surface": "#f1f1f1",
+                        "on-secondary-fixed": "#22005c",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "split-divider": "#ece6ee",
+                        "tertiary": "#5c595f",
+                        "surface-variant": "#e2e2e2",
+                        "secondary-fixed": "#e9ddff",
+                        "on-tertiary-fixed-variant": "#48464b",
+                        "inverse-surface": "#2f3131",
+                        "secondary": "#6750a4",
+                        "secondary-container": "#bca2fd",
+                        "clinical-bg": "#fdf7ff",
+                        "on-tertiary-fixed": "#1d1b20",
+                        "on-tertiary-container": "#fdf7fe"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "preview-pane-min": "400px",
+                        "unit": "4px",
+                        "margin": "32px",
+                        "sidebar-width": "260px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "data-mono": ["JetBrains Mono"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "data-mono": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9f9f9; color: #1a1c1c; }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased flex h-screen w-full overflow-hidden">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[260px] bg-surface border-r border-outline-variant flex flex-col py-margin px-4 z-50">
+<div class="flex items-center space-x-3 mb-8 px-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden flex-shrink-0">
+<img alt="Doctor Profile" class="w-full h-full object-cover" data-alt="A clean, professional headshot of a mature male doctor wearing a white clinical coat over a light blue shirt. Bright, even lighting indicative of a modern clinical environment, light background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBIocbcwN5VaQi9_PzbhYfrHcKc12U6Q03CLpNN9pVoKEXJp-guvvpjLd_ZBrSrf4KkJOQzETwGn7nnEyuUN0uE3nJLEKo9B9UAu3p7EHQ7VsU_dp_CmVDJUHoO9l--rzyethj_3rXp8bGMzH3pJvpbUqEwbHQ8GE9hSBsHONQCH3UrYam2Fk7UN-TxJhsyz9AWaVIwaSI9DOs5lUrQsxiuIfDUrWZvz2Bpy4loBvGJq-Zdpy_BDoww"/>
+</div>
+<div>
+<h2 class="font-headline-md text-[16px] leading-[24px] font-bold text-clinic-teal">Dr. Jameson</h2>
+<p class="font-body-md text-body-md text-on-surface-variant text-[12px]">Senior Clinician</p>
+</div>
+</div>
+<button class="w-full bg-clinic-teal text-on-primary font-body-md text-body-md font-semibold py-2 px-4 rounded-md mb-8 hover:opacity-90 transition-opacity flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span>New Consultation</span>
+</button>
+<div class="flex-1 space-y-1">
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span>Patients</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="event">event</span>
+<span>Appointments</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="medical_services">medical_services</span>
+<span>Clinical Records</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span>Staff Management</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-md text-clinic-teal font-bold border-r-4 border-clinic-teal bg-primary-container/10 font-body-md text-body-md transition-colors opacity-80 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="settings" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span>Settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-[260px] w-[calc(100%-260px)] h-screen overflow-hidden">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center h-16 px-gutter bg-surface-bright border-b border-split-divider z-40 flex-shrink-0">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Doctor Workspace</h1>
+<div class="flex items-center space-x-6">
+<!-- Search implicitly handled by design, but trailing actions shown -->
+<div class="flex space-x-4">
+<button class="text-on-surface-variant hover:text-clinic-teal transition-all active:scale-95 duration-100">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-clinic-teal transition-all active:scale-95 duration-100">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<button class="text-clinic-teal font-bold border-b-2 border-primary pb-1 hover:text-clinic-teal transition-all active:scale-95 duration-100">
+<span class="material-symbols-outlined" data-icon="location_on" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</button>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A small circular avatar placeholder image showing a clean medical cross icon centered on a light gray background. Crisp and utilitarian." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBH_Cp_LbXOpOjoyUB5qNqu7f_YW9XTxhWu9N2oRlucx7qyfzu5uVxg0O64QjTo5aOjagbBxK6E43i4tUsb7FGjQ7VNrKgeehsWRIrtQZJMOEVmixtek1PQVNfTA687bfuuTu6mTNsBr_IMfjMJ4gaywYJoI7cFVpvyzGtMXYMoPIZWQU53VurmSpQ-bJuPO16eo3UOkSnxcvC-NkIs1JkJJsX9t8tTTNaSz9iZ_D3x_8IECcT-Ewdw"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 overflow-y-auto p-gutter bg-background">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Clinic Locations</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center">
+<span class="material-symbols-outlined text-[16px] mr-1">schedule</span>
+                        System Timezone: <span class="font-data-mono text-data-mono ml-1 px-1.5 py-0.5 bg-surface-container rounded text-on-surface">Africa/Cairo (UTC+2)</span>
+</p>
+</div>
+<button class="bg-clinic-teal text-on-primary font-body-md text-body-md font-medium px-5 py-2.5 rounded hover:bg-primary transition-colors flex items-center shadow-sm">
+<span class="material-symbols-outlined mr-2 text-[18px]">add_location</span>
+                    Add Location
+                </button>
+</div>
+<!-- Filters & Search -->
+<div class="flex items-center justify-between mb-6 bg-surface-container-lowest p-3 rounded-lg border border-outline-variant shadow-sm">
+<div class="flex items-center space-x-3 w-1/3">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="w-full bg-surface pl-10 pr-4 py-2 border border-outline-variant rounded font-body-md text-body-md focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal focus:outline-none text-on-surface placeholder:text-outline transition-colors" placeholder="Search clinics..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Status:</span>
+<select class="bg-surface border border-outline-variant rounded px-3 py-1.5 font-body-md text-body-md text-on-surface focus:border-clinic-teal focus:outline-none">
+<option>All Locations</option>
+<option>Active</option>
+<option>Pending</option>
+</select>
+</div>
+</div>
+<!-- Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-8">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden flex flex-col hover:border-clinic-teal transition-colors group relative">
+<div class="absolute top-0 left-0 w-1 h-full bg-clinic-teal"></div>
+<div class="h-32 bg-surface-variant relative overflow-hidden">
+<img alt="Map Location Cairo Central" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity grayscale group-hover:grayscale-0" data-alt="A clean, minimalist vector-style map snippet showing street grids in a muted teal and gray palette. A single crisp teal location marker pin is centered." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDne6Qn0scfPyktQ6IFEGtAtYhPKGqTxK7B00AwM3JmfN0_pVq_vFDmoOb5wLXiPAv8D5gxF0KmDSjVM7EqUi2XpqcLh2Ni8MFIVzauBtLZf0zBUOgZgHGkqMyptbIPjCYRGj8D21dPp0uUxdtrfLNqER-jCTA5Gwv3lOqYSjKaXWoPdAbX3hDmPc1ICi8rRPXMzNCFAxDjRnRsK9QKpouxCv7DorXfH53Ml7ubzbuv1y_mWLRffZUO"/>
+<div class="absolute top-3 right-3 bg-surface-container-lowest border border-outline-variant rounded px-2 py-1 flex items-center space-x-1 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-[#10b981]"></span>
+<span class="font-label-caps text-label-caps text-on-surface uppercase">Active</span>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col pl-5">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-[18px] leading-[24px] font-semibold text-on-surface">Cairo Central Clinic</h3>
+<button class="text-on-surface-variant hover:text-clinic-teal p-1 rounded hover:bg-surface-container">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-start mb-4">
+<span class="material-symbols-outlined text-[16px] mr-2 mt-0.5 text-outline">location_city</span>
+                            14 Talaat Harb St, Downtown<br/>Cairo, Egypt
+                        </p>
+<div class="mt-auto border-t border-split-divider pt-3 flex justify-between items-center">
+<div class="flex items-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] mr-1.5">groups</span>
+<span class="font-data-mono text-data-mono">24 Staff</span>
+</div>
+<button class="text-clinic-teal font-label-caps text-label-caps uppercase hover:bg-primary-container/10 px-2 py-1 rounded transition-colors">Manage</button>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden flex flex-col hover:border-clinic-teal transition-colors group relative">
+<div class="absolute top-0 left-0 w-1 h-full bg-clinic-teal"></div>
+<div class="h-32 bg-surface-variant relative overflow-hidden">
+<img alt="Map Location Heliopolis" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity grayscale group-hover:grayscale-0" data-alt="A clean, minimalist vector-style map snippet showing street grids in a muted teal and gray palette. A single crisp teal location marker pin is centered." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7pavRgU3kdOIFSgFroNG5VKhBokLKUegQm7woUdIE8mSVy3Ys0Mjoj1Ix0HrFxovj4Y8SKOodKPXmvRJghYqzWzSrvjPVk8VXMHFWhUVHXZO5RTKapyLMbnHNBD7D5ySO5WJ1nScmpn9db8ZuQWTH6O8LEaffqLtj2G84B2Ne11mU6KMTb7gibfM6CVEUKVedqZxz_HcvVhe6EmFrsffHBdWoquyhPItjuGLYP2E7Nz61tbgEu5bh"/>
+<div class="absolute top-3 right-3 bg-surface-container-lowest border border-outline-variant rounded px-2 py-1 flex items-center space-x-1 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-[#10b981]"></span>
+<span class="font-label-caps text-label-caps text-on-surface uppercase">Active</span>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col pl-5">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-[18px] leading-[24px] font-semibold text-on-surface">Heliopolis Specialty Center</h3>
+<button class="text-on-surface-variant hover:text-clinic-teal p-1 rounded hover:bg-surface-container">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-start mb-4">
+<span class="material-symbols-outlined text-[16px] mr-2 mt-0.5 text-outline">location_city</span>
+                            88 Merghany St, Heliopolis<br/>Cairo, Egypt
+                        </p>
+<div class="mt-auto border-t border-split-divider pt-3 flex justify-between items-center">
+<div class="flex items-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] mr-1.5">groups</span>
+<span class="font-data-mono text-data-mono">18 Staff</span>
+</div>
+<button class="text-clinic-teal font-label-caps text-label-caps uppercase hover:bg-primary-container/10 px-2 py-1 rounded transition-colors">Manage</button>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden flex flex-col hover:border-outline-variant transition-colors group relative bg-surface">
+<div class="absolute top-0 left-0 w-1 h-full bg-outline-variant"></div>
+<div class="h-32 bg-surface-variant relative overflow-hidden opacity-70">
+<img alt="Map Location New Cairo" class="w-full h-full object-cover grayscale" data-alt="A clean, minimalist vector-style map snippet showing a broad city overview in a muted gray palette. A faint outline of a marker suggests a pending location." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgabNgO2B58xYoimfpSxsMtawol0hgo7NXZokvSpK94nlSZNJgm3UK8nK7zo60CJ56ZL4cJjyuyU6wlC4HeDRxMIQrAR6lgYIeuBsS8gOWVHV6vIzTGQjPw3iKjeuxJxZTpbBsBlzvD5IFUm0vC3C2LAlrNnhZXO3OocpIaOAGmYFGUPeBCqICis6cPlG9I0AuJFArf-CopGXuOOVBf30EnQZdkU9Y3FT_C4EqdJrJtBw9zWE2pGol"/>
+<div class="absolute top-3 right-3 bg-surface-container border border-outline-variant rounded px-2 py-1 flex items-center space-x-1">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Pending Setup</span>
+</div>
+</div>
+<div class="p-4 flex-1 flex flex-col pl-5">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline-md text-[18px] leading-[24px] font-semibold text-on-surface-variant">New Cairo Annex</h3>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-container">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-start mb-4">
+<span class="material-symbols-outlined text-[16px] mr-2 mt-0.5 text-outline">location_city</span>
+                            Plot 45, North 90th St<br/>New Cairo, Egypt
+                        </p>
+<div class="mt-auto border-t border-split-divider pt-3 flex justify-between items-center">
+<div class="flex items-center text-outline">
+<span class="material-symbols-outlined text-[16px] mr-1.5">groups</span>
+<span class="font-data-mono text-data-mono">0 Staff</span>
+</div>
+<button class="text-on-surface-variant font-label-caps text-label-caps uppercase hover:bg-surface-container px-2 py-1 rounded transition-colors border border-outline-variant">Complete Setup</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
