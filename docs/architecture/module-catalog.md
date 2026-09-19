@@ -219,7 +219,9 @@ or document bodies on public URLs, events, logs, or DTOs; letting Doctors or
 Pharmacies own the verification pipeline; granting clinical capabilities or
 auto-listing a doctor on approval; public APIs that mark documents scanned or
 `AVAILABLE`. Admin work-queue UI calls `VerificationService` rather than writing
-these tables.
+these tables. Submit HTTP is compact (`status`, `doctor_id`, `case_id`,
+`case_status`, `case_version`, `profile_version`, `profile_verification_status`);
+`GET /doctors/me/verification-status` is the canonical projection.
 
 Earlier catalog drafts listed `doctor_verification_documents` under `Doctors`.
 Phase 02 module ownership is authoritative: verification documents belong here.

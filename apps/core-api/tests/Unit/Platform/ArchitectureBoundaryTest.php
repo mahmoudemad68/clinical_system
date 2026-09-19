@@ -389,6 +389,7 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringContainsString('`doctor.verification_decided`', $contents);
         $this->assertStringContainsString('ENGINEERING_DEFAULT', $contents);
         $this->assertStringContainsString('DoctorApplicantService', $contents);
+        $this->assertStringContainsString('Submit HTTP is compact', $contents);
         $this->assertStringNotContainsString('READY_TO_MERGE', $contents);
     }
 

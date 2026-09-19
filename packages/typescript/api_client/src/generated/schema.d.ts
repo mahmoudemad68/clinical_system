@@ -1163,6 +1163,23 @@ export interface components {
             profile_version: number;
         };
         /**
+         * @description Compact submit outcome sized for the Platform 255-byte idempotency
+         *     pointer. GET /doctors/me/verification-status is the canonical
+         *     projection. Never includes documents, National ID, HMAC, object keys,
+         *     reviewer notes, or clinical data.
+         */
+        DoctorVerificationSubmissionResult: {
+            /** @enum {string} */
+            status: "submitted";
+            doctor_id: components["schemas"]["Uuid"];
+            case_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            case_status: "pending_review";
+            case_version: number;
+            profile_version: number;
+            profile_verification_status: components["schemas"]["DoctorVerificationStatus"];
+        };
+        /**
          * @description Applicant-visible document metadata. Object storage identifiers, raw
          *     keys, and file bytes are never included.
          */
@@ -2431,7 +2448,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope"] & {
-                        data?: components["schemas"]["DoctorVerificationStatusResult"];
+                        data?: components["schemas"]["DoctorVerificationSubmissionResult"];
                     };
                 };
             };

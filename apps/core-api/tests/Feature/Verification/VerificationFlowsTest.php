@@ -96,11 +96,20 @@ describe('submission', function () {
         );
 
         $response->assertOk()
+            ->assertJsonPath('data.status', 'submitted')
+            ->assertJsonPath('data.case_id', $draft['case_id'])
             ->assertJsonPath('data.case_status', 'pending_review')
             ->assertJsonPath('data.profile_verification_status', DoctorVerificationStatus::PendingReview->value)
-            ->assertJsonPath('data.profile_public_status', DoctorPublicStatus::Hidden->value)
             ->assertJsonMissingPath('data.object_id')
-            ->assertJsonMissingPath('data.national_id');
+            ->assertJsonMissingPath('data.national_id')
+            ->assertJsonMissingPath('data.documents')
+            ->assertJsonMissingPath('data.profile_public_status');
+
+        $status = $this->getJson('/api/v1/doctors/me/verification-status', doctorsAuth($draft['session']['token']));
+        $status->assertOk()
+            ->assertJsonPath('data.case_id', $draft['case_id'])
+            ->assertJsonPath('data.case_status', 'pending_review')
+            ->assertJsonPath('data.profile_public_status', DoctorPublicStatus::Hidden->value);
 
         $body = $response->getContent();
         expect($body)->not->toContain($objectId)
@@ -174,11 +183,20 @@ describe('submission', function () {
         $body = verificationSubmitBody($draft['case_version'], $draft['profile_version']);
 
         $first = $this->postJson('/api/v1/doctors/me/verification-submissions', $body, $headers);
-        $first->assertOk()->assertJsonPath('data.case_status', 'pending_review');
+        $first->assertOk()
+            ->assertJsonPath('data.status', 'submitted')
+            ->assertJsonPath('data.case_status', 'pending_review');
         $second = $this->postJson('/api/v1/doctors/me/verification-submissions', $body, $headers);
         $second->assertOk()
             ->assertJsonPath('data.case_id', $first->json('data.case_id'))
-            ->assertJsonPath('data.case_status', 'pending_review');
+            ->assertJsonPath('data.case_status', 'pending_review')
+            ->assertJsonPath('data.status', 'submitted');
+
+        $stored = (string) DB::table('idempotency_keys')->orderByDesc('created_at')->value('response_reference');
+        expect(strlen($stored))->toBeLessThanOrEqual(255)
+            ->and($stored)->toContain((string) $first->json('data.case_id'))
+            ->and($stored)->not->toContain('documents')
+            ->and($stored)->not->toContain($draft['object_id']);
 
         expect(DB::table('verification_cases')->count())->toBe(1)
             ->and(DB::table('outbox_events')->where('event_type', 'doctor.verification_submitted')->count())->toBe(1);
@@ -240,8 +258,11 @@ describe('reviewer decisions', function () {
             ->and($own->getContent())->not->toContain($draft['national_id']);
 
         $payload = verificationOutboxPayload('doctor.verification_decided');
-        expect($payload)->toBeString()
-            ->and($payload)->toContain('"decision":"approved"')
+        expect($payload)->toBeString();
+        $decoded = json_decode((string) $payload, true);
+        expect($decoded)->toBeArray()
+            ->and($decoded['decision'] ?? null)->toBe('approved')
+            ->and($decoded['reason_code'] ?? null)->toBe('approved')
             ->and($payload)->not->toContain('INTERNAL_NOTE_CANARY')
             ->and($payload)->not->toContain($draft['object_id'])
             ->and($payload)->not->toContain($draft['national_id']);

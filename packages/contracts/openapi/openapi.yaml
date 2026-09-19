@@ -1179,7 +1179,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/DoctorVerificationStatusResult'
+                        $ref: '#/components/schemas/DoctorVerificationSubmissionResult'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -2296,6 +2296,42 @@ components:
           type: integer
           minimum: 1
           description: Optimistic doctor-profile version. Not an access grant.
+
+    DoctorVerificationSubmissionResult:
+      type: object
+      additionalProperties: false
+      description: |
+        Compact submit outcome sized for the Platform 255-byte idempotency
+        pointer. GET /doctors/me/verification-status is the canonical
+        projection. Never includes documents, National ID, HMAC, object keys,
+        reviewer notes, or clinical data.
+      required:
+        - status
+        - doctor_id
+        - case_id
+        - case_status
+        - case_version
+        - profile_version
+        - profile_verification_status
+      properties:
+        status:
+          type: string
+          enum: [submitted]
+        doctor_id:
+          $ref: '#/components/schemas/Uuid'
+        case_id:
+          $ref: '#/components/schemas/Uuid'
+        case_status:
+          type: string
+          enum: [pending_review]
+        case_version:
+          type: integer
+          minimum: 1
+        profile_version:
+          type: integer
+          minimum: 1
+        profile_verification_status:
+          $ref: '#/components/schemas/DoctorVerificationStatus'
 
     DoctorVerificationDocumentStatus:
       type: object

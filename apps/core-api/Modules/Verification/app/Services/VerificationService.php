@@ -41,6 +41,7 @@ use Modules\Verification\Support\ReviewerCaseProjection;
 use Modules\Verification\Support\VerificationCaseRecord;
 use Modules\Verification\Support\VerificationDecisionRecord;
 use Modules\Verification\Support\VerificationPolicy;
+use Modules\Verification\Support\VerificationSubmissionOutcome;
 
 /**
  * Doctor verification case lifecycle. Coordinates Verification writes with
@@ -136,7 +137,7 @@ final class VerificationService
     /**
      * @param  array{case_version: int, profile_version: int}  $input
      */
-    public function submitDoctorCase(ActorContext $actor, array $input): ApplicantCaseProjection
+    public function submitDoctorCase(ActorContext $actor, array $input): VerificationSubmissionOutcome
     {
         $this->assertDoctorActor($actor);
         $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN);
@@ -147,7 +148,7 @@ final class VerificationService
         $expectedCaseVersion = (int) $input['case_version'];
         $expectedProfileVersion = (int) $input['profile_version'];
 
-        return $this->transactions->run(function (TransactionContext $tx) use ($actor, $expectedCaseVersion, $expectedProfileVersion): ApplicantCaseProjection {
+        return $this->transactions->run(function (TransactionContext $tx) use ($actor, $expectedCaseVersion, $expectedProfileVersion): VerificationSubmissionOutcome {
             $this->assertKnownDoctorCaseType();
             $doctor = $this->requireDoctor($actor->userId, true);
             $this->store->lockApplicant(ApplicantType::Doctor, $doctor->doctorId);
@@ -215,7 +216,14 @@ final class VerificationService
             $fresh = $this->store->findCaseById($case->id, false);
             assert($fresh instanceof VerificationCaseRecord);
 
-            return $this->applicantProjection($doctor, $fresh);
+            return new VerificationSubmissionOutcome(
+                $doctor->doctorId->value,
+                $fresh->id->value,
+                $fresh->status->value,
+                $fresh->version,
+                $doctor->version,
+                $doctor->verificationStatus->value,
+            );
         });
     }
 

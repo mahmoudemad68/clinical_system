@@ -76,7 +76,8 @@ function verificationSeedAdmin(string $key = 'verifier'): array
  */
 function verificationOnboardDoctor(string $key, ?string $syndicate = null): array
 {
-    $specialty = doctorsSeedSpecialty('gp_ver_'.$key);
+    $code = 'gp_ver_'.preg_replace('/[^a-z0-9_]+/', '_', strtolower($key));
+    $specialty = doctorsSeedSpecialty($code);
     $session = doctorsActiveSession($key);
     $body = doctorsOnboardingBody($session['payload']['national_id'], $specialty['id'], $syndicate);
     $response = test()->postJson(

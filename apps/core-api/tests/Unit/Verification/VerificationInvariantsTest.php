@@ -7,6 +7,7 @@ use Modules\Verification\Enums\VerificationDecision;
 use Modules\Verification\Enums\VerificationDocumentScanStatus;
 use Modules\Verification\Enums\VerificationDocumentStatus;
 use Modules\Verification\Support\VerificationPolicy;
+use Modules\Verification\Support\VerificationSubmissionOutcome;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -40,6 +41,22 @@ it('maps decisions onto case statuses without inventing extra states', function 
             'approved',
             'rejected',
         ]);
+});
+
+it('keeps the submit HTTP outcome inside the Platform idempotency pointer', function () {
+    $encoded = json_encode((new VerificationSubmissionOutcome(
+        '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a10',
+        '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a11',
+        'pending_review',
+        2,
+        2,
+        'pending_review',
+    ))->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    expect($encoded)->toBeString()
+        ->and(strlen((string) $encoded))->toBeLessThanOrEqual(255)
+        ->and($encoded)->not->toContain('documents')
+        ->and($encoded)->not->toContain('object_id');
 });
 
 it('denies unknown case types, requirements, and reason codes', function () {
