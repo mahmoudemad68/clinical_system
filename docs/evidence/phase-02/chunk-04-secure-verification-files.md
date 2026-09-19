@@ -217,7 +217,7 @@ Local skips on this host (Docker daemon unavailable):
 
 In-process coverage still ran: `clamd-stub.php` INSTREAM (clean / EICAR FOUND / timeout / malformed) and `InMemoryStoreObject` (including race workers via the shared persist directory). Pre-existing Auth Redis/Reverb/Octane/two-connection race skips remain opt-in.
 
-Gitleaks, Semgrep, Trivy filesystem/image, and SBOM remain GitHub PR `security` / `image-scan` jobs. This host could not pull `clamav/clamav:1.4.6` (no Docker). The compose sidecar is digest-pinned; it is **not** added as a GitHub Actions `services:` image (ISR-015 pin catalog / bidirectional workflow refs).
+Gitleaks, Semgrep, Trivy filesystem/image, and SBOM remain GitHub PR `security` / `image-scan` jobs. This host could not pull `clamav/clamav:1.4.6` (no Docker). The compose sidecar is digest-pinned; it is **not** added as a GitHub Actions `services:` image (ISR-015 pin catalog / bidirectional workflow refs). Prior GitHub SAST on `2746c4e` flagged `unlink()` in the in-memory persist adapter; deletion now allowlists a SHA-256 hex basename and uses Laravel `Filesystem::delete` (no `unlink()` in that adapter).
 
 Phase 02 as a whole is **not** PASS. GitHub PR CI binds to the pushed HEAD;
 this file does not claim production approval.
