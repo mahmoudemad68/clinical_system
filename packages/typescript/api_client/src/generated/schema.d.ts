@@ -640,9 +640,56 @@ export interface paths {
          * @description Server-derived from the authenticated user's attached doctor profile.
          *     Never returns ciphertext, HMAC, key versions, National ID, syndicate
          *     number, or another doctor's data. There is no GET-by-id doctor profile
-         *     API. Verification document status is not included in this slice.
+         *     API. Verification case status is a separate own-resource endpoint.
          */
         get: operations["getOwnDoctorProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctors/me/verification-submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit the current doctor's verification case
+         * @description Moves a draft doctor verification case to `pending_review` when every
+         *     required document metadata record is `available` with a clean scan.
+         *     Server-derived actor only. Reviewer identity, document availability,
+         *     and case status cannot be assigned by the client. There is no upload
+         *     endpoint in this slice. Idempotency-Key and optimistic case/profile
+         *     versions are required.
+         */
+        post: operations["submitOwnDoctorVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctors/me/verification-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current user's doctor verification status
+         * @description Own-case projection only. Never returns National ID, HMAC, syndicate
+         *     identifiers, object storage keys, reviewer notes, or clinical data.
+         *     Another doctor's case is not enumerable through this endpoint.
+         */
+        get: operations["getOwnDoctorVerificationStatus"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1108,6 +1155,68 @@ export interface components {
             suspended_at: string | null;
             created_at: components["schemas"]["Instant"];
             updated_at: components["schemas"]["Instant"];
+        };
+        DoctorVerificationSubmissionRequest: {
+            /** @description Optimistic verification-case version. Not a reviewer identity. */
+            case_version: number;
+            /** @description Optimistic doctor-profile version. Not an access grant. */
+            profile_version: number;
+        };
+        /**
+         * @description Compact submit outcome sized for the Platform 255-byte idempotency
+         *     pointer. GET /doctors/me/verification-status is the canonical
+         *     projection. Never includes documents, National ID, HMAC, object keys,
+         *     reviewer notes, or clinical data.
+         */
+        DoctorVerificationSubmissionResult: {
+            /** @enum {string} */
+            status: "submitted";
+            doctor_id: components["schemas"]["Uuid"];
+            case_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            case_status: "pending_review";
+            case_version: number;
+            profile_version: number;
+            profile_verification_status: components["schemas"]["DoctorVerificationStatus"];
+        };
+        /**
+         * @description Applicant-visible document metadata. Object storage identifiers, raw
+         *     keys, and file bytes are never included.
+         */
+        DoctorVerificationDocumentStatus: {
+            document_id: components["schemas"]["Uuid"];
+            requirement_code: string;
+            /** @enum {string} */
+            scan_status: "pending" | "clean" | "failed";
+            /** @enum {string} */
+            status: "quarantined" | "available" | "rejected" | "retired";
+            uploaded_at: components["schemas"]["Instant"];
+        };
+        /**
+         * @description Own-case verification projection. Never includes National ID, HMAC,
+         *     syndicate identifiers, encryption key versions, object storage keys,
+         *     reviewer notes, or clinical data.
+         */
+        DoctorVerificationStatusResult: {
+            doctor_id: components["schemas"]["Uuid"];
+            profile_verification_status: components["schemas"]["DoctorVerificationStatus"];
+            profile_public_status: components["schemas"]["DoctorPublicStatus"];
+            profile_version: number;
+            /** Format: uuid */
+            case_id: string | null;
+            /** @enum {string|null} */
+            case_status: "draft" | "pending_review" | "changes_requested" | "approved" | "rejected" | null;
+            case_version: number | null;
+            /** @enum {string|null} */
+            case_type: "doctor_verification" | null;
+            /** Format: date-time */
+            submitted_at: string | null;
+            /** Format: date-time */
+            decided_at: string | null;
+            /** @enum {string|null} */
+            decision: "approved" | "rejected" | "changes_requested" | null;
+            reason_code: string | null;
+            documents: components["schemas"]["DoctorVerificationDocumentStatus"][];
         };
     };
     responses: {
@@ -2297,6 +2406,83 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Envelope"] & {
                         data?: components["schemas"]["DoctorProfile"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    submitOwnDoctorVerification: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DoctorVerificationSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Case submitted; pending review. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["DoctorVerificationSubmissionResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getOwnDoctorVerificationStatus: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Own verification status projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["DoctorVerificationStatusResult"];
                     };
                 };
             };

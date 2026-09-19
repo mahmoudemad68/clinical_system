@@ -18,6 +18,24 @@ enum DoctorVerificationStatus: string
         return false;
     }
 
+    public function allowsNewVerificationCase(): bool
+    {
+        return match ($this) {
+            self::Draft, self::ChangesRequested, self::Rejected => true,
+            self::PendingReview, self::Approved, self::Suspended => false,
+        };
+    }
+
+    public function canTransitionTo(self $target): bool
+    {
+        return match ($this) {
+            self::Draft => $target === self::PendingReview,
+            self::PendingReview => in_array($target, [self::Approved, self::Rejected, self::ChangesRequested], true),
+            self::ChangesRequested, self::Rejected => $target === self::PendingReview,
+            self::Approved, self::Suspended => false,
+        };
+    }
+
     /**
      * @return list<string>
      */

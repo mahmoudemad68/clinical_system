@@ -10,7 +10,10 @@ event (ADR 0001, ADR 0004).
 
 **Status.** `Platform` was implemented in Phase 00. Phase 01 implements `Auth`,
 `Identity` (except patient registry), `Access` (self-service capabilities), and
-`Audit` append. Every other module remains a declared boundary.
+`Audit` append. Phase 02 chunk 01 implements `Patients` demographic profiles.
+Phase 02 chunk 02 implements the `Doctors` profile foundation. Phase 02 chunk 03
+implements the `Verification` case/document-metadata/decision foundation.
+Pharmacy, clinic, location, and remaining Phase 02 slices remain later work.
 
 **Classification levels** are defined in
 [`docs/data-classification/classification-policy.md`](../data-classification/classification-policy.md):
@@ -164,9 +167,12 @@ are Access-gated and default-denied. `FEATURE_IDENTITY_PROFILE_CLAIM` remains of
 
 **Built in:** 02 (chunk 02: Doctors profile foundation). **Owner:** backend + clinical.
 **Public services:** `RegisterDoctor`, `GetDoctorProfile`, `ListSpecialties`,
+`DoctorApplicantService` (narrow Verification-facing applicant projection and
+status transition; no National ID/HMAC/key-version fields),
 `DoctorSubjectPrivacy` (Identity erasure/export adapter).
-**Events:** `doctor.profile_created`. Verification-submitted/decided events are
-owned by `Verification` when that pipeline is implemented.
+**Events:** `doctor.profile_created` (personal identifier-only).
+`doctor.verification_submitted` and `doctor.verification_decided` are owned by
+`Verification`.
 **Tables:** `doctor_profiles`, `specialties`.
 **Classification:** sensitive. Peak is protected National ID and optional
 syndicate identifiers stored with Identity protection services. `specialties`
@@ -185,21 +191,40 @@ public service in this slice (no HTTP catalogue endpoint).
 
 ## `Verification` — cases, documents, and decisions
 
-**Built in:** 02 (declared; not implemented in the Doctors profile-foundation
-slice). **Owner:** backend + security.
-**Public services (when implemented):** `VerificationService`,
-`VerificationDocumentService` (uses `MalwareScanner` and applicant-module
-services).
-**Events (when implemented):** `doctor.verification_submitted`,
-`doctor.verification_decided`, `pharmacy.verification_decided`.
-**Tables (when implemented):** `verification_cases`, `verification_documents`,
-`verification_decisions` (names may be refined by the implementing slice).
-**Classification:** sensitive. Document bytes live behind the secure-files
-boundary; this module owns the case/document/decision records.
-**Prohibited:** querying clinical modules; exposing object keys or document
-bodies on public URLs; letting Doctors or Pharmacies own the verification
-pipeline. Admin work-queue UI calls `VerificationService` rather than writing
-these tables.
+**Built in:** 02 (chunk 03: Verification foundation). **Owner:** backend + security.
+**Public services:** `VerificationService`, `VerificationDocumentService`.
+`MalwareScanner` / secure-upload adapters are not wired in this slice; document
+bytes stay outside the module. Future scanner/upload adapters call
+`VerificationDocumentService` in-process without changing table ownership.
+Admin HTTP/UI is deferred; when added, Admin controllers must call
+`VerificationService` rather than writing these tables.
+**Events:** `doctor.verification_submitted`, `doctor.verification_decided`.
+`pharmacy.verification_decided` is not implemented in this slice.
+**Tables:** `verification_cases`, `verification_documents`,
+`verification_decisions`.
+**Classification:** sensitive. Peak is professional-identity and verification
+document metadata (hashes, MIME, opaque object identifiers, encrypted reviewer
+notes). Document bytes live behind the future secure-files boundary; this module
+owns only case/document/decision records. HTTP and event payloads never include
+National ID, syndicate identifiers, HMAC, key versions, object storage keys,
+reviewer notes, or clinical data.
+**Policy catalogues:** document requirements and rejection reasons are
+`ENGINEERING_DEFAULT` config (`professional_id`; `approved`,
+`evidence_incomplete`, `identity_mismatch`, `documents_illegible`). Unknown
+case types, requirement codes, decisions, and reason codes deny. This is not an
+approved product/security catalogue.
+**Prohibited:** querying Doctors/Patients/Pharmacies/clinical tables directly
+(Doctors is reached only through `DoctorApplicantService`); exposing object keys
+or document bodies on public URLs, events, logs, or DTOs; letting Doctors or
+Pharmacies own the verification pipeline; granting clinical capabilities or
+auto-listing a doctor on approval; public APIs that mark documents scanned or
+`AVAILABLE`. Admin work-queue UI calls `VerificationService` rather than writing
+these tables. Submit HTTP is compact (`status`, `doctor_id`, `case_id`,
+`case_status`, `case_version`, `profile_version`, `profile_verification_status`);
+`GET /doctors/me/verification-status` is the canonical projection.
+Production document registration is fail-closed through
+`DisabledTrustedDocumentEvidenceIssuer`; doctor or admin `ActorContext` cannot
+assert scan success. Submitted `verification_documents` are frozen after submission. Reviewer document evidence is assignment-gated.
 
 Earlier catalog drafts listed `doctor_verification_documents` under `Doctors`.
 Phase 02 module ownership is authoritative: verification documents belong here.
@@ -408,7 +433,8 @@ retrieval leakage.
 ## `Admin`
 
 **Built in:** 02 and 20. **Owner:** backend.
-**Public ports:** `ListVerificationQueue`, `DecideVerification`,
+**Public ports:** `ListVerificationQueue`, `DecideVerification` (deferred HTTP;
+must call `VerificationService` when implemented),
 `GetSystemHealthProjection`.
 **Events:** `admin.verification_decided`.
 **Tables:** admin action records; most reads are projections owned elsewhere.

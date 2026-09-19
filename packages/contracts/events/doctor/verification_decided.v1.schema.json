@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/doctor/verification_decided.v1.schema.json",
+  "title": "doctor.verification_decided v1",
+  "description": "A doctor verification case was decided. No National ID, syndicate number, document keys, document body, or reviewer notes.",
+  "type": "object",
+  "required": ["doctor_id", "case_id", "decision", "reason_code"],
+  "additionalProperties": false,
+  "properties": {
+    "doctor_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["approved", "rejected", "changes_requested"]
+    },
+    "reason_code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9_]+$"
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Verification",
+    "classification": "internal",
+    "consumers": ["audit.identity"],
+    "retention_days": 365
+  }
+}

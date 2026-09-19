@@ -9,11 +9,13 @@ info:
     Server and client code both conform to it; neither generates it.
 
     Phase 01 adds authentication, identity projection, and deny-by-default
-    capabilities. Phase 02 chunk 01 adds the Patients demographic profile
+    capabilities.     Phase 02 chunk 01 adds the Patients demographic profile
     vertical slice. Phase 02 chunk 02 adds the Doctors profile foundation
     (`POST /api/v1/doctors/onboarding`, `GET /api/v1/doctors/me/profile`).
-    Clinical, pharmacy, verification-document, clinic, and AI capabilities
-    remain absent.
+    Phase 02 chunk 03 adds doctor verification case submit/status
+    (`POST /api/v1/doctors/me/verification-submissions`,
+    `GET /api/v1/doctors/me/verification-status`). Secure document upload,
+    Admin UI, pharmacy, clinic, and AI capabilities remain absent.
 
     Compatibility rules (ADR 0003):
       * Additive optional fields are compatible within a version.
@@ -61,10 +63,11 @@ tags:
       is write-only input and never returned. No public National ID lookup.
   - name: doctors
     description: |
-      Phase 02 doctor profile foundation. Own-profile only. Creating a draft
-      doctor profile does not approve, list, or grant clinical capability.
-      National ID and syndicate number are write-only and never returned.
-      Verification document upload is not part of this slice.
+      Phase 02 doctor profile foundation plus Verification case submit/status.
+      Own-profile and own-case only. Creating a draft doctor profile does not
+      approve, list, or grant clinical capability. National ID and syndicate
+      number are write-only and never returned. Secure verification-document
+      upload is not part of this slice.
 
 paths:
   /live:
@@ -1116,7 +1119,7 @@ paths:
         Server-derived from the authenticated user's attached doctor profile.
         Never returns ciphertext, HMAC, key versions, National ID, syndicate
         number, or another doctor's data. There is no GET-by-id doctor profile
-        API. Verification document status is not included in this slice.
+        API. Verification case status is a separate own-resource endpoint.
       security:
         - deviceToken: []
         - adminSession: []
@@ -1135,6 +1138,84 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/DoctorProfile'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/doctors/me/verification-submissions:
+    post:
+      tags: [doctors]
+      operationId: submitOwnDoctorVerification
+      summary: Submit the current doctor's verification case
+      description: |
+        Moves a draft doctor verification case to `pending_review` when every
+        required document metadata record is `available` with a clean scan.
+        Server-derived actor only. Reviewer identity, document availability,
+        and case status cannot be assigned by the client. There is no upload
+        endpoint in this slice. Idempotency-Key and optimistic case/profile
+        versions are required.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorVerificationSubmissionRequest'
+      responses:
+        '200':
+          description: Case submitted; pending review.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorVerificationSubmissionResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/doctors/me/verification-status:
+    get:
+      tags: [doctors]
+      operationId: getOwnDoctorVerificationStatus
+      summary: Current user's doctor verification status
+      description: |
+        Own-case projection only. Never returns National ID, HMAC, syndicate
+        identifiers, object storage keys, reviewer notes, or clinical data.
+        Another doctor's case is not enumerable through this endpoint.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: Own verification status projection.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorVerificationStatusResult'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -2201,6 +2282,147 @@ components:
           $ref: '#/components/schemas/Instant'
         updated_at:
           $ref: '#/components/schemas/Instant'
+
+    DoctorVerificationSubmissionRequest:
+      type: object
+      additionalProperties: false
+      required: [case_version, profile_version]
+      properties:
+        case_version:
+          type: integer
+          minimum: 1
+          description: Optimistic verification-case version. Not a reviewer identity.
+        profile_version:
+          type: integer
+          minimum: 1
+          description: Optimistic doctor-profile version. Not an access grant.
+
+    DoctorVerificationSubmissionResult:
+      type: object
+      additionalProperties: false
+      description: |
+        Compact submit outcome sized for the Platform 255-byte idempotency
+        pointer. GET /doctors/me/verification-status is the canonical
+        projection. Never includes documents, National ID, HMAC, object keys,
+        reviewer notes, or clinical data.
+      required:
+        - status
+        - doctor_id
+        - case_id
+        - case_status
+        - case_version
+        - profile_version
+        - profile_verification_status
+      properties:
+        status:
+          type: string
+          enum: [submitted]
+        doctor_id:
+          $ref: '#/components/schemas/Uuid'
+        case_id:
+          $ref: '#/components/schemas/Uuid'
+        case_status:
+          type: string
+          enum: [pending_review]
+        case_version:
+          type: integer
+          minimum: 1
+        profile_version:
+          type: integer
+          minimum: 1
+        profile_verification_status:
+          $ref: '#/components/schemas/DoctorVerificationStatus'
+
+    DoctorVerificationDocumentStatus:
+      type: object
+      additionalProperties: false
+      description: |
+        Applicant-visible document metadata. Object storage identifiers, raw
+        keys, and file bytes are never included.
+      required:
+        - document_id
+        - requirement_code
+        - scan_status
+        - status
+        - uploaded_at
+      properties:
+        document_id:
+          $ref: '#/components/schemas/Uuid'
+        requirement_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9_]+$'
+        scan_status:
+          type: string
+          enum: [pending, clean, failed]
+        status:
+          type: string
+          enum: [quarantined, available, rejected, retired]
+        uploaded_at:
+          $ref: '#/components/schemas/Instant'
+
+    DoctorVerificationStatusResult:
+      type: object
+      additionalProperties: false
+      description: |
+        Own-case verification projection. Never includes National ID, HMAC,
+        syndicate identifiers, encryption key versions, object storage keys,
+        reviewer notes, or clinical data.
+      required:
+        - doctor_id
+        - profile_verification_status
+        - profile_public_status
+        - profile_version
+        - case_id
+        - case_status
+        - case_version
+        - case_type
+        - submitted_at
+        - decided_at
+        - decision
+        - reason_code
+        - documents
+      properties:
+        doctor_id:
+          $ref: '#/components/schemas/Uuid'
+        profile_verification_status:
+          $ref: '#/components/schemas/DoctorVerificationStatus'
+        profile_public_status:
+          $ref: '#/components/schemas/DoctorPublicStatus'
+        profile_version:
+          type: integer
+          minimum: 1
+        case_id:
+          type: ['string', 'null']
+          format: uuid
+        case_status:
+          type: ['string', 'null']
+          enum: [draft, pending_review, changes_requested, approved, rejected, null]
+        case_version:
+          type: ['integer', 'null']
+          minimum: 1
+        case_type:
+          type: ['string', 'null']
+          enum: [doctor_verification, null]
+        submitted_at:
+          type: ['string', 'null']
+          format: date-time
+        decided_at:
+          type: ['string', 'null']
+          format: date-time
+        decision:
+          type: ['string', 'null']
+          enum: [approved, rejected, changes_requested, null]
+        reason_code:
+          type: ['string', 'null']
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9_]+$'
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoctorVerificationDocumentStatus'
 
   responses:
 

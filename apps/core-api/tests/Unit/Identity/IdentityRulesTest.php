@@ -103,6 +103,10 @@ describe('default-deny authorizer', function () {
         expect($authorizer->decide($actor, Capabilities::IDENTITY_ME_READ)->allowed)->toBeTrue();
         expect($authorizer->decide($actor, Capabilities::DOCTORS_ONBOARDING)->allowed)->toBeTrue();
         expect($authorizer->decide($actor, Capabilities::DOCTORS_PROFILE_READ_OWN)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::VERIFICATION_STATUS_READ_OWN)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::VERIFICATION_REVIEW)->allowed)->toBeFalse()
+            ->and($authorizer->decide($actor, Capabilities::VERIFICATION_REVIEW)->reasonCode)->toBe('insufficient_assurance');
         expect($authorizer->decide($actor, Capabilities::PATIENTS_UNLINKED_CREATE)->allowed)->toBeFalse()
             ->and($authorizer->decide($actor, Capabilities::PATIENTS_UNLINKED_CREATE)->reasonCode)->toBe('capability_absent');
         expect(Capabilities::isKnown(Capabilities::PATIENTS_UNLINKED_RESOLVE))->toBeTrue();
@@ -130,6 +134,10 @@ describe('default-deny authorizer', function () {
             ->toBe('pending_restricted');
         expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::DOCTORS_PROFILE_READ_OWN)->reasonCode)
             ->toBe('pending_restricted');
+        expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN)->reasonCode)
+            ->toBe('pending_restricted');
+        expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::VERIFICATION_STATUS_READ_OWN)->reasonCode)
+            ->toBe('pending_restricted');
     });
 
     it('restricts bootstrap admins that still must change password', function () {
@@ -153,5 +161,38 @@ describe('default-deny authorizer', function () {
             ->and($authorizer->decide($actor, Capabilities::IDENTITY_ME_READ)->reasonCode)->toBe('password_change_required');
         expect($authorizer->decide($actor, Capabilities::ACCESS_GRANT_ISSUE)->allowed)->toBeFalse()
             ->and($authorizer->decide($actor, Capabilities::ACCESS_GRANT_ISSUE)->reasonCode)->toBe('password_change_required');
+        expect($authorizer->decide($actor, Capabilities::VERIFICATION_REVIEW)->allowed)->toBeFalse()
+            ->and($authorizer->decide($actor, Capabilities::VERIFICATION_REVIEW)->reasonCode)->toBe('password_change_required');
+    });
+
+    it('allows privileged verification review only for admin AAL2', function () {
+        $admin = new ActorContext(
+            Identifier::fromTrusted('0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c04'),
+            AccountType::Admin,
+            AccountStatus::Active,
+            LanguagePreference::English,
+            AssuranceLevel::Aal2Totp,
+            1,
+            null,
+            Identifier::fromTrusted('0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c04'),
+            [],
+            Capabilities::forActor('admin', true),
+        );
+        $weak = new ActorContext(
+            Identifier::fromTrusted('0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c05'),
+            AccountType::Admin,
+            AccountStatus::Active,
+            LanguagePreference::English,
+            AssuranceLevel::Aal1Password,
+            1,
+            null,
+            Identifier::fromTrusted('0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c05'),
+            [],
+            Capabilities::forActor('admin', true),
+        );
+        $authorizer = new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class));
+
+        expect($authorizer->decide($admin, Capabilities::VERIFICATION_REVIEW)->allowed)->toBeTrue();
+        expect($authorizer->decide($weak, Capabilities::VERIFICATION_REVIEW)->reasonCode)->toBe('insufficient_assurance');
     });
 });

@@ -15,6 +15,8 @@ use Modules\Patients\Services\ResolvePatientHandle;
 use Modules\Patients\Services\UpdateOwnDemographics;
 use Modules\Platform\Services\Coordinators\ApprovedCoordinators;
 use Modules\Platform\Services\Outbox\OutboxConsumer;
+use Modules\Verification\Services\VerificationDocumentService;
+use Modules\Verification\Services\VerificationService;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
@@ -65,6 +67,14 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             RegisterDoctor::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            VerificationService::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            VerificationDocumentService::class,
             ApprovedCoordinators::classes(),
         );
     }
@@ -123,7 +133,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/^use Modules\\\\(Auth|Identity|Access|Audit|Patients|Doctors)\\\\/m',
+                '/^use Modules\\\\(Auth|Identity|Access|Audit|Patients|Doctors|Verification)\\\\/m',
                 $contents,
                 $file.' Platform must not import a business module. List coordinating services as class-string names.',
             );
@@ -179,6 +189,11 @@ final class ArchitectureBoundaryTest extends TestCase
                 $contents,
                 $file.' Identity must not read or write Doctors tables.',
             );
+            $this->assertDoesNotMatchRegularExpression(
+                '/table\([\'"]verification_(cases|documents|decisions)/',
+                $contents,
+                $file.' Identity must not read or write Verification tables.',
+            );
         }
     }
 
@@ -208,9 +223,9 @@ final class ArchitectureBoundaryTest extends TestCase
                 $file.' Doctors must not query another module\'s tables.',
             );
             $this->assertDoesNotMatchRegularExpression(
-                '/use Modules\\\\(Patients|Auth)\\\\/',
+                '/use Modules\\\\(Patients|Auth|Verification)\\\\/',
                 $contents,
-                $file.' Doctors must not import Patients or Auth types.',
+                $file.' Doctors must not import Patients, Auth, or Verification types.',
             );
         }
     }
@@ -218,7 +233,7 @@ final class ArchitectureBoundaryTest extends TestCase
     #[Test]
     public function other_modules_do_not_query_doctors_tables(): void
     {
-        foreach (['Platform', 'Audit', 'Identity', 'Auth', 'Access', 'Patients'] as $module) {
+        foreach (['Platform', 'Audit', 'Identity', 'Auth', 'Access', 'Patients', 'Verification'] as $module) {
             foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.$module) as $file) {
                 $contents = (string) file_get_contents($file);
 
@@ -238,15 +253,74 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
+                '/table\([\'"]verification_(cases|documents|decisions)/',
+                $contents,
+                $file.' Doctors must not query Verification tables.',
+            );
+            $this->assertDoesNotMatchRegularExpression(
                 '/verification_(cases|documents|decisions)|doctor_verification_documents|SubmitVerificationDocuments/',
                 $contents,
                 $file.' Verification cases, documents, and decisions are not owned by Doctors.',
             );
         }
 
+        $projection = $this->modulesRoot().DIRECTORY_SEPARATOR.'Doctors/app/Support/DoctorApplicantProjection.php';
+        $projectionContents = (string) file_get_contents($projection);
+        $this->assertStringNotContainsString('national_id', $projectionContents);
+        $this->assertStringNotContainsString('hmac', $projectionContents);
+        $this->assertStringNotContainsString('key_version', $projectionContents);
+
         $routes = (string) file_get_contents(dirname(__DIR__, 3).'/routes/api.php');
-        $this->assertStringNotContainsString('verification-submissions', $routes);
-        $this->assertStringNotContainsString('verification-status', $routes);
+        $this->assertMatchesRegularExpression(
+            '/DoctorVerificationController::class, [\'"]submit[\'"]/',
+            $routes,
+        );
+        $this->assertMatchesRegularExpression(
+            '/DoctorVerificationController::class, [\'"]status[\'"]/',
+            $routes,
+        );
+        $this->assertStringNotContainsString('admin/verification-cases', $routes);
+        $this->assertStringNotContainsString('verification-uploads', $routes);
+    }
+
+    #[Test]
+    public function verification_does_not_query_foreign_persistence(): void
+    {
+        foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.'Verification') as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions)/',
+                $contents,
+                $file.' Verification must not query Doctors or Patients tables.',
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/use Modules\\\\(Patients|Auth|Clinical|Pharmacies|Clinics)\\\\/',
+                $contents,
+                $file.' Verification must not import Patients, Auth, or clinical persistence types.',
+            );
+        }
+    }
+
+    #[Test]
+    public function admin_must_consume_public_verification_services(): void
+    {
+        $admin = $this->modulesRoot().DIRECTORY_SEPARATOR.'Admin';
+        if (is_dir($admin)) {
+            foreach ($this->phpFiles($admin) as $file) {
+                $contents = (string) file_get_contents($file);
+                $this->assertDoesNotMatchRegularExpression(
+                    '/table\([\'"]verification_(cases|documents|decisions)/',
+                    $contents,
+                    $file.' Admin must call Verification public services rather than query verification tables.',
+                );
+            }
+        }
+
+        $catalog = (string) file_get_contents(dirname(__DIR__, 3).'/../../docs/architecture/module-catalog.md');
+        $this->assertStringContainsString('Admin work-queue UI calls `VerificationService`', $catalog);
+        $this->assertStringContainsString('`VerificationService`', $catalog);
+        $this->assertStringContainsString('`VerificationDocumentService`', $catalog);
     }
 
     #[Test]
@@ -260,6 +334,9 @@ final class ArchitectureBoundaryTest extends TestCase
             $this->assertStringNotContainsString('doctor_profiles', $contents);
             $this->assertStringNotContainsString('verification_status', $contents);
             $this->assertStringNotContainsString('syndicate_number', $contents);
+            $this->assertStringNotContainsString('verification_cases', $contents);
+            $this->assertStringNotContainsString('verification_documents', $contents);
+            $this->assertStringNotContainsString('verification_decisions', $contents);
             $this->assertDoesNotMatchRegularExpression(
                 '/\bspecialt(y|ies)\b/i',
                 $contents,
@@ -289,6 +366,66 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringContainsString('`doctor.profile_created`', $contents);
         $this->assertStringContainsString('personal identifier-only', $contents);
         $this->assertStringContainsString('`specialties`', $contents);
+    }
+
+    #[Test]
+    public function verification_module_catalog_peak_classification_is_sensitive(): void
+    {
+        $catalog = dirname(__DIR__, 3).'/../../docs/architecture/module-catalog.md';
+        $contents = (string) file_get_contents($catalog);
+
+        $this->assertMatchesRegularExpression(
+            '/^\| `Verification` \| 02 \| Backend \+ security \| sensitive \|/m',
+            $contents,
+        );
+        $this->assertMatchesRegularExpression(
+            '/^## `Verification`.+\*\*Classification:\*\* sensitive\./ms',
+            $contents,
+        );
+        $this->assertStringContainsString('`verification_cases`', $contents);
+        $this->assertStringContainsString('`verification_documents`', $contents);
+        $this->assertStringContainsString('`verification_decisions`', $contents);
+        $this->assertStringContainsString('`doctor.verification_submitted`', $contents);
+        $this->assertStringContainsString('`doctor.verification_decided`', $contents);
+        $this->assertStringContainsString('ENGINEERING_DEFAULT', $contents);
+        $this->assertStringContainsString('DoctorApplicantService', $contents);
+        $this->assertStringContainsString('Submit HTTP is compact', $contents);
+        $this->assertStringContainsString('DisabledTrustedDocumentEvidenceIssuer', $contents);
+        $this->assertStringContainsString('frozen after submission', $contents);
+        $this->assertStringContainsString('assignment-gated', $contents);
+        $this->assertStringNotContainsString('READY_TO_MERGE', $contents);
+    }
+
+    #[Test]
+    public function verification_document_registration_is_fail_closed(): void
+    {
+        $provider = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Providers/VerificationServiceProvider.php',
+        );
+        $this->assertStringContainsString('DisabledTrustedDocumentEvidenceIssuer::class', $provider);
+        $this->assertStringContainsString('TrustedDocumentEvidenceIssuer::class', $provider);
+
+        $controller = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Http/Controllers/DoctorVerificationController.php',
+        );
+        $this->assertStringNotContainsString('registerValidatedMetadata', $controller);
+        $this->assertStringNotContainsString('TrustedDocumentEvidence', $controller);
+        $this->assertStringNotContainsString('reviewSafeMetadata', $controller);
+
+        $service = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Services/VerificationDocumentService.php',
+        );
+        $this->assertStringNotContainsString('account_type === AccountType::Admin', $service);
+        $this->assertStringNotContainsString('attributedApplicantId', $service);
+        $this->assertDoesNotMatchRegularExpression(
+            '/function registerValidatedMetadata\(\s*ActorContext/',
+            $service,
+        );
+        $this->assertMatchesRegularExpression(
+            '/function registerValidatedMetadata\(\s*TrustedDocumentEvidence\s+\$evidence\s*\)/',
+            $service,
+        );
+        $this->assertStringContainsString('findById($case->applicantId', $service);
     }
 
     #[Test]

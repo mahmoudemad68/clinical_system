@@ -1,0 +1,11 @@
+{
+    "name": "Verification",
+    "alias": "verification",
+    "description": "Clinic Verification module",
+    "keywords": [],
+    "priority": 54,
+    "providers": [
+        "Modules\\Verification\\Providers\\VerificationServiceProvider"
+    ],
+    "files": []
+}

@@ -31,6 +31,12 @@ NATIONAL_ID_MODULES = {
     "Patients": "sensitive",
     "Doctors": "sensitive",
 }
+VERIFICATION_EVENT_SUBMITTED = (
+    REPO_ROOT / "packages" / "contracts" / "events" / "doctor" / "verification_submitted.v1.schema.json"
+)
+VERIFICATION_EVENT_DECIDED = (
+    REPO_ROOT / "packages" / "contracts" / "events" / "doctor" / "verification_decided.v1.schema.json"
+)
 
 
 class GateError(Exception):
@@ -121,6 +127,27 @@ def assert_inventory_and_events() -> None:
         fail("doctor.profile_created event classification must remain personal")
     if '"classification": "sensitive"' in event:
         fail("do not raise doctor.profile_created to sensitive")
+    if "### `verification_cases`" not in inventory:
+        fail("data-inventory missing verification_cases")
+    cases = inventory.split("### `verification_cases`")[1].split("### `")[0]
+    if "| `applicant_id` | personal |" not in cases:
+        fail("verification_cases.applicant_id must remain personal")
+    documents = inventory.split("### `verification_documents`")[1].split("### `")[0]
+    if "| `object_id` | sensitive |" not in documents:
+        fail("verification_documents.object_id must remain sensitive")
+    decisions = inventory.split("### `verification_decisions`")[1].split("### `")[0]
+    if "| `notes_ciphertext` | sensitive |" not in decisions:
+        fail("verification_decisions.notes_ciphertext must remain sensitive")
+    submitted = VERIFICATION_EVENT_SUBMITTED.read_text(encoding="utf-8")
+    decided = VERIFICATION_EVENT_DECIDED.read_text(encoding="utf-8")
+    for name, body in (
+        ("doctor.verification_submitted", submitted),
+        ("doctor.verification_decided", decided),
+    ):
+        if '"classification": "internal"' not in body:
+            fail(f"{name} event classification must remain internal")
+        if '"national_id"' in body or '"syndicate_number"' in body or '"object_key"' in body or '"object_id"' in body:
+            fail(f"{name} must not declare protected identifier or object-key fields")
     print("module-catalog-inventory-events: PASS")
 
 

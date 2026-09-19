@@ -83,6 +83,17 @@ final class PostgresDoctorProfileStore
     }
 
     /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateVerificationState(Identifier $id, int $expectedVersion, array $attributes): int
+    {
+        return $this->connection->table('doctor_profiles')
+            ->where('id', $id->value)
+            ->where('version', $expectedVersion)
+            ->update($attributes);
+    }
+
+    /**
      * Irreversible tombstone of linked profile protected fields. user_id stays
      * attached to the closed identity; specialties are not subject-linked.
      */

@@ -5,6 +5,20 @@ declare(strict_types=1);
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Modules\Access\Support\Capabilities;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Enums\AccountType;
+use Modules\Identity\Enums\AssuranceLevel;
+use Modules\Identity\Enums\LanguagePreference;
+use Modules\Identity\Support\ActorContext;
+use Modules\Platform\Exceptions\AuthorizationDenied;
+use Modules\Platform\Exceptions\FeatureUnavailable;
+use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Exceptions\StateConflict;
+use Modules\Platform\Exceptions\VersionConflict;
+use Modules\Platform\Support\Identifier;
+use Modules\Verification\Services\VerificationService;
 
 $payload = json_decode((string) stream_get_contents(STDIN), true);
 if (! is_array($payload)) {
@@ -93,6 +107,8 @@ if ($op === 'refresh') {
     if (isset($payload['idempotency_key'])) {
         $headers['HTTP_IDEMPOTENCY_KEY'] = (string) $payload['idempotency_key'];
     }
+} elseif ($op === 'verification_decide') {
+    $uri = '';
 } else {
     fwrite(STDOUT, json_encode(['ok' => false, 'error' => 'unknown_op', 'status' => 0]));
     exit(1);
@@ -103,6 +119,79 @@ $sqlstate = null;
 $error = null;
 $status = 0;
 $json = null;
+
+if ($op === 'verification_decide') {
+    try {
+        $reviewerId = Identifier::fromTrusted((string) ($payload['reviewer_user_id'] ?? ''));
+        $reviewer = new ActorContext(
+            $reviewerId,
+            AccountType::Admin,
+            AccountStatus::Active,
+            LanguagePreference::English,
+            AssuranceLevel::from((string) ($payload['assurance_level'] ?? 'aal2_totp')),
+            1,
+            null,
+            $reviewerId,
+            [],
+            Capabilities::forActor('admin', true),
+        );
+        $projection = $app->make(VerificationService::class)->recordDecision(
+            $reviewer,
+            Identifier::fromTrusted((string) ($payload['case_id'] ?? '')),
+            (string) ($payload['decision'] ?? ''),
+            (string) ($payload['reason_code'] ?? ''),
+            (int) ($payload['expected_version'] ?? 0),
+            isset($payload['notes']) ? (string) $payload['notes'] : null,
+        );
+        $status = 200;
+        $json = ['data' => $projection->toArray()];
+    } catch (AuthorizationDenied|FeatureUnavailable) {
+        $status = 404;
+        $json = ['errors' => [['code' => 'NOT_FOUND']]];
+    } catch (StateConflict) {
+        $status = 409;
+        $json = ['errors' => [['code' => 'STATE_CONFLICT']]];
+    } catch (VersionConflict) {
+        $status = 409;
+        $json = ['errors' => [['code' => 'VERSION_CONFLICT']]];
+    } catch (InvalidValueObject|ValidationException) {
+        $status = 422;
+        $json = ['errors' => [['code' => 'VALIDATION_FAILED']]];
+    } catch (Throwable $e) {
+        $error = $e::class;
+        $cursor = $e;
+        while ($cursor instanceof Throwable) {
+            if ($cursor instanceof PDOException) {
+                $sqlstate = (string) ($cursor->errorInfo[0] ?? $cursor->getCode());
+                break;
+            }
+            $cursor = $cursor->getPrevious();
+            if (! $cursor instanceof Throwable) {
+                break;
+            }
+        }
+    }
+
+    $elapsed = (hrtime(true) - $started) / 1e6;
+    $code = is_array($json) ? ($json['error']['code'] ?? $json['errors'][0]['code'] ?? null) : null;
+    fwrite(STDOUT, json_encode([
+        'ok' => $error === null && $status > 0,
+        'status' => $status,
+        'error' => $error,
+        'sqlstate' => $sqlstate,
+        'error_code' => $code,
+        'elapsed_ms' => round($elapsed, 3),
+        'has_access_token' => false,
+        'has_refresh_token' => false,
+        'session_id' => null,
+        'recovery_status' => is_array($json) ? ($json['data']['status'] ?? null) : null,
+        'patient_id' => null,
+        'case_id' => is_array($json) ? ($json['data']['case_id'] ?? null) : null,
+        'decision' => is_array($json) ? ($json['data']['decision'] ?? null) : null,
+    ], JSON_THROW_ON_ERROR));
+    exit($error === null ? 0 : 1);
+}
+
 $content = $body === [] ? '{}' : json_encode($body, JSON_THROW_ON_ERROR);
 
 try {
