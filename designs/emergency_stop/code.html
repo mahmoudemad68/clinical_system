@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Emergency Stop - HealthPath</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config injected from Brand Anchors -->
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-low": "#f1f4f6",
+                      "surface-lowest": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "surface-container-highest": "#e0e3e5",
+                      "inverse-surface": "#2d3133",
+                      "on-primary-fixed-variant": "#004786",
+                      "surface-tint": "#065fae",
+                      "surface-variant": "#e0e3e5",
+                      "on-surface-variant": "#414751",
+                      "secondary": "#006b5f",
+                      "primary-container": "#005dac",
+                      "error-red": "#ba1a1a",
+                      "background": "#f7fafc",
+                      "secondary-container": "#9cefdf",
+                      "inverse-on-surface": "#eef1f3",
+                      "on-tertiary-fixed-variant": "#304a56",
+                      "secondary-fixed": "#9ff2e2",
+                      "on-primary": "#ffffff",
+                      "tertiary-fixed-dim": "#afcbd9",
+                      "error": "#ba1a1a",
+                      "surface-bright": "#f7fafc",
+                      "surface-dim": "#d7dadc",
+                      "on-error": "#ffffff",
+                      "success-teal": "#006b5f",
+                      "on-primary-fixed": "#001c3a",
+                      "on-surface": "#181c1e",
+                      "tertiary-fixed": "#cbe7f5",
+                      "surface-container": "#ebeef0",
+                      "outline-variant": "#c1c6d3",
+                      "on-secondary-fixed-variant": "#005047",
+                      "tertiary-container": "#46606c",
+                      "on-tertiary-container": "#bedae8",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed-dim": "#a6c8ff",
+                      "error-container": "#ffdad6",
+                      "surface": "#f7fafc",
+                      "on-secondary-container": "#0b6f63",
+                      "on-secondary": "#ffffff",
+                      "on-background": "#181c1e",
+                      "surface-container-lowest": "#ffffff",
+                      "primary": "#004583",
+                      "surface-container-high": "#e5e9eb",
+                      "secondary-fixed-dim": "#83d5c6",
+                      "primary-fixed": "#d4e3ff",
+                      "on-primary-container": "#bfd7ff",
+                      "on-secondary-fixed": "#00201c",
+                      "tertiary": "#2e4854",
+                      "inverse-primary": "#a6c8ff",
+                      "outline": "#727783",
+                      "on-tertiary-fixed": "#011f29"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "lg": "24px",
+                      "xs": "4px",
+                      "margin-mobile": "16px",
+                      "gutter": "16px",
+                      "margin-tablet": "32px",
+                      "sm": "8px",
+                      "md": "16px",
+                      "xl": "32px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "title-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "title-lg": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.1px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.5px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Safe Area Padding for Mobile */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+        
+        /* Pulse Animation for Alert Icon */
+        @keyframes pulse-alert {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(186, 26, 26, 0.4);
+            }
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 20px rgba(186, 26, 26, 0);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(186, 26, 26, 0);
+            }
+        }
+        
+        .alert-pulse {
+            animation: pulse-alert 2s infinite;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface h-screen w-full flex flex-col font-body-md overflow-hidden" style="max-width: 390px; margin: 0 auto; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.1);">
+<!-- Top App Bar (Modified for lock flow - no back button) -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-on-background border-b border-surface-variant shadow-sm flex items-center justify-center px-margin-mobile h-16" style="max-width: 390px;">
+<span class="font-title-lg text-title-lg text-primary dark:text-primary-fixed">AI Assessment</span>
+<!-- Trailing icon removed for safety lock flow -->
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto px-margin-mobile pt-[88px] pb-[120px] flex flex-col items-center justify-center text-center">
+<!-- Alert Icon -->
+<div class="mb-lg w-32 h-32 rounded-full bg-error-container flex items-center justify-center alert-pulse shadow-sm border border-error/20">
+<span class="material-symbols-outlined filled text-error text-[64px]" data-icon="e911_emergency">
+                e911_emergency
+            </span>
+</div>
+<!-- Title -->
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-md">
+            Seek Urgent Care Immediately
+        </h1>
+<!-- Copy -->
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-xl px-sm">
+            Based on your answers, you may need immediate medical attention. Please stop this assessment and contact emergency services or visit the nearest hospital.
+        </p>
+<!-- Spacer to push buttons to bottom if needed, though flex-center handles it nicely here -->
+<div class="flex-1"></div>
+<!-- Action Area -->
+<div class="w-full flex flex-col gap-sm mt-xl pb-safe">
+<!-- Primary Action - Call Emergency -->
+<button aria-label="Call Emergency 123" class="w-full bg-error text-on-error font-label-lg text-label-lg h-[56px] rounded-full flex items-center justify-center gap-xs shadow-sm active:scale-95 transition-transform">
+<span class="material-symbols-outlined filled text-[20px]" data-icon="call">
+                    call
+                </span>
+                Call Emergency (123)
+            </button>
+<!-- Secondary Action - Find ER -->
+<button aria-label="Find Nearest ER" class="w-full bg-surface-lowest text-on-surface font-label-lg text-label-lg h-[56px] rounded-full flex items-center justify-center gap-xs border border-outline-variant shadow-sm active:scale-95 transition-transform hover:bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[20px]" data-icon="local_hospital">
+                    local_hospital
+                </span>
+                Find Nearest ER
+            </button>
+<!-- Tertiary Action - Exit -->
+<button aria-label="Exit Assessment" class="w-full text-primary font-label-lg text-label-lg h-[48px] rounded-full flex items-center justify-center active:scale-95 transition-transform mt-sm hover:bg-surface-container-low">
+                Exit Assessment
+            </button>
+</div>
+</main>
+<!-- Navigation Shell Suppressed as per instructions for linear/transactional/dead-end screens -->
+</body></html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Correction History</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#fffdff",
+                        "background": "#f7fafc",
+                        "surface-container-high": "#e5e9eb",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface": "#f7fafc",
+                        "outline-variant": "#c1c6d4",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#5f7985",
+                        "surface-variant": "#e0e3e5",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "inverse-primary": "#a5c8ff",
+                        "on-primary-fixed": "#001c3a",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#414752",
+                        "primary-container": "#1976d2",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#006b5f",
+                        "primary-fixed-dim": "#a5c8ff",
+                        "on-tertiary-fixed": "#021f29",
+                        "primary-fixed": "#d4e3ff",
+                        "inverse-on-surface": "#eef1f3",
+                        "tertiary-fixed-dim": "#afcbd8",
+                        "on-tertiary-container": "#fdfdff",
+                        "on-primary-fixed-variant": "#004786",
+                        "primary": "#005dac",
+                        "error-container": "#ffdad6",
+                        "surface-container-low": "#f1f4f6",
+                        "surface-bright": "#f7fafc",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#8df5e4",
+                        "on-secondary-container": "#007165",
+                        "on-surface": "#181c1e",
+                        "on-secondary-fixed-variant": "#005048",
+                        "tertiary": "#46606c",
+                        "surface-container": "#ebeef0",
+                        "secondary-container": "#8df5e4",
+                        "surface-tint": "#005faf",
+                        "on-secondary-fixed": "#00201c",
+                        "on-tertiary-fixed-variant": "#304a55",
+                        "surface-dim": "#d7dadc",
+                        "on-background": "#181c1e",
+                        "tertiary-fixed": "#cbe7f5",
+                        "secondary-fixed-dim": "#70d8c8",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "outline": "#717783"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "margin-tablet": "32px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "xl": "32px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg min-h-screen pb-24 md:pb-0 pt-16 md:pt-16 antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full h-16 bg-surface opacity-95 shadow-sm flex items-center justify-between px-md z-50">
+<div class="flex items-center gap-sm">
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant active:scale-95 duration-200">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+</div>
+<div class="text-title-lg font-title-lg font-bold text-primary flex-1 text-center">
+            Correction History
+        </div>
+<div class="flex items-center gap-sm w-10">
+<!-- Trailing space for balance -->
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="max-w-3xl mx-auto px-margin-mobile md:px-margin-tablet py-lg">
+<!-- Current Version Card (Bento/Glassmorphism style hint) -->
+<section class="mb-xl">
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-outline-variant p-md md:p-lg relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-8 -mt-8 pointer-events-none"></div>
+<div class="flex items-center justify-between mb-sm relative z-10">
+<div class="flex items-center gap-xs text-primary font-label-lg text-label-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        Current Version
+                    </div>
+<span class="text-on-surface-variant font-label-sm text-label-sm">v3.0 • Just Now</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-sm relative z-10">Patient Discharge Summary</h2>
+<div class="grid grid-cols-2 gap-sm mb-md relative z-10">
+<div>
+<span class="block text-on-surface-variant font-label-sm text-label-sm">Last Modified By</span>
+<span class="block text-on-surface font-body-md text-body-md">Dr. Sarah Jenkins</span>
+</div>
+<div>
+<span class="block text-on-surface-variant font-label-sm text-label-sm">Category</span>
+<div class="inline-flex items-center gap-xs bg-secondary/10 text-on-secondary-container px-2 py-1 rounded-sm mt-1">
+<span class="material-symbols-outlined text-[16px]">medication</span>
+<span class="font-label-sm text-label-sm">Dosage Update</span>
+</div>
+</div>
+</div>
+<button class="w-full md:w-auto bg-primary-container text-on-primary-container font-label-lg text-label-lg py-2 px-md rounded-full hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-sm relative z-10">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+                    View Active Document
+                </button>
+</div>
+</section>
+<!-- Vertical Timeline -->
+<section>
+<h3 class="font-title-lg text-title-lg text-on-surface mb-lg pl-2">Version History</h3>
+<div class="relative pl-6 md:pl-8 border-l-2 border-surface-container-high space-y-lg">
+<!-- History Entry 1 -->
+<div class="relative">
+<div class="absolute -left-[30px] md:-left-[38px] top-4 w-4 h-4 rounded-full bg-surface-container-lowest border-2 border-outline-variant"></div>
+<div class="bg-surface-container-lowest rounded-lg shadow-sm border border-outline-variant/50 p-md hover:border-primary/30 transition-colors group">
+<div class="flex flex-col md:flex-row md:items-center justify-between mb-sm gap-2">
+<div class="flex items-center gap-2">
+<span class="font-label-lg text-label-lg text-on-surface">Version 2.1</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm whitespace-nowrap">Oct 24, 2023 • 14:30</span>
+</div>
+<div class="inline-flex items-center gap-xs bg-surface-variant/50 text-on-surface-variant px-2 py-1 rounded-sm">
+<span class="material-symbols-outlined text-[14px]">history</span>
+<span class="font-label-sm text-label-sm">Original Preserved</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-sm mb-md">
+<div>
+<span class="block text-on-surface-variant font-label-sm text-label-sm">Modified By</span>
+<span class="block text-on-surface font-body-md text-body-md">Dr. Alan Turing</span>
+</div>
+<div>
+<span class="block text-on-surface-variant font-label-sm text-label-sm">Category</span>
+<div class="inline-flex items-center gap-xs bg-error/10 text-error px-2 py-1 rounded-sm mt-1">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+<span class="font-label-sm text-label-sm">Typo Correction</span>
+</div>
+</div>
+</div>
+<div class="flex justify-end">
+<button class="text-primary font-label-lg text-label-lg hover:bg-surface-container-low px-3 py-1.5 rounded-md transition-colors flex items-center gap-xs">
+                                View This Version
+                                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- History Entry 2 -->
+<div class="relative">
+<div class="absolute -left-[30px] md:-left-[38px] top-4 w-4 h-4 rounded-full bg-surface-container-lowest border-2 border-outline-variant"></div>
+<div class="bg-surface-container-lowest rounded-lg shadow-sm border border-outline-variant/50 p-md hover:border-primary/30 transition-colors group">
+<div class="flex flex-col md:flex-row md:items-center justify-between mb-sm gap-2">
+<div class="flex items-center gap-2">
+<span class="font-label-lg text-label-lg text-on-surface">Version 1.0</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm whitespace-nowrap">Oct 22, 2023 • 09:15</span>
+</div>
+<div class="inline-flex items-center gap-xs bg-surface-variant/50 text-on-surface-variant px-2 py-1 rounded-sm">
+<span class="material-symbols-outlined text-[14px]">history</span>
+<span class="font-label-sm text-label-sm">Original Preserved</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-sm mb-md">
+<div>
+<span class="block text-on-surface-variant font-label-sm text-label-sm">Created By</span>
+<span class="block text-on-surface font-body-md text-body-md">System Auto-Gen</span>
+</div>
+<div>
+<span class="block text-on-surface-variant font-label-sm text-label-sm">Category</span>
+<div class="inline-flex items-center gap-xs bg-surface-container-high text-on-surface px-2 py-1 rounded-sm mt-1">
+<span class="material-symbols-outlined text-[16px]">note_add</span>
+<span class="font-label-sm text-label-sm">Initial Creation</span>
+</div>
+</div>
+</div>
+<div class="flex justify-end">
+<button class="text-primary font-label-lg text-label-lg hover:bg-surface-container-low px-3 py-1.5 rounded-md transition-colors flex items-center gap-xs">
+                                View This Version
+                                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</body></html>

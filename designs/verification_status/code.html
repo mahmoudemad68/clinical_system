@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Doctor Workspace - Verification Status</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#1a1c1c",
+                      "primary-fixed": "#93f2f2",
+                      "surface-dim": "#dadada",
+                      "tertiary-fixed-dim": "#cac5cc",
+                      "on-primary-fixed": "#002020",
+                      "outline": "#6e7979",
+                      "primary-container": "#008080",
+                      "primary": "#006565",
+                      "on-primary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "on-surface": "#1a1c1c",
+                      "surface-container-highest": "#e2e2e2",
+                      "on-primary-container": "#e3fffe",
+                      "primary-fixed-dim": "#76d6d5",
+                      "surface-container": "#eeeeee",
+                      "outline-variant": "#bdc9c8",
+                      "surface-container-high": "#e8e8e8",
+                      "tertiary-container": "#757177",
+                      "surface-tint": "#006a6a",
+                      "surface-container-lowest": "#ffffff",
+                      "clinic-teal": "#008080",
+                      "on-secondary-container": "#4c3386",
+                      "background": "#f9f9f9",
+                      "error-container": "#ffdad6",
+                      "error": "#ba1a1a",
+                      "on-surface-variant": "#3e4949",
+                      "requirement-border": "#cbc4d2",
+                      "tertiary-fixed": "#e6e1e8",
+                      "on-tertiary": "#ffffff",
+                      "surface": "#f9f9f9",
+                      "surface-bright": "#f9f9f9",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed-dim": "#d0bcff",
+                      "inverse-primary": "#76d6d5",
+                      "surface-container-low": "#f3f3f3",
+                      "inverse-on-surface": "#f1f1f1",
+                      "on-secondary-fixed": "#22005c",
+                      "on-error-container": "#93000a",
+                      "on-secondary-fixed-variant": "#4f378a",
+                      "on-primary-fixed-variant": "#004f4f",
+                      "split-divider": "#ece6ee",
+                      "tertiary": "#5c595f",
+                      "surface-variant": "#e2e2e2",
+                      "secondary-fixed": "#e9ddff",
+                      "on-tertiary-fixed-variant": "#48464b",
+                      "inverse-surface": "#2f3131",
+                      "secondary": "#6750a4",
+                      "secondary-container": "#bca2fd",
+                      "clinical-bg": "#fdf7ff",
+                      "on-tertiary-fixed": "#1d1b20",
+                      "on-tertiary-container": "#fdf7fe"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "preview-pane-min": "400px",
+                      "unit": "4px",
+                      "margin": "32px",
+                      "sidebar-width": "260px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "body-md": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "data-mono": ["JetBrains Mono"],
+                      "label-caps": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "body-sm": ["Inter"]
+              },
+              "fontSize": {
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "data-mono": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                      "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}]
+              }
+            }
+          }
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md text-body-md">
+<!-- Top Navigation (Simplified for Transactional/Onboarding Flow) -->
+<header class="bg-surface-bright border-b border-split-divider h-16 px-gutter flex items-center justify-center shrink-0">
+<div class="font-headline-md text-headline-md text-on-surface">Doctor Workspace</div>
+</header>
+<!-- Main Content Area - Centered for Onboarding Status -->
+<main class="flex-grow flex items-center justify-center p-8 overflow-y-auto">
+<div class="w-full max-w-2xl bg-surface-container-lowest border border-outline-variant rounded-lg p-margin shadow-sm flex flex-col gap-8">
+<!-- Hero Status Section -->
+<div class="text-center flex flex-col items-center gap-4">
+<div class="w-20 h-20 bg-primary-container/10 rounded-full flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-4xl text-clinic-teal" style="font-variation-settings: 'FILL' 1;">pending_actions</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Review in Progress</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md mx-auto">
+                    Your credentials and clinical documentation are currently under review by our medical board. We will notify you once a decision is made.
+                </p>
+</div>
+<!-- Submission Timeline Stepper -->
+<div class="relative py-4 px-8 mt-4">
+<div class="absolute top-1/2 left-12 right-12 h-[2px] bg-outline-variant -translate-y-1/2 z-0"></div>
+<!-- Progress Line overlay -->
+<div class="absolute top-1/2 left-12 w-[50%] h-[2px] bg-clinic-teal -translate-y-1/2 z-0 transition-all duration-500"></div>
+<div class="flex justify-between relative z-10">
+<!-- Step 1: Draft -->
+<div class="flex flex-col items-center gap-2 group">
+<div class="w-8 h-8 rounded-full bg-clinic-teal flex items-center justify-center border-2 border-surface-container-lowest text-on-primary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface uppercase">Draft</span>
+</div>
+<!-- Step 2: Submitted -->
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-clinic-teal flex items-center justify-center border-2 border-surface-container-lowest text-on-primary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface uppercase">Submitted</span>
+</div>
+<!-- Step 3: Reviewing (Active) -->
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-surface-container-lowest border-2 border-clinic-teal flex items-center justify-center">
+<div class="w-3 h-3 rounded-full bg-clinic-teal animate-pulse"></div>
+</div>
+<span class="font-label-caps text-label-caps text-clinic-teal font-bold uppercase">Reviewing</span>
+</div>
+<!-- Step 4: Decision -->
+<div class="flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-surface-container-lowest border-2 border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-sm text-outline-variant">gavel</span>
+</div>
+<span class="font-label-caps text-label-caps text-outline-variant uppercase">Decision</span>
+</div>
+</div>
+</div>
+<!-- Requirement Summary List -->
+<div class="mt-6 flex flex-col gap-3">
+<h2 class="font-body-lg text-body-lg text-on-surface font-semibold mb-2">Submitted Documentation</h2>
+<!-- Approved Item -->
+<div class="flex items-start gap-4 p-4 rounded bg-surface border-l-2 border-clinic-teal border border-outline-variant">
+<span class="material-symbols-outlined text-clinic-teal mt-0.5" style="font-variation-settings: 'FILL' 1;">verified</span>
+<div class="flex-grow">
+<div class="font-body-md text-body-md text-on-surface font-semibold">Medical License</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Verified by Board of Medicine</div>
+</div>
+<span class="font-label-caps text-label-caps text-clinic-teal bg-primary-container/10 px-2 py-1 rounded uppercase">Verified</span>
+</div>
+<!-- Pending Item -->
+<div class="flex items-start gap-4 p-4 rounded bg-surface border-l-2 border-outline border border-outline-variant">
+<span class="material-symbols-outlined text-outline mt-0.5">hourglass_empty</span>
+<div class="flex-grow">
+<div class="font-body-md text-body-md text-on-surface font-semibold">Malpractice Insurance</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Policy #<span class="font-data-mono text-data-mono">INS-2023-994</span> under review</div>
+</div>
+<span class="font-label-caps text-label-caps text-outline bg-surface-container-high px-2 py-1 rounded uppercase">Pending</span>
+</div>
+<!-- Optional: Changes Requested Item (Hidden by default, shown for example layout) -->
+<!-- 
+                <div class="flex items-start gap-4 p-4 rounded bg-error-container/30 border-l-2 border-error border border-outline-variant">
+                    <span class="material-symbols-outlined text-error mt-0.5" style="font-variation-settings: 'FILL' 1;">error</span>
+                    <div class="flex-grow">
+                        <div class="font-body-md text-body-md text-on-surface font-semibold">DEA Registration</div>
+                        <div class="font-body-sm text-body-sm text-on-surface-variant text-error">Document image is blurry. Please upload a clear copy.</div>
+                    </div>
+                    <button class="font-label-caps text-label-caps text-error border border-error px-3 py-1 rounded hover:bg-error/10 uppercase transition-colors">Update</button>
+                </div>
+                -->
+</div>
+<!-- Action Footer -->
+<div class="mt-8 pt-6 border-t border-outline-variant flex justify-between items-center">
+<button class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface underline flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[16px]">help</span> Contact Support
+                </button>
+<div class="flex gap-4">
+<button class="px-6 py-2 rounded font-body-md text-body-md bg-surface-container-high text-on-surface-variant opacity-50 cursor-not-allowed border border-outline-variant transition-opacity" disabled="">
+                        View Changes
+                    </button>
+<!-- In this state (Reviewing), primary action is disabled or hidden. If approved, this would be 'Enter Workspace' -->
+<button class="px-6 py-2 rounded font-body-md text-body-md bg-primary text-on-primary font-semibold opacity-50 cursor-not-allowed transition-opacity" disabled="">
+                        Enter Workspace
+                    </button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

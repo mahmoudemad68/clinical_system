@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Verification Case Review - Admin Core</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#1b1b1d",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#f3f0f2",
+                        "primary-container": "#1e293b",
+                        "inverse-primary": "#bcc7de",
+                        "background": "#fbf8fa",
+                        "on-tertiary-fixed": "#271902",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ddc39d",
+                        "secondary-fixed": "#d5e3fd",
+                        "primary-fixed": "#d8e3fb",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#f0edef",
+                        "secondary-container": "#d5e3fd",
+                        "tertiary": "#1e1200",
+                        "on-surface-variant": "#45474c",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-primary-fixed": "#111c2d",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "on-primary-container": "#8590a6",
+                        "on-surface": "#1b1b1d",
+                        "tertiary-fixed": "#fadfb8",
+                        "surface-variant": "#e4e2e3",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface": "#fbf8fa",
+                        "secondary": "#515f74",
+                        "surface-dim": "#dcd9db",
+                        "on-secondary-container": "#57657b",
+                        "on-tertiary-container": "#a38c6a",
+                        "surface-bright": "#fbf8fa",
+                        "inverse-surface": "#303032",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f5f3f4",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "on-tertiary-fixed-variant": "#564427",
+                        "error": "#ba1a1a",
+                        "outline": "#75777d",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface-container-high": "#eae7e9",
+                        "outline-variant": "#c5c6cd",
+                        "surface-tint": "#545f73",
+                        "tertiary-container": "#35260c",
+                        "primary": "#091426"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin_lg": "24px",
+                        "margin_md": "16px",
+                        "header_height": "64px",
+                        "margin_sm": "8px",
+                        "stack_gap": "12px",
+                        "sidebar_width": "260px",
+                        "gutter": "16px",
+                        "container_max_width": "1440px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "code-md": ["JetBrains Mono"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "code-md": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        
+        /* Custom scrollbar for doc viewer */
+        .doc-scroll::-webkit-scrollbar { width: 6px; }
+        .doc-scroll::-webkit-scrollbar-track { background: transparent; }
+        .doc-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col md:flex-row">
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 left-[260px] h-16 flex justify-between items-center px-margin_lg z-30 bg-surface dark:bg-surface border-b border-outline-variant dark:border-outline hidden md:flex">
+<div class="flex items-center gap-6">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Admin Core</h1>
+<div class="h-6 w-px bg-outline-variant"></div>
+<nav class="flex gap-4">
+<button class="text-secondary font-label-md hover:bg-surface-container-high transition-colors px-3 py-2 rounded">Global View</button>
+<button class="text-primary font-bold border-b-2 border-primary pb-1 font-label-md px-3 py-2">Branch Context</button>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined text-on-surface cursor-pointer active:opacity-80 p-2 rounded-full hover:bg-surface-container-high transition-colors" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</div>
+<img alt="User Profile" class="w-8 h-8 rounded-full object-cover border border-outline-variant cursor-pointer active:opacity-80" data-alt="Professional headshot of a corporate administrator in a modern office setting. Sharp focus, cool lighting, neutral background, representing trust and authority." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWGTqrtg2OxsHquur_AbE8s1VdLl4jwD4CfS6BRPHpJQTTrhxXgFO-YVbj9ETt263dRgrE2I04qozlk-WYeidesJAyeOJFZBvHHJtLf-vDd8U86yd-I0HcJ8sYI9Rl5Kk9CDKrmL5PpUBo5OW8U0udI7-Aedci0IIkrBNKnjYKIhxN7sRxbzpnAS04AW7_7uFZImKR2kkbyVb6GmXUM9w7mAuwI0bg0v502m7cW_MQ7cKT6Hsv0I93"/>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed top-0 left-0 h-screen w-[260px] flex flex-col z-40 bg-primary dark:bg-primary flat no shadows hidden md:flex border-r border-slate-800">
+<div class="p-6 flex items-center gap-4 mb-4">
+<div class="w-10 h-10 rounded bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary icon-fill" data-icon="shield">shield</span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-primary truncate">Admin Workspace</h2>
+<p class="font-label-md text-label-md text-on-primary-container opacity-70">System Control</p>
+</div>
+</div>
+<nav class="flex-1 overflow-y-auto py-2">
+<!-- Active Tab: Verification -->
+<a class="bg-primary-container text-on-primary-container rounded-lg mx-2 my-1 px-4 py-2 flex items-center gap-3 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+<span class="font-label-md text-label-md">Verification</span>
+</a>
+<a class="text-on-primary-container opacity-70 hover:opacity-100 hover:bg-primary-container/50 transition-colors duration-150 mx-2 my-1 px-4 py-2 flex items-center gap-3 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-label-md">Medication Catalog</span>
+</a>
+<a class="text-on-primary-container opacity-70 hover:opacity-100 hover:bg-primary-container/50 transition-colors duration-150 mx-2 my-1 px-4 py-2 flex items-center gap-3 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="font-label-md text-label-md">Review Moderation</span>
+</a>
+<a class="text-on-primary-container opacity-70 hover:opacity-100 hover:bg-primary-container/50 transition-colors duration-150 mx-2 my-1 px-4 py-2 flex items-center gap-3 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-label-md text-label-md">Document Templates</span>
+</a>
+</nav>
+<div class="p-4 mt-auto border-t border-slate-800">
+<button class="w-full bg-primary-container text-on-primary font-label-md text-label-md py-2 rounded border border-slate-700 hover:bg-slate-700 transition-colors mb-4">
+                Manage Access
+            </button>
+<nav class="flex flex-col gap-1">
+<a class="text-on-primary-container opacity-70 hover:opacity-100 hover:bg-primary-container/50 transition-colors duration-150 mx-2 px-2 py-2 flex items-center gap-3 rounded-lg" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="history">history</span>
+<span class="font-label-md text-label-md">Audit Logs</span>
+</a>
+<a class="text-on-primary-container opacity-70 hover:opacity-100 hover:bg-primary-container/50 transition-colors duration-150 mx-2 px-2 py-2 flex items-center gap-3 rounded-lg" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</nav>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-[260px] md:mt-16 bg-slate-50 min-h-screen p-margin_lg">
+<div class="max-w-[1440px] mx-auto space-y-margin_md pb-32"> <!-- pb-32 for sticky footer -->
+<!-- Breadcrumbs & Actions -->
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2 text-secondary font-label-md text-label-md">
+<span class="cursor-pointer hover:text-primary transition-colors">Verification Queue</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-primary">Case #VRF-8924-A</span>
+</div>
+<div class="flex gap-2">
+<button class="h-[36px] px-4 bg-white border border-slate-200 text-primary font-label-md text-label-md rounded hover:bg-slate-50 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="flag">flag</span>
+                        Flag for Supervisor
+                    </button>
+</div>
+</div>
+<!-- Case Header -->
+<div class="bg-white border border-slate-200 rounded-lg p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div class="flex items-start gap-4">
+<div class="w-16 h-16 bg-surface-container-high rounded flex items-center justify-center shrink-0 border border-slate-200">
+<span class="material-symbols-outlined text-[32px] text-primary" data-icon="corporate_fare">corporate_fare</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary mb-1">Apex Health Partners LLC</h2>
+<div class="flex flex-wrap items-center gap-3 font-body-sm text-body-sm text-secondary">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="tag">tag</span> Tax ID: **-***4921</span>
+<span class="w-1 h-1 rounded-full bg-slate-300"></span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span> Seattle, WA</span>
+<span class="w-1 h-1 rounded-full bg-slate-300"></span>
+<span>Submitted: Oct 24, 2023 14:32 UTC</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2">
+<div class="bg-orange-100 text-orange-800 px-3 py-1 rounded font-label-md text-label-md flex items-center gap-1 border border-orange-200">
+<span class="material-symbols-outlined text-[16px]" data-icon="pending">pending</span>
+                        Pending Review
+                    </div>
+<span class="font-code-md text-code-md text-secondary">SLA: 4h 12m remaining</span>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-margin_md">
+<!-- Left Column (Checklist & Details) -->
+<div class="lg:col-span-4 space-y-margin_md">
+<!-- Organization Snapshot -->
+<section class="bg-white border border-slate-200 rounded-lg p-5">
+<h3 class="font-headline-sm text-headline-sm font-bold text-primary mb-4 border-b border-slate-100 pb-2">Entity Profile</h3>
+<div class="space-y-4">
+<div>
+<p class="font-label-md text-label-md text-secondary mb-1">Legal Name</p>
+<p class="font-body-md text-body-md text-primary">Apex Health Partners LLC</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-secondary mb-1">DBA / Tradename</p>
+<p class="font-body-md text-body-md text-primary">Apex Diagnostics</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-secondary mb-1">Primary Contact</p>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-secondary" data-icon="person">person</span>
+<p class="font-body-md text-body-md text-primary">Sarah Jenkins, Director of Ops</p>
+</div>
+<div class="flex items-center gap-2 mt-1">
+<span class="material-symbols-outlined text-[16px] text-secondary" data-icon="mail">mail</span>
+<p class="font-body-sm text-body-sm text-secondary">s.jenkins@apexhealth.example.com</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Verification Checklist -->
+<section class="bg-white border border-slate-200 rounded-lg p-5">
+<h3 class="font-headline-sm text-headline-sm font-bold text-primary mb-4 border-b border-slate-100 pb-2">Review Requirements</h3>
+<div class="space-y-0">
+<!-- Checklist Item 1 -->
+<label class="flex items-start gap-3 p-3 hover:bg-slate-50 rounded cursor-pointer transition-colors border-b border-slate-100 last:border-0">
+<input class="mt-1 w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary" type="checkbox"/>
+<div>
+<p class="font-body-md text-body-md text-primary font-semibold">Business License Match</p>
+<p class="font-body-sm text-body-sm text-secondary">Verify legal name and address against provided license document.</p>
+</div>
+</label>
+<!-- Checklist Item 2 -->
+<label class="flex items-start gap-3 p-3 hover:bg-slate-50 rounded cursor-pointer transition-colors border-b border-slate-100 last:border-0">
+<input class="mt-1 w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary" type="checkbox"/>
+<div>
+<p class="font-body-md text-body-md text-primary font-semibold">Tax ID Validation</p>
+<p class="font-body-sm text-body-sm text-secondary">Confirm EIN formatting and database cross-reference.</p>
+</div>
+</label>
+<!-- Checklist Item 3 -->
+<label class="flex items-start gap-3 p-3 hover:bg-slate-50 rounded cursor-pointer transition-colors border-b border-slate-100 last:border-0">
+<input class="mt-1 w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary" type="checkbox"/>
+<div>
+<p class="font-body-md text-body-md text-primary font-semibold">Facility Accreditation</p>
+<p class="font-body-sm text-body-sm text-secondary">Check expiration date on accreditation certificate.</p>
+</div>
+</label>
+</div>
+</section>
+</div>
+<!-- Right Column (Document Viewer & Timeline) -->
+<div class="lg:col-span-8 flex flex-col gap-margin_md h-[calc(100vh-200px)] min-h-[600px]">
+<!-- Document Viewer Pane -->
+<section class="bg-white border border-slate-200 rounded-lg flex flex-col flex-1 overflow-hidden">
+<!-- Toolbar -->
+<div class="bg-slate-100 border-b border-slate-200 px-4 py-2 flex justify-between items-center shrink-0">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="description">description</span>
+<select class="bg-transparent border-none text-primary font-label-md text-label-md focus:ring-0 py-1 pl-0 pr-8 cursor-pointer">
+<option>Business_License_2023.pdf</option>
+<option>W9_Form_Signed.pdf</option>
+<option>Accreditation_Cert.pdf</option>
+</select>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 text-secondary hover:bg-slate-200 rounded transition-colors" title="Zoom Out"><span class="material-symbols-outlined text-[20px]" data-icon="zoom_out">zoom_out</span></button>
+<span class="font-code-md text-code-md text-secondary px-2">100%</span>
+<button class="p-1.5 text-secondary hover:bg-slate-200 rounded transition-colors" title="Zoom In"><span class="material-symbols-outlined text-[20px]" data-icon="zoom_in">zoom_in</span></button>
+<div class="w-px h-4 bg-slate-300 mx-2"></div>
+<button class="p-1.5 text-secondary hover:bg-slate-200 rounded transition-colors" title="Open in new window"><span class="material-symbols-outlined text-[20px]" data-icon="open_in_new">open_in_new</span></button>
+</div>
+</div>
+<!-- Canvas / Safe Viewer -->
+<div class="flex-1 bg-slate-200 doc-scroll overflow-auto p-4 flex justify-center items-start relative">
+<!-- Secure Watermark overlay -->
+<div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03] z-10">
+<span class="font-headline-lg text-headline-lg font-bold transform -rotate-45 text-black">ADMIN SECURE VIEW - DO NOT DISTRIBUTE</span>
+</div>
+<!-- Mock Document Image -->
+<div class="bg-white shadow-sm border border-slate-300 w-full max-w-[800px] min-h-[1000px] p-12">
+<div class="border-b-2 border-slate-800 pb-4 mb-8 text-center">
+<h1 class="font-headline-md font-bold uppercase tracking-widest text-slate-800">State Business License</h1>
+<p class="font-body-sm text-slate-500 mt-2">Department of Revenue &amp; Commerce</p>
+</div>
+<div class="space-y-6">
+<div class="grid grid-cols-2 gap-8">
+<div>
+<p class="font-label-md text-slate-400 mb-1">Entity Name</p>
+<p class="font-code-md bg-slate-50 p-2 rounded border border-slate-100">Apex Health Partners LLC</p>
+</div>
+<div>
+<p class="font-label-md text-slate-400 mb-1">License Number</p>
+<p class="font-code-md bg-slate-50 p-2 rounded border border-slate-100">UBI-604-129-983</p>
+</div>
+</div>
+<!-- Blurred sensitive info representation -->
+<div class="mt-12 space-y-4">
+<div class="h-4 bg-slate-100 rounded w-3/4"></div>
+<div class="h-4 bg-slate-100 rounded w-full"></div>
+<div class="h-4 bg-slate-100 rounded w-5/6"></div>
+</div>
+<div class="mt-12 flex justify-end">
+<div class="border-t border-slate-300 pt-2 text-center w-48">
+<p class="font-signature font-bold text-slate-700 italic">J. Doe, Commissioner</p>
+<p class="font-label-md text-slate-400 text-[10px]">Valid thru 12/31/2024</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Decision History Timeline (Bottom Section) -->
+<section class="bg-white border border-slate-200 rounded-lg p-5 mt-margin_md">
+<h3 class="font-headline-sm text-headline-sm font-bold text-primary mb-4 border-b border-slate-100 pb-2">Case History</h3>
+<div class="space-y-4 pl-2 relative">
+<!-- Timeline Line -->
+<div class="absolute left-[17px] top-6 bottom-4 w-px bg-slate-200"></div>
+<!-- Event 1 -->
+<div class="flex items-start gap-4 relative z-10">
+<div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-[16px] text-secondary" data-icon="upload_file">upload_file</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center">
+<p class="font-body-md text-body-md text-primary font-semibold">Documents Submitted</p>
+<span class="font-body-sm text-body-sm text-secondary">Oct 24, 14:32</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mt-1">System received 3 files via API ingestion.</p>
+</div>
+</div>
+<!-- Event 2 -->
+<div class="flex items-start gap-4 relative z-10">
+<div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-[16px] text-secondary" data-icon="robot_2">robot_2</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-center">
+<p class="font-body-md text-body-md text-primary font-semibold">Automated Checks Passed</p>
+<span class="font-body-sm text-body-sm text-secondary">Oct 24, 14:35</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mt-1">OCR validation successful. Routed to manual review queue.</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Sticky Guarded Action Panel -->
+<div class="fixed bottom-0 left-0 md:left-[260px] right-0 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] p-4 z-20 flex justify-between items-center px-margin_lg">
+<div class="hidden sm:block">
+<p class="font-label-md text-label-md text-secondary">Review Status: <span class="text-primary font-bold">In Progress</span></p>
+</div>
+<div class="flex gap-3 w-full sm:w-auto">
+<button class="h-[36px] flex-1 sm:flex-none px-6 bg-white border border-slate-200 text-primary font-label-md text-label-md rounded hover:bg-slate-50 transition-colors">
+                Request Changes...
+            </button>
+<button class="h-[36px] flex-1 sm:flex-none px-6 bg-error-container text-on-error-container font-label-md text-label-md rounded border border-red-200 hover:bg-red-200 transition-colors">
+                Reject
+            </button>
+<button class="h-[36px] flex-1 sm:flex-none px-8 bg-primary-container text-on-primary font-label-md text-label-md rounded border border-slate-800 hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="check_circle">check_circle</span>
+                Approve Verification
+            </button>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Private Knowledge Library</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#004f4f",
+                    "surface-dim": "#cbdbf5",
+                    "on-tertiary-fixed": "#07006c",
+                    "surface-bright": "#f8f9ff",
+                    "on-error-container": "#93000a",
+                    "secondary-container": "#d9dff5",
+                    "tertiary": "#4446d2",
+                    "inverse-primary": "#76d6d5",
+                    "outline": "#6e7979",
+                    "tertiary-fixed": "#e1e0ff",
+                    "on-tertiary-container": "#fcf8ff",
+                    "surface-container-low": "#eff4ff",
+                    "tertiary-fixed-dim": "#c0c1ff",
+                    "error": "#ba1a1a",
+                    "primary": "#006565",
+                    "surface-variant": "#d3e4fe",
+                    "on-surface-variant": "#3e4949",
+                    "primary-container": "#008080",
+                    "on-primary-container": "#e3fffe",
+                    "on-secondary-container": "#5c6274",
+                    "on-surface": "#0b1c30",
+                    "secondary": "#575e70",
+                    "on-tertiary": "#ffffff",
+                    "surface-container": "#e5eeff",
+                    "on-primary": "#ffffff",
+                    "outline-variant": "#bdc9c8",
+                    "inverse-surface": "#213145",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed-dim": "#76d6d5",
+                    "on-secondary-fixed-variant": "#404758",
+                    "surface-container-highest": "#d3e4fe",
+                    "secondary-fixed": "#dce2f7",
+                    "inverse-on-surface": "#eaf1ff",
+                    "on-background": "#0b1c30",
+                    "surface-tint": "#006a6a",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed-dim": "#c0c6db",
+                    "primary-fixed": "#93f2f2",
+                    "on-primary-fixed": "#002020",
+                    "background": "#f8f9ff",
+                    "tertiary-container": "#5e61ec",
+                    "surface-container-high": "#dce9ff",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed-variant": "#2f2ebe",
+                    "surface": "#f8f9ff",
+                    "on-secondary-fixed": "#141b2b",
+                    "surface-container-lowest": "#ffffff",
+                    "clinic-teal": "#008080",
+                    "split-divider": "#e2e8f0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "12px",
+                    "unit": "4px",
+                    "container-margin": "16px",
+                    "row-padding": "8px",
+                    "compact-gap": "4px",
+                    "sidebar-width": "240px"
+            },
+            "fontFamily": {
+                    "ai-content": [
+                            "Inter"
+                    ],
+                    "display-lg": [
+                            "Hanken Grotesk"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "headline-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "label-caps": [
+                            "JetBrains Mono"
+                    ]
+            },
+            "fontSize": {
+                    "ai-content": [
+                            "14px",
+                            {
+                                    "lineHeight": "22px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "display-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-sm": [
+                            "13px",
+                            {
+                                    "lineHeight": "18px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-caps": [
+                            "11px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ]
+            }
+          },
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+        .ai-pulse-glow {
+            box-shadow: 0 0 0 2px rgba(94, 97, 236, 0.4);
+            animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { box-shadow: 0 0 0 2px rgba(94, 97, 236, 0.2); }
+            50% { box-shadow: 0 0 0 2px rgba(94, 97, 236, 0.6); }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased overflow-hidden flex h-screen">
+<!-- SideNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container-high text-clinic-teal dark:text-primary-fixed-dim font-label-caps text-label-caps fixed left-0 top-0 h-full w-sidebar-width border-r border-split-divider dark:border-outline-variant flex flex-col pt-16 z-40 transition-all duration-200 ease-in-out hidden md:flex">
+<!-- Header Profile Placeholder (Usually Top Nav handles clinic brand, Side handles patient context, but adapting based on JSON) -->
+<div class="px-container-margin py-row-padding border-b border-split-divider mb-gutter flex items-center gap-gutter">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="A small, high-contrast, professional circular avatar representing a clinical identity system, featuring an abstract geometric pattern in teal and navy blue, suitable for a secure medical dashboard environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDy067WcT6UpA7JOAaVv-1WVeOT4rHoWuL9tbPepmur_Zx2OFt2PB8p1ZnZS_ccAGBQ1klnH7Gq2urGpw2DXQvzZC2-ghKWWyjKlh9lZAJN6NZLQdC9FmEOW_lClIjqhNJqR_jzN49X_MNqPHwnLe5PaV6jgd4HCOiFf6gzV9zxXU-ehs3rgYLe54CgW-NFkjXBFE1R7Hy4YcfWjnO0uv4r-8OA4DOXocaMv3AndpJ5NT1IjQk9oSuU"/>
+<div>
+<div class="font-headline-md text-headline-md text-primary truncate w-full" title="Patient Identity">Patient Identity</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">DOB: 05/12/1984</div>
+</div>
+</div>
+<div class="px-container-margin mb-container-margin">
+<button class="w-full bg-clinic-teal text-white h-[36px] rounded flex items-center justify-center gap-compact-gap font-body-md text-body-md hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+                New Encounter
+            </button>
+</div>
+<ul class="flex-1 overflow-y-auto px-unit space-y-compact-gap">
+<li>
+<a class="flex items-center gap-gutter px-gutter py-row-padding rounded-DEFAULT text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-on-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span>Home</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-gutter px-gutter py-row-padding rounded-DEFAULT text-primary dark:text-primary-fixed-dim bg-surface-container-highest dark:bg-surface-variant font-bold hover:bg-surface-variant dark:hover:bg-on-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">menu_book</span>
+<span>Library</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-gutter px-gutter py-row-padding rounded-DEFAULT text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-on-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span>AI Assistant</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-gutter px-gutter py-row-padding rounded-DEFAULT text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-on-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span>Encounter Chat</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-gutter px-gutter py-row-padding rounded-DEFAULT text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-on-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span>Schedule</span>
+</a>
+</li>
+</ul>
+<ul class="border-t border-split-divider px-unit py-row-padding space-y-compact-gap mt-auto">
+<li>
+<a class="flex items-center gap-gutter px-gutter py-row-padding rounded-DEFAULT text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-on-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+<span>Help</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-gutter px-gutter py-row-padding rounded-DEFAULT text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-on-surface-variant/10 transition-colors" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span>Logout</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface text-primary dark:text-primary-fixed-dim font-body-md text-body-md w-full h-16 border-b border-outline-variant dark:border-outline-variant fixed top-0 flex justify-between items-center px-gutter z-50">
+<div class="flex items-center gap-container-margin md:ml-0 ml-12">
+<div class="text-headline-md font-headline-md text-clinic-teal dark:text-primary-fixed-dim mr-4 md:mr-8 truncate">Doctor Workspace</div>
+<nav class="hidden md:flex items-center h-full gap-4">
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors flex items-center h-full px-2 cursor-pointer active:scale-95" href="#">Dashboard</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors flex items-center h-full px-2 cursor-pointer active:scale-95" href="#">Patients</a>
+<a class="text-primary dark:text-primary-fixed-dim font-bold border-b-2 border-primary hover:text-primary dark:hover:text-primary-fixed transition-colors flex items-center h-full px-2 cursor-pointer active:scale-95" href="#">Protocols</a>
+</nav>
+</div>
+<div class="flex items-center gap-gutter">
+<!-- Search on Left logic applied via flex-row-reverse ordering relative to actions if needed, but keeping it standard right-aligned for now as per usual top app bar behavior unless strictly forced -->
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size: 20px;">search</span>
+<input class="bg-surface-container-low border border-outline-variant rounded-DEFAULT pl-8 pr-3 py-1 text-body-sm font-body-sm focus:outline-none focus:ring-2 focus:ring-clinic-teal focus:border-transparent w-48 transition-all" placeholder="Search..." type="text"/>
+</div>
+<button class="p-1.5 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full border border-outline-variant overflow-hidden ml-2">
+<img alt="Dr. Smith profile" class="w-full h-full object-cover" data-alt="Dr. Smith profile, a highly detailed, professional headshot of a mature doctor wearing a crisp white coat against a minimal slate gray background. Bright, clinical studio lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGYB1Nl5Z12wxSmDlmYLbFlS_rvbz3zBp3h3BmefhPAsZ5tpjqV_OQTr8d7AAQHp2NM1f4zpT87vDrHy2x9Iao05E1U83H2wEZPYi6iDdtg-Xe6C4g-H0HlU2DPsqk_FO3wUdMV9vjrWuBHwdQpB7mUPvAOSfiCjYSTF0UvgxFJJnCERmNdLikbg-Q7c-momFumIIf-vtYUufKhDphm5Xie62sgt-Nzpwn9imP3SzwWdRHJWszaBtN"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:pl-[240px] pt-16 h-screen w-full relative">
+<!-- Header -->
+<div class="px-container-margin py-container-margin border-b border-split-divider bg-surface flex justify-between items-center shrink-0">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface">Private Knowledge Library</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-unit">Manage and curate specialty-context documents for clinical AI augmentation.</p>
+</div>
+<button class="bg-clinic-teal text-white h-[36px] px-container-margin rounded flex items-center justify-center gap-compact-gap font-body-md text-body-md hover:opacity-90 transition-opacity" onclick="document.getElementById('uploadDrawer').classList.remove('translate-x-full')">
+<span class="material-symbols-outlined" style="font-size: 18px;">upload_file</span>
+                Upload Document
+            </button>
+</div>
+<div class="flex-1 flex overflow-hidden">
+<!-- Table Section -->
+<div class="flex-1 overflow-auto bg-surface p-container-margin">
+<div class="bg-white border border-[#E2E8F0] rounded-DEFAULT">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low border-b border-[#E2E8F0]">
+<tr>
+<th class="py-row-padding px-gutter font-label-caps text-label-caps text-on-surface-variant font-semibold">Title</th>
+<th class="py-row-padding px-gutter font-label-caps text-label-caps text-on-surface-variant font-semibold">Language</th>
+<th class="py-row-padding px-gutter font-label-caps text-label-caps text-on-surface-variant font-semibold">Version</th>
+<th class="py-row-padding px-gutter font-label-caps text-label-caps text-on-surface-variant font-semibold">Scope</th>
+<th class="py-row-padding px-gutter font-label-caps text-label-caps text-on-surface-variant font-semibold">Status</th>
+<th class="py-row-padding px-gutter font-label-caps text-label-caps text-on-surface-variant font-semibold">Updated</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md">
+<!-- Row 1 -->
+<tr class="border-b border-[#E2E8F0] hover:bg-surface-container-low transition-colors cursor-pointer" onclick="document.getElementById('timelinePanel').classList.remove('hidden')">
+<td class="py-row-padding px-gutter">
+<div class="flex items-center gap-compact-gap">
+<span class="material-symbols-outlined text-secondary" style="font-size: 18px;">description</span>
+<span class="font-medium text-on-surface">Cardiology_Protocols_Q3.pdf</span>
+</div>
+</td>
+<td class="py-row-padding px-gutter text-on-surface-variant">EN-US</td>
+<td class="py-row-padding px-gutter text-on-surface-variant">v2.4.1</td>
+<td class="py-row-padding px-gutter">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-tertiary-container/10 text-tertiary-container border border-tertiary-container/20">Specialty</span>
+</td>
+<td class="py-row-padding px-gutter">
+<div class="flex items-center gap-1 text-[#008080]">
+<span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+<span class="text-body-sm font-medium">Ready</span>
+</div>
+</td>
+<td class="py-row-padding px-gutter text-on-surface-variant text-body-sm">Today, 08:30</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-[#E2E8F0] hover:bg-surface-container-low transition-colors cursor-pointer" onclick="document.getElementById('timelinePanel').classList.remove('hidden')">
+<td class="py-row-padding px-gutter">
+<div class="flex items-center gap-compact-gap">
+<span class="material-symbols-outlined text-secondary" style="font-size: 18px;">article</span>
+<span class="font-medium text-on-surface">Pediatric_Dosage_Guidelines.docx</span>
+</div>
+</td>
+<td class="py-row-padding px-gutter text-on-surface-variant">EN-US</td>
+<td class="py-row-padding px-gutter text-on-surface-variant">v1.1.0</td>
+<td class="py-row-padding px-gutter">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-surface-variant text-on-surface-variant border border-outline-variant">Private</span>
+</td>
+<td class="py-row-padding px-gutter">
+<div class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined animate-spin" style="font-size: 14px;">sync</span>
+<span class="text-body-sm font-medium">Processing</span>
+</div>
+</td>
+<td class="py-row-padding px-gutter text-on-surface-variant text-body-sm">Yesterday, 14:15</td>
+</tr>
+<!-- Row 3 (Quarantined) -->
+<tr class="border-b border-[#E2E8F0] hover:bg-surface-container-low transition-colors cursor-pointer bg-error-container/20">
+<td class="py-row-padding px-gutter">
+<div class="flex items-center gap-compact-gap">
+<span class="material-symbols-outlined text-error" style="font-size: 18px;">warning</span>
+<span class="font-medium text-on-surface">Unverified_Trial_Data_Alpha.pdf</span>
+</div>
+</td>
+<td class="py-row-padding px-gutter text-on-surface-variant">EN-UK</td>
+<td class="py-row-padding px-gutter text-on-surface-variant">v0.9.1-beta</td>
+<td class="py-row-padding px-gutter">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-tertiary-container/10 text-tertiary-container border border-tertiary-container/20">Specialty</span>
+</td>
+<td class="py-row-padding px-gutter">
+<div class="flex items-center gap-1 text-error">
+<span class="material-symbols-outlined" style="font-size: 14px;">block</span>
+<span class="text-body-sm font-medium">Quarantined</span>
+</div>
+</td>
+<td class="py-row-padding px-gutter text-on-surface-variant text-body-sm">Oct 24, 09:12</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Timeline Panel (Hidden by default, shown on row click) -->
+<div class="w-[320px] border-l border-split-divider bg-white flex flex-col hidden shrink-0" id="timelinePanel">
+<div class="p-container-margin border-b border-split-divider flex justify-between items-center bg-surface-container-lowest">
+<h2 class="font-headline-md text-headline-md text-on-surface">Document History</h2>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors" onclick="document.getElementById('timelinePanel').classList.add('hidden')">
+<span class="material-symbols-outlined" style="font-size: 20px;">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-container-margin space-y-6">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-4">[AI SOURCE: SYSTEM LOG v1.2]</div>
+<!-- Timeline Item 1 -->
+<div class="relative pl-6 border-l-2 border-[#E2E8F0]">
+<div class="absolute w-3 h-3 bg-clinic-teal rounded-full -left-[7px] top-1 border-2 border-white"></div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-1">Today, 08:30</p>
+<p class="font-body-md text-body-md text-on-surface font-medium">Activated for Clinical Context</p>
+<p class="font-ai-content text-ai-content text-on-surface-variant mt-1 bg-surface-container-low p-2 rounded-DEFAULT border border-[#E2E8F0]">Vector embeddings successfully generated and indexed. Document is now queryable by AI Assistant.</p>
+</div>
+<!-- Timeline Item 2 -->
+<div class="relative pl-6 border-l-2 border-[#E2E8F0]">
+<div class="absolute w-3 h-3 bg-tertiary rounded-full -left-[7px] top-1 border-2 border-white"></div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-1">Today, 08:25</p>
+<p class="font-body-md text-body-md text-on-surface font-medium">Processing Initiated</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">NLP pipeline extraction started. PII scrubbing applied.</p>
+</div>
+<!-- Timeline Item 3 -->
+<div class="relative pl-6 border-l-2 border-transparent">
+<div class="absolute w-3 h-3 bg-[#CBD5E1] rounded-full -left-[7px] top-1 border-2 border-white"></div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-1">Today, 08:22</p>
+<p class="font-body-md text-body-md text-on-surface font-medium">Document Uploaded</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Uploaded by Dr. Smith via Desktop Client.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Upload Drawer Overlay & Panel -->
+<div class="fixed inset-0 z-[60] flex justify-end transform translate-x-full transition-transform duration-300 ease-in-out" id="uploadDrawer">
+<div class="absolute inset-0 bg-on-background/20 backdrop-blur-sm" onclick="document.getElementById('uploadDrawer').classList.add('translate-x-full')"></div>
+<div class="relative w-full max-w-md bg-surface h-full shadow-[0_0_15px_rgba(0,0,0,0.1)] border-l border-outline-variant flex flex-col">
+<div class="px-container-margin py-container-margin border-b border-split-divider flex justify-between items-center bg-white">
+<h2 class="font-headline-md text-headline-md text-on-surface">Upload Knowledge Document</h2>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors p-1 rounded hover:bg-surface-variant" onclick="document.getElementById('uploadDrawer').classList.add('translate-x-full')">
+<span class="material-symbols-outlined" style="font-size: 24px;">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-container-margin bg-surface space-y-container-margin">
+<!-- Safe File Picker (Opaque UI) -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-unit">DOCUMENT FILE</label>
+<div class="border border-dashed border-outline-variant rounded-DEFAULT bg-surface-container-low p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-surface-variant transition-colors group">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors mb-2" style="font-size: 32px;">cloud_upload</span>
+<p class="font-body-md text-body-md text-on-surface font-medium">Click to browse or drag file here</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Supports PDF, DOCX, TXT (Max 50MB)</p>
+<!-- Simulated selected file state (hidden normally, shown for design purposes) -->
+<div class="mt-4 p-2 bg-white border border-[#E2E8F0] rounded flex items-center gap-2 w-full shadow-[0_2px_4px_rgba(0,0,0,0.02)]">
+<span class="material-symbols-outlined text-[#008080]" style="font-size: 20px;">check_circle</span>
+<span class="font-body-sm text-body-sm text-on-surface truncate flex-1 text-left">Oncology_Guidelines_2024.pdf</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-[11px]">4.2 MB</span>
+</div>
+</div>
+</div>
+<!-- Provenance Fields -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-unit">PROVENANCE &amp; METADATA</label>
+<div class="bg-white border border-[#E2E8F0] rounded-DEFAULT p-container-margin space-y-4">
+<div>
+<label class="block font-body-sm text-body-sm text-on-surface mb-1">Document Title <span class="text-error">*</span></label>
+<input class="w-full border border-outline-variant rounded px-2 py-1.5 font-body-sm text-body-sm focus:outline-none focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal transition-all" type="text" value="Oncology Guidelines 2024"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block font-body-sm text-body-sm text-on-surface mb-1">Language</label>
+<select class="w-full border border-outline-variant rounded px-2 py-1.5 font-body-sm text-body-sm focus:outline-none focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal bg-white">
+<option>English (US)</option>
+<option>Spanish</option>
+<option>French</option>
+</select>
+</div>
+<div>
+<label class="block font-body-sm text-body-sm text-on-surface mb-1">Version</label>
+<input class="w-full border border-outline-variant rounded px-2 py-1.5 font-body-sm text-body-sm focus:outline-none focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal transition-all" placeholder="e.g. v1.0" type="text"/>
+</div>
+</div>
+<div>
+<label class="block font-body-sm text-body-sm text-on-surface mb-1">Scope</label>
+<div class="flex gap-4 mt-2">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="text-clinic-teal focus:ring-clinic-teal border-outline-variant" name="scope" type="radio"/>
+<span class="font-body-sm text-body-sm">Private (My Vault)</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="text-clinic-teal focus:ring-clinic-teal border-outline-variant" name="scope" type="radio"/>
+<span class="font-body-sm text-body-sm">Specialty (Shared)</span>
+</label>
+</div>
+</div>
+<div>
+<label class="block font-body-sm text-body-sm text-on-surface mb-1">Source Authority</label>
+<input class="w-full border border-outline-variant rounded px-2 py-1.5 font-body-sm text-body-sm focus:outline-none focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal transition-all" placeholder="e.g. American Medical Association" type="text"/>
+</div>
+</div>
+</div>
+<!-- Scope Notice -->
+<div class="bg-tertiary-container/10 border border-tertiary-container/20 rounded p-3 flex gap-3">
+<span class="material-symbols-outlined text-tertiary-container mt-0.5" style="font-size: 18px;">info</span>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface font-medium">AI Ingestion Notice</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 text-[12px] leading-tight">Uploaded documents will be processed by the NLP pipeline for AI context retrieval. Ensure no unauthorized PII is included in the raw text.</p>
+</div>
+</div>
+</div>
+<div class="px-container-margin py-container-margin border-t border-split-divider bg-white flex justify-end gap-3">
+<button class="px-4 py-1.5 font-body-md text-body-md text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded transition-colors" onclick="document.getElementById('uploadDrawer').classList.add('translate-x-full')">Cancel</button>
+<button class="bg-clinic-teal text-white px-4 py-1.5 rounded font-body-md text-body-md hover:opacity-90 transition-opacity flex items-center gap-2">
+                    Start Ingestion
+                </button>
+</div>
+</div>
+</div>
+</body></html>

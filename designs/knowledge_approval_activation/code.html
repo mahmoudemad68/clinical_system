@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-surface dark:bg-surface-bright" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Knowledge Approval Comparison</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#091426",
+                    "tertiary": "#1e1200",
+                    "secondary": "#515f74",
+                    "tertiary-container": "#35260c",
+                    "on-secondary-fixed-variant": "#3a485c",
+                    "background": "#fbf8fa",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed": "#fadfb8",
+                    "inverse-primary": "#bcc7de",
+                    "on-primary-fixed": "#111c2d",
+                    "surface-container-highest": "#e4e2e3",
+                    "on-tertiary-fixed": "#271902",
+                    "on-secondary-fixed": "#0d1c2f",
+                    "surface-bright": "#fbf8fa",
+                    "on-tertiary-fixed-variant": "#564427",
+                    "secondary-fixed-dim": "#b9c7e0",
+                    "surface-container-high": "#eae7e9",
+                    "primary-container": "#1e293b",
+                    "surface-tint": "#545f73",
+                    "on-primary": "#ffffff",
+                    "surface-dim": "#dcd9db",
+                    "inverse-on-surface": "#f3f0f2",
+                    "outline": "#75777d",
+                    "surface-variant": "#e4e2e3",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#3c475a",
+                    "surface-container-lowest": "#ffffff",
+                    "outline-variant": "#c5c6cd",
+                    "primary-fixed": "#d8e3fb",
+                    "inverse-surface": "#303032",
+                    "tertiary-fixed-dim": "#ddc39d",
+                    "on-surface": "#1b1b1d",
+                    "surface-container": "#f0edef",
+                    "secondary-container": "#d5e3fd",
+                    "surface": "#fbf8fa",
+                    "on-surface-variant": "#45474c",
+                    "secondary-fixed": "#d5e3fd",
+                    "primary-fixed-dim": "#bcc7de",
+                    "surface-container-low": "#f5f3f4",
+                    "on-tertiary-container": "#a38c6a",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "on-secondary-container": "#57657b",
+                    "on-background": "#1b1b1d",
+                    "on-primary-container": "#8590a6",
+                    "on-error": "#ffffff",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "margin_lg": "24px",
+                    "sidebar_width": "260px",
+                    "stack_gap": "12px",
+                    "margin_md": "16px",
+                    "container_max_width": "1440px",
+                    "header_height": "64px",
+                    "margin_sm": "8px"
+            },
+            "fontFamily": {
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "code-md": [
+                            "JetBrains Mono"
+                    ],
+                    "headline-md": [
+                            "Inter"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "headline-sm": [
+                            "Inter"
+                    ],
+                    "headline-lg": [
+                            "Inter"
+                    ],
+                    "label-md": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "code-md": [
+                            "13px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-sm": [
+                            "18px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "30px",
+                            {
+                                    "lineHeight": "38px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-md": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+          }
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Scrollbar styles for highly dense data areas */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #c5c6cd;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="h-full flex text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-container bg-background">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[260px] bg-surface dark:bg-surface-dim flex flex-col h-full py-margin_md border-r border-outline-variant dark:border-outline z-20 hidden md:flex">
+<!-- Header / Brand -->
+<div class="px-margin_md pb-margin_md border-b border-outline-variant dark:border-outline mb-margin_sm flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined fill-icon text-[18px]" data-icon="account_balance">account_balance</span>
+</div>
+<div>
+<h1 class="text-headline-sm font-headline-sm text-primary dark:text-primary-fixed">Health Oversight</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Admin Console</p>
+</div>
+</div>
+<!-- Main Navigation Tabs -->
+<div class="flex-1 flex flex-col gap-1 px-margin_sm overflow-y-auto custom-scrollbar">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-secondary-container dark:bg-secondary-container text-on-secondary-container font-semibold transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined fill-icon text-[20px]" data-icon="menu_book">menu_book</span>
+<span class="font-body-md text-body-md">Knowledge</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings_applications">settings_applications</span>
+<span class="font-body-md text-body-md">Operations</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="health_and_safety">health_and_safety</span>
+<span class="font-body-md text-body-md">System Health</span>
+</a>
+</div>
+<!-- Footer / CTA / Profile -->
+<div class="mt-auto px-margin_sm pt-margin_md border-t border-outline-variant dark:border-outline flex flex-col gap-2">
+<button class="w-full flex items-center justify-center gap-2 bg-primary-container text-on-primary h-9 rounded shadow-sm hover:bg-opacity-90 transition-colors font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Report
+            </button>
+<div class="flex flex-col gap-1 mt-2">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="help_outline">help_outline</span>
+<span class="font-body-sm text-body-sm">Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+<span class="font-body-sm text-body-sm">Settings</span>
+</a>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 mt-2 border-t border-outline-variant/50">
+<img alt="Health System Admin" class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A small, professional headshot of an administrator in high resolution, well-lit, neutral background, suitable for a dark/light mode corporate UI avatar." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL5ayF8SbxBBdzQRQjl7fkYVVtHZRW2zOw0MqfMQ13S2FL8U4P4DujN_szYEyuvs5rIPEuxBsRyBCtWFDIfjuzNAcpunvUtwQlT5x2nwNvQ8J48v51a1Jv_fXGEuiQp0x_x9eUBdJJJRy9FVzbd8RtwaqtE4nLgpf0vhQ7gELXWyXVqMmt_e9PGyJ2d4T9zxKznWE5ArcI2SQUvySzBnK_Gd-ET_ithSZRhhrSEgj3Lp-baUp7tI8M"/>
+<div class="flex flex-col flex-1 min-w-0">
+<span class="font-body-sm text-body-sm font-semibold truncate text-on-surface">J. Doe</span>
+<span class="font-body-sm text-[10px] text-on-surface-variant truncate">Admin Access</span>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0 h-full md:pl-[260px]">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] h-header_height bg-surface dark:bg-surface-bright flex items-center justify-between px-margin_lg border-b border-outline-variant dark:border-outline z-10">
+<!-- Mobile Menu Toggle (Visible only on mobile) -->
+<button class="md:hidden text-on-surface p-2 mr-2 hover:bg-surface-container-low rounded">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<!-- Search Bar (Left) -->
+<div class="flex-1 max-w-md flex items-center relative hidden sm:flex">
+<span class="material-symbols-outlined absolute left-3 text-outline text-[18px]">search</span>
+<input class="w-full pl-9 pr-4 py-1.5 h-9 bg-surface-container-lowest border border-outline-variant rounded focus:border-primary focus:ring-2 focus:ring-primary/10 font-body-sm text-body-sm transition-all outline-none" placeholder="Search systems, reports, protocols..." type="text"/>
+<div class="absolute right-2 px-1.5 py-0.5 rounded border border-outline-variant bg-surface-container text-outline font-code-md text-[10px]">⌘K</div>
+</div>
+<!-- Navigation Links (Center-ish, hidden on smaller screens) -->
+<nav class="hidden lg:flex items-center gap-6 mx-6">
+<a class="font-label-md text-label-md text-secondary dark:text-secondary-fixed-dim hover:text-primary hover:bg-surface-container-low transition-all duration-200 ease-in-out px-2 py-1 rounded" href="#">Dashboard</a>
+<a class="font-label-md text-label-md text-secondary dark:text-secondary-fixed-dim hover:text-primary hover:bg-surface-container-low transition-all duration-200 ease-in-out px-2 py-1 rounded" href="#">Analytics</a>
+<a class="font-label-md text-label-md text-secondary dark:text-secondary-fixed-dim hover:text-primary hover:bg-surface-container-low transition-all duration-200 ease-in-out px-2 py-1 rounded" href="#">Reports</a>
+</nav>
+<!-- Trailing Actions & Profile -->
+<div class="flex items-center gap-2 ml-auto">
+<button class="w-9 h-9 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+</button>
+<button class="w-9 h-9 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200">
+<span class="material-symbols-outlined text-[20px]" data-icon="history">history</span>
+</button>
+<button class="w-9 h-9 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-all duration-200">
+<span class="material-symbols-outlined text-[20px]" data-icon="help">help</span>
+</button>
+<div class="h-6 w-px bg-outline-variant mx-1 hidden sm:block"></div>
+<button class="ml-1 sm:hidden">
+<img alt="Administrator Profile" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A small, professional headshot of an administrator in high resolution, well-lit, neutral background, suitable for a dark/light mode corporate UI avatar." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmI7-GLg-87e5n1mQzj1GYPwp82pgEO9GyfOywU2o10okm45Q8G-r6i35K1ihqRz_N3cIXMw8MLUyJ7iQ6WYSAF_HGMjxtimpcb22s55CuIc3YtJle0mM5YrLNHBLlzIcTYNZej-ox2gsUkIdnzh9zlh_MIvRWq2Y5aYwWsDIjbfnnodQVrUwg7CMjBfVOFHWNMkCJCFHRXqV6XLAdOzQd_gpjbUzWYz8uIqiwqC8RXuY78cLIxBPJ"/>
+</button>
+</div>
+</header>
+<!-- Main Scrollable Canvas -->
+<main class="flex-1 overflow-y-auto mt-header_height p-margin_md md:p-margin_lg max-w-container_max_width mx-auto w-full custom-scrollbar">
+<!-- Page Header / Breadcrumbs -->
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-sm text-body-sm mb-1">
+<a class="hover:text-primary transition-colors" href="#">Knowledge Base</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">Protocols</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-on-surface font-medium">PRT-902 Update</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface flex items-center gap-3">
+                        Approval Request: PRT-902
+                        <span class="px-2 py-0.5 rounded text-[11px] font-label-md bg-secondary-container text-on-secondary-container border border-secondary-container/50 uppercase tracking-wider">Pending Review</span>
+</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Reviewing proposed changes to the Emergency Evacuation Protocol before activation.</p>
+</div>
+<!-- Global Action Bar -->
+<div class="flex items-center gap-2">
+<button class="h-9 px-4 rounded border border-outline-variant bg-surface text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">history</span>
+                        Rollback
+                    </button>
+<button class="h-9 px-4 rounded border border-outline-variant bg-surface text-error hover:bg-error-container hover:border-error-container transition-colors font-label-md text-label-md shadow-sm">
+                        Reject
+                    </button>
+<button class="h-9 px-4 rounded bg-primary-container text-on-primary hover:bg-opacity-90 transition-colors font-label-md text-label-md shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+                        Approve &amp; Activate
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout for Content -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column: The Comparison Engine (Spans 8 cols on large screens) -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- Metadata Comparison Section -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="bg-surface-container-low px-4 py-3 border-b border-outline-variant flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">compare_arrows</span>
+                                Metadata Comparison
+                            </h3>
+<div class="flex items-center gap-1 font-body-sm text-body-sm bg-surface rounded border border-outline-variant px-2 py-1">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="text-on-surface-variant">2 Critical Changes</span>
+</div>
+</div>
+<!-- Current vs Candidate Headers -->
+<div class="grid grid-cols-2 border-b border-outline-variant bg-surface-container-lowest">
+<div class="p-3 border-r border-outline-variant">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider block mb-1">Current Version (v2.1)</span>
+<span class="font-code-md text-code-md text-outline">ID: doc_98237_a</span>
+</div>
+<div class="p-3 bg-secondary-container/10">
+<span class="font-label-md text-label-md text-primary uppercase tracking-wider block mb-1">Candidate Version (v2.2-rc)</span>
+<span class="font-code-md text-code-md text-outline">ID: doc_98237_b_rc</span>
+</div>
+</div>
+<!-- Comparison Rows -->
+<div class="flex flex-col">
+<!-- Provenance Row -->
+<div class="grid grid-cols-2 border-b border-outline-variant last:border-b-0 hover:bg-surface-container-low transition-colors">
+<div class="p-4 border-r border-outline-variant">
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-2">Provenance</h4>
+<div class="font-body-sm text-body-sm text-on-surface">
+<div class="flex justify-between mb-1"><span class="text-on-surface-variant">Author:</span> <span>S. Miller (Operations)</span></div>
+<div class="flex justify-between mb-1"><span class="text-on-surface-variant">Source:</span> <span class="font-code-md">sys_repo_main</span></div>
+<div class="flex justify-between"><span class="text-on-surface-variant">Updated:</span> <span>Oct 12, 2023 09:15</span></div>
+</div>
+</div>
+<div class="p-4 bg-secondary-container/5">
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-2 opacity-0 select-none">Provenance</h4>
+<div class="font-body-sm text-body-sm text-on-surface">
+<div class="flex justify-between mb-1"><span class="text-on-surface-variant">Author:</span> <span class="bg-primary-fixed/30 px-1 rounded">A. Chen (Safety Admin)</span></div>
+<div class="flex justify-between mb-1"><span class="text-on-surface-variant">Source:</span> <span class="font-code-md">sys_repo_staging</span></div>
+<div class="flex justify-between"><span class="text-on-surface-variant">Updated:</span> <span class="bg-primary-fixed/30 px-1 rounded">Nov 04, 2023 14:30</span></div>
+</div>
+</div>
+</div>
+<!-- Scope/Language Row -->
+<div class="grid grid-cols-2 border-b border-outline-variant last:border-b-0 hover:bg-surface-container-low transition-colors">
+<div class="p-4 border-r border-outline-variant">
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-2">Scope &amp; Context</h4>
+<div class="flex flex-wrap gap-2 mb-3">
+<span class="px-2 py-0.5 rounded text-[11px] bg-surface-container border border-outline-variant text-on-surface-variant">North America</span>
+<span class="px-2 py-0.5 rounded text-[11px] bg-surface-container border border-outline-variant text-on-surface-variant">Facility A</span>
+</div>
+<div class="font-body-sm text-body-sm">
+<span class="text-on-surface-variant">Languages:</span> EN, FR
+                                    </div>
+</div>
+<div class="p-4 bg-secondary-container/5 relative">
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-2 opacity-0 select-none">Scope &amp; Context</h4>
+<div class="absolute top-4 right-4 text-error">
+<span class="material-symbols-outlined text-[18px]" title="Scope Change Alert">warning</span>
+</div>
+<div class="flex flex-wrap gap-2 mb-3">
+<span class="px-2 py-0.5 rounded text-[11px] bg-surface-container border border-outline-variant text-on-surface-variant">North America</span>
+<span class="px-2 py-0.5 rounded text-[11px] bg-surface-container border border-outline-variant text-on-surface-variant">Facility A</span>
+<span class="px-2 py-0.5 rounded text-[11px] bg-error-container border border-error/20 text-on-error-container font-medium">+ Facility B</span>
+</div>
+<div class="font-body-sm text-body-sm">
+<span class="text-on-surface-variant">Languages:</span> EN, FR, <span class="bg-primary-fixed/30 px-1 rounded">ES</span>
+</div>
+</div>
+</div>
+<!-- Evaluation Evidence (Code Diff Style) -->
+<div class="grid grid-cols-2 border-b border-outline-variant last:border-b-0">
+<div class="p-4 border-r border-outline-variant bg-surface-container-low/50">
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-2">Manifest Hash (Current)</h4>
+<div class="bg-surface-container-highest p-3 rounded border border-outline-variant/50 font-code-md text-code-md text-on-surface-variant break-all">
+                                        sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                                    </div>
+</div>
+<div class="p-4 bg-secondary-container/10">
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-2">Manifest Hash (Candidate)</h4>
+<div class="bg-surface-container-highest p-3 rounded border border-primary/30 font-code-md text-code-md text-on-surface break-all relative">
+                                        sha256:8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
+                                        <span class="absolute top-2 right-2 flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Timeline & MFA Panel (Spans 4 cols on large screens) -->
+<div class="lg:col-span-4 flex flex-col gap-6">
+<!-- Approver Separation & MFA Panel -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="bg-primary-container text-on-primary px-4 py-3 border-b border-primary-container/20 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">security</span>
+<h3 class="font-headline-sm text-headline-sm">Authorization Required</h3>
+</div>
+<div class="p-5 flex-1 flex flex-col gap-4">
+<div class="p-3 bg-error-container/20 border border-error/20 rounded-lg flex gap-3">
+<span class="material-symbols-outlined text-error text-[20px] shrink-0 mt-0.5">policy</span>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1">Separation of Duties</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">The author of this candidate (A. Chen) cannot self-approve. An independent administrator with Level 3 clearance is required.</p>
+</div>
+</div>
+<div class="space-y-3 mt-2">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Approver ID</label>
+<input class="w-full px-3 py-2 bg-surface-container-low border border-outline-variant rounded text-on-surface-variant font-code-md text-code-md cursor-not-allowed" disabled="" type="text" value="j.doe_admin"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">MFA Token (Hardware Key)</label>
+<div class="relative">
+<input class="w-full pl-3 pr-10 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary font-code-md text-code-md outline-none transition-all" placeholder="Tap key or enter 6-digit code" type="password"/>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-outline text-[18px]">usb</span>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Approval Rationale (Audit Log)</label>
+<textarea class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:border-primary focus:ring-1 focus:ring-primary font-body-sm text-body-sm outline-none transition-all resize-none" placeholder="Required for compliance audit..." rows="2"></textarea>
+</div>
+</div>
+</div>
+</section>
+<!-- Version Timeline -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm p-5 h-full">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">timeline</span>
+                            Document History
+                        </h3>
+<div class="relative border-l-2 border-outline-variant ml-3 space-y-6 mt-2">
+<!-- Candidate Node -->
+<div class="relative pl-6">
+<div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-secondary-container border-2 border-primary"></div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-primary">v2.2-rc (Candidate)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mb-1">Pending Approval</span>
+<div class="p-2 bg-surface-container-low rounded border border-outline-variant/50 font-body-sm text-body-sm text-on-surface mt-1">
+                                        Added Facility B scope and Spanish language support. Updated evacuation routes.
+                                    </div>
+</div>
+</div>
+<!-- Current Active Node -->
+<div class="relative pl-6">
+<div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-surface border-2 border-primary"></div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">v2.1 (Current Active)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mb-1">Activated: Oct 12, 2023 by S. Miller</span>
+</div>
+</div>
+<!-- Older Node -->
+<div class="relative pl-6">
+<div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-surface border-2 border-outline-variant"></div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant">v2.0</span>
+<span class="font-body-sm text-body-sm text-outline mb-1">Activated: Jan 05, 2023 by M. Roberts</span>
+</div>
+</div>
+<!-- Oldest Node (Faded) -->
+<div class="relative pl-6 opacity-60">
+<div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-surface border-2 border-outline-variant"></div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant">v1.0 (Initial)</span>
+<span class="font-body-sm text-body-sm text-outline mb-1">Activated: Nov 20, 2021 by System Admin</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</body></html>

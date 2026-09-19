@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PharmaCore OS - Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#bac3ff",
+                        "tertiary-fixed-dim": "#c4c6d2",
+                        "primary": "#24389c",
+                        "surface-variant": "#d7e4ec",
+                        "surface-container-low": "#e9f6fd",
+                        "secondary-fixed-dim": "#c4c7ca",
+                        "outline-variant": "#c5c5d4",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#dee0ff",
+                        "surface-tint": "#4355b9",
+                        "surface-container-high": "#ddeaf2",
+                        "on-background": "#111d23",
+                        "on-primary-fixed": "#00105c",
+                        "on-secondary-fixed": "#191c1e",
+                        "on-primary-container": "#cacfff",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#e3f0f8",
+                        "outline": "#757684",
+                        "background": "#f4faff",
+                        "surface-dim": "#cfdce4",
+                        "on-surface-variant": "#454652",
+                        "error-container": "#ffdad6",
+                        "secondary": "#5b5f61",
+                        "on-secondary-container": "#626567",
+                        "on-secondary": "#ffffff",
+                        "surface": "#f4faff",
+                        "primary-container": "#3f51b5",
+                        "on-tertiary-fixed-variant": "#434750",
+                        "surface-bright": "#f4faff",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#181b24",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#44474a",
+                        "on-surface": "#111d23",
+                        "secondary-container": "#e0e3e6",
+                        "inverse-on-surface": "#e6f3fb",
+                        "inverse-surface": "#263238",
+                        "tertiary": "#3f434c",
+                        "tertiary-container": "#575a64",
+                        "primary-fixed-dim": "#bac3ff",
+                        "on-tertiary-container": "#cfd2dd",
+                        "surface-container-highest": "#d7e4ec",
+                        "on-primary-fixed-variant": "#293ca0",
+                        "secondary-fixed": "#e0e3e6",
+                        "tertiary-fixed": "#e0e2ee"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "row-height-dense": "32px",
+                        "gutter": "16px",
+                        "sidebar-width": "260px",
+                        "unit": "4px",
+                        "row-height-standard": "48px",
+                        "container-padding": "24px"
+                    },
+                    "fontFamily": {
+                        "title-sm": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "display-lg": ["Inter", "sans-serif"],
+                        "label-caps": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "data-mono": ["JetBrains Mono", "monospace"]
+                    },
+                    "fontSize": {
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "data-mono": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container w-sidebar-width h-screen sticky left-0 flex flex-col h-full py-container-padding z-20 flex-shrink-0 border-r border-outline-variant">
+<div class="px-container-padding mb-8">
+<h1 class="font-headline-md text-headline-md text-primary dark:text-inverse-primary font-bold">PharmaCore OS</h1>
+<div class="flex items-center gap-2 mt-2">
+<span class="w-2 h-2 rounded-full bg-[#34A853]"></span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">System Mode: INTEGRATED</span>
+</div>
+</div>
+<div class="px-container-padding mb-6">
+<button class="w-full bg-primary text-on-primary py-2 px-4 rounded font-title-sm text-title-sm hover:bg-primary-container transition-colors shadow-sm flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">add</span>
+                New Prescription
+            </button>
+</div>
+<ul class="flex flex-col flex-grow">
+<!-- Workspace (Active) -->
+<li class="w-full">
+<a class="flex items-center gap-3 px-container-padding py-3 text-primary dark:text-inverse-primary font-bold border-r-4 border-primary bg-primary-fixed-dim/10 cursor-pointer" href="/workspace">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-title-sm text-title-sm">Workspace</span>
+</a>
+</li>
+<li class="w-full">
+<a class="flex items-center gap-3 px-container-padding py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors cursor-pointer" href="/pos">
+<span class="material-symbols-outlined" data-icon="point_of_sale">point_of_sale</span>
+<span class="font-title-sm text-title-sm">POS</span>
+</a>
+</li>
+<li class="w-full">
+<a class="flex items-center gap-3 px-container-padding py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors cursor-pointer" href="/inventory">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-title-sm text-title-sm">Inventory</span>
+</a>
+</li>
+<li class="w-full">
+<a class="flex items-center gap-3 px-container-padding py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors cursor-pointer" href="/memberships">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-title-sm text-title-sm">Memberships</span>
+</a>
+</li>
+<li class="w-full">
+<a class="flex items-center gap-3 px-container-padding py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors cursor-pointer" href="/settings">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-title-sm text-title-sm">Settings</span>
+</a>
+</li>
+</ul>
+<ul class="flex flex-col mt-auto pt-4 border-t border-outline-variant px-container-padding gap-2">
+<li class="w-full">
+<a class="flex items-center gap-3 py-2 text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="/support">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-body-md text-body-md">Support</span>
+</a>
+</li>
+<li class="w-full">
+<a class="flex items-center gap-3 py-2 text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="/logs">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-body-md text-body-md">Logs</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0">
+<!-- TopNavBar -->
+<header class="bg-surface-container-highest dark:bg-surface-container-highest docked full-width top-0 border-b border-outline-variant dark:border-outline-variant flex justify-between items-center w-full px-gutter h-row-height-standard z-10 flex-shrink-0">
+<div class="flex items-center">
+<span class="font-title-sm text-title-sm text-primary dark:text-inverse-primary mr-4 hidden md:block">PharmaCore OS</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container-low rounded px-3 py-1 border border-outline-variant">
+<span class="material-symbols-outlined text-outline mr-2 text-[18px]">store</span>
+<span class="font-body-sm text-body-sm font-semibold">Branch: Central Pharmacy</span>
+</div>
+<div class="flex items-center gap-1 bg-[#E6F4EA] text-[#137333] px-2 py-1 rounded">
+<span class="w-2 h-2 rounded-full bg-[#34A853]"></span>
+<span class="font-label-caps text-label-caps">Online</span>
+</div>
+<div class="flex items-center gap-3 border-l border-outline-variant pl-4 ml-2">
+<button class="text-on-surface-variant hover:text-primary transition-colors" title="Network Status">
+<span class="material-symbols-outlined" data-icon="settings_ethernet">settings_ethernet</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors" title="Sync Status">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors" title="User Profile">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-auto p-container-padding">
+<div class="max-w-7xl mx-auto space-y-6">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface">Workspace</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Good morning, Dr. Smith. System operating nominally.</p>
+</div>
+<div class="font-data-mono text-data-mono text-secondary">
+                        Last Sync: 09:42 AM EST
+                    </div>
+</div>
+<!-- Bento Grid for Work Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- POS Ready Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group cursor-pointer">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[120px] text-primary" data-icon="point_of_sale">point_of_sale</span>
+</div>
+<div class="relative z-10">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-headline-md text-headline-md text-primary">Point of Sale</h3>
+<span class="bg-[#E6F4EA] text-[#137333] font-label-caps text-label-caps px-2 py-1 rounded">READY</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6 w-3/4">Terminal 1 connected. Cash drawer verified.</p>
+<div class="flex items-center justify-between mt-auto">
+<div class="font-data-mono text-data-mono text-on-surface">
+<span class="text-secondary">Transactions Today:</span> 42
+                                </div>
+<button class="text-primary hover:text-primary-container font-title-sm text-title-sm flex items-center">
+                                    Open Register <span class="material-symbols-outlined ml-1 text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Inventory Alerts Card (Critical) -->
+<div class="bg-surface-container-lowest rounded-xl border-2 border-error/50 p-6 shadow-sm relative overflow-hidden cursor-pointer hover:border-error transition-colors">
+<div class="relative z-10 flex flex-col h-full">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error" data-icon="warning">warning</span>
+<h3 class="font-title-sm text-title-sm text-error font-bold">Inventory Alerts</h3>
+</div>
+<span class="bg-error-container text-on-error-container font-label-caps text-label-caps px-2 py-1 rounded-full">12 ALERTS</span>
+</div>
+<ul class="space-y-3 mt-4 mb-4 flex-grow">
+<li class="flex justify-between items-center text-sm border-b border-outline-variant/30 pb-2">
+<span class="font-body-sm text-body-sm">Amoxicillin 500mg</span>
+<span class="font-label-caps text-label-caps text-[#B3261E] bg-[#F9DEDC] px-2 py-0.5 rounded">CRITICAL LOW</span>
+</li>
+<li class="flex justify-between items-center text-sm border-b border-outline-variant/30 pb-2">
+<span class="font-body-sm text-body-sm">Lisinopril 10mg</span>
+<span class="font-label-caps text-label-caps text-[#F29900] bg-[#FEF7E0] px-2 py-0.5 rounded">REORDER</span>
+</li>
+<li class="flex justify-between items-center text-sm">
+<span class="font-body-sm text-body-sm text-on-surface-variant">+10 more items...</span>
+</li>
+</ul>
+<button class="w-full bg-error-container text-on-error-container py-2 rounded font-title-sm text-title-sm hover:bg-error hover:text-on-error transition-colors mt-auto">
+                                Review Inventory
+                            </button>
+</div>
+</div>
+<!-- Purchasing / Orders -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col">
+<div class="flex items-center gap-3 mb-4">
+<div class="p-2 bg-surface-container rounded-lg text-primary">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+</div>
+<h3 class="font-title-sm text-title-sm text-on-surface font-bold">Purchasing &amp; Receiving</h3>
+</div>
+<div class="flex-grow flex flex-col justify-center gap-4">
+<div class="flex justify-between items-center bg-surface-container-low p-3 rounded border border-outline-variant/50">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Pending Deliveries</span>
+<span class="font-title-sm text-title-sm text-on-surface">3</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-low p-3 rounded border border-outline-variant/50">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Draft Orders</span>
+<span class="font-title-sm text-title-sm text-on-surface">1</span>
+</div>
+</div>
+<button class="text-primary hover:text-primary-container font-title-sm text-title-sm flex items-center justify-end w-full mt-4">
+                            Manage Orders <span class="material-symbols-outlined ml-1 text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Rate your Visit</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#c1c6d4",
+                        "tertiary-fixed-dim": "#afcbd8",
+                        "surface": "#f7fafc",
+                        "surface-bright": "#f7fafc",
+                        "background": "#f7fafc",
+                        "tertiary": "#46606c",
+                        "primary-container": "#1976d2",
+                        "secondary": "#006b5f",
+                        "on-secondary-fixed": "#00201c",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#8df5e4",
+                        "primary-fixed-dim": "#a5c8ff",
+                        "error": "#ba1a1a",
+                        "inverse-primary": "#a5c8ff",
+                        "inverse-surface": "#2d3133",
+                        "on-primary-fixed": "#001c3a",
+                        "surface-dim": "#d7dadc",
+                        "tertiary-fixed": "#cbe7f5",
+                        "outline": "#717783",
+                        "surface-tint": "#005faf",
+                        "tertiary-container": "#5f7985",
+                        "on-tertiary": "#ffffff",
+                        "inverse-on-surface": "#eef1f3",
+                        "secondary-container": "#8df5e4",
+                        "on-primary-fixed-variant": "#004786",
+                        "surface-container": "#ebeef0",
+                        "on-secondary-container": "#007165",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#fffdff",
+                        "surface-container-highest": "#e0e3e5",
+                        "primary-fixed": "#d4e3ff",
+                        "surface-variant": "#e0e3e5",
+                        "on-tertiary-container": "#fdfdff",
+                        "on-surface-variant": "#414752",
+                        "on-tertiary-fixed": "#021f29",
+                        "surface-container-low": "#f1f4f6",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-surface": "#181c1e",
+                        "primary": "#005dac",
+                        "on-background": "#181c1e",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#70d8c8",
+                        "surface-container-high": "#e5e9eb",
+                        "on-tertiary-fixed-variant": "#304a55"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "margin-mobile": "16px",
+                        "xs": "4px",
+                        "base": "4px",
+                        "sm": "8px",
+                        "margin-tablet": "32px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "title-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full h-16 bg-surface dark:bg-on-background bg-primary dark:bg-inverse-surface opacity-5 shadow-sm flex items-center justify-between px-md w-full h-16 z-50">
+<button class="text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform duration-200 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="text-title-lg font-title-lg font-bold text-primary dark:text-primary-fixed-dim">Clinical Clarity</h1>
+<button class="hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform duration-200 p-2 rounded-full flex items-center justify-center">
+<div class="w-8 h-8 rounded-full overflow-hidden">
+<img alt="User profile picture" class="w-full h-full object-cover" data-alt="A small, circular avatar portrait of a modern medical professional, brightly lit against a clean white background. The image should convey trust and clinical precision, typical of a modern healthcare app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIKYRTT_fHT7gX91u4jtmBGYH-D9xP7VNa6iv4jNkx2Ya0X8zrMxVwDQubDZ0C_SBX6-mTFQ0YcKNZDYGFekHRyvnxi22G3ht-p6wDus6p2VrDKiGcvsbV56PKkUj8x4rpZfKbu34Rn3UFWOdoTR7MIwrEXUF5_d2AdCBO7OsFlva4j8gnxdUS024tmnwrFAvq0TQ9NBy3cHB78sGxOdOHaf_zech5YOX7CopZz7HEa0oeEdobPtD-"/>
+</div>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-[80px] pb-[100px] px-margin-mobile md:px-margin-tablet max-w-3xl mx-auto w-full flex flex-col gap-lg">
+<!-- Header Section -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-surface mb-xs">Rate your Visit</h2>
+<div class="flex items-center gap-sm mt-sm">
+<span class="material-symbols-outlined text-tertiary" data-icon="stethoscope">stethoscope</span>
+<div>
+<p class="font-title-lg text-title-lg text-on-surface">Dr. Sarah Jenkins</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Cardiology • October 24, 2023 at 10:00 AM</p>
+</div>
+</div>
+</section>
+<!-- Form Section -->
+<form class="flex flex-col gap-lg bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
+<!-- Rating Control -->
+<fieldset>
+<legend class="font-label-lg text-label-lg text-on-surface mb-sm">Overall Experience</legend>
+<div class="flex flex-col md:flex-row gap-sm md:gap-md">
+<label class="flex-1 cursor-pointer">
+<input class="peer sr-only" name="rating" type="radio" value="1"/>
+<div class="p-sm text-center border border-outline-variant rounded-lg peer-checked:bg-primary-container peer-checked:text-on-primary-container peer-checked:border-primary-container hover:bg-surface-container-low transition-colors">
+<span class="block font-label-sm text-label-sm">Poor</span>
+<span class="block font-body-lg text-body-lg mt-xs">1</span>
+</div>
+</label>
+<label class="flex-1 cursor-pointer">
+<input class="peer sr-only" name="rating" type="radio" value="2"/>
+<div class="p-sm text-center border border-outline-variant rounded-lg peer-checked:bg-primary-container peer-checked:text-on-primary-container peer-checked:border-primary-container hover:bg-surface-container-low transition-colors">
+<span class="block font-label-sm text-label-sm">Fair</span>
+<span class="block font-body-lg text-body-lg mt-xs">2</span>
+</div>
+</label>
+<label class="flex-1 cursor-pointer">
+<input class="peer sr-only" name="rating" type="radio" value="3"/>
+<div class="p-sm text-center border border-outline-variant rounded-lg peer-checked:bg-primary-container peer-checked:text-on-primary-container peer-checked:border-primary-container hover:bg-surface-container-low transition-colors">
+<span class="block font-label-sm text-label-sm">Good</span>
+<span class="block font-body-lg text-body-lg mt-xs">3</span>
+</div>
+</label>
+<label class="flex-1 cursor-pointer">
+<input class="peer sr-only" name="rating" type="radio" value="4"/>
+<div class="p-sm text-center border border-outline-variant rounded-lg peer-checked:bg-primary-container peer-checked:text-on-primary-container peer-checked:border-primary-container hover:bg-surface-container-low transition-colors">
+<span class="block font-label-sm text-label-sm">Very Good</span>
+<span class="block font-body-lg text-body-lg mt-xs">4</span>
+</div>
+</label>
+<label class="flex-1 cursor-pointer">
+<input class="peer sr-only" name="rating" type="radio" value="5"/>
+<div class="p-sm text-center border border-outline-variant rounded-lg peer-checked:bg-primary-container peer-checked:text-on-primary-container peer-checked:border-primary-container hover:bg-surface-container-low transition-colors">
+<span class="block font-label-sm text-label-sm">Excellent</span>
+<span class="block font-body-lg text-body-lg mt-xs">5</span>
+</div>
+</label>
+</div>
+</fieldset>
+<!-- Comment Area -->
+<div>
+<label class="block font-label-lg text-label-lg text-on-surface mb-sm" for="feedback">Your feedback (optional)</label>
+<textarea class="w-full p-sm border border-outline-variant rounded-lg bg-surface-container-lowest text-on-surface focus:ring-1 focus:ring-primary focus:border-primary transition-shadow font-body-md text-body-md resize-y" id="feedback" name="feedback" placeholder="Describe your experience during the visit..." rows="4"></textarea>
+</div>
+<!-- Privacy Guidance -->
+<div class="flex items-start gap-sm bg-surface-container-low p-sm rounded-lg">
+<span class="material-symbols-outlined text-outline mt-xs" data-icon="info">info</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant">
+                    Please do not include personal medical details or National ID in your review. Reviews are moderated before being published anonymously.
+                </p>
+</div>
+<!-- Actions -->
+<div class="flex flex-col-reverse md:flex-row justify-end gap-md mt-sm">
+<button class="px-lg py-sm font-label-lg text-label-lg text-primary border border-primary rounded-full hover:bg-surface-container-low transition-colors active:scale-95" type="button">Cancel</button>
+<button class="px-lg py-sm font-label-lg text-label-lg text-on-primary bg-primary rounded-full hover:bg-on-primary-fixed-variant transition-colors shadow-sm active:scale-95" type="submit">Submit Review</button>
+</div>
+</form>
+</main>
+<!-- BottomNavBar (Hidden on md and up as per typical responsive layout, though instructions say Destination Rule applies. Assuming this is a sub-page, we should technically suppress it, but leaving it as a requested component to satisfy JSON requirement if needed, however the prompt says "Generate an Appointment Review form", this implies a task-focused sub-page. I will suppress the bottom nav based on "Automatic Suppression: You MUST exclude the navigation shell if the page intent is: Task-Focused: Any sub-page featuring a "Close" or "Back" action that implies a temporary departure from the main navigation flow." The cancel button implies this.) -->
+</body></html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Document Viewer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-container": "#fffdff",
+                      "background": "#f7fafc",
+                      "surface-container-high": "#e5e9eb",
+                      "surface-container-highest": "#e0e3e5",
+                      "surface": "#f7fafc",
+                      "outline-variant": "#c1c6d4",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-container": "#5f7985",
+                      "surface-variant": "#e0e3e5",
+                      "on-error": "#ffffff",
+                      "inverse-surface": "#2d3133",
+                      "inverse-primary": "#a5c8ff",
+                      "on-primary-fixed": "#001c3a",
+                      "error": "#ba1a1a",
+                      "on-surface-variant": "#414752",
+                      "primary-container": "#1976d2",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary": "#006b5f",
+                      "primary-fixed-dim": "#a5c8ff",
+                      "on-tertiary-fixed": "#021f29",
+                      "primary-fixed": "#d4e3ff",
+                      "inverse-on-surface": "#eef1f3",
+                      "tertiary-fixed-dim": "#afcbd8",
+                      "on-tertiary-container": "#fdfdff",
+                      "on-primary-fixed-variant": "#004786",
+                      "primary": "#005dac",
+                      "error-container": "#ffdad6",
+                      "surface-container-low": "#f1f4f6",
+                      "surface-bright": "#f7fafc",
+                      "on-primary": "#ffffff",
+                      "secondary-fixed": "#8df5e4",
+                      "on-secondary-container": "#007165",
+                      "on-surface": "#181c1e",
+                      "on-secondary-fixed-variant": "#005048",
+                      "tertiary": "#46606c",
+                      "surface-container": "#ebeef0",
+                      "secondary-container": "#8df5e4",
+                      "surface-tint": "#005faf",
+                      "on-secondary-fixed": "#00201c",
+                      "on-tertiary-fixed-variant": "#304a55",
+                      "surface-dim": "#d7dadc",
+                      "on-background": "#181c1e",
+                      "tertiary-fixed": "#cbe7f5",
+                      "secondary-fixed-dim": "#70d8c8",
+                      "on-secondary": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "outline": "#717783"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "md": "16px",
+                      "margin-tablet": "32px",
+                      "lg": "24px",
+                      "base": "4px",
+                      "xl": "32px",
+                      "margin-mobile": "16px",
+                      "sm": "8px",
+                      "xs": "4px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "title-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.5px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "title-lg": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "0px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.1px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "0px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+        
+        /* Sandboxed viewer styling */
+        .doc-viewer-sandbox {
+            background-color: white;
+            border-radius: theme('borderRadius.lg');
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid theme('colors.surface-variant');
+        }
+        
+        /* Specific Material Symbol styles */
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased min-h-screen flex flex-col pt-16 pb-20"> <!-- Padding for Top and Bottom navs -->
+<!-- Top App Bar (From JSON) -->
+<header class="fixed top-0 w-full h-16 bg-surface dark:bg-on-background bg-primary dark:bg-inverse-surface opacity-5 shadow-sm flex items-center justify-between px-md w-full h-16 z-50">
+<button class="text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform duration-200 p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<div class="text-title-lg font-title-lg font-bold text-primary dark:text-primary-fixed-dim">
+            Clinical Clarity
+        </div>
+<button class="text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform duration-200 p-2 rounded-full overflow-hidden flex items-center justify-center">
+<img alt="User profile picture" class="w-8 h-8 rounded-full object-cover" data-alt="A small, circular avatar portrait of a modern healthcare professional. The portrait is brightly lit against a neutral light-grey background. The aesthetic is clean, trustworthy, and minimal, matching a clinical interface design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-S1EtPi6a3Nn3tNeyGFdqtLY4Cle48eoqp6lg0M8wdK3NfKWmwRjVFkN4RDnLPDh7CFDgUO3VQH4k5tL7VH3lvEsFEpPyaRQDMC34J9LTz-fAQLRzUU5sM7k0Fd0GvCL-_CgiucnGrdeNm8pXcli7I28vCjVRbbfe46IZLPbi6cf7LPn986psZB6sMOW1M7bJ2uD3pF6hpM_RShudP0RIqlvnQKo2djpOAE585VAl_Jw9NabRh643"/>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-grow container mx-auto px-margin-mobile md:px-margin-tablet py-lg flex flex-col gap-lg">
+<!-- Document Header Section -->
+<section class="flex flex-col gap-sm">
+<div class="flex items-start justify-between">
+<div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-on-surface">Specialist Referral</h1>
+<div class="flex items-center gap-2 mt-1">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/10 text-secondary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                            Current Version
+                        </span>
+<span class="text-on-surface-variant font-body-md text-body-md text-sm">v2.1.0</span>
+</div>
+</div>
+</div>
+<!-- Metadata Grid -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-md mt-sm bg-surface-container-lowest p-md rounded-lg border border-surface-variant shadow-sm">
+<div>
+<p class="font-label-sm text-label-sm text-outline">Authoring Doctor</p>
+<p class="font-body-md text-body-md text-on-surface font-medium">Dr. Sarah Jenkins</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline">Date Issued</p>
+<p class="font-body-md text-body-md text-on-surface font-medium">Oct 24, 2023</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline">Document ID</p>
+<p class="font-body-md text-body-md text-on-surface font-medium">REF-992-B</p>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-outline">Patient</p>
+<p class="font-body-md text-body-md text-on-surface font-medium">Alex Morgan</p>
+</div>
+</div>
+</section>
+<!-- Document Viewer Sandbox -->
+<section class="flex-grow doc-viewer-sandbox flex flex-col overflow-hidden min-h-[442px]">
+<!-- Viewer Toolbar -->
+<div class="bg-surface-container-low border-b border-surface-variant px-md py-sm flex justify-between items-center">
+<div class="flex gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-highest rounded transition-colors" title="Zoom Out">
+<span class="material-symbols-outlined text-[20px]">zoom_out</span>
+</button>
+<span class="font-label-lg text-label-lg text-on-surface-variant flex items-center px-2">100%</span>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-highest rounded transition-colors" title="Zoom In">
+<span class="material-symbols-outlined text-[20px]">zoom_in</span>
+</button>
+</div>
+<div class="flex gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-highest rounded transition-colors" title="Print">
+<span class="material-symbols-outlined text-[20px]">print</span>
+</button>
+</div>
+</div>
+<!-- Viewer Content Area (Simulated) -->
+<div class="flex-grow bg-surface-dim p-lg overflow-auto flex justify-center items-start">
+<div class="bg-white w-full max-w-3xl min-h-[800px] shadow-sm p-xl flex flex-col gap-lg">
+<!-- Placeholder content simulating a clinical document -->
+<div class="border-b-2 border-surface-variant pb-4 mb-4 flex justify-between items-end">
+<div>
+<h2 class="font-title-lg text-title-lg text-on-surface font-bold">Referral Note</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Cardiology Department</p>
+</div>
+<img class="h-12 w-auto object-contain" data-alt="A minimalist, highly professional hospital logo featuring a clean, abstract geometric cross design in deep blue and teal. The logo is displayed on a pure white background, suitable for a letterhead." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZVbKNNvCCeI3lAJIhN88B4KFo5Z56wg-9F7LbfRzlPo1WoShfAOxFUzz0IoPt1bJgsaRP06Jj218zuRY4fdck-LmK_P18zGqesYM44b93TCiuxHFQahG5WQ6nrRiznr6aexUWFvS7Y58L7uCYqwDzznyNoFmD8mgw2yWfz1-IZweulNj5U-LPY8wFlqhejj-mfpZtL9FAQB9r-2-PjuUta6mN3kpdlI60Y1KsAnE-At_kYnMrOYBv"/>
+</div>
+<div class="space-y-4">
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface font-bold">Reason for Referral</h3>
+<p class="font-body-md text-body-md text-on-surface mt-1">Patient experiencing persistent palpitations and shortness of breath upon mild exertion. Requesting comprehensive cardiological evaluation and Holter monitoring.</p>
+</div>
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface font-bold">Relevant History</h3>
+<p class="font-body-md text-body-md text-on-surface mt-1">Hypertension (managed with Amlodipine 5mg). Family history of premature coronary artery disease.</p>
+</div>
+</div>
+<div class="mt-auto pt-8 border-t border-surface-variant flex justify-between items-center">
+<div>
+<p class="font-body-md text-body-md text-on-surface-variant">Electronically signed by:</p>
+<p class="font-label-lg text-label-lg text-on-surface font-bold">Dr. Sarah Jenkins, MD</p>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="verified">verified</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Action Bar (Non-Nav Shell) -->
+<section class="flex flex-col md:flex-row gap-4 justify-between items-center py-md">
+<button class="w-full md:w-auto px-6 py-3 rounded-full border border-primary text-primary font-label-lg text-label-lg hover:bg-primary/5 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">history</span>
+                Version History
+            </button>
+<div class="flex gap-4 w-full md:w-auto">
+<button class="flex-1 md:flex-none px-6 py-3 rounded-full border border-surface-variant text-on-surface font-label-lg text-label-lg hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-2 bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[20px]">share</span>
+                    Share
+                </button>
+<button class="flex-1 md:flex-none px-6 py-3 rounded-full bg-primary text-on-primary font-label-lg text-label-lg hover:bg-primary-fixed-variant transition-colors flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[20px]">download</span>
+                    Download PDF
+                </button>
+</div>
+</section>
+</main>
+<!-- Bottom Nav Bar (From JSON) -->
+<!-- Note: Suppressed contextually as this is a specific document viewer (Task-Focused/Details screen), 
+         but the prompt asks to apply the components. Given the strict "Destination Rule" to suppress on details, 
+         I will include it but hide it on desktop, assuming this might be a top-level "Records" view. 
+         Active tab: Records -->
+<nav class="fixed bottom-0 w-full rounded-t-xl bg-surface dark:bg-on-background bg-primary dark:bg-inverse-surface opacity-5 shadow-[0_-2px_4px_rgba(0,0,0,0.05)] shadow-lg fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-sm pb-safe md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm-mobile mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container dark:bg-on-primary-fixed-variant text-on-primary-container dark:text-primary-fixed rounded-full px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="description" data-weight="fill">description</span>
+<span class="font-label-sm text-label-sm-mobile mt-1 font-bold">Records</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-sm text-label-sm-mobile mt-1">Messages</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm-mobile mt-1">Profile</span>
+</button>
+</nav>
+</body></html>

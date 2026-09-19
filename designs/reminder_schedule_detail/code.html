@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+
+<html class="light" dir="ltr" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reminder Schedule</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "error-container": "#ffdad6",
+                  "secondary-container": "#9cefdf",
+                  "on-secondary-container": "#0b6f63",
+                  "primary-fixed-dim": "#a6c8ff",
+                  "on-tertiary-fixed-variant": "#304a56",
+                  "surface": "#f9f9ff",
+                  "on-surface-variant": "#414752",
+                  "on-primary-fixed-variant": "#004786",
+                  "surface-tint": "#065fae",
+                  "status-active": "#006b5f",
+                  "on-primary": "#ffffff",
+                  "inverse-surface": "#2e3036",
+                  "on-primary-fixed": "#001c3a",
+                  "primary-container": "#005dac",
+                  "secondary-fixed-dim": "#83d5c6",
+                  "on-secondary": "#ffffff",
+                  "surface-container": "#ecedf5",
+                  "primary": "#004583",
+                  "background": "#f9f9ff",
+                  "surface-dim": "#d8dae1",
+                  "on-surface": "#191c21",
+                  "on-background": "#191c21",
+                  "status-uncertain": "#46606c",
+                  "surface-bright": "#f9f9ff",
+                  "surface-variant": "#e1e2e9",
+                  "primary-fixed": "#d4e3ff",
+                  "on-error": "#ffffff",
+                  "on-error-container": "#93000a",
+                  "on-secondary-fixed-variant": "#005047",
+                  "tertiary": "#2e4854",
+                  "inverse-primary": "#a6c8ff",
+                  "surface-container-lowest": "#ffffff",
+                  "secondary-fixed": "#9ff2e2",
+                  "tertiary-container": "#46606c",
+                  "status-corrected": "#1976d2",
+                  "secondary": "#006b5f",
+                  "surface-container-high": "#e7e8ef",
+                  "error": "#ba1a1a",
+                  "on-primary-container": "#bfd7ff",
+                  "on-tertiary-container": "#bedae8",
+                  "outline": "#727783",
+                  "on-secondary-fixed": "#00201c",
+                  "on-tertiary-fixed": "#011f29",
+                  "surface-container-highest": "#e1e2e9",
+                  "tertiary-fixed-dim": "#afcbd9",
+                  "inverse-on-surface": "#eff0f8",
+                  "outline-variant": "#c1c6d3",
+                  "status-expired": "#ba1a1a",
+                  "surface-container-low": "#f2f3fb",
+                  "on-tertiary": "#ffffff",
+                  "tertiary-fixed": "#cbe7f5"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "xl": "32px",
+                  "md": "16px",
+                  "base": "4px",
+                  "margin-mobile": "16px",
+                  "touch-target": "48px",
+                  "xs": "4px",
+                  "gutter": "16px",
+                  "sm": "8px",
+                  "lg": "24px"
+          },
+          "fontFamily": {
+                  "headline-lg": [
+                          "Inter"
+                  ],
+                  "label-lg": [
+                          "Inter"
+                  ],
+                  "display-lg": [
+                          "Inter"
+                  ],
+                  "body-lg": [
+                          "Inter"
+                  ],
+                  "title-lg": [
+                          "Inter"
+                  ],
+                  "label-sm": [
+                          "Inter"
+                  ],
+                  "headline-md": [
+                          "Inter"
+                  ],
+                  "headline-lg-mobile": [
+                          "Inter"
+                  ],
+                  "body-md": [
+                          "Inter"
+                  ]
+          },
+          "fontSize": {
+                  "headline-lg": [
+                          "32px",
+                          {
+                                  "lineHeight": "40px",
+                                  "letterSpacing": "0px",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "label-lg": [
+                          "14px",
+                          {
+                                  "lineHeight": "20px",
+                                  "letterSpacing": "0.1px",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "display-lg": [
+                          "40px",
+                          {
+                                  "lineHeight": "48px",
+                                  "letterSpacing": "-0.02em",
+                                  "fontWeight": "700"
+                          }
+                  ],
+                  "body-lg": [
+                          "18px",
+                          {
+                                  "lineHeight": "28px",
+                                  "fontWeight": "400"
+                          }
+                  ],
+                  "title-lg": [
+                          "20px",
+                          {
+                                  "lineHeight": "28px",
+                                  "fontWeight": "500"
+                          }
+                  ],
+                  "label-sm": [
+                          "12px",
+                          {
+                                  "lineHeight": "16px",
+                                  "letterSpacing": "0.5px",
+                                  "fontWeight": "500"
+                          }
+                  ],
+                  "headline-md": [
+                          "24px",
+                          {
+                                  "lineHeight": "32px",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "headline-lg-mobile": [
+                          "28px",
+                          {
+                                  "lineHeight": "36px",
+                                  "letterSpacing": "0px",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "body-md": [
+                          "16px",
+                          {
+                                  "lineHeight": "24px",
+                                  "fontWeight": "400"
+                          }
+                  ]
+          }
+  },
+      },
+    }
+  </script>
+<style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col items-center">
+<!-- TopAppBar (Transactional/Task-focused, no BottomNav) -->
+<header class="bg-surface dark:bg-surface-dim docked full-width top-0 flat no shadows flex justify-between items-center w-full px-md h-touch-target z-10 sticky">
+<button class="w-touch-target h-touch-target flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-variant/50 dark:hover:bg-surface-container-highest/50 rounded-full transition-transform duration-150 active:scale-95">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<div class="text-title-lg font-title-lg font-bold text-on-surface dark:text-inverse-on-surface">Amoxicillin 500mg</div>
+<button class="w-touch-target h-touch-target flex items-center justify-center text-primary dark:text-primary-fixed-dim hover:bg-surface-variant/50 dark:hover:bg-surface-container-highest/50 rounded-full transition-transform duration-150 active:scale-95">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</header>
+<main class="w-full max-w-3xl px-margin-mobile py-lg flex-grow flex flex-col gap-md">
+<!-- Medication Info Card -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant flex flex-col gap-sm">
+<div class="flex items-start gap-md">
+<div class="bg-primary-container text-on-primary-container p-sm rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="medication" style="font-variation-settings: 'FILL' 1;">medication</span>
+</div>
+<div>
+<h2 class="text-title-lg font-title-lg text-on-surface">Amoxicillin 500mg</h2>
+<p class="text-body-md font-body-md text-on-surface-variant">Take 1 capsule every 8 hours with food.</p>
+</div>
+</div>
+</section>
+<!-- Reminder Settings Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<!-- Reminder Mode -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant flex flex-col gap-sm">
+<div class="flex items-center gap-sm text-primary">
+<span class="material-symbols-outlined" data-icon="schedule">schedule</span>
+<h3 class="text-label-lg font-label-lg font-semibold uppercase tracking-wider text-on-surface-variant">Reminder Mode</h3>
+</div>
+<p class="text-body-lg font-body-lg text-on-surface">Exact times</p>
+</section>
+<!-- Active Window -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant flex flex-col gap-sm">
+<div class="flex items-center gap-sm text-primary">
+<span class="material-symbols-outlined" data-icon="date_range">date_range</span>
+<h3 class="text-label-lg font-label-lg font-semibold uppercase tracking-wider text-on-surface-variant">Active Window</h3>
+</div>
+<p class="text-body-lg font-body-lg text-on-surface">Oct 24 - Oct 31</p>
+</section>
+<!-- Notification Status -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant flex flex-col gap-sm md:col-span-2">
+<div class="flex items-center justify-between w-full">
+<div class="flex items-center gap-sm text-primary">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+<h3 class="text-label-lg font-label-lg font-semibold uppercase tracking-wider text-on-surface-variant">Notifications</h3>
+</div>
+<!-- Read-only toggle simulation -->
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in opacity-80 cursor-not-allowed">
+<div class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface border-4 border-primary appearance-none cursor-not-allowed right-0 translate-x-0"></div>
+<div class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-not-allowed"></div>
+</div>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant mt-sm">Enabled (Managed centrally by schedule settings)</p>
+</section>
+</div>
+<!-- Upcoming Occurrences -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant mt-sm">
+<h3 class="text-title-lg font-title-lg text-on-surface mb-md">Upcoming Occurrences (Cairo Local)</h3>
+<div class="flex flex-col gap-sm relative">
+<!-- Timeline vertical line -->
+<div class="absolute left-[15px] top-4 bottom-4 w-0.5 bg-surface-variant z-0 hidden md:block"></div>
+<!-- Time item 1 -->
+<div class="flex items-center gap-md p-sm bg-surface rounded-lg relative z-10 border border-outline-variant/30 hover:bg-surface-container-low transition-colors duration-150">
+<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-sm" data-icon="light_mode">light_mode</span>
+</div>
+<div class="flex-grow">
+<p class="text-body-lg font-body-lg font-medium text-on-surface">06:00 AM</p>
+</div>
+<div class="px-sm py-1 bg-surface-container-high rounded-full text-label-sm font-label-sm text-on-surface-variant">Scheduled</div>
+</div>
+<!-- Time item 2 -->
+<div class="flex items-center gap-md p-sm bg-surface rounded-lg relative z-10 border border-outline-variant/30 hover:bg-surface-container-low transition-colors duration-150">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-sm" data-icon="wb_sunny">wb_sunny</span>
+</div>
+<div class="flex-grow">
+<p class="text-body-lg font-body-lg font-medium text-on-surface">02:00 PM</p>
+</div>
+<div class="px-sm py-1 bg-surface-container-high rounded-full text-label-sm font-label-sm text-on-surface-variant">Scheduled</div>
+</div>
+<!-- Time item 3 -->
+<div class="flex items-center gap-md p-sm bg-surface rounded-lg relative z-10 border border-outline-variant/30 hover:bg-surface-container-low transition-colors duration-150">
+<div class="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-sm" data-icon="dark_mode">dark_mode</span>
+</div>
+<div class="flex-grow">
+<p class="text-body-lg font-body-lg font-medium text-on-surface">10:00 PM</p>
+</div>
+<div class="px-sm py-1 bg-surface-container-high rounded-full text-label-sm font-label-sm text-on-surface-variant">Scheduled</div>
+</div>
+</div>
+</section>
+<!-- Disclaimer -->
+<div class="mt-xl flex items-start gap-sm p-md bg-surface-container-low rounded-xl border-l-4 border-primary">
+<span class="material-symbols-outlined text-primary mt-xs" data-icon="info">info</span>
+<p class="text-body-md font-body-md text-on-surface-variant">
+        This schedule is doctor-confirmed. No patient recording required.
+      </p>
+</div>
+</main>
+</body></html>

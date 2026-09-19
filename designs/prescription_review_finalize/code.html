@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Doctor Workspace - Prescription Finalization</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "outline-variant": "#bdc9c8",
+                      "on-error": "#ffffff",
+                      "clinic-teal": "#008080",
+                      "surface-container-low": "#f3f3f3",
+                      "tertiary-container": "#757177",
+                      "background": "#f9f9f9",
+                      "on-primary-fixed": "#002020",
+                      "secondary-fixed-dim": "#d0bcff",
+                      "surface-container-highest": "#e2e2e2",
+                      "on-primary-container": "#e3fffe",
+                      "error-container": "#ffdad6",
+                      "on-secondary-container": "#4c3386",
+                      "surface-tint": "#006a6a",
+                      "tertiary": "#5c595f",
+                      "surface-container-high": "#e8e8e8",
+                      "on-tertiary-fixed-variant": "#48464b",
+                      "primary-container": "#008080",
+                      "on-secondary-fixed": "#22005c",
+                      "inverse-primary": "#76d6d5",
+                      "inverse-surface": "#2f3131",
+                      "secondary-container": "#bca2fd",
+                      "on-error-container": "#93000a",
+                      "secondary": "#6750a4",
+                      "requirement-border": "#cbc4d2",
+                      "on-tertiary": "#ffffff",
+                      "on-background": "#1a1c1c",
+                      "primary-fixed-dim": "#76d6d5",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-container": "#fdf7fe",
+                      "surface-bright": "#f9f9f9",
+                      "primary-fixed": "#93f2f2",
+                      "surface-variant": "#e2e2e2",
+                      "surface-dim": "#dadada",
+                      "tertiary-fixed": "#e6e1e8",
+                      "primary": "#006565",
+                      "surface-container": "#eeeeee",
+                      "inverse-on-surface": "#f1f1f1",
+                      "on-tertiary-fixed": "#1d1b20",
+                      "secondary-fixed": "#e9ddff",
+                      "clinical-bg": "#fdf7ff",
+                      "outline": "#6e7979",
+                      "on-primary-fixed-variant": "#004f4f",
+                      "tertiary-fixed-dim": "#cac5cc",
+                      "surface": "#f9f9f9",
+                      "on-surface-variant": "#3e4949",
+                      "on-surface": "#1a1c1c",
+                      "on-secondary-fixed-variant": "#4f378a",
+                      "split-divider": "#ece6ee",
+                      "error": "#ba1a1a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin": "32px",
+                      "preview-pane-min": "400px",
+                      "unit": "4px",
+                      "sidebar-width": "260px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "data-mono": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "data-mono": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.06em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background h-screen overflow-hidden flex font-body-md">
+<!-- SideNavBar -->
+<nav class="bg-surface fixed left-0 top-0 h-full w-[260px] border-r border-outline-variant flex flex-col h-full py-margin px-4">
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-variant overflow-hidden border border-outline-variant">
+<img alt="Doctor Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a mature doctor in a clean, brightly lit clinical setting. The doctor wears a white coat over a light blue shirt, exuding confidence and clinical precision. The background is a slightly blurred, modern medical office with soft, cool lighting. High resolution, sharp focus on the face." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKZo8_4ieuJ1Ay2ThhPfB8xDVb5naz1JKH7QYM9yMbAV5eXJPUSXWTDHeoGUUpRcgWcgDJeQeJGNVEjWdXBUaiVzRGTgkcm1ZFVKL3WOZCbPb-B-pP9TOXZgFhQlMeW4reHUuxDXD_dlxd9EnXmklzcq8_nuij1rNEKW6V-yk7RhSYxdOkQFc1f2PQS-10Bx-p5Rxc0R-wCznGRZGfxQt8G3YNnFmmk-sh-I4jXLzhM_rYvvy0UrGN"/>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-clinic-teal">Dr. Jameson</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Senior Clinician</p>
+</div>
+</div>
+<div class="space-y-1 flex-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">person</span>
+                Patients
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">event</span>
+                Appointments
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-clinic-teal font-bold border-r-4 border-clinic-teal bg-primary-container/10 transition-colors font-body-md text-body-md opacity-80 duration-150" href="#">
+<span class="material-symbols-outlined">medical_services</span>
+                Clinical Records
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">group</span>
+                Staff Management
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-DEFAULT text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+</div>
+<div class="mt-auto pt-4">
+<button class="w-full bg-clinic-teal text-on-primary py-2 rounded-DEFAULT font-label-caps text-label-caps hover:opacity-90 transition-opacity">
+                New Consultation
+            </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 ml-[260px] flex flex-col h-full w-[calc(100%-260px)]">
+<!-- TopAppBar -->
+<header class="bg-surface-bright docked full-width top-0 border-b border-split-divider flex justify-between items-center h-16 px-gutter">
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Doctor Workspace</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-low border border-outline-variant rounded-DEFAULT font-body-sm text-body-sm focus:outline-none focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal w-64" placeholder="Search records..." type="text"/>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<button class="p-2 hover:text-clinic-teal transition-all rounded-full hover:bg-surface-container-high"><span class="material-symbols-outlined">notifications</span></button>
+<button class="p-2 hover:text-clinic-teal transition-all rounded-full hover:bg-surface-container-high"><span class="material-symbols-outlined">help_outline</span></button>
+<button class="p-2 hover:text-clinic-teal transition-all rounded-full hover:bg-surface-container-high"><span class="material-symbols-outlined">location_on</span></button>
+</div>
+<img alt="User Avatar" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="A small circular avatar placeholder image. It features a simplified, abstract, light blue human figure icon on a soft gray background, suitable for a generic user profile in a clean, modern UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAcCPaVamTlQxnuxQmlMlegKmnOZA5YwxwWBSijX6gtebp3puVADMvhM0RlViXEEMkE4nMxIAdfU-1X7MKLQ07ka0HkNae8KtWKeeRjL5PzZBmBYaHJBGuZ9FwNCBX_zmLYHybt2iGsjM6kaC8OBtmx7Kf_bVTdrwJLZeDNr3dusFIS9-oMPBBEJDVtOgti1S6Yz0-y6G3tH3XlhGu2VVzgHhXrQXsSH4M4w4Jt1Db_k83SaSErZpNz"/>
+</div>
+</header>
+<!-- Workspace Layout -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Primary Pane (Read-only Summary & Timeline) -->
+<div class="flex-1 flex flex-col p-gutter overflow-y-auto">
+<!-- Breadcrumbs & Header -->
+<div class="mb-6 flex items-center justify-between">
+<div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-sm text-body-sm mb-1">
+<span>Clinical Records</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span>Sarah Jenkins</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-on-surface font-semibold">RX-2023-11-A</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Prescription Finalization</h2>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 bg-primary-container/20 text-clinic-teal rounded-DEFAULT font-label-caps text-label-caps flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">edit_note</span>
+                            Amended
+                        </span>
+</div>
+</div>
+<!-- Stepper -->
+<div class="mb-8 flex items-center justify-between w-full max-w-2xl mx-auto px-8 relative">
+<div class="absolute left-12 right-12 top-1/2 -translate-y-1/2 h-0.5 bg-outline-variant z-0"></div>
+<div class="absolute left-12 right-[50%] top-1/2 -translate-y-1/2 h-0.5 bg-clinic-teal z-0"></div>
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-clinic-teal text-on-primary flex items-center justify-center font-bold font-body-sm">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface">Draft</span>
+</div>
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-clinic-teal text-on-primary flex items-center justify-center font-bold font-body-sm">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface">Finalized</span>
+</div>
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-clinic-teal text-on-primary flex items-center justify-center font-bold font-body-sm">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface">Exposed</span>
+</div>
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-8 h-8 rounded-full border-2 border-clinic-teal bg-surface-container-lowest text-clinic-teal flex items-center justify-center font-bold font-body-sm">
+                            4
+                        </div>
+<span class="font-label-caps text-label-caps text-clinic-teal font-bold">Amended</span>
+</div>
+</div>
+<!-- Version Toggle -->
+<div class="flex justify-end mb-4">
+<div class="flex bg-surface-container-low p-1 rounded-lg border border-outline-variant">
+<button class="px-4 py-1.5 rounded text-on-surface-variant font-body-sm text-body-sm hover:text-on-surface transition-colors">Original Version (v1)</button>
+<button class="px-4 py-1.5 rounded bg-surface-container-lowest shadow-sm text-clinic-teal font-bold font-body-sm text-body-sm">Current Version (v2)</button>
+</div>
+</div>
+<!-- Prescription Summary Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-6 shadow-sm mb-6 flex-1">
+<div class="flex justify-between items-start mb-6 pb-4 border-b border-split-divider">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Amoxicillin 500mg</h3>
+<p class="font-data-mono text-data-mono text-on-surface-variant">Capsule, Oral</p>
+</div>
+<div class="text-right">
+<p class="font-label-caps text-label-caps text-outline mb-1">Prescription ID</p>
+<p class="font-data-mono text-data-mono text-on-surface">RX-2023-11-A-v2</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-8 mb-6">
+<div>
+<p class="font-label-caps text-label-caps text-outline mb-1">Patient</p>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Sarah Jenkins (DOB: 12/05/1985)</p>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-outline mb-1">Date Issued</p>
+<p class="font-data-mono text-data-mono text-on-surface">2023-10-27 14:30 EST</p>
+</div>
+</div>
+<div class="bg-surface p-4 rounded-DEFAULT border border-outline-variant mb-6">
+<p class="font-label-caps text-label-caps text-outline mb-2">Sig (Directions)</p>
+<p class="font-body-md text-body-md text-on-surface">Take 1 capsule by mouth three times a day for 10 days. <span class="bg-error-container text-on-error-container px-1 py-0.5 rounded text-sm font-semibold ml-2 inline-flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">update</span> Modified from: twice a day</span></p>
+</div>
+<div class="grid grid-cols-3 gap-6 mb-6">
+<div>
+<p class="font-label-caps text-label-caps text-outline mb-1">Quantity</p>
+<p class="font-data-mono text-data-mono text-on-surface text-lg">30</p>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-outline mb-1">Refills</p>
+<p class="font-data-mono text-data-mono text-on-surface text-lg">0</p>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-outline mb-1">Dispense as Written</p>
+<p class="font-body-md text-body-md text-on-surface font-semibold">No</p>
+</div>
+</div>
+<!-- Mandatory Amendment Reason -->
+<div class="mt-8">
+<label class="block font-label-caps text-label-caps text-error font-bold mb-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">edit_document</span>
+                            Reason for Amendment (Mandatory)
+                        </label>
+<textarea class="w-full bg-surface-container-lowest border-2 border-clinic-teal rounded-DEFAULT p-3 font-body-md text-body-md focus:outline-none focus:ring-0 resize-none h-24" placeholder="Enter clinical justification for changing dosage frequency..."></textarea>
+</div>
+</div>
+</div>
+<!-- Secondary Pane (Action Panel & Validation) -->
+<div class="w-[preview-pane-min] border-l border-split-divider bg-surface-container-lowest flex flex-col">
+<div class="p-4 border-b border-split-divider bg-surface-container-low flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant">fact_check</span>
+<h3 class="font-headline-md text-headline-md text-on-surface text-lg">Validation Checklist</h3>
+</div>
+<div class="p-6 flex-1 overflow-y-auto">
+<div class="space-y-4">
+<!-- Requirement Card: Complete -->
+<div class="bg-surface border-l-2 border-clinic-teal rounded-r-DEFAULT p-4 flex items-start gap-3 border border-outline-variant border-l-clinic-teal shadow-sm">
+<span class="material-symbols-outlined text-clinic-teal mt-0.5">check_circle</span>
+<div>
+<p class="font-body-md text-body-md font-semibold text-on-surface">Patient Identity Confirmed</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Verified against two forms of ID.</p>
+</div>
+</div>
+<!-- Requirement Card: Complete -->
+<div class="bg-surface border-l-2 border-clinic-teal rounded-r-DEFAULT p-4 flex items-start gap-3 border border-outline-variant border-l-clinic-teal shadow-sm">
+<span class="material-symbols-outlined text-clinic-teal mt-0.5">check_circle</span>
+<div>
+<p class="font-body-md text-body-md font-semibold text-on-surface">Contraindications Checked</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">No active interactions detected in patient history.</p>
+</div>
+</div>
+<!-- Requirement Card: Pending Action -->
+<div class="bg-error-container/20 border-l-2 border-error rounded-r-DEFAULT p-4 flex items-start gap-3 border border-outline-variant border-l-error shadow-sm">
+<span class="material-symbols-outlined text-error mt-0.5">warning</span>
+<div>
+<p class="font-body-md text-body-md font-semibold text-on-surface">Dosage Verification</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-2">Acknowledge dosage frequency increase.</p>
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="rounded border-outline-variant text-clinic-teal focus:ring-clinic-teal" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface">I verify this change is clinically appropriate.</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Bar -->
+<div class="p-6 border-t border-split-divider bg-surface-container-low mt-auto">
+<div class="flex flex-col gap-3">
+<button class="w-full bg-clinic-teal text-on-primary py-3 rounded-DEFAULT font-headline-md text-[16px] font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined">send</span>
+                            Record Amendment &amp; Issue
+                        </button>
+<button class="w-full bg-transparent border border-outline-variant text-on-surface-variant py-3 rounded-DEFAULT font-body-md font-semibold hover:bg-surface-container-high transition-colors">
+                            Discard Changes
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

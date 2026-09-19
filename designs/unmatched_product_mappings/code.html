@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PharmaOps - Unmatched Product Mapping</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Custom Scrollbar for High-Density UI */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #c5c5d4;
+            border-radius: 4px;
+        }
+    </style>
+<!-- Tailwind Configuration -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-highest": "#dde3e8",
+                        "on-background": "#161c20",
+                        "sync-running": "#3f51b5",
+                        "on-secondary-fixed-variant": "#004f4f",
+                        "surface-container-low": "#eef4f9",
+                        "primary-container": "#24389c",
+                        "tertiary-container": "#38454b",
+                        "primary-fixed-dim": "#bac3ff",
+                        "on-error-container": "#93000a",
+                        "surface": "#f4faff",
+                        "confidence-low": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "surface-border": "#ddeaf2",
+                        "on-tertiary-fixed-variant": "#3c494f",
+                        "inverse-primary": "#bac3ff",
+                        "tertiary": "#222f34",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#9dabff",
+                        "secondary-fixed-dim": "#84d4d3",
+                        "on-surface": "#161c20",
+                        "on-secondary-container": "#0b6e6e",
+                        "primary-fixed": "#dee0ff",
+                        "secondary-container": "#9deeed",
+                        "surface-dim": "#d5dbe0",
+                        "confidence-high": "#1b5e20",
+                        "tertiary-fixed-dim": "#bbc9d0",
+                        "surface-bright": "#f4faff",
+                        "ai-live": "#006a6a",
+                        "sync-fresh": "#1b5e20",
+                        "surface-container-high": "#e3e9ee",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#101d23",
+                        "sync-stale": "#757684",
+                        "sync-failed": "#ba1a1a",
+                        "surface-tint": "#4355b9",
+                        "outline-variant": "#c5c5d4",
+                        "surface-container": "#e9eff4",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2b3135",
+                        "secondary": "#006a6a",
+                        "background": "#f4faff",
+                        "on-tertiary-container": "#a4b2b9",
+                        "on-error": "#ffffff",
+                        "outline": "#757684",
+                        "confidence-medium": "#e65100",
+                        "on-primary-fixed": "#00105b",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#dde3e8",
+                        "primary": "#011d86",
+                        "on-surface-variant": "#454652",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#002020",
+                        "on-primary-fixed-variant": "#283ca0",
+                        "secondary-fixed": "#a0f0f0",
+                        "inverse-on-surface": "#ebf1f6",
+                        "ai-knowledge": "#4355b9",
+                        "tertiary-fixed": "#d7e5ec"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.125rem",
+                        lg: "0.25rem",
+                        xl: "0.5rem",
+                        full: "0.75rem"
+                    },
+                    spacing: {
+                        "base-unit": "4px",
+                        "gutter": "16px",
+                        "margin": "24px",
+                        "row-dense": "32px",
+                        "row-standard": "40px",
+                        "sidebar-width": "260px",
+                        "sidebar-collapsed": "64px"
+                    },
+                    fontFamily: {
+                        "display-lg": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "title-sm": ["Inter", "sans-serif"],
+                        "label-caps": ["Inter", "sans-serif"],
+                        "data-mono": ["JetBrains Mono", "monospace"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"]
+                    },
+                    fontSize: {
+                        "display-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "title-sm": ["16px", { lineHeight: "24px", fontWeight: "600" }],
+                        "label-caps": ["11px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "700" }],
+                        "data-mono": ["12px", { lineHeight: "16px", fontWeight: "500" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "body-sm": ["13px", { lineHeight: "18px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md h-screen w-screen overflow-hidden flex selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- JSON Component: SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-inverse-surface docked left-0 h-screen w-sidebar-width flex flex-col h-full border-r border-surface-border dark:border-outline-variant py-gutter flex-shrink-0 z-20">
+<!-- Header -->
+<div class="px-margin mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-title-sm text-title-sm font-bold overflow-hidden shadow-sm">
+<img alt="Pharmacist Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0-spE9GBIdaQPIsrKc5rGmDDMm42pmybKIoNLnnaUdQyKteteyhzgWEPoLFRKNz-ZHc8uFqqmIcPAJlgUZHMLYmyGu4bA0jc-73ahIfXttqFD9TOBaPf98f6l0WmqC1TomrSJvTu-d2_8-SOGcxeAVgxuseTMU8vcm53t5W4WprEgxaHv5XJo8brCPXSsEPHhxQAV-bh4cQYnW261SkD_1p4dtF7JXuXdZl58aSOTVlpfJiC_SQuW"/>
+</div>
+<div>
+<h1 class="font-display-lg text-[20px] leading-tight text-primary dark:text-primary-fixed tracking-tight">PharmaOps AI</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase">Clinical Precision</p>
+</div>
+</div>
+<!-- Main Navigation -->
+<div class="flex-1 overflow-y-auto px-gutter flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-tertiary transition-colors font-body-sm text-body-sm group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">dashboard</span>
+                Workspace
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-tertiary transition-colors font-body-sm text-body-sm group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">medication</span>
+                Catalog
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-tertiary transition-colors font-body-sm text-body-sm group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">point_of_sale</span>
+                POS
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-tertiary transition-colors font-body-sm text-body-sm group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">inventory_2</span>
+                Inventory
+            </a>
+<!-- Active State: Integrations -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-primary dark:text-primary-fixed font-semibold bg-surface-container-highest dark:bg-tertiary-container Active: scale-[0.98] transition-transform font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">hub</span>
+                Integrations
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-tertiary transition-colors font-body-sm text-body-sm group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">smart_toy</span>
+                Assistant
+            </a>
+</div>
+<!-- CTA & Footer -->
+<div class="mt-auto px-gutter pt-4 flex flex-col gap-2 border-t border-surface-border">
+<button class="w-full bg-primary text-on-primary hover:bg-primary-container hover:text-on-primary-container transition-colors rounded-lg py-2 font-title-sm text-title-sm flex items-center justify-center gap-2 shadow-sm mb-4">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+                Quick Sync
+            </button>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-tertiary transition-colors font-body-sm text-body-sm group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">settings</span>
+                Settings
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-tertiary transition-colors font-body-sm text-body-sm group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">help</span>
+                Support
+            </a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col h-screen min-w-0 bg-surface">
+<!-- JSON Component: TopNavBar -->
+<header class="bg-surface dark:bg-on-background docked full-width top-0 border-b border-surface-border dark:border-outline-variant flat no shadows flex justify-between items-center w-full px-margin h-row-standard flex-shrink-0 z-10">
+<div class="flex items-center gap-6 h-full">
+<div class="text-title-sm font-title-sm font-bold text-primary dark:text-primary-fixed hidden md:block">PharmaOps</div>
+<!-- Navigation Links inside TopNav (if applicable based on context, here minimal) -->
+<nav class="flex h-full">
+<a class="flex items-center px-4 h-full text-on-surface-variant dark:text-outline hover:bg-surface-container-low dark:hover:bg-tertiary-container transition-colors font-title-sm text-title-sm relative" href="#">
+                        Branch A
+                    </a>
+</nav>
+</div>
+<div class="flex items-center gap-2">
+<!-- Sync Status Indicator -->
+<div class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-low border border-surface-border mr-4" title="Sync Status: Fresh">
+<span class="material-symbols-outlined text-sync-fresh text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-data-mono text-data-mono text-sync-fresh">SYNC_OK</span>
+</div>
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[20px]">cloud_done</span>
+</button>
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[20px]">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Page Canvas: High Density Dashboard Layout -->
+<main class="flex-1 p-margin overflow-hidden flex flex-col gap-gutter">
+<!-- Page Header -->
+<div class="flex justify-between items-end pb-2">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-background">Mapping Resolution</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Resolve 14 discrepancies between Branch A ingest and Master Catalog.</p>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1.5 rounded bg-surface-container border border-surface-border text-on-surface font-title-sm text-title-sm flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[16px]">filter_list</span> Filter
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-gutter min-h-0">
+<!-- Left Panel: The Queue (4 Cols) -->
+<section class="lg:col-span-4 bg-surface-container-lowest border border-surface-border rounded-xl shadow-sm flex flex-col overflow-hidden">
+<div class="bg-surface-container-low px-4 py-2 border-b border-surface-border flex justify-between items-center flex-shrink-0 h-[48px]">
+<h3 class="font-title-sm text-title-sm text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">queue_play_next</span>
+                            Pending Queue
+                        </h3>
+<span class="bg-primary text-on-primary font-data-mono text-[10px] px-2 py-0.5 rounded-full">14 ITEMS</span>
+</div>
+<div class="flex-1 overflow-y-auto bg-surface-container-lowest divide-y divide-surface-border">
+<!-- Queue Item 1 (Active) -->
+<div class="px-4 py-3 bg-primary-container/10 border-l-4 border-primary cursor-pointer transition-colors relative group flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<span class="font-title-sm text-[13px] font-semibold text-primary leading-tight pr-4">Ibuprofen 400mg Tab, generic equivalent (Branch A)</span>
+<span class="material-symbols-outlined text-error text-[16px] flex-shrink-0" title="Unmatched">error</span>
+</div>
+<div class="flex items-center gap-3 font-data-mono text-data-mono text-on-surface-variant mt-1">
+<span>SKU: BR-99214</span>
+<span class="text-outline">|</span>
+<span>100 TAB/BT</span>
+</div>
+<!-- Active indicator for keyboard nav -->
+<div class="absolute left-[-4px] top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r"></div>
+</div>
+<!-- Queue Item 2 -->
+<div class="px-4 py-3 hover:bg-surface-container-low cursor-pointer transition-colors group flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<span class="font-title-sm text-[13px] font-medium text-on-background leading-tight pr-4">Amoxicillin 500mg Cap, Teva</span>
+<span class="material-symbols-outlined text-outline-variant text-[16px] flex-shrink-0">radio_button_unchecked</span>
+</div>
+<div class="flex items-center gap-3 font-data-mono text-data-mono text-on-surface-variant mt-1">
+<span>SKU: BR-88220</span>
+<span class="text-outline">|</span>
+<span>500 CAP/BT</span>
+</div>
+</div>
+<!-- Queue Item 3 -->
+<div class="px-4 py-3 hover:bg-surface-container-low cursor-pointer transition-colors group flex flex-col gap-1">
+<div class="flex justify-between items-start">
+<span class="font-title-sm text-[13px] font-medium text-on-background leading-tight pr-4">Lisinopril 10mg Tablets (Zestril)</span>
+<span class="material-symbols-outlined text-outline-variant text-[16px] flex-shrink-0">radio_button_unchecked</span>
+</div>
+<div class="flex items-center gap-3 font-data-mono text-data-mono text-on-surface-variant mt-1">
+<span>SKU: BR-10495</span>
+<span class="text-outline">|</span>
+<span>90 TAB/BT</span>
+</div>
+</div>
+<!-- Ghost items to fill space visually -->
+<div class="px-4 py-3 opacity-50 flex flex-col gap-1">
+<div class="h-4 bg-surface-container rounded w-3/4"></div>
+<div class="h-3 bg-surface-container rounded w-1/2 mt-1"></div>
+</div>
+<div class="px-4 py-3 opacity-30 flex flex-col gap-1">
+<div class="h-4 bg-surface-container rounded w-4/5"></div>
+<div class="h-3 bg-surface-container rounded w-1/3 mt-1"></div>
+</div>
+</div>
+</section>
+<!-- Right Panel: Workspace / Detail View (8 Cols) -->
+<section class="lg:col-span-8 bg-surface-container-lowest border border-surface-border rounded-xl shadow-sm flex flex-col overflow-hidden relative">
+<!-- Workspace Header -->
+<div class="bg-surface-container-lowest px-6 py-3 border-b border-surface-border flex justify-between items-center flex-shrink-0">
+<div>
+<h3 class="font-title-sm text-title-sm text-on-background">Mapping Evaluation</h3>
+<p class="font-data-mono text-data-mono text-on-surface-variant mt-0.5">ID: MAP-8821-A</p>
+</div>
+<div class="flex gap-2 text-on-surface-variant font-data-mono text-[10px]">
+<span class="flex items-center gap-1 bg-surface-container px-2 py-1 rounded"><kbd class="font-bold">↑↓</kbd> Navigate</span>
+<span class="flex items-center gap-1 bg-surface-container px-2 py-1 rounded"><kbd class="font-bold">/</kbd> Search</span>
+</div>
+</div>
+<!-- Side-by-Side Comparison Area -->
+<div class="flex-1 grid grid-cols-2 min-h-0 bg-surface">
+<!-- Left Half: Sanitized Source Data -->
+<div class="border-r border-surface-border flex flex-col h-full bg-surface-container-lowest">
+<div class="bg-surface-container-low px-4 py-2 border-b border-surface-border flex items-center gap-2 flex-shrink-0">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">source</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Sanitized Source Data</span>
+</div>
+<div class="p-4 flex-1 overflow-y-auto">
+<div class="bg-surface rounded border border-surface-border p-4 flex flex-col gap-4">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Extracted Name</span>
+<div class="font-title-sm text-[14px] text-on-background bg-surface-container-low px-3 py-2 rounded border border-transparent hover:border-outline-variant transition-colors">
+                                            Ibuprofen 400mg Tab, generic equivalent
+                                        </div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Source SKU</span>
+<div class="font-data-mono text-[13px] text-on-background bg-surface-container-low px-3 py-2 rounded">BR-99214</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant">UOM</span>
+<div class="font-data-mono text-[13px] text-on-background bg-surface-container-low px-3 py-2 rounded">100 TAB/BT</div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Barcode (Scanned)</span>
+<div class="flex items-center gap-2">
+<div class="font-data-mono text-[13px] text-on-background bg-surface-container-low px-3 py-2 rounded flex-1">0030045044910</div>
+<button class="p-2 rounded text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors" title="Copy">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+</div>
+</div>
+<div class="mt-2 pt-4 border-t border-surface-border border-dashed">
+<div class="flex items-start gap-2 text-error">
+<span class="material-symbols-outlined text-[16px] mt-0.5">warning</span>
+<p class="font-body-sm text-[12px] leading-tight">System failed to auto-match due to ambiguous generic descriptor and non-standard SKU prefix.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Half: Master Catalog Search & Target -->
+<div class="flex flex-col h-full bg-surface-container-lowest">
+<div class="bg-surface-container-low px-4 py-2 border-b border-surface-border flex justify-between items-center flex-shrink-0">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">database</span>
+<span class="font-label-caps text-label-caps text-primary uppercase tracking-wider">Master Catalog Search</span>
+</div>
+<span class="bg-ai-knowledge text-white font-label-caps px-2 py-0.5 rounded text-[9px] flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">auto_awesome</span> AI Assisted
+                                </span>
+</div>
+<div class="p-4 flex-1 overflow-y-auto flex flex-col gap-4">
+<!-- Search Input -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full bg-surface border border-surface-border focus:border-primary focus:ring-1 focus:ring-primary rounded-lg pl-10 pr-4 py-2 font-body-sm text-body-sm text-on-background outline-none transition-all shadow-sm" placeholder="Search Master Catalog..." type="text" value="Ibuprofen 400mg Tab"/>
+</div>
+<!-- AI Suggestion Card (Knowledge Card pattern) -->
+<div class="bg-surface border-l-4 border-l-ai-knowledge border-y border-r border-surface-border rounded-r-lg p-4 flex flex-col gap-3 shadow-sm relative overflow-hidden">
+<!-- Subtle background tint for AI cards -->
+<div class="absolute inset-0 bg-primary/5 pointer-events-none"></div>
+<div class="flex justify-between items-start relative z-10">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-ai-knowledge text-[18px]">psychology</span>
+<span class="font-title-sm text-[13px] font-semibold text-on-background">Best AI Match</span>
+</div>
+<!-- Confidence Tag -->
+<div class="bg-confidence-high/10 border border-confidence-high/20 text-confidence-high font-data-mono text-[10px] px-2 py-0.5 rounded flex items-center gap-1">
+                                            92% Match
+                                        </div>
+</div>
+<div class="relative z-10 flex flex-col gap-2">
+<div class="font-title-sm text-[15px] text-primary-container font-semibold">Ibuprofen 400 mg Oral Tablet</div>
+<div class="grid grid-cols-2 gap-2 mt-1">
+<div class="flex items-center gap-2 text-on-surface-variant font-data-mono text-[11px]">
+<span class="text-outline">NDC:</span> 00300-4504-49
+                                            </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-data-mono text-[11px]">
+<span class="text-outline">UOM:</span> 100 EA/BT
+                                            </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-data-mono text-[11px] col-span-2">
+<span class="text-outline">MFR:</span> Generic Manufacturer Inc.
+                                            </div>
+</div>
+</div>
+<!-- Selection Indicator overlay (Active state) -->
+<div class="absolute inset-0 border-2 border-primary rounded-r-lg pointer-events-none z-20"></div>
+<div class="absolute right-2 top-2 z-20 w-5 h-5 bg-primary rounded-full flex items-center justify-center text-on-primary shadow-sm">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+</div>
+<!-- Alternative Standard Item (Not selected) -->
+<div class="bg-surface border border-surface-border rounded-lg p-4 flex flex-col gap-2 hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="font-title-sm text-[14px] text-on-background group-hover:text-primary transition-colors">Ibuprofen 400 mg Oral Tablet (Film Coated)</div>
+<div class="flex gap-4 text-on-surface-variant font-data-mono text-[11px]">
+<span><span class="text-outline">NDC:</span> 00400-5555-10</span>
+<span><span class="text-outline">UOM:</span> 100 EA/BT</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Footer (Docked Bottom) -->
+<div class="bg-surface-container-low px-6 py-4 border-t border-surface-border flex justify-between items-center flex-shrink-0 mt-auto">
+<div class="flex items-center gap-4">
+<label class="font-title-sm text-[13px] text-on-background flex items-center gap-2">
+                                Confidence Level:
+                                <select class="bg-surface border border-surface-border rounded px-2 py-1 font-body-sm text-body-sm text-on-background focus:ring-1 focus:ring-primary outline-none">
+<option value="high">High (Verified)</option>
+<option value="med">Medium (Needs Review)</option>
+<option value="low">Low (Forced Match)</option>
+</select>
+</label>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg font-title-sm text-title-sm text-on-surface-variant hover:bg-surface-border transition-colors flex items-center gap-2">
+                                Skip <kbd class="font-data-mono text-[10px] bg-surface border border-surface-border px-1.5 rounded ml-1">Esc</kbd>
+</button>
+<button class="px-6 py-2 rounded-lg font-title-sm text-title-sm bg-primary text-on-primary hover:bg-primary-container shadow-sm transition-colors flex items-center gap-2">
+                                Confirm Mapping <kbd class="font-data-mono text-[10px] bg-primary-fixed/20 text-on-primary-fixed border border-primary-fixed/30 px-1.5 rounded ml-1">↵ Enter</kbd>
+</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

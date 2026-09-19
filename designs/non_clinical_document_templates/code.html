@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Admin Workspace - Document Templates</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#1b1b1d",
+                        "secondary-fixed-dim": "#b9c7e0",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#f3f0f2",
+                        "primary-container": "#1e293b",
+                        "inverse-primary": "#bcc7de",
+                        "background": "#fbf8fa",
+                        "on-tertiary-fixed": "#271902",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed": "#0d1c2f",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ddc39d",
+                        "secondary-fixed": "#d5e3fd",
+                        "primary-fixed": "#d8e3fb",
+                        "on-secondary": "#ffffff",
+                        "surface-container": "#f0edef",
+                        "secondary-container": "#d5e3fd",
+                        "tertiary": "#1e1200",
+                        "on-surface-variant": "#45474c",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-primary-fixed": "#111c2d",
+                        "on-secondary-fixed-variant": "#3a485c",
+                        "on-primary-container": "#8590a6",
+                        "on-surface": "#1b1b1d",
+                        "tertiary-fixed": "#fadfb8",
+                        "surface-variant": "#e4e2e3",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface": "#fbf8fa",
+                        "secondary": "#515f74",
+                        "surface-dim": "#dcd9db",
+                        "on-secondary-container": "#57657b",
+                        "on-tertiary-container": "#a38c6a",
+                        "surface-bright": "#fbf8fa",
+                        "inverse-surface": "#303032",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f5f3f4",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "on-tertiary-fixed-variant": "#564427",
+                        "error": "#ba1a1a",
+                        "outline": "#75777d",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface-container-high": "#eae7e9",
+                        "outline-variant": "#c5c6cd",
+                        "surface-tint": "#545f73",
+                        "tertiary-container": "#35260c",
+                        "primary": "#091426"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "margin_lg": "24px",
+                        "margin_md": "16px",
+                        "header_height": "64px",
+                        "margin_sm": "8px",
+                        "stack_gap": "12px",
+                        "sidebar_width": "260px",
+                        "gutter": "16px",
+                        "container_max_width": "1440px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "code-md": ["jetbrainsMono"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "code-md": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1b1b1d; }
+        .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; font-size: 24px; line-height: 1; letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; word-wrap: normal; direction: ltr; -webkit-font-smoothing: antialiased; }
+        .grid-bg { background-image: linear-gradient(to right, #e2e8f0 1px, transparent 1px), linear-gradient(to bottom, #e2e8f0 1px, transparent 1px); background-size: 40px 40px; }
+        .sticky-header th { position: sticky; top: 0; z-index: 10; background-color: #f1f5f9; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-full flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="fixed top-0 left-0 h-screen w-[260px] flex flex-col z-40 bg-primary dark:bg-primary border-r border-primary-container">
+<div class="px-margin_md py-margin_lg flex items-center gap-3 border-b border-primary-container/30">
+<div class="w-10 h-10 rounded bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+</div>
+<div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-on-primary">Admin Workspace</h1>
+<p class="font-body-sm text-body-sm text-on-primary-container">System Control</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-margin_md space-y-1">
+<a class="text-on-primary-container opacity-70 hover:opacity-100 mx-2 my-1 px-4 py-2 flex items-center gap-3 hover:bg-primary-container/50 transition-colors duration-150 rounded scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="font-label-md text-label-md">Verification</span>
+</a>
+<a class="text-on-primary-container opacity-70 hover:opacity-100 mx-2 my-1 px-4 py-2 flex items-center gap-3 hover:bg-primary-container/50 transition-colors duration-150 rounded scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Medication Catalog</span>
+</a>
+<a class="text-on-primary-container opacity-70 hover:opacity-100 mx-2 my-1 px-4 py-2 flex items-center gap-3 hover:bg-primary-container/50 transition-colors duration-150 rounded scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">gavel</span>
+<span class="font-label-md text-label-md">Review Moderation</span>
+</a>
+<a class="bg-primary-container text-on-primary-container rounded mx-2 my-1 px-4 py-2 flex items-center gap-3 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">description</span>
+<span class="font-label-md text-label-md">Document Templates</span>
+</a>
+</div>
+<div class="p-margin_md border-t border-primary-container/30">
+<button class="w-full bg-primary-container hover:bg-primary-container/80 text-on-primary font-label-md text-label-md py-2 rounded transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">key</span>
+                Manage Access
+            </button>
+<div class="mt-4 space-y-1">
+<a class="text-on-primary-container opacity-70 hover:opacity-100 px-4 py-2 flex items-center gap-3 hover:bg-primary-container/50 transition-colors duration-150 rounded" href="#">
+<span class="material-symbols-outlined text-[18px]">history</span>
+<span class="font-label-md text-label-md">Audit Logs</span>
+</a>
+<a class="text-on-primary-container opacity-70 hover:opacity-100 px-4 py-2 flex items-center gap-3 hover:bg-primary-container/50 transition-colors duration-150 rounded" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="ml-[260px] flex-1 flex flex-col h-screen overflow-hidden bg-background">
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 left-[260px] h-16 flex justify-between items-center px-margin_lg z-30 bg-surface dark:bg-surface border-b border-outline-variant dark:border-outline">
+<div class="flex items-center gap-6">
+<span class="font-headline-md text-headline-md font-bold text-primary">Admin Core</span>
+<nav class="hidden md:flex gap-6 h-full">
+<a class="text-secondary font-label-md text-label-md flex items-center h-16 px-2 hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80" href="#">Global View</a>
+<a class="text-primary font-label-md text-label-md font-bold border-b-2 border-primary h-16 flex items-center px-2 cursor-pointer active:opacity-80" href="#">Branch Context</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="h-9 pl-10 pr-4 rounded bg-surface-container-lowest border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none font-body-sm text-body-sm w-64" placeholder="Search templates..." type="text"/>
+</div>
+<button class="p-2 rounded-full hover:bg-surface-container-high text-secondary transition-colors cursor-pointer active:opacity-80 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high text-secondary transition-colors cursor-pointer active:opacity-80">
+<img alt="User Profile" class="w-8 h-8 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhJ58Wg7U0NTSNICWSu0W1QsuYZEDA54ORnQ1RroklZAh2vKfPsJlvP30EjFcikyQ45QUbhpQzjJZjFkdkPhoRk7LBvcN-jUVll-hp3cV15qpEA8foLovwSUwp0WhSDNsDNuganEm_-a3mEhwOzse8TYrbZPx94RJay6dM_-cybYa0Jt7TJq3wjpXPwPRtnltZA4faKnmKCAN95DzX74cAgcghcuhjpyDD2a-5O-L_5cupie_pg8LL"/>
+</button>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="mt-16 flex-1 overflow-auto p-margin_lg grid grid-cols-12 gap-margin_md max-w-container_max_width mx-auto w-full">
+<!-- Page Header -->
+<div class="col-span-12 flex justify-between items-end mb-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary mb-1">Document Templates</h2>
+<p class="font-body-md text-body-md text-secondary">Manage versioned templates for automated generation.</p>
+</div>
+<div class="flex gap-3">
+<button class="h-9 px-4 bg-surface-container-lowest border border-outline-variant rounded text-primary font-label-md text-label-md hover:bg-surface-container-high transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">upload_file</span>
+                        Import
+                    </button>
+<button class="h-9 px-4 bg-primary text-on-primary rounded font-label-md text-label-md hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                        New Template
+                    </button>
+</div>
+</div>
+<!-- Left Column: Template List (Span 4) -->
+<div class="col-span-12 xl:col-span-4 flex flex-col gap-margin_md h-[calc(100vh-140px)]">
+<!-- Filters & Stats -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded p-margin_md">
+<div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+<button class="px-3 py-1 bg-secondary-container text-on-secondary-container rounded font-label-md text-label-md whitespace-nowrap">All (42)</button>
+<button class="px-3 py-1 bg-surface border border-outline-variant text-secondary rounded font-label-md text-label-md hover:bg-surface-container-high whitespace-nowrap">Reports (15)</button>
+<button class="px-3 py-1 bg-surface border border-outline-variant text-secondary rounded font-label-md text-label-md hover:bg-surface-container-high whitespace-nowrap">Sick Leave (8)</button>
+<button class="px-3 py-1 bg-surface border border-outline-variant text-secondary rounded font-label-md text-label-md hover:bg-surface-container-high whitespace-nowrap">Referrals (19)</button>
+</div>
+</div>
+<!-- Template Table -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded flex-1 overflow-hidden flex flex-col">
+<div class="overflow-y-auto flex-1 relative">
+<table class="w-full text-left border-collapse">
+<thead class="sticky-header">
+<tr>
+<th class="py-2 px-3 font-label-md text-label-md text-secondary border-b border-outline-variant w-full">Template Name</th>
+<th class="py-2 px-3 font-label-md text-label-md text-secondary border-b border-outline-variant text-right">Ver</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm divide-y divide-outline-variant/50">
+<tr class="hover:bg-surface-container-low cursor-pointer bg-primary-fixed/30 border-l-2 border-primary">
+<td class="py-3 px-3">
+<div class="font-medium text-primary">Standard Sick Leave Note</div>
+<div class="text-secondary flex gap-2 items-center mt-1">
+<span class="px-1.5 py-0.5 bg-surface-variant rounded text-[10px] font-semibold text-on-surface-variant">EN</span>
+<span class="px-1.5 py-0.5 bg-[#dcfce7] text-[#166534] rounded text-[10px] font-semibold">ACTIVE</span>
+</div>
+</td>
+<td class="py-3 px-3 text-right text-secondary">v2.4</td>
+</tr>
+<tr class="hover:bg-surface-container-low cursor-pointer">
+<td class="py-3 px-3">
+<div class="font-medium text-primary">General Referral Form</div>
+<div class="text-secondary flex gap-2 items-center mt-1">
+<span class="px-1.5 py-0.5 bg-surface-variant rounded text-[10px] font-semibold text-on-surface-variant">AR</span>
+<span class="px-1.5 py-0.5 bg-[#dcfce7] text-[#166534] rounded text-[10px] font-semibold">ACTIVE</span>
+</div>
+</td>
+<td class="py-3 px-3 text-right text-secondary">v1.1</td>
+</tr>
+<tr class="hover:bg-surface-container-low cursor-pointer opacity-60">
+<td class="py-3 px-3">
+<div class="font-medium text-primary line-through">Outdated Lab Report</div>
+<div class="text-secondary flex gap-2 items-center mt-1">
+<span class="px-1.5 py-0.5 bg-surface-variant rounded text-[10px] font-semibold text-on-surface-variant">EN</span>
+<span class="px-1.5 py-0.5 bg-surface-container-high text-secondary rounded text-[10px] font-semibold">ARCHIVED</span>
+</div>
+</td>
+<td class="py-3 px-3 text-right text-secondary">v1.0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Middle Column: Editor (Span 5) -->
+<div class="col-span-12 xl:col-span-5 bg-surface-container-lowest border border-outline-variant rounded flex flex-col h-[calc(100vh-140px)]">
+<!-- Editor Header -->
+<div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low/50">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-primary flex items-center gap-2">
+                            Standard Sick Leave Note
+                            <span class="px-2 py-0.5 bg-[#dcfce7] text-[#166534] rounded text-[10px] font-semibold">v2.4</span>
+</h3>
+<p class="font-body-sm text-body-sm text-secondary mt-1">Last edited 2 days ago by Admin User</p>
+</div>
+<button class="text-secondary hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button>
+</div>
+<!-- Editor Toolbar -->
+<div class="p-2 border-b border-outline-variant flex gap-1 bg-surface">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-secondary" title="Bold"><span class="material-symbols-outlined text-[18px]">format_bold</span></button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-secondary" title="Italic"><span class="material-symbols-outlined text-[18px]">format_italic</span></button>
+<div class="w-px h-6 bg-outline-variant mx-1 self-center"></div>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-secondary" title="Align Left"><span class="material-symbols-outlined text-[18px]">format_align_left</span></button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-secondary" title="Align Center"><span class="material-symbols-outlined text-[18px]">format_align_center</span></button>
+<div class="w-px h-6 bg-outline-variant mx-1 self-center"></div>
+<!-- Bounded Variables Dropdown Trigger -->
+<button class="px-2 py-1 ml-auto border border-outline-variant rounded bg-surface-container-lowest text-primary font-label-md text-label-md flex items-center gap-1 hover:bg-surface-container-high">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+                        Insert Variable
+                        <span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
+</button>
+</div>
+<!-- Text Area (Bounded Editor simulation) -->
+<div class="flex-1 p-6 overflow-y-auto bg-surface-container-lowest grid-bg">
+<div class="bg-white border border-outline-variant shadow-sm p-8 min-h-[500px] max-w-[600px] mx-auto font-body-md text-body-md text-on-surface leading-relaxed">
+<div class="text-center font-bold mb-6 text-lg uppercase tracking-wider">Medical Certificate</div>
+<div class="mb-6 flex justify-between">
+<div>Date: <span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{CURRENT_DATE}}</span></div>
+<div>Ref: <span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{DOC_REF_ID}}</span></div>
+</div>
+<p class="mb-4">This is to certify that Mr./Ms. <span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{PATIENT_FULL_NAME}}</span>, aged <span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{PATIENT_AGE}}</span>, was examined by me on <span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{CONSULTATION_DATE}}</span>.</p>
+<p class="mb-4">Based on the medical evaluation, the patient is advised to take rest from <span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{LEAVE_START_DATE}}</span> to <span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{LEAVE_END_DATE}}</span> inclusive, due to <span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{DIAGNOSIS_SUMMARY}}</span>.</p>
+<p class="mb-8">The patient is fit to resume work/studies on <span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{RETURN_TO_WORK_DATE}}</span>.</p>
+<div class="flex justify-between mt-12 pt-8 border-t border-outline-variant/30">
+<div>
+<div class="bg-surface-variant/30 text-surface-variant border-b border-dashed border-outline-variant w-40 h-8 mb-2 flex items-center justify-center text-[10px]">[Signature Block]</div>
+<div><span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{PHYSICIAN_NAME}}</span></div>
+<div class="text-sm text-secondary"><span class="bg-primary-fixed/50 text-primary-fixed-dim border border-primary-fixed px-1 rounded font-code-md">{{CLINIC_NAME}}</span></div>
+</div>
+<div class="w-24 h-24 border border-outline-variant/30 rounded flex items-center justify-center text-outline text-xs text-center bg-surface-container-lowest">
+                                Clinic Stamp Area
+                            </div>
+</div>
+</div>
+</div>
+<!-- Editor Footer -->
+<div class="p-3 border-t border-outline-variant bg-surface-container-low flex justify-between items-center">
+<div class="flex items-center gap-2 text-secondary font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px] text-[#166534]">check_circle</span>
+                        All changes saved
+                    </div>
+<div class="flex gap-2">
+<button class="h-8 px-3 bg-surface border border-outline-variant rounded text-primary font-label-md text-label-md hover:bg-surface-container-high transition-colors">Discard Draft</button>
+<button class="h-8 px-3 bg-primary text-on-primary rounded font-label-md text-label-md hover:bg-primary/90 transition-colors">Publish v2.5</button>
+</div>
+</div>
+</div>
+<!-- Right Column: Preview & History (Span 3) -->
+<div class="col-span-12 xl:col-span-3 flex flex-col gap-margin_md h-[calc(100vh-140px)]">
+<!-- Synthetic Preview Panel -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded flex-1 flex flex-col overflow-hidden">
+<div class="p-3 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<h4 class="font-headline-sm text-headline-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+                            Synthetic Preview
+                        </h4>
+<button class="text-primary hover:text-primary-fixed p-1"><span class="material-symbols-outlined text-[18px]">refresh</span></button>
+</div>
+<div class="flex-1 p-4 overflow-y-auto bg-[#e2e8f0]/30 font-body-sm text-body-sm text-on-surface">
+<!-- Simulated PDF view -->
+<div class="bg-white p-4 shadow-sm border border-outline-variant/50 min-h-[300px]">
+<div class="text-center font-bold mb-4 text-sm">MEDICAL CERTIFICATE</div>
+<div class="mb-4 flex justify-between text-[10px]">
+<div>Date: 24 Oct 2023</div>
+<div>Ref: SL-2023-9942</div>
+</div>
+<p class="mb-2 text-xs">This is to certify that Mr./Ms. <strong>John Doe</strong>, aged <strong>34</strong>, was examined by me on <strong>24 Oct 2023</strong>.</p>
+<p class="mb-2 text-xs">Based on the medical evaluation, the patient is advised to take rest from <strong>24 Oct 2023</strong> to <strong>27 Oct 2023</strong> inclusive, due to <strong>Acute Viral Pharyngitis</strong>.</p>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant">
+<div class="font-label-md text-label-md text-secondary mb-2">Test Data Sets</div>
+<select class="w-full h-8 px-2 rounded bg-surface border border-outline-variant font-body-sm text-body-sm focus:outline-none focus:border-primary">
+<option>Standard Adult Case</option>
+<option>Pediatric Case</option>
+<option>Extended Leave Case</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Approval History Rail -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded h-[250px] flex flex-col">
+<div class="p-3 border-b border-outline-variant bg-surface-container-low">
+<h4 class="font-headline-sm text-headline-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">history</span>
+                            Version History
+                        </h4>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<div class="relative pl-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-[-24px] before:w-px before:bg-outline-variant last:before:hidden">
+<div class="absolute left-1 top-1.5 w-2 h-2 rounded-full bg-primary ring-4 ring-surface-container-lowest"></div>
+<div class="font-label-md text-label-md text-primary">v2.4 Published</div>
+<div class="font-body-sm text-[10px] text-secondary mt-0.5">By Admin User • Oct 15, 2023</div>
+<div class="font-body-sm text-[11px] mt-1 text-on-surface-variant">Updated diagnosis placeholder formatting.</div>
+</div>
+<div class="relative pl-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-[-24px] before:w-px before:bg-outline-variant last:before:hidden">
+<div class="absolute left-1 top-1.5 w-2 h-2 rounded-full bg-outline ring-4 ring-surface-container-lowest"></div>
+<div class="font-label-md text-label-md text-primary">v2.3 Approved</div>
+<div class="font-body-sm text-[10px] text-secondary mt-0.5">By Dr. Smith (Medical Board) • Sep 01, 2023</div>
+</div>
+<div class="relative pl-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-[-24px] before:w-px before:bg-outline-variant last:before:hidden">
+<div class="absolute left-1 top-1.5 w-2 h-2 rounded-full bg-outline ring-4 ring-surface-container-lowest"></div>
+<div class="font-label-md text-label-md text-primary">v2.3 Draft Created</div>
+<div class="font-body-sm text-[10px] text-secondary mt-0.5">By Admin User • Aug 28, 2023</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

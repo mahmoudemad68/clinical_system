@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Notification Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&amp;family=Hanken+Grotesk:wght@600;700&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#004f4f",
+                        "surface-dim": "#cbdbf5",
+                        "on-tertiary-fixed": "#07006c",
+                        "surface-bright": "#f8f9ff",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#d9dff5",
+                        "tertiary": "#4446d2",
+                        "inverse-primary": "#76d6d5",
+                        "outline": "#6e7979",
+                        "tertiary-fixed": "#e1e0ff",
+                        "on-tertiary-container": "#fcf8ff",
+                        "surface-container-low": "#eff4ff",
+                        "tertiary-fixed-dim": "#c0c1ff",
+                        "error": "#ba1a1a",
+                        "primary": "#006565",
+                        "surface-variant": "#d3e4fe",
+                        "on-surface-variant": "#3e4949",
+                        "primary-container": "#008080",
+                        "on-primary-container": "#e3fffe",
+                        "on-secondary-container": "#5c6274",
+                        "on-surface": "#0b1c30",
+                        "secondary": "#575e70",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#e5eeff",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#bdc9c8",
+                        "inverse-surface": "#213145",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#76d6d5",
+                        "on-secondary-fixed-variant": "#404758",
+                        "surface-container-highest": "#d3e4fe",
+                        "secondary-fixed": "#dce2f7",
+                        "inverse-on-surface": "#eaf1ff",
+                        "on-background": "#0b1c30",
+                        "surface-tint": "#006a6a",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#c0c6db",
+                        "primary-fixed": "#93f2f2",
+                        "on-primary-fixed": "#002020",
+                        "background": "#f8f9ff",
+                        "tertiary-container": "#5e61ec",
+                        "surface-container-high": "#dce9ff",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#2f2ebe",
+                        "surface": "#f8f9ff",
+                        "on-secondary-fixed": "#141b2b",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "unit": "4px",
+                        "container-margin": "16px",
+                        "row-padding": "8px",
+                        "compact-gap": "4px"
+                    },
+                    "fontFamily": {
+                        "ai-content": ["Inter"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "ai-content": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { margin: 0; padding: 0; }
+        
+        /* Simulating the drawer overlay for preview purposes */
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(11, 28, 48, 0.4); /* on-background with opacity */
+            z-index: 40;
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .drawer {
+            width: 100%;
+            max-width: 400px;
+            height: 100vh;
+            background-color: #f8f9ff; /* surface */
+            box-shadow: -4px 0 24px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            transform: translateX(0);
+            transition: transform 0.3s ease-in-out;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md h-screen w-screen overflow-hidden flex items-center justify-center">
+<!-- Background context (App content behind drawer) -->
+<div class="absolute inset-0 bg-surface-container-low flex flex-col p-container-margin opacity-50 blur-sm pointer-events-none">
+<div class="h-16 w-full bg-surface border-b border-outline-variant mb-6 rounded"></div>
+<div class="flex gap-gutter h-full">
+<div class="w-64 bg-surface-container h-full rounded border border-outline-variant"></div>
+<div class="flex-1 bg-surface h-full rounded border border-outline-variant p-6">
+<div class="h-8 w-48 bg-surface-variant mb-4 rounded"></div>
+<div class="h-32 w-full bg-surface-container mb-4 rounded"></div>
+<div class="h-32 w-full bg-surface-container rounded"></div>
+</div>
+</div>
+</div>
+<!-- Notification Drawer Overlay -->
+<div class="drawer-overlay" id="notificationOverlay">
+<div class="drawer border-l border-outline-variant bg-surface" id="notificationDrawer">
+<!-- Drawer Header -->
+<div class="flex items-center justify-between p-container-margin border-b border-outline-variant bg-surface sticky top-0 z-10">
+<div class="flex items-center gap-compact-gap">
+<h2 class="font-headline-md text-headline-md text-on-surface m-0">Notification Center</h2>
+<span class="bg-primary text-on-primary font-label-caps text-label-caps px-2 py-0.5 rounded-full ml-2">4</span>
+</div>
+<div class="flex items-center gap-gutter">
+<button class="text-primary font-label-caps text-label-caps hover:bg-surface-variant px-2 py-1 rounded transition-colors" onclick="toggleEmptyState()">Mark all read</button>
+<button aria-label="Close" class="text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center p-1 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+<!-- Categories / Filter (Optional enhancement) -->
+<div class="flex gap-unit p-row-padding px-container-margin border-b border-outline-variant bg-surface-container-lowest overflow-x-auto no-scrollbar">
+<button class="px-3 py-1 rounded-full bg-primary text-on-primary font-body-sm text-body-sm whitespace-nowrap">All</button>
+<button class="px-3 py-1 rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container font-body-sm text-body-sm whitespace-nowrap">Urgent</button>
+<button class="px-3 py-1 rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container font-body-sm text-body-sm whitespace-nowrap">Labs</button>
+<button class="px-3 py-1 rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container font-body-sm text-body-sm whitespace-nowrap">Queue</button>
+</div>
+<!-- Notification List -->
+<div class="flex-1 overflow-y-auto" id="notificationList">
+<!-- Today Group -->
+<div class="px-container-margin py-row-padding bg-surface-container-low border-b border-outline-variant sticky top-0">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Today</span>
+</div>
+<!-- Urgent Appointment (Unread) -->
+<div class="p-container-margin border-b border-outline-variant bg-surface hover:bg-surface-container-lowest cursor-pointer transition-colors relative group">
+<!-- Unread indicator -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary group-hover:w-1.5 transition-all"></div>
+<div class="flex gap-gutter pl-2">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
+<span class="material-symbols-outlined">calendar_clock</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-body-md text-body-md font-bold text-on-surface truncate">Urgent: Schedule Change</h3>
+<span class="font-label-caps text-label-caps text-on-surface-variant whitespace-nowrap ml-2">10:42 AM</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2 mb-2">Patient rescheduled for earlier slot today. Review updated intake form prior to 13:00.</p>
+<div class="flex gap-2">
+<span class="inline-flex items-center gap-1 bg-error text-on-error font-label-caps text-label-caps px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px]">warning</span> Action Required
+                                </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Lab Result (Unread) -->
+<div class="p-container-margin border-b border-outline-variant bg-surface hover:bg-surface-container-lowest cursor-pointer transition-colors relative group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary group-hover:w-1.5 transition-all"></div>
+<div class="flex gap-gutter pl-2">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined">science</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-body-md text-body-md font-bold text-on-surface truncate">Lab Results Available</h3>
+<span class="font-label-caps text-label-caps text-on-surface-variant whitespace-nowrap ml-2">09:15 AM</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Standard comprehensive panel results processed for review. All markers within expected parameters.</p>
+</div>
+</div>
+</div>
+<!-- Chat Message (Read) -->
+<div class="p-container-margin border-b border-outline-variant bg-surface opacity-80 hover:opacity-100 hover:bg-surface-container-lowest cursor-pointer transition-colors pl-4">
+<div class="flex gap-gutter">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center relative">
+<span class="material-symbols-outlined">chat</span>
+<!-- Encryption Indicator per Style Guide -->
+<div class="absolute -bottom-1 -right-1 bg-surface rounded-full p-[2px]">
+<span class="material-symbols-outlined text-[#008000] text-[12px] fill">shield</span>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-body-md text-body-md text-on-surface truncate">Dr. E. Chen (Consult)</h3>
+<span class="font-label-caps text-label-caps text-on-surface-variant whitespace-nowrap ml-2">08:30 AM</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">"I reviewed the imaging from yesterday. Agree with your assessment. Let's proceed with..."</p>
+</div>
+</div>
+</div>
+<!-- Yesterday Group -->
+<div class="px-container-margin py-row-padding bg-surface-container-low border-y border-outline-variant sticky top-0 mt-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Yesterday</span>
+</div>
+<!-- Queue Update (Read) -->
+<div class="p-container-margin border-b border-outline-variant bg-surface opacity-80 hover:opacity-100 hover:bg-surface-container-lowest cursor-pointer transition-colors pl-4">
+<div class="flex gap-gutter">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-surface-container-highest text-on-surface flex items-center justify-center">
+<span class="material-symbols-outlined">group</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-body-md text-body-md text-on-surface truncate">Queue Capacity Alert</h3>
+<span class="font-label-caps text-label-caps text-on-surface-variant whitespace-nowrap ml-2">16:45 PM</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Walk-in queue exceeded standard wait times. Triage protocols activated for remainder of shift.</p>
+</div>
+</div>
+</div>
+<!-- System Update (AI) -->
+<div class="p-container-margin border-b border-outline-variant bg-surface hover:bg-surface-container-lowest cursor-pointer transition-colors pl-4 relative overflow-hidden">
+<!-- AI streaming style glow hint -->
+<div class="absolute top-0 left-0 right-0 h-[2px] bg-tertiary-fixed opacity-50"></div>
+<div class="flex gap-gutter">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined">smart_toy</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-body-md text-body-md text-on-surface truncate">AI Summary Ready</h3>
+<span class="font-label-caps text-label-caps text-on-surface-variant whitespace-nowrap ml-2">14:20 PM</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2 mb-2">Automated chart abstraction completed for afternoon rounds.</p>
+<div class="font-label-caps text-label-caps text-tertiary">[AI SOURCE: SYSTEM v2.4]</div>
+</div>
+</div>
+</div>
+<div class="p-container-margin text-center mb-8">
+<button class="text-primary font-body-sm text-body-sm hover:underline">View older notifications</button>
+</div>
+</div>
+<!-- Empty State (Hidden by default) -->
+<div class="hidden flex-1 flex flex-col items-center justify-center p-8 text-center bg-surface" id="emptyState">
+<div class="w-24 h-24 rounded-full bg-surface-container flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-[48px] text-outline-variant">notifications_off</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">All caught up</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xs">You have no new notifications at this time. We'll alert you when there are updates.</p>
+</div>
+</div>
+</div>
+<script>
+        function toggleEmptyState() {
+            const list = document.getElementById('notificationList');
+            const empty = document.getElementById('emptyState');
+            const count = document.querySelector('.bg-primary.text-on-primary.rounded-full');
+            
+            if (list.classList.contains('hidden')) {
+                list.classList.remove('hidden');
+                empty.classList.add('hidden');
+                if(count) count.style.display = 'inline-block';
+            } else {
+                list.classList.add('hidden');
+                empty.classList.remove('hidden');
+                if(count) count.style.display = 'none';
+            }
+        }
+    </script>
+</body></html>

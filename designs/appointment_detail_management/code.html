@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Appointment Details - HealthPath</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#f7fafc",
+                        "surface-dim": "#d7dadc",
+                        "surface": "#f7fafc",
+                        "surface-bright": "#f7fafc",
+                        "inverse-surface": "#2d3133",
+                        "outline-variant": "#c1c6d4",
+                        "on-secondary-container": "#007165",
+                        "inverse-on-surface": "#eef1f3",
+                        "on-background": "#181c1e",
+                        "secondary-fixed": "#8df5e4",
+                        "secondary": "#006b5f",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#cbe7f5",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-tertiary-container": "#fdfdff",
+                        "on-secondary-fixed": "#00201c",
+                        "surface-container-low": "#f1f4f6",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#a5c8ff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#46606c",
+                        "on-tertiary-fixed-variant": "#304a55",
+                        "surface-container": "#ebeef0",
+                        "surface-tint": "#005faf",
+                        "on-primary-fixed": "#001c3a",
+                        "tertiary-container": "#5f7985",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#70d8c8",
+                        "primary-fixed": "#d4e3ff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed-variant": "#004786",
+                        "secondary-container": "#8df5e4",
+                        "on-error-container": "#93000a",
+                        "primary": "#005dac",
+                        "on-error": "#ffffff",
+                        "primary-container": "#1976d2",
+                        "inverse-primary": "#a5c8ff",
+                        "on-surface": "#181c1e",
+                        "surface-container-high": "#e5e9eb",
+                        "on-tertiary-fixed": "#021f29",
+                        "on-primary-container": "#fffdff",
+                        "outline": "#717783",
+                        "on-surface-variant": "#414752",
+                        "surface-variant": "#e0e3e5",
+                        "tertiary-fixed-dim": "#afcbd8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "margin-tablet": "32px",
+                        "xs": "4px",
+                        "xl": "32px",
+                        "base": "4px",
+                        "md": "16px",
+                        "gutter": "16px",
+                        "lg": "24px",
+                        "sm": "8px"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased pb-[120px]">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full h-16 bg-surface dark:bg-on-background bg-primary/5 shadow-sm shadow-sm flex items-center justify-between px-md w-full z-50">
+<div class="flex items-center">
+<button aria-label="Go back" class="p-2 -ml-2 text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high transition-colors rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="ml-2 font-title-lg text-title-lg font-bold text-primary dark:text-primary-fixed-dim">Appointment Details</h1>
+</div>
+<div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 border border-outline-variant">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a female doctor with dark hair tied back, wearing a white lab coat over a light blue blouse, smiling warmly against a soft, bright clinical background. The lighting is bright and clean, typical of a modern medical facility." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAj99tu-MmER6FPitBeswW-nO6ItGgp7p9qGEmq7UUU3sLiXBfdYkKzT-EIEsolUYGqJjfOrsfEWtRFdkVp_DDkwWuyqQE8J97e0FIx3agWIXL1k1xy7AdjyUmrsE_Up5U1f-guFaUPBOIlhBkUh32GeBX6aVGZDpelrgVudJQOUExcSd1wTKTEmOSvzZbRUVG7dn3PmorhjyEwtAXZvnWUadxORYtm6QyxnNHONgV4em9Dc5Hd8Zbd"/>
+</div>
+</header>
+<main class="pt-20 px-margin-mobile md:px-margin-tablet max-w-3xl mx-auto space-y-lg">
+<!-- Status Timeline -->
+<section class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-sm">
+<h2 class="font-title-lg text-title-lg text-on-surface mb-md">Dermatology Consultation</h2>
+<div class="relative flex justify-between items-center px-4">
+<div class="absolute top-1/2 left-8 right-8 h-0.5 bg-outline-variant/50 -z-10"></div>
+<div class="absolute top-1/2 left-8 right-[50%] h-0.5 bg-primary -z-10"></div>
+<div class="flex flex-col items-center">
+<div class="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center mb-1 shadow-sm">
+<span class="material-symbols-outlined text-[16px] icon-filled" data-icon="check">check</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface">Booked</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center mb-1 shadow-sm">
+<span class="material-symbols-outlined text-[16px] icon-filled" data-icon="done_all">done_all</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface">Checked-in</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-6 h-6 rounded-full bg-surface border-2 border-outline-variant text-on-surface-variant flex items-center justify-center mb-1 bg-surface-container-lowest">
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1">Consultation</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-6 h-6 rounded-full bg-surface border-2 border-outline-variant text-on-surface-variant flex items-center justify-center mb-1 bg-surface-container-lowest">
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1">Completed</span>
+</div>
+</div>
+</section>
+<!-- Doctor Profile -->
+<section class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-sm flex items-center gap-md">
+<div class="w-16 h-16 rounded-full overflow-hidden border border-outline-variant flex-shrink-0">
+<img alt="Doctor Profile" class="w-full h-full object-cover" data-alt="A close-up portrait of Dr. Sarah Jenkins, a female dermatologist with short blonde hair, wearing a white coat and a stethoscope around her neck. She has a reassuring smile. The background is a slightly blurred, modern medical office setting with bright, airy lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZryn0IKeKoJ7b_Gyql_KecZE6AfYgT-HOdkByyCWjNW-vmj90CjX1-oGZ8O1044ZhHaW5A6GyxQdlMryWJ20nV9fMmQXBOcVU15gBsfO35UEy1zMVM9GHrltXPGZ_j_R2hYMV-1BGS_Jtm2aBQ8kBDs_sY60TWm6N9j3nxnskY_a7n2lDpKbqf52kJ6pOkZ6bzrc46yiK_F17ltQk8rB5NRLpwUb6NobePOmbyY4apg6v0dMiNKGq"/>
+</div>
+<div>
+<h3 class="font-title-lg text-title-lg text-on-surface">Dr. Sarah Jenkins</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Dermatologist</p>
+</div>
+<button class="ml-auto w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+</button>
+</section>
+<!-- Location -->
+<section class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-sm">
+<div class="flex items-start gap-md">
+<div class="mt-1 w-10 h-10 rounded-full bg-secondary-container/50 text-on-secondary-container flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+</div>
+<div class="flex-1">
+<h3 class="font-title-lg text-title-lg text-on-surface">SkinCare Clinic - Downtown</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">123 Health Ave, Suite 4B<br/>Cairo, Egypt</p>
+<button class="mt-4 px-4 py-2 border border-outline text-primary font-label-lg text-label-lg rounded-full hover:bg-surface-container-low transition-colors flex items-center gap-2 w-fit">
+<span class="material-symbols-outlined text-[18px]" data-icon="directions">directions</span>
+                        Get Directions
+                    </button>
+</div>
+</div>
+</section>
+<!-- Appointment Info -->
+<section class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md shadow-sm divide-y divide-outline-variant/30">
+<div class="flex justify-between py-sm first:pt-0 last:pb-0">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="event">event</span>
+<span class="font-label-sm text-label-sm">Type</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">Follow-up</span>
+</div>
+<div class="flex justify-between py-sm first:pt-0 last:pb-0">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="schedule">schedule</span>
+<span class="font-label-sm text-label-sm">Date &amp; Time</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface text-right">Thursday, Oct 26 • 10:00 AM</span>
+</div>
+<div class="flex justify-between py-sm first:pt-0 last:pb-0">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="timer">timer</span>
+<span class="font-label-sm text-label-sm">Duration</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface">~30 mins</span>
+</div>
+<div class="flex justify-between py-sm first:pt-0 last:pb-0">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="payments">payments</span>
+<span class="font-label-sm text-label-sm">Price</span>
+</div>
+<div class="text-right">
+<span class="font-body-md text-body-md text-on-surface block">EGP 400</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Pay at Clinic</span>
+</div>
+</div>
+</section>
+<!-- Cancellation Policy -->
+<section class="bg-surface-container-low border border-outline-variant/30 rounded-xl p-md shadow-sm">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant mt-0.5" data-icon="info">info</span>
+<div>
+<h4 class="font-label-lg text-label-lg text-on-surface">Cancellation Policy</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 text-sm">Free cancellation up to 24 hours before the appointment. Cancellations within 24 hours may be subject to a fee.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Actions -->
+<div class="fixed bottom-0 left-0 w-full bg-surface border-t border-outline-variant/20 p-md flex flex-col gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40 pb-safe">
+<button class="w-full py-3 border border-primary text-primary font-label-lg text-label-lg rounded-full hover:bg-surface-container-low transition-colors text-center">
+            Reschedule
+        </button>
+<button class="w-full py-3 text-error font-label-lg text-label-lg rounded-full hover:bg-error/5 transition-colors text-center">
+            Cancel Appointment
+        </button>
+</div>
+</body></html>

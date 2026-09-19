@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lab Request Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#fffdff",
+                        "background": "#f7fafc",
+                        "surface-container-high": "#e5e9eb",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface": "#f7fafc",
+                        "outline-variant": "#c1c6d4",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#5f7985",
+                        "surface-variant": "#e0e3e5",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "inverse-primary": "#a5c8ff",
+                        "on-primary-fixed": "#001c3a",
+                        "error": "#ba1a1a",
+                        "on-surface-variant": "#414752",
+                        "primary-container": "#1976d2",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#006b5f",
+                        "primary-fixed-dim": "#a5c8ff",
+                        "on-tertiary-fixed": "#021f29",
+                        "primary-fixed": "#d4e3ff",
+                        "inverse-on-surface": "#eef1f3",
+                        "tertiary-fixed-dim": "#afcbd8",
+                        "on-tertiary-container": "#fdfdff",
+                        "on-primary-fixed-variant": "#004786",
+                        "primary": "#005dac",
+                        "error-container": "#ffdad6",
+                        "surface-container-low": "#f1f4f6",
+                        "surface-bright": "#f7fafc",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#8df5e4",
+                        "on-secondary-container": "#007165",
+                        "on-surface": "#181c1e",
+                        "on-secondary-fixed-variant": "#005048",
+                        "tertiary": "#46606c",
+                        "surface-container": "#ebeef0",
+                        "secondary-container": "#8df5e4",
+                        "surface-tint": "#005faf",
+                        "on-secondary-fixed": "#00201c",
+                        "on-tertiary-fixed-variant": "#304a55",
+                        "surface-dim": "#d7dadc",
+                        "on-background": "#181c1e",
+                        "tertiary-fixed": "#cbe7f5",
+                        "secondary-fixed-dim": "#70d8c8",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "outline": "#717783"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "margin-tablet": "32px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "xl": "32px",
+                        "margin-mobile": "16px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "display-lg": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg min-h-screen pb-24 md:pb-8 antialiased">
+<!-- Top App Bar -->
+<header class="bg-surface dark:bg-on-background fixed top-0 w-full h-16 bg-primary dark:bg-inverse-surface opacity-5 shadow-sm shadow-sm flex items-center justify-between px-md w-full h-16 z-50">
+<button class="p-2 -ml-2 rounded-full hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-on-surface-variant dark:text-outline-variant">arrow_back</span>
+</button>
+<h1 class="text-title-lg font-title-lg font-bold text-primary dark:text-primary-fixed-dim absolute left-1/2 -translate-x-1/2 whitespace-nowrap">Lab Request Detail</h1>
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden shrink-0 ml-auto">
+<img class="object-cover w-full h-full" data-alt="A close up portrait of a medical professional in a well lit clinical environment, soft natural light, highly detailed." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNHG9QErFCMXeTbXNcSyf0IlIsuv9h0IAYuQtqP-6LIef2rh1D7McifuOv6Bwq9IS5ChFXew-Ws_JlAfQQsbGaG0mxetQJxklCnECeLFXJaALdZgEB0RZUT2S_vKtihCCmODpt8dSBX6n2QfWq9XKdSa-tZwtAjpdpqPJYx1wrDasjfnZcq-S7wxsCuIHwPdrJ8IRgX0thQZlwenYeKcWekpGmHYJByMXDIuv-hiUD_PSa1C1gHFQx"/>
+</div>
+</header>
+<main class="pt-20 px-margin-mobile md:px-margin-tablet max-w-5xl mx-auto space-y-lg">
+<!-- Status Timeline -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-surface-variant shadow-sm relative overflow-hidden">
+<div class="absolute inset-0 bg-primary opacity-[0.02] pointer-events-none"></div>
+<h2 class="font-title-lg text-title-lg mb-sm">Request Status</h2>
+<div class="flex items-center justify-between relative mt-lg">
+<!-- Connecting Line -->
+<div class="absolute left-[10%] right-[10%] top-1/2 -translate-y-1/2 h-0.5 bg-surface-variant z-0">
+<div class="h-full bg-primary w-1/3 transition-all duration-500"></div>
+</div>
+<!-- Step 1: Requested (Complete) -->
+<div class="relative z-10 flex flex-col items-center gap-xs">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[16px] fill">check</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface">Requested</span>
+</div>
+<!-- Step 2: Uploaded (Current) -->
+<div class="relative z-10 flex flex-col items-center gap-xs">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm ring-4 ring-primary-fixed ring-opacity-50">
+<span class="material-symbols-outlined text-[16px]">upload_file</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-bold">Uploaded</span>
+</div>
+<!-- Step 3: Confirmed (Pending) -->
+<div class="relative z-10 flex flex-col items-center gap-xs">
+<div class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-[16px]">stethoscope</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Confirmed</span>
+</div>
+<!-- Step 4: Reviewed (Pending) -->
+<div class="relative z-10 flex flex-col items-center gap-xs">
+<div class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-[16px]">fact_check</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Reviewed</span>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-lg">
+<!-- Left Column: Summary & Actions -->
+<div class="md:col-span-2 space-y-lg">
+<!-- Request Summary -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-surface-variant shadow-sm">
+<div class="flex items-start gap-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[24px]">science</span>
+</div>
+<div class="flex-1">
+<h2 class="font-title-lg text-title-lg mb-xs">Required Tests</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mb-md">Routine blood work for annual checkup. Fasting required for 12 hours prior to collection.</p>
+<div class="space-y-sm">
+<div class="flex items-center justify-between p-sm rounded-lg bg-surface-container-low border border-surface-variant">
+<span class="font-label-lg text-label-lg">Complete Blood Count (CBC)</span>
+<span class="px-2 py-1 rounded bg-secondary/10 text-secondary font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">info</span> Required
+                                    </span>
+</div>
+<div class="flex items-center justify-between p-sm rounded-lg bg-surface-container-low border border-surface-variant">
+<span class="font-label-lg text-label-lg">Lipid Profile</span>
+<span class="px-2 py-1 rounded bg-secondary/10 text-secondary font-label-sm text-label-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">info</span> Required
+                                    </span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- File Actions -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-surface-variant shadow-sm">
+<h2 class="font-title-lg text-title-lg mb-md">Current Submission</h2>
+<div class="flex flex-col sm:flex-row gap-md">
+<button class="flex-1 flex items-center justify-center gap-sm px-lg py-3 bg-primary-container text-on-primary-container rounded-lg font-label-lg text-label-lg hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined">description</span>
+                             Open Current File
+                         </button>
+<button class="flex-1 flex items-center justify-center gap-sm px-lg py-3 border border-primary text-primary rounded-lg font-label-lg text-label-lg hover:bg-primary/5 transition-colors">
+<span class="material-symbols-outlined">upload</span>
+                             Upload / Retry
+                         </button>
+</div>
+</section>
+</div>
+<!-- Right Column: History & Warnings -->
+<div class="space-y-lg">
+<!-- Mark Delivered Warning -->
+<section class="bg-[#FFF4E5] border border-[#FFE0B2] rounded-xl p-md relative overflow-hidden">
+<div class="absolute -right-4 -top-4 opacity-10 text-[#F57C00]">
+<span class="material-symbols-outlined text-[80px]">warning</span>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-sm text-[#E65100] mb-xs">
+<span class="material-symbols-outlined fill">report</span>
+<h3 class="font-title-lg text-title-lg">Patient-Reported Data</h3>
+</div>
+<p class="font-body-md text-body-md text-[#5D4037] mb-md">This lab result was uploaded by the patient and has not yet been verified by clinical staff.</p>
+<button class="w-full flex items-center justify-center gap-sm px-md py-2 bg-white text-[#E65100] border border-[#FFCC80] rounded-lg font-label-lg text-label-lg hover:bg-[#FFF8E1] transition-colors">
+<span class="material-symbols-outlined">verified</span>
+                            Mark Delivered
+                        </button>
+</div>
+</section>
+<!-- Upload History -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-surface-variant shadow-sm">
+<h3 class="font-title-lg text-title-lg mb-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-outline-variant">history</span>
+                        Upload History
+                    </h3>
+<div class="relative pl-6 border-l-2 border-surface-variant space-y-md">
+<!-- History Item 1 -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-container-lowest border-2 border-primary"></div>
+<p class="font-label-lg text-label-lg text-on-surface">File Uploaded</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Oct 24, 2023 • 10:42 AM</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-xs">lab_results_final.pdf (2.4 MB)</p>
+</div>
+<!-- History Item 2 -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-container-lowest border-2 border-error"></div>
+<p class="font-label-lg text-label-lg text-error">Upload Failed</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Oct 24, 2023 • 10:38 AM</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-xs">File size exceeded limit (15 MB).</p>
+</div>
+<!-- History Item 3 -->
+<div class="relative">
+<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-container-lowest border-2 border-outline-variant"></div>
+<p class="font-label-lg text-label-lg text-on-surface-variant">Request Created</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Oct 20, 2023 • 09:15 AM</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm mt-xs">Requested by Dr. Sarah Jenkins</p>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</body></html>

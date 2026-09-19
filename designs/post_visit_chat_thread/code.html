@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Post-visit Chat Thread</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Hanken+Grotesk:wght@600;700&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#004f4f",
+                        "surface-dim": "#cbdbf5",
+                        "on-tertiary-fixed": "#07006c",
+                        "surface-bright": "#f8f9ff",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#d9dff5",
+                        "tertiary": "#4446d2",
+                        "inverse-primary": "#76d6d5",
+                        "outline": "#6e7979",
+                        "tertiary-fixed": "#e1e0ff",
+                        "on-tertiary-container": "#fcf8ff",
+                        "surface-container-low": "#eff4ff",
+                        "tertiary-fixed-dim": "#c0c1ff",
+                        "error": "#ba1a1a",
+                        "primary": "#006565",
+                        "surface-variant": "#d3e4fe",
+                        "on-surface-variant": "#3e4949",
+                        "primary-container": "#008080",
+                        "on-primary-container": "#e3fffe",
+                        "on-secondary-container": "#5c6274",
+                        "on-surface": "#0b1c30",
+                        "secondary": "#575e70",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#e5eeff",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#bdc9c8",
+                        "inverse-surface": "#213145",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#76d6d5",
+                        "on-secondary-fixed-variant": "#404758",
+                        "surface-container-highest": "#d3e4fe",
+                        "secondary-fixed": "#dce2f7",
+                        "inverse-on-surface": "#eaf1ff",
+                        "on-background": "#0b1c30",
+                        "surface-tint": "#006a6a",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#c0c6db",
+                        "primary-fixed": "#93f2f2",
+                        "on-primary-fixed": "#002020",
+                        "background": "#f8f9ff",
+                        "tertiary-container": "#5e61ec",
+                        "surface-container-high": "#dce9ff",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#2f2ebe",
+                        "surface": "#f8f9ff",
+                        "on-secondary-fixed": "#141b2b",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "unit": "4px",
+                        "container-margin": "16px",
+                        "row-padding": "8px",
+                        "compact-gap": "4px"
+                    },
+                    "fontFamily": {
+                        "ai-content": ["Inter"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "ai-content": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Streaming AI Indicator Glow */
+        @keyframes pulse-indigo {
+            0% { box-shadow: 0 0 0 0 rgba(94, 97, 236, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(94, 97, 236, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(94, 97, 236, 0); }
+        }
+        .ai-streaming {
+            position: relative;
+        }
+        .ai-streaming::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background-color: theme('colors.tertiary-container');
+            animation: pulse-indigo 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-screen flex flex-col overflow-hidden font-body-md">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center px-gutter w-full h-16 z-50 fixed top-0 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-4">
+<div class="text-headline-md font-headline-md text-primary font-bold tracking-tight">Doctor Workspace</div>
+<nav class="hidden md:flex items-center gap-6 ml-8">
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors cursor-pointer active:scale-95 py-4" href="#">Dashboard</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors cursor-pointer active:scale-95 py-4" href="#">Patients</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors cursor-pointer active:scale-95 py-4" href="#">Protocols</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-colors" data-icon="settings">settings</span>
+<img alt="Dr. Smith profile" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A small, circular profile picture of a doctor in a white coat, isolated on a neutral background, conveying a professional and trustworthy clinical identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5tf1eQ1wlEef9yRp155Mg35n7vF_eY53rXWDbfZaj3mNswtk9E5-7Uhs_AwpYT_GNrpeOh12ZjRiLe7GewVwe_ShutVZxpEA59SGYDUjAHzbUHB1QaMKS--5e8zDFRUh7DC0lxjOzoe8gpUk9fy_16wGpHyR3pxRRFN1W3S2ScE9aF7Q64EYC4MDSUmuKzDbR7J4c9KJKbP1bIm0tbvZZVn_DiLnWoSeApdGsj6UEQJKwCO2Xucn2"/>
+</div>
+</header>
+<div class="flex flex-1 pt-16 overflow-hidden">
+<!-- SideNavBar -->
+<aside class="hidden lg:flex flex-col h-full w-64 bg-surface-container border-r border-outline-variant z-40">
+<div class="p-4 border-b border-outline-variant">
+<div class="flex items-center gap-3 mb-4">
+<img alt="Patient Context Avatar" class="w-10 h-10 rounded-full border border-outline-variant object-cover" data-alt="A small, circular patient avatar showing a middle-aged woman looking forward with a neutral expression, suitable for a clinical profile identity marker." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaTXdeyjeqN95N9Xx8nTB3EZBL78E9djxIHbgp3HYsJiZf4VEkqci94SmLpZlEKfEr4OEwXX16zTDurp0UX9kSwHEZdG786F9KuOSKaKaufS05g_eIyJ_MG_5zApBBQ-2QYcuTm8LdQsVj2RAoBoxIdmRqxlxDTxi56mafuf_-8yoBcOdYMQSZONofczgWrklszB-Nj9BM33UVco3iVeIt_ebDjKeo2FUPj_bNby897Rs8MtGEXvEw"/>
+<div>
+<div class="font-headline-md text-headline-md text-primary">Patient Identity</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant">DOB: 05/12/1984</div>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary font-body-md text-body-md h-9 rounded flex items-center justify-center gap-2 hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span> New Encounter
+                </button>
+</div>
+<nav class="flex-1 overflow-y-auto py-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span> Home
+                </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span> Library
+                </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span> AI Assistant
+                </a>
+<a class="flex items-center gap-3 px-4 py-3 text-primary bg-surface-container-highest font-bold transition-all duration-200 ease-in-out font-label-caps text-label-caps border-l-2 border-primary" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span> Encounter Chat
+                </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span> Schedule
+                </a>
+</nav>
+<div class="p-2 border-t border-outline-variant">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span> Help
+                </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span> Logout
+                </a>
+</div>
+</aside>
+<!-- Main Chat Canvas -->
+<main class="flex-1 flex flex-col h-full bg-surface-bright relative">
+<!-- Chat Header -->
+<div class="h-14 border-b border-outline-variant bg-surface px-container-margin flex items-center justify-between shrink-0">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer lg:hidden" data-icon="menu">menu</span>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface">Post-Visit Follow Up</span>
+<div class="flex items-center gap-1 font-label-caps text-label-caps text-on-surface-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
+<span>Connected</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 bg-error-container text-on-error-container px-2 py-1 rounded font-label-caps text-label-caps border border-error/20">
+<span class="material-symbols-outlined text-[16px]" data-icon="timer">timer</span>
+<span>08:45:12 REMAINING</span>
+</div>
+</div>
+</div>
+<!-- Scrollable Messages -->
+<div class="flex-1 overflow-y-auto p-container-margin flex flex-col gap-4">
+<!-- System Notice -->
+<div class="flex justify-center mb-2">
+<div class="bg-surface-container px-3 py-1 rounded border border-outline-variant font-label-caps text-label-caps text-on-surface-variant">
+                        Thread opened: Today, 09:00 AM (48h timer started)
+                    </div>
+</div>
+<!-- Doctor Message -->
+<div class="flex flex-col items-end gap-1">
+<div class="bg-surface border border-outline-variant rounded-lg rounded-tr-sm p-3 max-w-[80%] md:max-w-[60%] shadow-sm text-body-md font-body-md text-on-surface">
+                        Hello Sarah, I'm checking in on your response to the new medication we started yesterday. Are you experiencing any of the nausea we discussed?
+                    </div>
+<div class="flex items-center gap-1 font-label-caps text-label-caps text-on-surface-variant text-[10px]">
+<span>10:15 AM</span>
+<span class="material-symbols-outlined text-[12px] text-primary" data-icon="done_all">done_all</span>
+</div>
+</div>
+<!-- Patient Message -->
+<div class="flex flex-col items-start gap-1">
+<div class="bg-surface-container-low border border-outline-variant rounded-lg rounded-tl-sm p-3 max-w-[80%] md:max-w-[60%] text-body-md font-body-md text-on-surface">
+                        Hi Doctor. Yes, I had some mild nausea this morning after taking it, but it went away after about an hour. Should I be concerned?
+                    </div>
+<div class="flex items-center gap-1 font-label-caps text-label-caps text-on-surface-variant text-[10px]">
+<span>10:42 AM</span>
+</div>
+</div>
+<!-- AI Intervention Panel (Injected in stream) -->
+<div class="flex flex-col items-start gap-1 w-full my-2">
+<div class="bg-surface border border-outline-variant rounded-lg p-3 w-full border-l-2 border-l-tertiary-container shadow-[0_2px_4px_rgba(0,0,0,0.02)]">
+<div class="flex items-center justify-between mb-2">
+<div class="font-label-caps text-label-caps text-tertiary-container flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="smart_toy">smart_toy</span>
+                                [AI SOURCE: PROTOCOL MATCH v2.4]
+                            </div>
+<button class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined text-[16px]" data-icon="more_horiz">more_horiz</span></button>
+</div>
+<div class="font-ai-content text-ai-content text-on-surface">
+                            Patient reported mild nausea lasting ~1 hour post-administration. According to <strong>Protocol RX-774</strong>, transient nausea &lt;2 hours is a standard side effect in the first 72 hours and does not require intervention unless severity increases or it persists beyond day 3.
+                        </div>
+<div class="mt-3 flex gap-2">
+<button class="bg-tertiary-container text-on-primary font-body-sm text-body-sm px-3 py-1.5 rounded flex items-center gap-1 hover:bg-tertiary transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[14px]" data-icon="auto_awesome">auto_awesome</span> Suggest Reassurance
+                            </button>
+<button class="bg-surface text-on-surface font-body-sm text-body-sm px-3 py-1.5 rounded border border-outline-variant hover:bg-surface-variant transition-colors">
+                                View Protocol
+                            </button>
+</div>
+</div>
+</div>
+<!-- Doctor Message (Drafting/Streaming State example) -->
+<div class="flex flex-col items-end gap-1 opacity-70">
+<div class="bg-surface border border-outline-variant rounded-lg rounded-tr-sm p-3 max-w-[80%] md:max-w-[60%] text-body-md font-body-md text-on-surface">
+<span class="animate-pulse">Typing...</span>
+</div>
+</div>
+</div>
+<!-- Composer Area -->
+<div class="p-container-margin border-t border-outline-variant bg-surface shrink-0">
+<div class="bg-surface-container-low border border-outline-variant rounded-lg p-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<textarea class="w-full bg-transparent border-none focus:ring-0 resize-none font-body-md text-body-md text-on-surface placeholder-on-surface-variant p-2 min-h-[60px]" placeholder="Type your message... AI will review for clinical accuracy."></textarea>
+<div class="flex justify-between items-center mt-2 px-1">
+<div class="flex gap-2 text-on-surface-variant">
+<button class="p-1 hover:bg-surface-variant rounded transition-colors" title="Attach File"><span class="material-symbols-outlined text-[20px]" data-icon="attach_file">attach_file</span></button>
+<button class="p-1 hover:bg-surface-variant rounded transition-colors" title="Insert Template"><span class="material-symbols-outlined text-[20px]" data-icon="assignment">assignment</span></button>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant hidden md:inline-block">Press Enter to send</span>
+<button class="bg-primary text-on-primary w-8 h-8 rounded flex items-center justify-center hover:bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="send">send</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Notice for Read-Only State (Hidden in this active view, shown as example)
+                <div class="bg-surface-variant text-on-surface-variant border border-outline-variant rounded-lg p-3 text-center font-body-sm text-body-sm flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]" data-icon="lock">lock</span>
+                    This thread is now read-only. 48-hour post-visit window has closed.
+                </div>
+                -->
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Review &amp; Author AI Suggestion</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#004f4f",
+                        "surface-dim": "#cbdbf5",
+                        "on-tertiary-fixed": "#07006c",
+                        "surface-bright": "#f8f9ff",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#d9dff5",
+                        "tertiary": "#4446d2",
+                        "inverse-primary": "#76d6d5",
+                        "outline": "#6e7979",
+                        "tertiary-fixed": "#e1e0ff",
+                        "on-tertiary-container": "#fcf8ff",
+                        "surface-container-low": "#eff4ff",
+                        "tertiary-fixed-dim": "#c0c1ff",
+                        "error": "#ba1a1a",
+                        "primary": "#006565",
+                        "surface-variant": "#d3e4fe",
+                        "on-surface-variant": "#3e4949",
+                        "primary-container": "#008080",
+                        "on-primary-container": "#e3fffe",
+                        "on-secondary-container": "#5c6274",
+                        "on-surface": "#0b1c30",
+                        "secondary": "#575e70",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#e5eeff",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#bdc9c8",
+                        "inverse-surface": "#213145",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#76d6d5",
+                        "on-secondary-fixed-variant": "#404758",
+                        "surface-container-highest": "#d3e4fe",
+                        "secondary-fixed": "#dce2f7",
+                        "inverse-on-surface": "#eaf1ff",
+                        "on-background": "#0b1c30",
+                        "surface-tint": "#006a6a",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#c0c6db",
+                        "primary-fixed": "#93f2f2",
+                        "on-primary-fixed": "#002020",
+                        "background": "#f8f9ff",
+                        "tertiary-container": "#5e61ec",
+                        "surface-container-high": "#dce9ff",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#2f2ebe",
+                        "surface": "#f8f9ff",
+                        "on-secondary-fixed": "#141b2b",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "unit": "4px",
+                        "container-margin": "16px",
+                        "row-padding": "8px",
+                        "compact-gap": "4px"
+                    },
+                    "fontFamily": {
+                        "ai-content": ["Inter"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "ai-content": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .ai-streaming-pulse {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #5e61ec, transparent);
+            background-size: 200% 100%;
+            animation: streaming 1.5s infinite linear;
+        }
+        @keyframes streaming {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen flex items-center justify-center relative">
+<!-- Background Context (Blurred out Encounter Editor) -->
+<div class="absolute inset-0 z-0 opacity-40 blur-sm flex flex-col">
+<header class="h-16 border-b border-outline-variant bg-surface px-gutter flex items-center justify-between">
+<div class="font-headline-md text-primary">Doctor Workspace</div>
+</header>
+<div class="flex-1 flex">
+<div class="w-64 border-r border-outline-variant bg-surface-container p-4"></div>
+<div class="flex-1 p-8 grid grid-cols-2 gap-8">
+<div class="border border-outline-variant rounded bg-surface h-full"></div>
+<div class="border border-outline-variant rounded bg-surface h-full"></div>
+</div>
+</div>
+</div>
+<!-- Modal Backdrop -->
+<div class="absolute inset-0 bg-inverse-surface/30 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+<!-- Guarded Modal -->
+<div class="bg-surface w-full max-w-5xl rounded-lg border border-outline-variant shadow-[0_4px_16px_rgba(0,0,0,0.05)] flex flex-col max-h-[921px] overflow-hidden z-50">
+<!-- Patient Identity Banner -->
+<div class="bg-surface-container-low px-container-margin py-row-padding border-b border-outline-variant flex items-center gap-4 shrink-0">
+<img class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A small, professional portrait photograph of an adult male patient in a clinical setting, soft even lighting, modern medical clinic context, neutral background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAW3zcMri-lT2j8diAjeQsLUSwGh0t5lX8VDd-FSREL0rBACRif852kpUvmZQqrW-7FkJeqXx7xO9jF3AI8MNBpQk_m4C2nc_RSfIryUNVG2lSZ9t9iBTiioEOlLphH5UFENRxNUhVp2U2cMtFDifiuM4Zq9ArFCqZteWtDcG5G19GLXRzVwOvMnSxmiI7m4ElIi5EcolT48bVPHiRnyPqlHLUsCoUxpFxNhSeYMvKA32CMQUT34ODT"/>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface m-0">Patient Identity</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant m-0">DOB: 05/12/1984 • MRN: 987654321</p>
+</div>
+<div class="ml-auto flex items-center gap-2">
+<span class="bg-error text-on-error font-label-caps text-label-caps px-2 py-1 rounded">ALLERGY: PENICILLIN</span>
+</div>
+</div>
+<!-- Modal Header -->
+<div class="px-container-margin py-4 border-b border-outline-variant flex items-center justify-between shrink-0 bg-surface">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface m-0">Review &amp; Author AI Suggestion</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Review the AI-generated assessment before adding it to the clinical record.</p>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded hover:bg-surface-variant transition-colors" title="Close">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">close</span>
+</button>
+</div>
+<!-- Author Responsibility Notice -->
+<div class="bg-tertiary-container/10 border-b border-tertiary-container/20 px-container-margin py-3 flex items-start gap-3 shrink-0">
+<span class="material-symbols-outlined text-tertiary mt-0.5" style="font-variation-settings: 'FILL' 1;">gavel</span>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface m-0 font-medium">Author Responsibility Notice</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">By adding this content to the clinical record, you become the responsible author for this note. Please review and edit carefully to ensure clinical accuracy.</p>
+</div>
+</div>
+<!-- Split View Content -->
+<div class="flex-1 overflow-hidden grid grid-cols-2 bg-surface">
+<!-- Left Side: Original AI Suggestion (Read-Only) -->
+<div class="border-r border-outline-variant p-container-margin flex flex-col h-full bg-surface-bright relative">
+<!-- AI Provenance Banner -->
+<div class="flex items-center justify-between mb-4 pb-2 border-b border-outline-variant/50">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">smart_toy</span>
+<span class="font-label-caps text-label-caps text-tertiary">[AI SOURCE: SYSTEM v2.4]</span>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface" title="AI Generation Details">
+<span class="material-symbols-outlined text-[16px]">info</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+<div class="font-ai-content text-ai-content text-on-surface space-y-4">
+<p><strong>Assessment:</strong> 40-year-old male presenting with a 3-day history of right lower quadrant abdominal pain, associated with nausea and low-grade fever.</p>
+<p><strong>Plan:</strong></p>
+<ul class="list-disc pl-5 space-y-1">
+<li>Order CBC, CMP, and Lipase.</li>
+<li>Stat CT Abdomen/Pelvis with IV contrast to rule out appendicitis.</li>
+<li>NPO until imaging results are reviewed.</li>
+<li>Administer IV fluids (Normal Saline 125cc/hr).</li>
+<li>Pain management: Toradol 30mg IV x1 now.</li>
+</ul>
+<p><strong>Differential Diagnosis:</strong> Acute appendicitis, gastroenteritis, nephrolithiasis.</p>
+</div>
+</div>
+</div>
+<!-- Right Side: Editable Note Area -->
+<div class="p-container-margin flex flex-col h-full bg-surface">
+<div class="flex items-center justify-between mb-4 pb-2 border-b border-outline-variant/50">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">edit_document</span>
+<span class="font-label-caps text-label-caps text-on-surface">YOUR CLINICAL NOTE</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col relative group">
+<!-- Subtle focus ring effect handled by focus-within on container if needed, but textarea focus handles it -->
+<textarea class="flex-1 w-full resize-none border border-outline-variant rounded bg-surface p-3 font-ai-content text-ai-content text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors custom-scrollbar" spellcheck="false">Assessment: 40-year-old male presenting with a 3-day history of right lower quadrant abdominal pain, associated with nausea and low-grade fever.
+
+Plan:
+- Order CBC, CMP, and Lipase.
+- Stat CT Abdomen/Pelvis with IV contrast to rule out appendicitis.
+- NPO until imaging results are reviewed.
+- Administer IV fluids (Normal Saline 125cc/hr).
+- Pain management: Toradol 30mg IV x1 now.
+
+Differential Diagnosis: Acute appendicitis, gastroenteritis, nephrolithiasis.</textarea>
+</div>
+</div>
+</div>
+<!-- Modal Actions -->
+<div class="px-container-margin py-4 border-t border-outline-variant bg-surface flex items-center justify-end gap-3 shrink-0">
+<button class="px-4 py-2 rounded font-label-caps text-label-caps text-on-surface-variant hover:bg-surface-variant border border-outline-variant transition-colors h-[36px] flex items-center justify-center">
+                    Cancel
+                </button>
+<button class="px-4 py-2 rounded bg-primary text-on-primary font-label-caps text-label-caps hover:bg-primary-container hover:text-on-primary-container transition-colors h-[36px] flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">note_add</span>
+                    Add to Notes
+                </button>
+</div>
+</div>
+</div>
+<style>
+        /* Custom scrollbar for dense clinical data */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #bdc9c8;
+            border-radius: 4px;
+        }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+            background-color: #6e7979;
+        }
+    </style>
+</body></html>

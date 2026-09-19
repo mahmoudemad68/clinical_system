@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clinic Check-in Desk</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#93000a",
+                        "status-consulting": "#008080",
+                        "inverse-surface": "#2f3131",
+                        "surface-container-low": "#f4f3f3",
+                        "on-error": "#ffffff",
+                        "on-background": "#1a1c1c",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "calendar-exception": "#fef2f2",
+                        "secondary-fixed-dim": "#cfbcff",
+                        "status-emergency": "#dc2626",
+                        "surface": "#f9f9f9",
+                        "primary-fixed": "#93f2f2",
+                        "surface-container-high": "#e8e8e8",
+                        "surface-variant": "#e2e2e2",
+                        "on-tertiary-container": "#fff9f7",
+                        "on-tertiary-fixed": "#341100",
+                        "on-tertiary-fixed-variant": "#733512",
+                        "tertiary-fixed": "#ffdbcb",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "primary": "#006565",
+                        "secondary-container": "#bba2fd",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#eeeeee",
+                        "on-surface-variant": "#3e4949",
+                        "on-primary-container": "#e3fffe",
+                        "surface-container-highest": "#e2e2e2",
+                        "outline": "#6e7979",
+                        "on-secondary-container": "#4b3486",
+                        "secondary": "#6750a4",
+                        "surface-tint": "#006a6a",
+                        "status-waiting": "#f59e0b",
+                        "background": "#f9f9f9",
+                        "inverse-on-surface": "#f1f1f1",
+                        "calendar-overlap": "#fff7ed",
+                        "on-surface": "#1a1c1c",
+                        "inverse-primary": "#76d6d5",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "secondary-fixed": "#e9ddff",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed": "#002020",
+                        "outline-variant": "#bdc9c8",
+                        "on-secondary-fixed": "#22005d",
+                        "surface-bright": "#f9f9f9",
+                        "surface-dim": "#dadada",
+                        "tertiary-container": "#a96039",
+                        "primary-container": "#008080",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#76d6d5",
+                        "privacy-mask": "#e5e7eb",
+                        "tertiary": "#8b4823",
+                        "on-secondary": "#ffffff",
+                        "status-completed": "#6b7280"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "hero-card-padding": "20px",
+                        "drawer-width": "380px",
+                        "calendar-interval-30": "80px",
+                        "calendar-interval-15": "40px",
+                        "table-row-height": "32px",
+                        "grid-gutter": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter", "sans-serif"],
+                        "calendar-time": ["JetBrains Mono", "monospace"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "label-caps": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "data-mono-compact": ["JetBrains Mono", "monospace"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "calendar-time": ["11px", { "lineHeight": "12px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-caps": ["10px", { "lineHeight": "14px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "data-mono-compact": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "body-lg": ["15px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* High-Density Table Styles */
+        .clinic-table th {
+            border-bottom: 1px solid var(--tw-colors-outline-variant);
+        }
+        .clinic-table tr:hover {
+            background-color: var(--tw-colors-surface-container);
+        }
+        .clinic-table tr:focus-within {
+            outline: 2px solid var(--tw-colors-status-consulting);
+            outline-offset: -2px;
+        }
+        
+        /* Drawer animation */
+        #walkInDrawer {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        #walkInDrawer.open {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-full flex overflow-hidden font-body-md">
+<!-- Side Navigation Shell -->
+<nav class="bg-surface docked left-0 h-full w-[drawer-width] border-r border-outline-variant flex flex-col py-6 shrink-0 z-20">
+<div class="px-6 mb-8 flex items-center gap-4">
+<img alt="Clinic Staff Profile" class="w-12 h-12 rounded-full object-cover border border-outline-variant" data-alt="A modern, minimalist circular avatar graphic for a clinic staff profile, featuring abstract geometric elements in deep teal and crisp white, set against a pristine, brightly lit medical environment. The style is ultra-clean, clinical, and corporate." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_tuevdFTDYb0VR4FmrHxM4MGAyIZ34n-Gj5wKVOejQOMCSSyV1KX1kp1qErID5NQEFBuOtyO-CxDJ0Ji6ZCfZLqRss7kvYR5fJEOKYcvEeSMwh5UrjTdPEdzxQXjUeosgU2MWIPNSC73BGywoC7Q-5OmYISkL7E8vUR9AcbSEXVSB2htWv-8QOScItdCOehPrP4UMCOpuJ1uBTHHJIRh8BY7Gh43N5woT6Ce7Yh2veuUtOZ6JGOeM"/>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Clinic Ops</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Dr. Sarah Mitchell</p>
+</div>
+</div>
+<div class="px-4 mb-6">
+<button class="w-full bg-primary-container text-on-primary-container font-headline-md text-headline-md font-bold py-3 rounded flex items-center justify-center gap-2 hover:bg-opacity-90 transition-colors" onclick="toggleWalkInDrawer()">
+<span class="material-symbols-outlined filled">add</span>
+                Walk-in Patient
+            </button>
+</div>
+<ul class="flex-1 px-4 space-y-1">
+<li>
+<a class="flex items-center gap-4 px-4 py-3 rounded-DEFAULT hover:bg-surface-container transition-colors duration-200 ease-in-out text-primary font-bold border-r-2 border-primary bg-surface-container-low" href="#">
+<span class="material-symbols-outlined filled" data-icon="clinical_notes">clinical_notes</span>
+<span class="font-label-caps text-label-caps uppercase">Workspace</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 rounded-DEFAULT hover:bg-surface-container transition-colors duration-200 ease-in-out text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-label-caps text-label-caps uppercase">Schedule</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 rounded-DEFAULT hover:bg-surface-container transition-colors duration-200 ease-in-out text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label-caps text-label-caps uppercase">Patients</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-4 py-3 rounded-DEFAULT hover:bg-surface-container transition-colors duration-200 ease-in-out text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-caps text-label-caps uppercase">Reports</span>
+</a>
+</li>
+<li class="mt-auto">
+<a class="flex items-center gap-4 px-4 py-3 rounded-DEFAULT hover:bg-surface-container transition-colors duration-200 ease-in-out text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-caps text-label-caps uppercase">Settings</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-full overflow-hidden relative">
+<!-- Top App Bar -->
+<header class="bg-surface border-b border-outline-variant flex justify-between items-center w-full px-grid-gutter h-[table-row-height]*2 shrink-0 h-16">
+<div class="flex items-center gap-4">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Cairo Central Clinic - Front Desk</h1>
+</div>
+<div class="flex items-center gap-6">
+<!-- Search -->
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-1.5 bg-surface-container-lowest border border-outline-variant rounded text-body-md focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Search by Name/ID..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<a class="text-status-consulting font-bold font-label-caps text-label-caps uppercase hover:bg-surface-container-low px-3 py-1.5 rounded transition-all" href="#">Realtime Online</a>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:bg-surface-container-low p-2 rounded-full transition-all">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:bg-surface-container-low p-2 rounded-full transition-all">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Clinic Desk Split View -->
+<div class="flex-1 flex overflow-hidden bg-surface-container-lowest">
+<!-- Queue Management (Left, 100% since no patient selected initially) -->
+<div class="flex-1 flex flex-col h-full overflow-hidden p-6 border-r border-outline-variant">
+<div class="flex justify-between items-end mb-4">
+<div>
+<h2 class="font-headline-md text-headline-md font-semibold text-on-surface">Today's Queue</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">42 appointments · 8 walk-ins</p>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1 border border-outline-variant rounded font-label-caps text-label-caps hover:bg-surface-container transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">filter_list</span> Filter
+                        </button>
+</div>
+</div>
+<!-- High-Density Table -->
+<div class="flex-1 overflow-auto border border-outline-variant rounded bg-surface">
+<table class="w-full text-left clinic-table border-collapse">
+<thead class="sticky top-0 bg-surface z-10 shadow-sm">
+<tr>
+<th class="px-4 py-2 font-label-caps text-label-caps uppercase text-on-surface-variant w-24">Time</th>
+<th class="px-4 py-2 font-label-caps text-label-caps uppercase text-on-surface-variant w-32">Appt ID</th>
+<th class="px-4 py-2 font-label-caps text-label-caps uppercase text-on-surface-variant">Patient Name</th>
+<th class="px-4 py-2 font-label-caps text-label-caps uppercase text-on-surface-variant w-32">Status</th>
+<th class="px-4 py-2 font-label-caps text-label-caps uppercase text-on-surface-variant text-right w-64">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-on-surface">
+<!-- Row 1: Waiting -->
+<tr class="h-[table-row-height] border-b border-surface-variant cursor-pointer" tabindex="0">
+<td class="px-4 font-data-mono-compact text-data-mono-compact text-on-surface-variant">09:00 AM</td>
+<td class="px-4 font-data-mono-compact text-data-mono-compact">APT-2938</td>
+<td class="px-4 font-medium">Ahmed Hassan</td>
+<td class="px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-status-waiting bg-opacity-20 text-status-waiting uppercase">Waiting</span>
+</td>
+<td class="px-4 text-right space-x-2">
+<button class="font-label-caps text-label-caps text-primary hover:underline uppercase">Check In</button>
+<span class="text-outline-variant">|</span>
+<button class="font-label-caps text-label-caps text-outline hover:text-error hover:underline uppercase">No-show</button>
+</td>
+</tr>
+<!-- Row 2: In Consult (No actions needed typically, but keeping Print Slip) -->
+<tr class="h-[table-row-height] border-b border-surface-variant bg-primary-fixed bg-opacity-10 cursor-pointer" tabindex="0">
+<td class="px-4 font-data-mono-compact text-data-mono-compact text-primary">09:15 AM</td>
+<td class="px-4 font-data-mono-compact text-data-mono-compact">APT-2939</td>
+<td class="px-4 font-medium">Fatima El-Sayed</td>
+<td class="px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-status-consulting bg-opacity-20 text-status-consulting uppercase">Consulting</span>
+</td>
+<td class="px-4 text-right space-x-2">
+<button class="font-label-caps text-label-caps text-outline hover:text-on-surface hover:underline uppercase">Print Slip</button>
+</td>
+</tr>
+<!-- Row 3: Scheduled (Not arrived yet) -->
+<tr class="h-[table-row-height] border-b border-surface-variant cursor-pointer" tabindex="0">
+<td class="px-4 font-data-mono-compact text-data-mono-compact text-on-surface-variant">09:30 AM</td>
+<td class="px-4 font-data-mono-compact text-data-mono-compact">APT-2940</td>
+<td class="px-4 font-medium">Youssef Mahmoud</td>
+<td class="px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-variant text-on-surface-variant uppercase">Scheduled</span>
+</td>
+<td class="px-4 text-right space-x-2">
+<button class="font-label-caps text-label-caps text-primary hover:underline uppercase">Check In</button>
+<span class="text-outline-variant">|</span>
+<button class="font-label-caps text-label-caps text-outline hover:text-error hover:underline uppercase">No-show</button>
+</td>
+</tr>
+<!-- Row 4: Walk-in -->
+<tr class="h-[table-row-height] border-b border-surface-variant cursor-pointer" tabindex="0">
+<td class="px-4 font-data-mono-compact text-data-mono-compact text-on-surface-variant">09:45 AM</td>
+<td class="px-4 font-data-mono-compact text-data-mono-compact italic text-outline">Walk-in</td>
+<td class="px-4 font-medium">Nour Ibrahim</td>
+<td class="px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-variant text-on-surface-variant uppercase">Scheduled</span>
+</td>
+<td class="px-4 text-right space-x-2">
+<button class="font-label-caps text-label-caps text-primary hover:underline uppercase">Check In</button>
+<span class="text-outline-variant">|</span>
+<button class="font-label-caps text-label-caps text-outline hover:text-error hover:underline uppercase" onclick="document.getElementById('cancelModal').classList.remove('hidden')">Cancel</button>
+</td>
+</tr>
+<!-- Filler Rows for Density -->
+<tr class="h-[table-row-height] border-b border-surface-variant cursor-pointer" tabindex="0">
+<td class="px-4 font-data-mono-compact text-data-mono-compact text-on-surface-variant">10:00 AM</td><td class="px-4 font-data-mono-compact text-data-mono-compact">APT-2941</td><td class="px-4 font-medium text-outline">Masked Entry</td><td class="px-4"><div class="h-3 w-16 bg-privacy-mask rounded-full"></div></td><td class="px-4 text-right"></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Sticky Right Drawer: Walk-In Registration -->
+<div class="absolute top-16 bottom-0 right-0 w-[drawer-width] bg-surface border-l border-outline-variant shadow-[-4px_0_12px_rgba(0,0,0,0.05)] z-30 flex flex-col" id="walkInDrawer">
+<!-- Drawer Header -->
+<div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-bright">
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">New Walk-In</h3>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors p-1 rounded hover:bg-surface-container" onclick="toggleWalkInDrawer()">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Drawer Content (Form) -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6">
+<div class="space-y-4">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Full Name</label>
+<input class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded font-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Patient's legal name" type="text"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Mobile Number</label>
+<input class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded font-data-mono-compact text-data-mono-compact text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="+20 1X XXXX XXXX" type="tel"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">National ID</label>
+<input class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded font-data-mono-compact text-data-mono-compact text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="14-digit ID number" type="text"/>
+</div>
+</div>
+<div class="pt-4 border-t border-outline-variant">
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-3 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">info</span>
+                            Walk-ins are added to the end of the current hour's queue.
+                        </p>
+</div>
+</div>
+<!-- Drawer Footer (Actions) -->
+<div class="p-4 border-t border-outline-variant bg-surface-bright flex justify-end gap-3">
+<button class="px-4 py-2 rounded font-label-caps text-label-caps font-bold text-on-surface-variant hover:bg-surface-container transition-colors uppercase" onclick="toggleWalkInDrawer()">Cancel</button>
+<button class="px-4 py-2 rounded bg-primary text-on-primary font-label-caps text-label-caps font-bold hover:bg-opacity-90 transition-colors uppercase">Register &amp; Queue</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Audited Cancellation Modal (Hidden by default) -->
+<div class="hidden fixed inset-0 bg-inverse-surface bg-opacity-50 z-50 flex items-center justify-center backdrop-blur-sm" id="cancelModal">
+<div class="bg-surface rounded-lg border border-outline-variant w-96 shadow-xl flex flex-col overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-error-container">
+<h3 class="font-headline-md text-headline-md font-bold text-on-error-container flex items-center gap-2">
+<span class="material-symbols-outlined text-error">warning</span>
+                    Cancel Appointment
+                </h3>
+</div>
+<div class="p-6 space-y-4 bg-surface-bright">
+<p class="font-body-md text-on-surface">You are about to cancel this appointment. This action is audited.</p>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Cancellation Reason <span class="text-error">*</span></label>
+<select class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded font-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+<option value="">Select reason...</option>
+<option value="patient_req">Patient Requested</option>
+<option value="no_show_auto">Auto No-Show (System)</option>
+<option value="clinic_req">Clinic Reschedule</option>
+<option value="error">Registration Error</option>
+</select>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Audit Notes (Optional)</label>
+<textarea class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded font-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-none" placeholder="Enter brief details..." rows="2"></textarea>
+</div>
+</div>
+<div class="p-4 border-t border-outline-variant bg-surface flex justify-end gap-3">
+<button class="px-4 py-2 rounded font-label-caps text-label-caps font-bold text-on-surface-variant hover:bg-surface-container transition-colors uppercase" onclick="document.getElementById('cancelModal').classList.add('hidden')">Abort</button>
+<button class="px-4 py-2 rounded bg-error text-on-error font-label-caps text-label-caps font-bold hover:bg-opacity-90 transition-colors uppercase" onclick="document.getElementById('cancelModal').classList.add('hidden')">Confirm Cancellation</button>
+</div>
+</div>
+</div>
+<script>
+        function toggleWalkInDrawer() {
+            const drawer = document.getElementById('walkInDrawer');
+            drawer.classList.toggle('open');
+        }
+    </script>
+</body></html>

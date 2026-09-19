@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>My Reviews - Clinical Clarity</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "outline-variant": "#c1c6d4",
+                      "tertiary-fixed-dim": "#afcbd8",
+                      "surface": "#f7fafc",
+                      "surface-bright": "#f7fafc",
+                      "background": "#f7fafc",
+                      "tertiary": "#46606c",
+                      "primary-container": "#1976d2",
+                      "secondary": "#006b5f",
+                      "on-secondary-fixed": "#00201c",
+                      "on-error-container": "#93000a",
+                      "secondary-fixed": "#8df5e4",
+                      "primary-fixed-dim": "#a5c8ff",
+                      "error": "#ba1a1a",
+                      "inverse-primary": "#a5c8ff",
+                      "inverse-surface": "#2d3133",
+                      "on-primary-fixed": "#001c3a",
+                      "surface-dim": "#d7dadc",
+                      "tertiary-fixed": "#cbe7f5",
+                      "outline": "#717783",
+                      "surface-tint": "#005faf",
+                      "tertiary-container": "#5f7985",
+                      "on-tertiary": "#ffffff",
+                      "inverse-on-surface": "#eef1f3",
+                      "secondary-container": "#8df5e4",
+                      "on-primary-fixed-variant": "#004786",
+                      "surface-container": "#ebeef0",
+                      "on-secondary-container": "#007165",
+                      "error-container": "#ffdad6",
+                      "on-primary-container": "#fffdff",
+                      "surface-container-highest": "#e0e3e5",
+                      "primary-fixed": "#d4e3ff",
+                      "surface-variant": "#e0e3e5",
+                      "on-tertiary-container": "#fdfdff",
+                      "on-surface-variant": "#414752",
+                      "on-tertiary-fixed": "#021f29",
+                      "surface-container-low": "#f1f4f6",
+                      "on-secondary-fixed-variant": "#005048",
+                      "on-surface": "#181c1e",
+                      "primary": "#005dac",
+                      "on-background": "#181c1e",
+                      "on-primary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed-dim": "#70d8c8",
+                      "surface-container-high": "#e5e9eb",
+                      "on-tertiary-fixed-variant": "#304a55"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "lg": "24px",
+                      "xl": "32px",
+                      "md": "16px",
+                      "margin-mobile": "16px",
+                      "xs": "4px",
+                      "base": "4px",
+                      "sm": "8px",
+                      "margin-tablet": "32px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "label-lg": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "title-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.1px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.5px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "0px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "0px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "title-lg": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background min-h-screen flex flex-col pb-24 md:pb-0 pt-16">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full h-16 bg-surface dark:bg-on-background shadow-sm flex items-center justify-between px-md w-full h-16 z-50">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary dark:text-primary-fixed-dim hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform duration-200 rounded-full p-2">arrow_back</button>
+<h1 class="font-title-lg text-title-lg font-bold text-primary dark:text-primary-fixed-dim">My Reviews</h1>
+</div>
+<div class="flex items-center">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A small, circular avatar portrait of a professional individual against a neutral, light-mode background. The lighting is soft and flattering, suitable for a healthcare application profile picture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVJDVROKymeJi5O28PsuE7ne1m69NaD_qJqYbvDJTsXljYuyX6HrqePF3OHeUIy1v5H3fvqu3U_lN3mWmu5ofQLBk9o9ze71iP6FL_dfU7fWDypVG-wQ64W252dTHEKCLVS8L2oKXflz-fSonKveB8FeGhUq14KpcEdgW0Kh7goLyU-kPXJxE38llFGOU7HlMWrg8W1LfsXlEk1q9-O5VRYXZVC2_XgxOgwG2Kcpl2MHwAZiyvFrR8"/>
+</div>
+</header>
+<main class="flex-grow max-w-3xl mx-auto w-full px-margin-mobile md:px-margin-tablet py-lg flex flex-col gap-lg">
+<!-- Review Card 1 - Published -->
+<article class="bg-white rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.05)] border border-[#E0E0E0] p-md flex flex-col gap-sm cursor-pointer hover:bg-surface-container-low transition-colors duration-200 active:scale-[0.99]" onclick="alert('Open Full Review Detail')">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-sm">
+<span class="inline-flex items-center gap-xs px-2 py-1 rounded-full bg-secondary-fixed/20 text-on-secondary-fixed font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                        Published
+                    </span>
+</div>
+<span class="font-label-sm text-label-sm text-outline">Oct 12, 2023</span>
+</div>
+<div class="flex flex-col gap-xs mt-2">
+<h2 class="font-title-lg text-title-lg text-on-surface">Dr. Sarah Jenkins</h2>
+<p class="font-label-sm text-label-sm text-outline">Cardiology</p>
+</div>
+<div class="flex items-center gap-1 text-primary-container mt-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant ml-2">Excellent Care</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mt-2">
+                Dr. Jenkins was incredibly thorough and took the time to explain all my test results in a way I could easily understand. Highly recommend her to anyone seeking a compassionate cardiologist.
+            </p>
+<div class="mt-4 flex justify-end">
+<button class="font-label-sm text-label-sm text-primary flex items-center gap-xs hover:underline" onclick="event.stopPropagation(); alert('View Doctor Profile')">
+                    View Profile
+                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</article>
+<!-- Review Card 2 - Pending -->
+<article class="bg-white rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.05)] border border-[#E0E0E0] p-md flex flex-col gap-sm cursor-pointer hover:bg-surface-container-low transition-colors duration-200 active:scale-[0.99]" onclick="alert('Open Full Review Detail')">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-sm">
+<span class="inline-flex items-center gap-xs px-2 py-1 rounded-full bg-error-container/50 text-[#F57C00] font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">pending</span>
+                        Pending Moderation
+                    </span>
+</div>
+<span class="font-label-sm text-label-sm text-outline">Nov 05, 2023</span>
+</div>
+<div class="flex flex-col gap-xs mt-2">
+<h2 class="font-title-lg text-title-lg text-on-surface">Dr. Michael Chen</h2>
+<p class="font-label-sm text-label-sm text-outline">General Practice</p>
+</div>
+<div class="flex items-center gap-1 text-primary-container mt-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-outline-variant" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant ml-2">Good Experience</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mt-2">
+                The appointment was generally good, but I had to wait a bit past my scheduled time. Dr. Chen was knowledgeable and addressed my concerns effectively.
+            </p>
+<div class="mt-4 flex justify-end">
+<button class="font-label-sm text-label-sm text-primary flex items-center gap-xs hover:underline" onclick="event.stopPropagation(); alert('View Doctor Profile')">
+                    View Profile
+                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</article>
+<!-- Review Card 3 - Hidden -->
+<article class="bg-surface-container-lowest rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.05)] border border-[#E0E0E0] p-md flex flex-col gap-sm cursor-pointer hover:bg-surface-container-low transition-colors duration-200 active:scale-[0.99] opacity-80" onclick="alert('Open Full Review Detail')">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-sm">
+<span class="inline-flex items-center gap-xs px-2 py-1 rounded-full bg-error-container text-error font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">visibility_off</span>
+                        Hidden
+                    </span>
+</div>
+<span class="font-label-sm text-label-sm text-outline">Aug 22, 2023</span>
+</div>
+<div class="flex flex-col gap-xs mt-2">
+<h2 class="font-title-lg text-title-lg text-on-surface">Dr. Emily Stone</h2>
+<p class="font-label-sm text-label-sm text-outline">Dermatology</p>
+</div>
+<div class="flex items-center gap-1 text-primary-container mt-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-outline-variant" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-outline-variant" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-outline-variant" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant ml-2">Needs Improvement</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 mt-2 italic">
+                This review was hidden as it violated community guidelines regarding language.
+            </p>
+<div class="mt-4 flex justify-end">
+<button class="font-label-sm text-label-sm text-primary flex items-center gap-xs hover:underline" onclick="event.stopPropagation(); alert('View Doctor Profile')">
+                    View Profile
+                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</article>
+</main>
+<!-- Bottom Navigation Bar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-sm pb-safe bg-surface dark:bg-on-background shadow-lg rounded-t-xl bg-primary dark:bg-inverse-surface opacity-5 shadow-[0_-2px_4px_rgba(0,0,0,0.05)]">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm-mobile">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">description</span>
+<span class="font-label-sm text-label-sm-mobile">Records</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="font-label-sm text-label-sm-mobile">Messages</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container dark:bg-on-primary-fixed-variant text-on-primary-container dark:text-primary-fixed rounded-full px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm-mobile font-bold">Profile</span>
+</button>
+</nav>
+</body></html>

@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "type": "stdio",
+            "command": "/bin/bash",
+            "args": [
+                "-lc",
+                "cd \"${workspaceFolder}/apps/core-api\"&& exec php artisan boost:mcp"
+            ]
+        }
+    }
+}

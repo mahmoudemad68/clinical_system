@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Appointment Types Configuration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-error-container": "#93000a",
+                        "status-consulting": "#008080",
+                        "inverse-surface": "#2f3131",
+                        "surface-container-low": "#f4f3f3",
+                        "on-error": "#ffffff",
+                        "on-background": "#1a1c1c",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "calendar-exception": "#fef2f2",
+                        "secondary-fixed-dim": "#cfbcff",
+                        "status-emergency": "#dc2626",
+                        "surface": "#f9f9f9",
+                        "primary-fixed": "#93f2f2",
+                        "surface-container-high": "#e8e8e8",
+                        "surface-variant": "#e2e2e2",
+                        "on-tertiary-container": "#fff9f7",
+                        "on-tertiary-fixed": "#341100",
+                        "on-tertiary-fixed-variant": "#733512",
+                        "tertiary-fixed": "#ffdbcb",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "primary": "#006565",
+                        "secondary-container": "#bba2fd",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#eeeeee",
+                        "on-surface-variant": "#3e4949",
+                        "on-primary-container": "#e3fffe",
+                        "surface-container-highest": "#e2e2e2",
+                        "outline": "#6e7979",
+                        "on-secondary-container": "#4b3486",
+                        "secondary": "#6750a4",
+                        "surface-tint": "#006a6a",
+                        "status-waiting": "#f59e0b",
+                        "background": "#f9f9f9",
+                        "inverse-on-surface": "#f1f1f1",
+                        "calendar-overlap": "#fff7ed",
+                        "on-surface": "#1a1c1c",
+                        "inverse-primary": "#76d6d5",
+                        "tertiary-fixed-dim": "#ffb692",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "secondary-fixed": "#e9ddff",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed": "#002020",
+                        "outline-variant": "#bdc9c8",
+                        "on-secondary-fixed": "#22005d",
+                        "surface-bright": "#f9f9f9",
+                        "surface-dim": "#dadada",
+                        "tertiary-container": "#a96039",
+                        "primary-container": "#008080",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#76d6d5",
+                        "privacy-mask": "#e5e7eb",
+                        "tertiary": "#8b4823",
+                        "on-secondary": "#ffffff",
+                        "status-completed": "#6b7280"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "hero-card-padding": "20px",
+                        "drawer-width": "380px",
+                        "calendar-interval-30": "80px",
+                        "calendar-interval-15": "40px",
+                        "table-row-height": "32px",
+                        "grid-gutter": "12px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Inter", "sans-serif"],
+                        "calendar-time": ["JetBrains Mono", "monospace"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "label-caps": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "data-mono-compact": ["JetBrains Mono", "monospace"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"]
+                    },
+                    fontSize: {
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "calendar-time": ["11px", { lineHeight: "12px", fontWeight: "500" }],
+                        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "label-caps": ["10px", { lineHeight: "14px", letterSpacing: "0.06em", fontWeight: "700" }],
+                        "body-md": ["13px", { lineHeight: "18px", fontWeight: "400" }],
+                        "data-mono-compact": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+                        "body-lg": ["15px", { lineHeight: "22px", fontWeight: "400" }],
+                        "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom scrollbar for dense tables */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #bdc9c8;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6e7979;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-screen w-full flex overflow-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar (Settings Active) -->
+<aside class="bg-surface border-r border-outline-variant docked left-0 h-full w-[drawer-width] flex flex-col py-6 shrink-0 z-20">
+<!-- Brand/Header -->
+<div class="px-6 mb-8 flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden shrink-0">
+<img alt="Clinic Staff Profile" class="w-full h-full object-cover" data-alt="A macro shot of a sleek, minimalist metallic clinic ID badge with subtle engraved medical cross, soft studio lighting, professional corporate aesthetic, cool teal reflections." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOdjZTIbKfNQj9h45eYvs8RX-iGyAz2JLsv9j-P8fRIk0K2tBbzkLFGFaGwJVgkpq-klbqqpYKzMDhSunxX-ZNG2HSbzJFxisci43-Xqrrrga6QiPSOLCs2Tl_PtY6h0bBH4gD5NjnyElIzGyjtYC2UqJKgW9rnWklBPPnYndlIWrBj9UvK7qE9fYh1HNBOgTzg8CSRWKpzwmn57PIP3qZJvEcylc40IgeWcSlEiXprCOlIkmWD1FE"/>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary truncate">Clinic Ops</h2>
+<p class="font-body-md text-body-md text-on-surface-variant truncate">Dr. Sarah Mitchell</p>
+</div>
+</div>
+<!-- CTA -->
+<div class="px-6 mb-6">
+<button class="w-full bg-primary text-on-primary font-label-caps text-label-caps uppercase rounded-DEFAULT py-3 px-4 hover:bg-surface-tint transition-colors duration-200 ease-in-out shadow-sm flex justify-center items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+                New Consultation
+            </button>
+</div>
+<!-- Navigation -->
+<nav class="flex-1 flex flex-col px-3 gap-1">
+<a class="flex items-center gap-3 px-3 h-10 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors duration-200 ease-in-out group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface-variant transition-colors">clinical_notes</span>
+<span class="font-body-md text-body-md font-medium">Workspace</span>
+</a>
+<a class="flex items-center gap-3 px-3 h-10 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors duration-200 ease-in-out group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface-variant transition-colors">calendar_today</span>
+<span class="font-body-md text-body-md font-medium">Schedule</span>
+</a>
+<a class="flex items-center gap-3 px-3 h-10 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors duration-200 ease-in-out group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface-variant transition-colors">groups</span>
+<span class="font-body-md text-body-md font-medium">Patients</span>
+</a>
+<a class="flex items-center gap-3 px-3 h-10 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors duration-200 ease-in-out group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface-variant transition-colors">analytics</span>
+<span class="font-body-md text-body-md font-medium">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 h-10 rounded-DEFAULT text-primary font-bold border-r-2 border-primary bg-primary-container/10 transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-w-0 bg-background">
+<!-- TopAppBar -->
+<header class="bg-surface border-b border-outline-variant docked full-width top-0 flex justify-between items-center w-full px-grid-gutter h-[calc(var(--spacing-table-row-height)*2)] shrink-0 z-10">
+<div class="flex items-center gap-4">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">St. Jude Medical Center</h1>
+<div class="h-4 w-px bg-outline-variant mx-2"></div>
+<nav class="hidden md:flex items-center">
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:bg-surface-container-low px-3 py-1 rounded-DEFAULT transition-all uppercase tracking-wider" href="#">Realtime Online</a>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all active:scale-95">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant overflow-hidden ml-2 cursor-pointer hover:ring-2 ring-primary-container ring-offset-2 ring-offset-surface transition-all">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A close-up stylized avatar of a professional medical user, minimalist vector aesthetic, soft lighting, solid neutral background, wearing professional attire." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCD4D68hL06FwzD5tDsM5z8-Q3vZ4-G144ukGFMurkvX0h3QQsIBPLbMbUyCBoWg0BF2tVxONlHHml-q5wGtk74efX4PXCShhZpPntDy1o_L5RQzbFIs8OrPX7fwz0hTvHF_zIkT4OuNzEIzFjwV-PLO18F6fv5j2U3g7jBNZo8OHsACDwJnnNnrZGIMw__BEQA55OiSSKgRYBHjSPJT-ik4iIXMzCKYsCsixxtTu0yxq7hb_uUMELn"/>
+</div>
+</div>
+</header>
+<!-- Configuration Workspace Split View -->
+<main class="flex-1 flex overflow-hidden relative">
+<!-- Left Area: Data Table Canvas -->
+<div class="flex-1 flex flex-col p-6 overflow-hidden">
+<!-- Page Header & Actions -->
+<div class="flex justify-between items-end mb-6 shrink-0">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-1">Appointment Configuration</h2>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">info</span>
+                            Prices are in Egyptian Pounds (EGP). Final billing is subject to server-side authority verification.
+                        </p>
+</div>
+<!-- Contextual action (would normally open drawer, but it's docked here) -->
+<button class="bg-surface border border-outline-variant text-on-surface font-label-caps text-label-caps uppercase rounded-DEFAULT px-4 h-[32px] hover:bg-surface-container-low transition-colors flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+                        Add Type
+                    </button>
+</div>
+<!-- High Density Table Container -->
+<div class="flex-1 bg-surface border border-outline-variant rounded-DEFAULT shadow-sm overflow-auto relative">
+<table class="w-full text-left border-collapse whitespace-nowrap">
+<thead class="sticky top-0 bg-surface z-10 shadow-[0_1px_0_0_#bdc9c8]">
+<tr>
+<th class="font-label-caps text-label-caps text-on-surface-variant px-4 py-2 w-full">Service Name</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant px-4 py-2 w-24 text-right">Duration</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant px-4 py-2 w-32 text-right">Price (EGP)</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant px-4 py-2 w-24 text-center">Status</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant px-4 py-2 w-16 text-center"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-variant">
+<!-- Row 1 -->
+<tr class="h-[table-row-height] hover:bg-surface-container group outline-none focus-within:ring-2 focus-within:ring-primary-container focus-within:ring-inset transition-colors" tabindex="0">
+<td class="px-4 py-0">
+<div class="flex items-center h-full">
+<span class="font-body-md text-body-md font-medium text-on-surface">Physical Exam</span>
+</div>
+</td>
+<td class="px-4 py-0 text-right">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface-variant">20m</span>
+</td>
+<td class="px-4 py-0 text-right">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface">500.00</span>
+</td>
+<td class="px-4 py-0">
+<div class="flex items-center justify-center h-full">
+<!-- Active Toggle -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-8 h-4 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline-variant after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-status-consulting"></div>
+</label>
+</div>
+</td>
+<td class="px-4 py-0 text-center">
+<button class="text-outline hover:text-on-surface p-1 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="h-[table-row-height] hover:bg-surface-container group outline-none focus-within:ring-2 focus-within:ring-primary-container focus-within:ring-inset transition-colors" tabindex="0">
+<td class="px-4 py-0">
+<div class="flex items-center h-full">
+<span class="font-body-md text-body-md font-medium text-on-surface">Follow-up</span>
+</div>
+</td>
+<td class="px-4 py-0 text-right">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface-variant">15m</span>
+</td>
+<td class="px-4 py-0 text-right">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface">300.00</span>
+</td>
+<td class="px-4 py-0">
+<div class="flex items-center justify-center h-full">
+<!-- Active Toggle -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-8 h-4 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline-variant after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-status-consulting"></div>
+</label>
+</div>
+</td>
+<td class="px-4 py-0 text-center">
+<button class="text-outline hover:text-on-surface p-1 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="h-[table-row-height] hover:bg-surface-container group outline-none focus-within:ring-2 focus-within:ring-primary-container focus-within:ring-inset transition-colors" tabindex="0">
+<td class="px-4 py-0">
+<div class="flex items-center h-full gap-2">
+<span class="font-body-md text-body-md font-medium text-on-surface">Initial Consultation</span>
+<span class="bg-primary-container/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">Popular</span>
+</div>
+</td>
+<td class="px-4 py-0 text-right">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface-variant">40m</span>
+</td>
+<td class="px-4 py-0 text-right">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface">800.00</span>
+</td>
+<td class="px-4 py-0">
+<div class="flex items-center justify-center h-full">
+<!-- Active Toggle -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-8 h-4 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline-variant after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-status-consulting"></div>
+</label>
+</div>
+</td>
+<td class="px-4 py-0 text-center">
+<button class="text-outline hover:text-on-surface p-1 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Inactive Example Row -->
+<tr class="h-[table-row-height] hover:bg-surface-container group outline-none focus-within:ring-2 focus-within:ring-primary-container focus-within:ring-inset transition-colors opacity-60 bg-surface-container-low" tabindex="0">
+<td class="px-4 py-0">
+<div class="flex items-center h-full">
+<span class="font-body-md text-body-md font-medium text-on-surface-variant line-through">Telehealth Visit</span>
+</div>
+</td>
+<td class="px-4 py-0 text-right">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface-variant">30m</span>
+</td>
+<td class="px-4 py-0 text-right">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface-variant">400.00</span>
+</td>
+<td class="px-4 py-0">
+<div class="flex items-center justify-center h-full">
+<!-- Inactive Toggle -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-8 h-4 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline-variant after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-status-consulting"></div>
+</label>
+</div>
+</td>
+<td class="px-4 py-0 text-center">
+<button class="text-outline hover:text-on-surface p-1 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Empty State / Filler for high-density look -->
+<div class="absolute inset-0 pointer-events-none opacity-5 bg-[repeating-linear-gradient(transparent,transparent_31px,#bdc9c8_32px)] z-0 mt-[33px]"></div>
+</div>
+</div>
+<!-- Right Area: Sticky Operational Drawer -->
+<aside class="w-[drawer-width] border-l border-outline-variant bg-surface flex flex-col shadow-[-8px_0_16px_-8px_rgba(0,0,0,0.05)] shrink-0 h-full relative z-20">
+<!-- Drawer Header -->
+<div class="px-6 py-5 border-b border-outline-variant flex justify-between items-center bg-surface-bright">
+<h3 class="font-headline-md text-headline-md font-semibold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">add_circle</span>
+                        New Type
+                    </h3>
+<button class="text-outline hover:text-on-surface transition-colors p-1 rounded hover:bg-surface-container">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Drawer Form Body -->
+<div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+<!-- Input: Name -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-caps text-label-caps uppercase text-on-surface-variant" for="typeName">Service Name</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-DEFAULT px-3 py-2 font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all" id="typeName" placeholder="e.g. Vaccination" type="text"/>
+</div>
+<!-- Input: Duration Slider -->
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between items-end">
+<label class="font-label-caps text-label-caps uppercase text-on-surface-variant" for="duration">Duration (Minutes)</label>
+<span class="font-data-mono-compact text-data-mono-compact text-primary font-bold bg-primary-container/10 px-2 py-0.5 rounded">45m</span>
+</div>
+<input class="w-full h-1 bg-surface-variant rounded-full appearance-none cursor-pointer accent-primary-container mt-2" id="duration" max="120" min="5" step="5" type="range" value="45"/>
+<div class="flex justify-between text-[10px] text-outline font-data-mono-compact mt-1">
+<span>5m</span>
+<span>60m</span>
+<span>120m</span>
+</div>
+</div>
+<!-- Input: Price -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-caps text-label-caps uppercase text-on-surface-variant" for="price">Base Price</label>
+<div class="relative flex items-center">
+<span class="absolute left-3 font-data-mono-compact text-data-mono-compact text-on-surface-variant">EGP</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-DEFAULT pl-12 pr-3 py-2 font-data-mono-compact text-body-lg text-on-surface focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all text-right" id="price" placeholder="0.00" type="number"/>
+</div>
+<p class="font-body-sm text-body-sm text-outline mt-1 leading-tight">Price adjustments or discounts apply dynamically at checkout.</p>
+</div>
+<!-- Input: Status Toggle -->
+<div class="flex items-center justify-between p-4 bg-surface-container-low border border-outline-variant rounded-DEFAULT mt-2">
+<div>
+<span class="block font-body-md text-body-md font-medium text-on-surface">Available for Booking</span>
+<span class="block font-body-sm text-body-sm text-on-surface-variant">Allow front-desk to schedule this type.</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer scale-110">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-9 h-5 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline-variant after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-status-consulting shadow-inner"></div>
+</label>
+</div>
+</div>
+<!-- Drawer Footer Actions -->
+<div class="px-6 py-4 border-t border-outline-variant bg-surface flex justify-end gap-3 shrink-0">
+<button class="px-4 py-2 font-body-md text-body-md font-medium text-on-surface hover:bg-surface-container rounded-DEFAULT transition-colors">
+                        Cancel
+                    </button>
+<button class="px-6 py-2 bg-primary text-on-primary font-body-md text-body-md font-medium rounded-DEFAULT hover:bg-surface-tint shadow-sm transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">check</span>
+                        Save Type
+                    </button>
+</div>
+</aside>
+</main>
+</div>
+</body></html>

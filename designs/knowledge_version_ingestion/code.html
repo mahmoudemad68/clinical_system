@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-surface dark:bg-surface-dim" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Knowledge Version &amp; Ingestion Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary": "#091426",
+                      "tertiary": "#1e1200",
+                      "secondary": "#515f74",
+                      "tertiary-container": "#35260c",
+                      "on-secondary-fixed-variant": "#3a485c",
+                      "background": "#fbf8fa",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-fixed": "#fadfb8",
+                      "inverse-primary": "#bcc7de",
+                      "on-primary-fixed": "#111c2d",
+                      "surface-container-highest": "#e4e2e3",
+                      "on-tertiary-fixed": "#271902",
+                      "on-secondary-fixed": "#0d1c2f",
+                      "surface-bright": "#fbf8fa",
+                      "on-tertiary-fixed-variant": "#564427",
+                      "secondary-fixed-dim": "#b9c7e0",
+                      "surface-container-high": "#eae7e9",
+                      "primary-container": "#1e293b",
+                      "surface-tint": "#545f73",
+                      "on-primary": "#ffffff",
+                      "surface-dim": "#dcd9db",
+                      "inverse-on-surface": "#f3f0f2",
+                      "outline": "#75777d",
+                      "surface-variant": "#e4e2e3",
+                      "on-secondary": "#ffffff",
+                      "on-primary-fixed-variant": "#3c475a",
+                      "surface-container-lowest": "#ffffff",
+                      "outline-variant": "#c5c6cd",
+                      "primary-fixed": "#d8e3fb",
+                      "inverse-surface": "#303032",
+                      "tertiary-fixed-dim": "#ddc39d",
+                      "on-surface": "#1b1b1d",
+                      "surface-container": "#f0edef",
+                      "secondary-container": "#d5e3fd",
+                      "surface": "#fbf8fa",
+                      "on-surface-variant": "#45474c",
+                      "secondary-fixed": "#d5e3fd",
+                      "primary-fixed-dim": "#bcc7de",
+                      "surface-container-low": "#f5f3f4",
+                      "on-tertiary-container": "#a38c6a",
+                      "error-container": "#ffdad6",
+                      "on-error-container": "#93000a",
+                      "on-secondary-container": "#57657b",
+                      "on-background": "#1b1b1d",
+                      "on-primary-container": "#8590a6",
+                      "on-error": "#ffffff",
+                      "error": "#ba1a1a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "margin_lg": "24px",
+                      "sidebar_width": "260px",
+                      "stack_gap": "12px",
+                      "margin_md": "16px",
+                      "container_max_width": "1440px",
+                      "header_height": "64px",
+                      "margin_sm": "8px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "code-md": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "code-md": [
+                              "13px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "30px",
+                              {
+                                      "lineHeight": "38px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="h-full flex overflow-hidden text-on-surface bg-background">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[260px] bg-surface dark:bg-surface-dim border-r border-outline-variant dark:border-outline flex flex-col py-margin_md hidden md:flex z-40">
+<div class="px-margin_md mb-stack_gap">
+<h1 class="text-headline-sm font-headline-sm text-primary dark:text-primary-fixed">Health Oversight</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Admin Console</p>
+</div>
+<div class="px-margin_md mb-stack_gap">
+<button class="w-full bg-primary-container text-on-primary flex items-center justify-center gap-2 h-9 rounded font-label-md text-label-md hover:bg-opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Report
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto px-margin_sm space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded bg-secondary-container dark:bg-secondary-container text-on-secondary-container font-semibold cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-body-md text-body-md">Knowledge</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="settings_applications">settings_applications</span>
+<span class="font-body-md text-body-md">Operations</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-high dark:hover:bg-on-secondary-fixed-variant transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="health_and_safety">health_and_safety</span>
+<span class="font-body-md text-body-md">System Health</span>
+</a>
+</div>
+<div class="mt-auto px-margin_sm space-y-1 pt-4 border-t border-outline-variant">
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="font-body-md text-body-md">Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+</div>
+</nav>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-header_height bg-surface dark:bg-surface-bright border-b border-outline-variant dark:border-outline flex items-center justify-between px-margin_lg z-30 hidden md:flex">
+<div class="flex items-center gap-4">
+<h2 class="text-headline-sm font-headline-sm font-bold text-primary dark:text-primary-fixed">Health System Oversight</h2>
+<div class="relative ml-8">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="pl-10 pr-4 py-1.5 w-64 bg-surface-container-lowest border border-outline-variant rounded font-body-sm text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="Search knowledge base..." type="text"/>
+</div>
+</div>
+<nav class="flex items-center gap-6 h-full">
+<a class="text-secondary dark:text-secondary-fixed-dim hover:text-primary font-label-md text-label-md h-full flex items-center hover:bg-surface-container-low transition-all duration-200 ease-in-out px-2" href="#">Dashboard</a>
+<a class="text-primary border-b-2 border-primary dark:text-primary-fixed-dim dark:border-primary-fixed-dim pb-1 font-label-md text-label-md h-full flex items-center hover:bg-surface-container-low transition-all duration-200 ease-in-out px-2" href="#">Analytics</a>
+<a class="text-secondary dark:text-secondary-fixed-dim hover:text-primary font-label-md text-label-md h-full flex items-center hover:bg-surface-container-low transition-all duration-200 ease-in-out px-2" href="#">Reports</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden border border-outline-variant">
+<img alt="Administrator Profile" class="w-full h-full object-cover" data-alt="A small, professional headshot of an administrator in a clinical setting. Clean, well-lit, corporate ID badge style. Soft neutral background, sharp focus on the subject. Cool-toned lighting reflecting a modern, sterile environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQ6oi9oSH4c7rW1doIyB7bjgwdnjYEAsiLKS0-VKUF0o4LK8TGpg8BZuFwAq4q6kORAyjEIuf9blEcbrZ-qXlXkm6zvKVUppsKjHc4SHxorQpL5lSq1ycBHxJsuVxilHSItRNH0ntxg4AK2lL5AfLse5q-sjmurRzrLw2tLdULEsIKxMIiQV1swNqkIStNQGZACD2U5bcoac72dFQbG2L7OkympONxbD9rFkDrsHBqndN8WKUpCNBQ"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[260px] pt-header_height w-full overflow-y-auto">
+<div class="max-w-container_max_width mx-auto p-margin_lg flex flex-col gap-margin_lg">
+<!-- Header Section -->
+<div class="flex justify-between items-end border-b border-outline-variant pb-margin_md">
+<div>
+<div class="flex items-center gap-2 mb-2 text-on-surface-variant font-body-sm text-body-sm">
+<a class="hover:text-primary" href="#">Knowledge</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<a class="hover:text-primary" href="#">Clinical Protocols</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-on-surface">v2.4.1-beta</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-primary">Ingestion Details: CP-Cardiology-2023</h1>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded text-primary font-label-md text-label-md hover:bg-surface-container-low transition-colors">
+                        View Diff
+                    </button>
+<button class="px-4 py-2 bg-primary-container text-on-primary rounded font-label-md text-label-md flex items-center gap-2 hover:bg-opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+                        Submit for Approval
+                    </button>
+</div>
+</div>
+<!-- Grid Layout -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Left Column (Main Data) -->
+<div class="col-span-12 lg:col-span-8 flex flex-col gap-margin_md">
+<!-- Provenance Header -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-margin_md">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">fingerprint</span>
+                            Source Provenance
+                        </h3>
+<div class="grid grid-cols-2 gap-x-8 gap-y-4 font-body-sm text-body-sm">
+<div>
+<span class="text-on-surface-variant block mb-1">Immutable Hash (SHA-256)</span>
+<span class="font-code-md text-code-md text-on-surface bg-surface-container px-2 py-1 rounded">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</span>
+</div>
+<div>
+<span class="text-on-surface-variant block mb-1">Source Repository</span>
+<span class="text-on-surface font-medium">git://med-protocol-repo/cardio/guidelines</span>
+</div>
+<div>
+<span class="text-on-surface-variant block mb-1">Ingestion Config</span>
+<span class="text-on-surface font-medium">strict-chunking-v3.yml</span>
+</div>
+<div>
+<span class="text-on-surface-variant block mb-1">Triggered By</span>
+<span class="text-on-surface font-medium">Auto-sync (WebHook ID: 8992-AB)</span>
+</div>
+</div>
+</div>
+<!-- Processing Stepper -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-margin_md">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-6">Processing Pipeline</h3>
+<div class="relative flex items-center justify-between w-full">
+<!-- Line connecting steps -->
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-outline-variant -z-10"></div>
+<!-- Active Line -->
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-3/4 h-[2px] bg-primary -z-10"></div>
+<!-- Step 1: Quarantined -->
+<div class="flex flex-col items-center gap-2 bg-surface-container-lowest px-2">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+<span class="font-label-md text-label-md text-primary">Quarantined</span>
+</div>
+<!-- Step 2: Processing -->
+<div class="flex flex-col items-center gap-2 bg-surface-container-lowest px-2">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+<span class="font-label-md text-label-md text-primary">Processing</span>
+</div>
+<!-- Step 3: Ready -->
+<div class="flex flex-col items-center gap-2 bg-surface-container-lowest px-2">
+<div class="w-8 h-8 rounded-full border-2 border-primary bg-surface-container-lowest text-primary flex items-center justify-center ring-4 ring-primary/20">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+</div>
+<span class="font-label-md text-label-md text-primary font-bold">Ready</span>
+</div>
+<!-- Step 4: Active -->
+<div class="flex flex-col items-center gap-2 bg-surface-container-lowest px-2">
+<div class="w-8 h-8 rounded-full border-2 border-outline-variant bg-surface-container-lowest text-outline-variant flex items-center justify-center">
+</div>
+<span class="font-label-md text-label-md text-outline-variant">Active</span>
+</div>
+</div>
+</div>
+<!-- Bounded Manifest Summary -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-0 overflow-hidden">
+<div class="p-margin_md border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<h3 class="font-headline-sm text-headline-sm text-primary">Manifest Summary</h3>
+<span class="px-2 py-1 bg-surface-variant rounded text-on-surface-variant font-label-md text-label-md">Total Nodes: 14,293</span>
+</div>
+<div class="grid grid-cols-3 divide-x divide-outline-variant">
+<div class="p-margin_md flex flex-col items-center justify-center text-center">
+<span class="font-headline-lg text-headline-lg text-primary">12,045</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Text Chunks</span>
+</div>
+<div class="p-margin_md flex flex-col items-center justify-center text-center">
+<span class="font-headline-lg text-headline-lg text-primary">1,832</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Structured Tables</span>
+</div>
+<div class="p-margin_md flex flex-col items-center justify-center text-center">
+<span class="font-headline-lg text-headline-lg text-error">416</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-error">warning</span>
+                                    Parse Errors
+                                </span>
+</div>
+</div>
+</div>
+<!-- Safe Error Log -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-0 flex flex-col">
+<div class="p-margin_md border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-headline-sm text-headline-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-error">bug_report</span>
+                                Processing Exceptions
+                            </h3>
+<button class="text-primary hover:underline font-label-md text-label-md">Export Log</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low sticky top-0 border-b border-outline-variant">
+<tr>
+<th class="py-3 px-4 font-label-md text-label-md text-on-surface-variant">Time (UTC)</th>
+<th class="py-3 px-4 font-label-md text-label-md text-on-surface-variant">Entity ID</th>
+<th class="py-3 px-4 font-label-md text-label-md text-on-surface-variant">Error Type</th>
+<th class="py-3 px-4 font-label-md text-label-md text-on-surface-variant">Sanitized Context</th>
+</tr>
+</thead>
+<tbody class="font-code-md text-code-md divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-4 text-on-surface-variant">14:23:01</td>
+<td class="py-3 px-4 text-primary font-medium">doc_a7bf2</td>
+<td class="py-3 px-4"><span class="px-2 py-1 bg-error-container text-on-error-container rounded text-[11px]">FormatMismatch</span></td>
+<td class="py-3 px-4 text-on-surface-variant">Table bounds exceeded structural limit [Row 45]</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-4 text-on-surface-variant">14:23:05</td>
+<td class="py-3 px-4 text-primary font-medium">doc_b829c</td>
+<td class="py-3 px-4"><span class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded text-[11px]">EncodingError</span></td>
+<td class="py-3 px-4 text-on-surface-variant">Invalid UTF-8 sequence detected at byte offset 1024</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-4 text-on-surface-variant">14:24:12</td>
+<td class="py-3 px-4 text-primary font-medium">doc_c911a</td>
+<td class="py-3 px-4"><span class="px-2 py-1 bg-error-container text-on-error-container rounded text-[11px]">SchemaViolation</span></td>
+<td class="py-3 px-4 text-on-surface-variant">Missing required metadata field: 'clinical_author'</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Right Column (Sidebar/Meta) -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-margin_md">
+<!-- Version History -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-0">
+<div class="p-margin_md border-b border-outline-variant">
+<h3 class="font-headline-sm text-headline-sm text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">history</span>
+                                Version History
+                            </h3>
+</div>
+<ul class="divide-y divide-outline-variant">
+<!-- Current Version -->
+<li class="p-margin_md bg-surface-container-low">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-label-md text-primary font-bold flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-primary block"></span>
+                                        v2.4.1-beta
+                                    </span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Just now</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mb-2">Updated parsing rules for 2023 cardiology guidelines.</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded font-code-md text-[11px]">Author: System</span>
+</div>
+</li>
+<!-- Previous Version -->
+<li class="p-margin_md hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-label-md text-secondary">v2.4.0</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">2 days ago</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mb-2 text-opacity-80">Initial structural sync for Q3.</p>
+<div class="flex justify-between items-center">
+<span class="px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded font-code-md text-[11px]">Author: j.doe</span>
+<span class="font-label-md text-[11px] text-primary">Active</span>
+</div>
+</li>
+<li class="p-margin_md hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-label-md text-secondary">v2.3.5</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">14 days ago</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface mb-2 text-opacity-80">Hotfix for table extraction logic.</p>
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded font-code-md text-[11px]">Author: System</span>
+</div>
+</li>
+</ul>
+<div class="p-3 border-t border-outline-variant text-center">
+<button class="font-label-md text-label-md text-primary hover:underline">View All Versions</button>
+</div>
+</div>
+<!-- Contextual Actions -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-margin_md">
+<h4 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-3">Admin Actions</h4>
+<div class="flex flex-col gap-2">
+<button class="w-full text-left px-3 py-2 rounded border border-outline-variant hover:bg-surface-container text-on-surface font-body-md text-body-md flex items-center justify-between">
+                                 Force Re-ingest
+                                 <span class="material-symbols-outlined text-[18px] text-secondary">sync</span>
+</button>
+<button class="w-full text-left px-3 py-2 rounded border border-outline-variant hover:bg-surface-container text-on-surface font-body-md text-body-md flex items-center justify-between">
+                                 Download Clean Manifest
+                                 <span class="material-symbols-outlined text-[18px] text-secondary">download</span>
+</button>
+<button class="w-full text-left px-3 py-2 rounded border border-error text-error hover:bg-error-container hover:text-on-error-container font-body-md text-body-md flex items-center justify-between transition-colors mt-4">
+                                 Reject &amp; Drop Version
+                                 <span class="material-symbols-outlined text-[18px]">delete_forever</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pharmacy Inventory - PharmaCore OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-error": "#ffffff",
+                      "inverse-primary": "#bac3ff",
+                      "tertiary-fixed-dim": "#c4c6d2",
+                      "primary": "#24389c",
+                      "surface-variant": "#d7e4ec",
+                      "surface-container-low": "#e9f6fd",
+                      "secondary-fixed-dim": "#c4c7ca",
+                      "outline-variant": "#c5c5d4",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#dee0ff",
+                      "surface-tint": "#4355b9",
+                      "surface-container-high": "#ddeaf2",
+                      "on-background": "#111d23",
+                      "on-primary-fixed": "#00105c",
+                      "on-secondary-fixed": "#191c1e",
+                      "on-primary-container": "#cacfff",
+                      "on-error-container": "#93000a",
+                      "surface-container": "#e3f0f8",
+                      "outline": "#757684",
+                      "background": "#f4faff",
+                      "surface-dim": "#cfdce4",
+                      "on-surface-variant": "#454652",
+                      "error-container": "#ffdad6",
+                      "secondary": "#5b5f61",
+                      "on-secondary-container": "#626567",
+                      "on-secondary": "#ffffff",
+                      "surface": "#f4faff",
+                      "primary-container": "#3f51b5",
+                      "on-tertiary-fixed-variant": "#434750",
+                      "surface-bright": "#f4faff",
+                      "on-primary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "on-tertiary-fixed": "#181b24",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-fixed-variant": "#44474a",
+                      "on-surface": "#111d23",
+                      "secondary-container": "#e0e3e6",
+                      "inverse-on-surface": "#e6f3fb",
+                      "inverse-surface": "#263238",
+                      "tertiary": "#3f434c",
+                      "tertiary-container": "#575a64",
+                      "primary-fixed-dim": "#bac3ff",
+                      "on-tertiary-container": "#cfd2dd",
+                      "surface-container-highest": "#d7e4ec",
+                      "on-primary-fixed-variant": "#293ca0",
+                      "secondary-fixed": "#e0e3e6",
+                      "tertiary-fixed": "#e0e2ee"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "row-height-dense": "32px",
+                      "gutter": "16px",
+                      "sidebar-width": "260px",
+                      "unit": "4px",
+                      "row-height-standard": "48px",
+                      "container-padding": "24px"
+              },
+              "fontFamily": {
+                      "title-sm": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "data-mono": [
+                              "JetBrains Mono"
+                      ]
+              },
+              "fontSize": {
+                      "title-sm": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "data-mono": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .table-row-hover:hover {
+            background-color: theme('colors.surface-variant');
+        }
+        .table-row-focus:focus-within {
+            outline: 2px solid theme('colors.primary');
+            outline-offset: -2px;
+            background-color: theme('colors.surface-container-high');
+        }
+        input[type="checkbox"]:checked {
+            background-color: theme('colors.primary');
+            border-color: theme('colors.primary');
+        }
+        
+        /* Custom scrollbar for high density tables */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: theme('colors.surface');
+        }
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.outline-variant');
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.outline');
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background h-full overflow-hidden flex font-body-md">
+<!-- SideNavBar -->
+<nav class="w-sidebar-width h-screen sticky left-0 bg-surface-container flex flex-col h-full py-container-padding hidden md:flex border-r border-outline-variant">
+<div class="px-gutter mb-8">
+<h1 class="font-headline-md text-headline-md text-primary mb-2">PharmaCore OS</h1>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-green-600 text-sm" data-icon="circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">circle</span>
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant uppercase">System Mode</div>
+<div class="font-body-sm text-body-sm text-on-surface">INTEGRATED</div>
+</div>
+</div>
+</div>
+<button class="mx-gutter mb-6 bg-primary text-on-primary rounded px-4 py-2 flex items-center justify-center gap-2 font-title-sm text-title-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+            New Prescription
+        </button>
+<ul class="flex-1 flex flex-col gap-1 px-2">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                    Workspace
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="point_of_sale">point_of_sale</span>
+                    POS
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-primary font-bold border-r-4 border-primary bg-primary-fixed-dim/10 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-primary" data-icon="inventory_2" data-weight="fill" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+                    Inventory
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+                    Memberships
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                    Settings
+                </a>
+</li>
+</ul>
+<ul class="mt-auto flex flex-col gap-1 px-2 pt-4 border-t border-outline-variant">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                    Support
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-surface-variant hover:bg-surface-variant transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                    Logs
+                </a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col h-screen overflow-hidden bg-background">
+<!-- TopNavBar (Web only, mobile handled differently or hidden based on instructions, assuming hidden here for simplicity as per "hidden md:flex" request in instructions) -->
+<header class="bg-surface-container-highest border-b border-outline-variant flex justify-between items-center w-full px-gutter h-row-height-standard hidden md:flex shrink-0">
+<div class="flex items-center gap-4">
+<!-- Search bar on left -->
+<div class="relative w-96">
+<span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input autofocus="" class="w-full pl-10 pr-4 py-1.5 bg-surface-container-lowest border border-outline-variant rounded text-body-sm font-body-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="Scan Barcode or Search NDC/Name [F3]" type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-body-sm font-body-sm text-on-surface-variant">Branch: Central Pharmacy</div>
+<div class="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded text-label-caps font-label-caps">
+<span class="material-symbols-outlined text-[14px]" data-icon="wifi" data-weight="fill">wifi</span>
+                    Online
+                </div>
+<div class="flex gap-2">
+<button class="text-on-surface-variant hover:bg-surface-variant p-1 rounded transition-colors cursor-pointer active:opacity-80"><span class="material-symbols-outlined" data-icon="settings_ethernet">settings_ethernet</span></button>
+<button class="text-on-surface-variant hover:bg-surface-variant p-1 rounded transition-colors cursor-pointer active:opacity-80"><span class="material-symbols-outlined" data-icon="sync">sync</span></button>
+<button class="text-on-surface-variant hover:bg-surface-variant p-1 rounded transition-colors cursor-pointer active:opacity-80"><span class="material-symbols-outlined" data-icon="account_circle">account_circle</span></button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 overflow-hidden flex flex-col p-gutter">
+<!-- Context Header -->
+<div class="flex justify-between items-end mb-4 shrink-0">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface m-0 leading-none">Inventory Master</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Data as of: <span class="font-data-mono text-data-mono" id="timestamp">2023-10-27 14:32:05 EST</span></p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-3 py-1.5 border border-outline-variant rounded bg-surface-container-lowest text-on-surface text-body-sm font-body-sm hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="filter_list">filter_list</span>
+                        Filters
+                    </button>
+<button class="flex items-center gap-2 px-3 py-1.5 border border-outline-variant rounded bg-surface-container-lowest text-on-surface text-body-sm font-body-sm hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[18px]" data-icon="download">download</span>
+                        Export
+                    </button>
+</div>
+</div>
+<!-- Data Table Container -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg flex-1 overflow-hidden flex flex-col shadow-sm">
+<!-- Table Header (Sticky) -->
+<div class="bg-surface-container-low border-b border-outline-variant grid grid-cols-12 px-4 py-2 text-label-caps font-label-caps text-on-surface-variant uppercase tracking-wider shrink-0">
+<div class="col-span-1 flex items-center">
+<input aria-label="Select all rows" class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 cursor-pointer" type="checkbox"/>
+</div>
+<div class="col-span-3 flex items-center gap-1 cursor-pointer hover:text-on-surface">
+                        MEDICATION <span class="material-symbols-outlined text-[14px]" data-icon="arrow_upward">arrow_upward</span>
+</div>
+<div class="col-span-2 flex items-center">NDC / SKU</div>
+<div class="col-span-1 flex items-center justify-end">PKG QTY</div>
+<div class="col-span-2 flex items-center justify-end">TOTAL BALANCE</div>
+<div class="col-span-2 flex items-center justify-center">STATUS</div>
+<div class="col-span-1 flex items-center justify-center">SRC</div>
+</div>
+<!-- Table Body (Scrollable) -->
+<div class="flex-1 overflow-y-auto">
+<!-- Row 1: Low Stock -->
+<div class="grid grid-cols-12 px-4 h-row-height-dense border-b border-outline-variant table-row-hover table-row-focus group" tabindex="0">
+<div class="col-span-1 flex items-center">
+<input class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 cursor-pointer" tabindex="-1" type="checkbox"/>
+</div>
+<div class="col-span-3 flex items-center">
+<span class="font-body-md text-body-md text-on-surface truncate group-hover:text-primary">Amoxicillin 500mg Capsule</span>
+</div>
+<div class="col-span-2 flex items-center">
+<span class="font-data-mono text-data-mono text-on-surface-variant">00093-3147-01</span>
+</div>
+<div class="col-span-1 flex items-center justify-end">
+<span class="font-data-mono text-data-mono text-on-surface">100 ea</span>
+</div>
+<div class="col-span-2 flex items-center justify-end">
+<span class="font-data-mono text-data-mono text-error font-semibold">200 ea</span>
+</div>
+<div class="col-span-2 flex items-center justify-center">
+<span class="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full text-label-caps font-label-caps inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="warning">warning</span> Low Stock
+                            </span>
+</div>
+<div class="col-span-1 flex items-center justify-center">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="database" title="Native">database</span>
+</div>
+</div>
+<!-- Row 2: Normal -->
+<div class="grid grid-cols-12 px-4 h-row-height-dense border-b border-outline-variant table-row-hover table-row-focus group" tabindex="0">
+<div class="col-span-1 flex items-center">
+<input class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 cursor-pointer" tabindex="-1" type="checkbox"/>
+</div>
+<div class="col-span-3 flex items-center">
+<span class="font-body-md text-body-md text-on-surface truncate group-hover:text-primary">Lisinopril 10mg Tablet</span>
+</div>
+<div class="col-span-2 flex items-center">
+<span class="font-data-mono text-data-mono text-on-surface-variant">68180-0514-01</span>
+</div>
+<div class="col-span-1 flex items-center justify-end">
+<span class="font-data-mono text-data-mono text-on-surface">1000 ea</span>
+</div>
+<div class="col-span-2 flex items-center justify-end">
+<span class="font-data-mono text-data-mono text-on-surface">4,500 ea</span>
+</div>
+<div class="col-span-2 flex items-center justify-center">
+<span class="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-label-caps font-label-caps inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="check_circle">check_circle</span> Active
+                            </span>
+</div>
+<div class="col-span-1 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="cloud_sync" title="Integrated">cloud_sync</span>
+</div>
+</div>
+<!-- Row 3: Expiring -->
+<div class="grid grid-cols-12 px-4 h-row-height-dense border-b border-outline-variant table-row-hover table-row-focus group" tabindex="0">
+<div class="col-span-1 flex items-center">
+<input class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 cursor-pointer" tabindex="-1" type="checkbox"/>
+</div>
+<div class="col-span-3 flex items-center">
+<span class="font-body-md text-body-md text-on-surface truncate group-hover:text-primary">EpiPen 2-Pak 0.3mg Auto-Inj</span>
+</div>
+<div class="col-span-2 flex items-center">
+<span class="font-data-mono text-data-mono text-on-surface-variant">49502-0500-02</span>
+</div>
+<div class="col-span-1 flex items-center justify-end">
+<span class="font-data-mono text-data-mono text-on-surface">2 ea</span>
+</div>
+<div class="col-span-2 flex items-center justify-end">
+<span class="font-data-mono text-data-mono text-on-surface">14 ea</span>
+</div>
+<div class="col-span-2 flex items-center justify-center">
+<span class="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-label-caps font-label-caps inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="event_busy">event_busy</span> Expiring (30d)
+                            </span>
+</div>
+<div class="col-span-1 flex items-center justify-center">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="database" title="Native">database</span>
+</div>
+</div>
+<!-- Row 4: Normal -->
+<div class="grid grid-cols-12 px-4 h-row-height-dense border-b border-outline-variant table-row-hover table-row-focus group" tabindex="0">
+<div class="col-span-1 flex items-center">
+<input class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 cursor-pointer" tabindex="-1" type="checkbox"/>
+</div>
+<div class="col-span-3 flex items-center">
+<span class="font-body-md text-body-md text-on-surface truncate group-hover:text-primary">Metformin HCl 500mg Tablet</span>
+</div>
+<div class="col-span-2 flex items-center">
+<span class="font-data-mono text-data-mono text-on-surface-variant">65862-0008-01</span>
+</div>
+<div class="col-span-1 flex items-center justify-end">
+<span class="font-data-mono text-data-mono text-on-surface">500 ea</span>
+</div>
+<div class="col-span-2 flex items-center justify-end">
+<span class="font-data-mono text-data-mono text-on-surface">12,500 ea</span>
+</div>
+<div class="col-span-2 flex items-center justify-center">
+<span class="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-label-caps font-label-caps inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="check_circle">check_circle</span> Active
+                            </span>
+</div>
+<div class="col-span-1 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="cloud_sync" title="Integrated">cloud_sync</span>
+</div>
+</div>
+</div>
+<!-- Table Footer (Pagination) -->
+<div class="bg-surface-container-low border-t border-outline-variant p-2 flex justify-between items-center shrink-0">
+<span class="text-body-sm font-body-sm text-on-surface-variant">Showing 1-4 of 8,432 items</span>
+<div class="flex items-center gap-2">
+<button class="p-1 rounded hover:bg-surface-variant text-on-surface-variant disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[20px]" data-icon="chevron_left">chevron_left</span>
+</button>
+<span class="text-body-sm font-body-sm text-on-surface">Page 1 of 2108</span>
+<button class="p-1 rounded hover:bg-surface-variant text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<script>
+        // Simple script to update timestamp for demo purposes
+        document.addEventListener('DOMContentLoaded', () => {
+            const now = new Date();
+            const formatted = now.toISOString().replace('T', ' ').substring(0, 19) + ' EST';
+            document.getElementById('timestamp').innerText = formatted;
+            
+            // Allow arrow key navigation on table rows for "keyboard-only row actions" requirement
+            const rows = document.querySelectorAll('.table-row-focus');
+            rows.forEach((row, index) => {
+                row.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const next = rows[index + 1];
+                        if (next) next.focus();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const prev = rows[index - 1];
+                        if (prev) prev.focus();
+                    } else if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        const checkbox = row.querySelector('input[type="checkbox"]');
+                        if (checkbox) checkbox.checked = !checkbox.checked;
+                    }
+                });
+            });
+        });
+    </script>
+</body></html>

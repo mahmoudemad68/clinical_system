@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Return and Refund - PharmaFlow POS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "background": "#f4faff",
+                      "inverse-primary": "#bac3ff",
+                      "on-primary-fixed": "#00105b",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed": "#002020",
+                      "on-primary": "#ffffff",
+                      "surface-dim": "#d5dbe0",
+                      "primary-container": "#24389c",
+                      "status-success": "#1b5e20",
+                      "primary": "#011d86",
+                      "on-secondary-container": "#0b6e6e",
+                      "surface-tint": "#4355b9",
+                      "primary-fixed": "#dee0ff",
+                      "secondary-container": "#9deeed",
+                      "surface-container": "#e9eff4",
+                      "on-secondary-fixed-variant": "#004f4f",
+                      "on-surface": "#161c20",
+                      "scanner-active": "#3f51b5",
+                      "on-primary-container": "#9dabff",
+                      "error-container": "#ffdad6",
+                      "status-warning": "#e65100",
+                      "surface-bright": "#f4faff",
+                      "on-tertiary-fixed": "#101d23",
+                      "on-tertiary": "#ffffff",
+                      "outline": "#757684",
+                      "inverse-on-surface": "#ebf1f6",
+                      "on-tertiary-fixed-variant": "#3c494f",
+                      "surface-border": "#ddeaf2",
+                      "on-error": "#ffffff",
+                      "surface-container-highest": "#dde3e8",
+                      "on-primary-fixed-variant": "#283ca0",
+                      "secondary": "#006a6a",
+                      "tertiary-container": "#38454b",
+                      "surface-variant": "#dde3e8",
+                      "secondary-fixed-dim": "#84d4d3",
+                      "outline-variant": "#c5c5d4",
+                      "inverse-surface": "#2b3135",
+                      "data-fill": "#e9f6fd",
+                      "primary-fixed-dim": "#bac3ff",
+                      "on-error-container": "#93000a",
+                      "status-error": "#ba1a1a",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-container-low": "#eef4f9",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed": "#a0f0f0",
+                      "tertiary-fixed": "#d7e5ec",
+                      "surface": "#f4faff",
+                      "tertiary": "#222f34",
+                      "surface-container-high": "#e3e9ee",
+                      "on-surface-variant": "#454652",
+                      "on-tertiary-container": "#a4b2b9",
+                      "tertiary-fixed-dim": "#bbc9d0",
+                      "on-background": "#161c20"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "row-standard": "40px",
+                      "gutter": "16px",
+                      "margin-desktop": "24px",
+                      "row-dense": "32px",
+                      "unit": "4px",
+                      "sidebar-width": "260px",
+                      "sidebar-collapsed": "64px"
+              },
+              "fontFamily": {
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "title-sm": [
+                              "Inter"
+                      ],
+                      "data-mono": [
+                              "JetBrains Mono"
+                      ]
+              },
+              "fontSize": {
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "title-sm": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "data-mono": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface h-full flex overflow-hidden">
+<!-- Shared SideNavBar Component -->
+<nav class="hidden md:flex flex-col py-4 gap-row-dense bg-surface-container-low border-r border-surface-border w-sidebar-width h-screen fixed left-0 top-16 shrink-0 z-40">
+<div class="px-margin-desktop mb-4">
+<h1 class="font-headline-md text-headline-md font-bold text-primary truncate">Pharmacy Suite</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate mt-1">Precision Care</p>
+</div>
+<div class="px-margin-desktop mb-6">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-2 rounded font-title-sm text-title-sm hover:bg-primary-container transition-colors duration-200 ease-in-out">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                New Sale
+            </button>
+</div>
+<ul class="flex flex-col w-full flex-grow">
+<li>
+<a class="flex items-center gap-4 px-margin-desktop py-3 text-on-tertiary-fixed-variant hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[20px]">point_of_sale</span>
+<span class="font-label-caps text-label-caps">POS Terminal</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-margin-desktop py-3 text-primary bg-primary-fixed font-semibold" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="font-label-caps text-label-caps">Invoices</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-margin-desktop py-3 text-on-tertiary-fixed-variant hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[20px]">inventory_2</span>
+<span class="font-label-caps text-label-caps">Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-margin-desktop py-3 text-on-tertiary-fixed-variant hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<span class="font-label-caps text-label-caps">Reports</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 px-margin-desktop py-3 text-on-tertiary-fixed-variant hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto px-margin-desktop pb-4">
+<div class="flex items-center gap-3 py-3 border-t border-surface-border">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden shrink-0">
+<img alt="Pharmacist Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2Q542E11MKWOjoS-kbIAPkQ0HGXWNfcoqZN4pt35PxDuuwkzP9apVx2Hfh08eUOL9yA5zllSLY4xULSJdJe3STskVd7imCERaUUiBXqukDQLdm2GOP86Ot_Kvnz0xc1RvBSLDqqiu5Z02sWVvueEJr_Hp8Mom6npC6UlbvGp5GNX0ze7C6VIS_cbZ5htG5WD22RAJG14Rlk8PAxjsvZOdEFBhWDAS4VckwD152TC8lYnbJ8PtLcRT"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold truncate">Sarah Jenkins</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant truncate">Lead Pharmacist</span>
+</div>
+</div>
+<ul class="flex flex-col mt-2">
+<li>
+<a class="flex items-center gap-4 py-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">help</span>
+<span class="font-label-caps text-label-caps">Support</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-4 py-2 text-on-surface-variant hover:text-error transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+<span class="font-label-caps text-label-caps">Log Out</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Shared TopAppBar Component -->
+<header class="fixed top-0 w-full z-50 h-16 bg-surface border-b border-surface-border flex items-center justify-between px-margin-desktop pl-sidebar-width md:pl-[calc(260px+24px)] lg:pl-[calc(260px+24px)] transition-all duration-300">
+<div class="flex items-center gap-4 w-full max-w-2xl">
+<div class="md:hidden">
+<h1 class="font-headline-md text-headline-md text-primary tracking-tight font-bold">PharmaFlow POS</h1>
+</div>
+<div class="relative w-full hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-surface-border rounded-lg font-body-sm text-body-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Search patients, invoices, or medications (Alt+K)" type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4 shrink-0">
+<div class="hidden sm:flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded-full border border-surface-border">
+<span class="w-2 h-2 rounded-full bg-status-success"></span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Online Status</span>
+</div>
+<div class="hidden lg:flex items-center gap-2 px-3 py-1 border-l border-surface-border ml-2 pl-4">
+<span class="font-label-caps text-label-caps text-on-surface">Branch A</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-low transition-colors text-on-surface-variant cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined">sensors</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-low transition-colors text-on-surface-variant cursor-pointer active:opacity-80 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-low transition-colors text-on-surface-variant cursor-pointer active:opacity-80 md:hidden">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto mt-16 md:ml-sidebar-width bg-background p-4 md:p-margin-desktop">
+<!-- Header Section -->
+<div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<a class="text-primary hover:underline font-body-sm text-body-sm flex items-center" href="#">
+<span class="material-symbols-outlined text-[16px] mr-1">arrow_back</span>
+                        Invoice #INV-2023-8892
+                    </a>
+</div>
+<h2 class="font-display-lg text-display-lg text-on-surface">Process Return</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Customer: John Doe • Oct 24, 2023 • Cashier: S. Jenkins</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 border border-surface-border rounded-lg font-title-sm text-title-sm text-on-surface hover:bg-surface-container-low transition-colors">
+                    Cancel
+                </button>
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-title-sm text-title-sm hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">rule</span>
+                    Review &amp; Confirm Return
+                </button>
+</div>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-gutter">
+<!-- Left Column: Eligible Items (takes up 8 columns on extra large screens) -->
+<div class="xl:col-span-8 flex flex-col gap-gutter">
+<!-- Eligible Items Table Card -->
+<div class="bg-surface border border-surface-border rounded-xl flex flex-col overflow-hidden">
+<div class="px-6 py-4 border-b border-surface-border flex justify-between items-center bg-surface-container-lowest">
+<h3 class="font-title-sm text-title-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">inventory</span>
+                            Eligible Items for Return
+                        </h3>
+<span class="font-label-caps text-label-caps text-on-surface-variant bg-surface-container px-2 py-1 rounded">3 Items Total</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-surface-border">
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">Item Description &amp; NDC</th>
+<th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">Sold</th>
+<th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">Returned</th>
+<th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">Eligible</th>
+<th class="px-4 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">Price</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">Return Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-border bg-surface-container-lowest">
+<!-- Item Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors duration-150">
+<td class="px-6 py-4 align-top">
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-on-surface">Amoxicillin 500mg Capsules</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant mt-1">NDC: 00093-3109-01</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant mt-2 px-2 py-0.5 bg-surface-container rounded self-start">Rx</span>
+</div>
+</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono">30</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono text-on-surface-variant">0</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono font-semibold">30</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono">$12.50</td>
+<td class="px-6 py-4 align-top">
+<div class="flex flex-col gap-3 min-w-[220px]">
+<div class="flex items-center gap-2">
+<label class="font-body-sm text-body-sm text-on-surface-variant whitespace-nowrap w-12">Qty:</label>
+<div class="relative w-full">
+<input class="w-full font-data-mono text-data-mono text-right py-1.5 px-3 border border-surface-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-surface" max="30" min="0" type="number" value="0"/>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<label class="font-body-sm text-body-sm text-on-surface-variant whitespace-nowrap w-12">Dispo:</label>
+<select class="w-full font-body-sm text-body-sm py-1.5 px-3 border border-surface-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-surface text-on-surface">
+<option value="none">Select...</option>
+<option value="restock">Restockable</option>
+<option value="damage">Damaged / Non-restockable</option>
+<option value="quarantine">Quarantine</option>
+</select>
+</div>
+</div>
+</td>
+</tr>
+<!-- Item Row 2 (Active/Returning state example) -->
+<tr class="bg-data-fill/30 border-l-4 border-l-primary hover:bg-data-fill/50 transition-colors duration-150">
+<td class="px-6 py-4 align-top pl-5"> <!-- Adjusted pl-5 to account for border -->
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-on-surface">Ibuprofen 800mg Tablets</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant mt-1">NDC: 59762-3725-1</span>
+<span class="font-label-caps text-label-caps text-status-warning mt-2 px-2 py-0.5 bg-status-warning/10 rounded self-start">OTC</span>
+</div>
+</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono">60</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono text-on-surface-variant">0</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono font-semibold">60</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono">$8.99</td>
+<td class="px-6 py-4 align-top">
+<div class="flex flex-col gap-3 min-w-[220px]">
+<div class="flex items-center gap-2">
+<label class="font-body-sm text-body-sm text-on-surface-variant whitespace-nowrap w-12">Qty:</label>
+<div class="relative w-full">
+<input class="w-full font-data-mono text-data-mono text-right py-1.5 px-3 border-2 border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-surface" max="60" min="0" type="number" value="60"/>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<label class="font-body-sm text-body-sm text-on-surface-variant whitespace-nowrap w-12">Dispo:</label>
+<select class="w-full font-body-sm text-body-sm py-1.5 px-3 border border-surface-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-surface text-on-surface">
+<option selected="" value="restock">Restockable</option>
+<option value="damage">Damaged / Non-restockable</option>
+<option value="quarantine">Quarantine</option>
+</select>
+</div>
+</div>
+</td>
+</tr>
+<!-- Item Row 3 (Previously partially returned) -->
+<tr class="hover:bg-surface-container-low transition-colors duration-150 opacity-80">
+<td class="px-6 py-4 align-top">
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-on-surface">Lisinopril 10mg Tablets</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant mt-1">NDC: 68180-0514-01</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant mt-2 px-2 py-0.5 bg-surface-container rounded self-start">Rx</span>
+</div>
+</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono">90</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono text-status-error font-semibold">90</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono font-semibold text-on-surface-variant">0</td>
+<td class="px-4 py-4 align-top text-right font-data-mono text-data-mono">$15.75</td>
+<td class="px-6 py-4 align-top">
+<div class="flex items-center justify-center h-full pt-4">
+<span class="font-label-caps text-label-caps text-status-error px-3 py-1 bg-status-error/10 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">block</span>
+                                                Fully Returned
+                                            </span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Return Reason Section -->
+<div class="bg-surface border border-surface-border rounded-xl p-6">
+<h3 class="font-title-sm text-title-sm text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">chat</span>
+                        Return Details &amp; Reason
+                    </h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-body-sm text-body-sm text-on-surface-variant">Primary Reason Code</label>
+<select class="w-full font-body-md text-body-md py-2 px-3 border border-surface-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-surface">
+<option disabled="" selected="" value="">Select reason...</option>
+<option value="wrong_item">Wrong Item Dispensed</option>
+<option value="patient_refused">Patient Refused</option>
+<option value="adverse_reaction">Adverse Reaction reported</option>
+<option value="expired">Expired / Short-dated</option>
+<option value="defective">Defective Product</option>
+</select>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-body-sm text-body-sm text-on-surface-variant">Additional Notes (Required for Damage)</label>
+<textarea class="w-full font-body-sm text-body-sm py-2 px-3 border border-surface-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-surface resize-none" placeholder="Enter specific details regarding the return..." rows="3"></textarea>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Refund Summary & Controls (takes up 4 columns on xl screens) -->
+<div class="xl:col-span-4 flex flex-col gap-gutter">
+<!-- Refund Summary Card -->
+<div class="bg-surface border border-surface-border rounded-xl p-6 sticky top-24 shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6 border-b border-surface-border pb-4">Refund Summary</h3>
+<div class="flex flex-col gap-4 mb-6">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Subtotal (Items: 1)</span>
+<span class="font-data-mono text-data-mono text-on-surface">$8.99</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Tax (Calculated)</span>
+<span class="font-data-mono text-data-mono text-on-surface">$0.63</span>
+</div>
+<div class="flex justify-between items-center text-status-warning">
+<span class="font-body-md text-body-md flex items-center gap-1">
+                                Restocking Fee (10%)
+                                <span class="material-symbols-outlined text-[14px] cursor-help" title="Applied automatically for elective returns">info</span>
+</span>
+<span class="font-data-mono text-data-mono">-$0.90</span>
+</div>
+<div class="border-t border-surface-border pt-4 mt-2">
+<div class="flex justify-between items-end">
+<span class="font-title-sm text-title-sm text-on-surface">Total Refund Amount</span>
+<span class="font-display-lg text-display-lg font-data-mono text-primary">$8.72</span>
+</div>
+</div>
+</div>
+<!-- Refund Method -->
+<div class="mb-8">
+<label class="font-body-sm text-body-sm text-on-surface-variant mb-2 block">Refund Method</label>
+<div class="flex flex-col gap-2">
+<label class="flex items-center gap-3 p-3 border border-primary bg-primary-fixed/20 rounded-lg cursor-pointer">
+<input checked="" class="text-primary focus:ring-primary w-4 h-4" name="refund_method" type="radio"/>
+<span class="material-symbols-outlined text-primary">credit_card</span>
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-on-surface leading-tight">Original Card</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Visa ending in 4242</span>
+</div>
+</label>
+<label class="flex items-center gap-3 p-3 border border-surface-border rounded-lg cursor-pointer hover:bg-surface-container-low transition-colors">
+<input class="text-primary focus:ring-primary w-4 h-4" name="refund_method" type="radio"/>
+<span class="material-symbols-outlined text-on-surface-variant">storefront</span>
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-on-surface leading-tight">Store Credit</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Issue digital gift card</span>
+</div>
+</label>
+<label class="flex items-center gap-3 p-3 border border-surface-border rounded-lg cursor-pointer hover:bg-surface-container-low transition-colors opacity-50">
+<input class="text-primary focus:ring-primary w-4 h-4" disabled="" name="refund_method" type="radio"/>
+<span class="material-symbols-outlined text-on-surface-variant">payments</span>
+<div class="flex flex-col">
+<span class="font-title-sm text-title-sm text-on-surface leading-tight">Cash</span>
+<span class="font-body-sm text-body-sm text-error">Original payment not cash</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Critical Warning / Info -->
+<div class="bg-status-warning/10 border-l-4 border-status-warning p-4 rounded-r-lg mb-6 flex gap-3 items-start">
+<span class="material-symbols-outlined text-status-warning mt-0.5">warning</span>
+<p class="font-body-sm text-body-sm text-on-surface">Returning 60 units to <strong>Restockable</strong> inventory. Financial totals will be updated instantly upon confirmation.</p>
+</div>
+<!-- Action Button -->
+<button class="w-full bg-status-error text-on-error py-4 rounded-lg font-title-sm text-title-sm hover:bg-status-error/90 transition-colors flex items-center justify-center gap-2 shadow-sm focus:outline-none focus:ring-4 focus:ring-error-container">
+<span class="material-symbols-outlined">assignment_return</span>
+                        Process Return &amp; Refund
+                    </button>
+<p class="font-label-caps text-label-caps text-on-surface-variant text-center mt-4">Requires Manager Override</p>
+</div>
+</div>
+</div>
+</main>
+</body></html>

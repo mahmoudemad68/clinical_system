@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clinical Clarity - Notifications</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "outline-variant": "#c1c6d4",
+                      "tertiary-fixed-dim": "#afcbd8",
+                      "surface": "#f7fafc",
+                      "surface-bright": "#f7fafc",
+                      "background": "#f7fafc",
+                      "tertiary": "#46606c",
+                      "primary-container": "#1976d2",
+                      "secondary": "#006b5f",
+                      "on-secondary-fixed": "#00201c",
+                      "on-error-container": "#93000a",
+                      "secondary-fixed": "#8df5e4",
+                      "primary-fixed-dim": "#a5c8ff",
+                      "error": "#ba1a1a",
+                      "inverse-primary": "#a5c8ff",
+                      "inverse-surface": "#2d3133",
+                      "on-primary-fixed": "#001c3a",
+                      "surface-dim": "#d7dadc",
+                      "tertiary-fixed": "#cbe7f5",
+                      "outline": "#717783",
+                      "surface-tint": "#005faf",
+                      "tertiary-container": "#5f7985",
+                      "on-tertiary": "#ffffff",
+                      "inverse-on-surface": "#eef1f3",
+                      "secondary-container": "#8df5e4",
+                      "on-primary-fixed-variant": "#004786",
+                      "surface-container": "#ebeef0",
+                      "on-secondary-container": "#007165",
+                      "error-container": "#ffdad6",
+                      "on-primary-container": "#fffdff",
+                      "surface-container-highest": "#e0e3e5",
+                      "primary-fixed": "#d4e3ff",
+                      "surface-variant": "#e0e3e5",
+                      "on-tertiary-container": "#fdfdff",
+                      "on-surface-variant": "#414752",
+                      "on-tertiary-fixed": "#021f29",
+                      "surface-container-low": "#f1f4f6",
+                      "on-secondary-fixed-variant": "#005048",
+                      "on-surface": "#181c1e",
+                      "primary": "#005dac",
+                      "on-background": "#181c1e",
+                      "on-primary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed-dim": "#70d8c8",
+                      "surface-container-high": "#e5e9eb",
+                      "on-tertiary-fixed-variant": "#304a55"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "lg": "24px",
+                      "xl": "32px",
+                      "md": "16px",
+                      "margin-mobile": "16px",
+                      "xs": "4px",
+                      "base": "4px",
+                      "sm": "8px",
+                      "margin-tablet": "32px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "label-lg": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "title-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "36px", "letterSpacing": "0px", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "0px", "fontWeight": "600"}],
+                      "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "500"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full h-16 bg-surface dark:bg-on-background shadow-sm flex items-center justify-between px-md z-50">
+<button aria-label="Back" class="p-2 text-on-surface hover:bg-surface-container-high transition-colors rounded-full">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-title-lg font-title-lg font-bold text-primary dark:text-primary-fixed-dim">Notifications</h1>
+<button aria-label="Settings" class="p-2 text-on-surface hover:bg-surface-container-high transition-colors rounded-full">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim" data-icon="settings">settings</span>
+</button>
+</header>
+<main class="pt-20 px-margin-mobile md:px-margin-tablet max-w-3xl mx-auto">
+<!-- Actions Row -->
+<div class="flex justify-between items-center mb-lg">
+<h2 class="font-headline-md text-headline-md text-on-surface">Recent Updates</h2>
+<button class="font-label-lg text-label-lg text-primary hover:text-primary-container transition-colors">Mark all as read</button>
+</div>
+<!-- Group: New -->
+<section class="mb-xl">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-md uppercase tracking-wider">New</h3>
+<div class="flex flex-col gap-sm">
+<!-- Notification Card: Unread Appointment -->
+<div class="bg-white border border-outline-variant rounded-xl p-md flex gap-md items-start relative hover:bg-surface-container-low transition-colors cursor-pointer before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-xl">
+<div class="flex-shrink-0 w-12 h-12 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-body-lg text-body-lg text-on-surface font-semibold">Appointment Reminder</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">2m ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Upcoming visit scheduled for Cardiology department today at 10:00 AM.</p>
+<div class="mt-sm flex gap-sm">
+<button class="font-label-sm text-label-sm bg-primary text-on-primary px-3 py-1 rounded-full">View Details</button>
+</div>
+</div>
+<div class="w-3 h-3 bg-primary rounded-full absolute right-md top-md"></div>
+</div>
+<!-- Notification Card: Unread Prescription -->
+<div class="bg-white border border-outline-variant rounded-xl p-md flex gap-md items-start relative hover:bg-surface-container-low transition-colors cursor-pointer before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-xl">
+<div class="flex-shrink-0 w-12 h-12 bg-secondary text-on-secondary rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="medication">medication</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-body-lg text-body-lg text-on-surface font-semibold">Prescription Ready</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">30m ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Your recent prescription for Lipitor 10mg is ready for pickup at the main pharmacy.</p>
+</div>
+<div class="w-3 h-3 bg-primary rounded-full absolute right-md top-md"></div>
+</div>
+</div>
+</section>
+<!-- Group: Earlier -->
+<section class="mb-xl">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant mb-md uppercase tracking-wider">Earlier</h3>
+<div class="flex flex-col gap-sm">
+<!-- Notification Card: Read Lab Result -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md flex gap-md items-start hover:bg-surface-container-low transition-colors cursor-pointer opacity-80">
+<div class="flex-shrink-0 w-12 h-12 bg-surface-variant text-on-surface-variant rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="science">science</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-body-lg text-body-lg text-on-surface">Lab Results Updated</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">3h ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">New documents have been added to your clinical record regarding your recent tests.</p>
+</div>
+</div>
+<!-- Notification Card: Read Message -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md flex gap-md items-start hover:bg-surface-container-low transition-colors cursor-pointer opacity-80">
+<div class="flex-shrink-0 w-12 h-12 bg-tertiary-container text-on-tertiary-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-body-lg text-body-lg text-on-surface">Message from Dr. Jenkins</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">1d ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Please review the updated instructions I sent over regarding your daily routine.</p>
+</div>
+</div>
+<!-- Notification Card: Read System Alert -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md flex gap-md items-start hover:bg-surface-container-low transition-colors cursor-pointer opacity-80">
+<div class="flex-shrink-0 w-12 h-12 bg-surface-variant text-on-surface-variant rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="info">info</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-xs">
+<h4 class="font-body-lg text-body-lg text-on-surface">System Maintenance</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">2d ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">The patient portal will undergo scheduled maintenance this Sunday from 2 AM to 4 AM.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-20 px-sm pb-safe bg-surface dark:bg-on-background shadow-lg rounded-t-xl bg-primary dark:bg-inverse-surface md:hidden">
+<!-- Tab: Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-xl mb-1" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm-mobile">Home</span>
+</a>
+<!-- Tab: Records -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-xl mb-1" data-icon="description">description</span>
+<span class="font-label-sm text-label-sm-mobile">Records</span>
+</a>
+<!-- Tab: Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-xl mb-1" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-sm text-label-sm-mobile">Messages</span>
+</a>
+<!-- Tab: Profile (Using active styling as fallback for generic view, though technically not a direct match to Notifications, keeping as generic inactive for this specific page intent as requested in prompt it acts as a standalone page) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1 hover:bg-surface-container-low dark:hover:bg-surface-container-high transition-all active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-xl mb-1" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm-mobile">Profile</span>
+</a>
+</nav>
+<!-- Desktop Sidebar (Hidden on Mobile) -->
+<aside class="hidden md:flex fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-surface border-r border-outline-variant flex-col py-lg z-40">
+<nav class="flex flex-col gap-sm px-md">
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-lg text-label-lg">Home</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-label-lg text-label-lg">Records</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-lg text-label-lg">Messages</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-lg text-label-lg">Profile</span>
+</a>
+<div class="mt-xl pt-lg border-t border-outline-variant">
+<a class="flex items-center gap-md px-md py-sm rounded-lg bg-primary-container text-on-primary-container font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="font-label-lg text-label-lg">Notifications</span>
+</a>
+</div>
+</nav>
+</aside>
+</body></html>

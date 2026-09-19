@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Clinical Workspace - Record Correction</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#4c3386",
+                        "on-primary-container": "#e3fffe",
+                        "on-secondary-fixed": "#22005c",
+                        "surface-container": "#eeeeee",
+                        "split-divider": "#ece6ee",
+                        "outline-variant": "#bdc9c8",
+                        "inverse-surface": "#2f3131",
+                        "tertiary-fixed": "#e6e1e8",
+                        "requirement-border": "#cbc4d2",
+                        "secondary-fixed": "#e9ddff",
+                        "clinic-teal": "#008080",
+                        "on-secondary-fixed-variant": "#4f378a",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-variant": "#e2e2e2",
+                        "primary": "#006565",
+                        "surface-dim": "#dadada",
+                        "on-background": "#1a1c1c",
+                        "primary-container": "#008080",
+                        "surface-tint": "#006a6a",
+                        "secondary": "#6750a4",
+                        "on-primary-fixed": "#002020",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f3f3f3",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#48464b",
+                        "primary-fixed-dim": "#76d6d5",
+                        "background": "#f9f9f9",
+                        "tertiary-container": "#757177",
+                        "inverse-on-surface": "#f1f1f1",
+                        "surface-container-highest": "#e2e2e2",
+                        "secondary-container": "#bca2fd",
+                        "on-primary-fixed-variant": "#004f4f",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#5c595f",
+                        "surface": "#f9f9f9",
+                        "on-tertiary-container": "#fdf7fe",
+                        "surface-bright": "#f9f9f9",
+                        "on-surface-variant": "#3e4949",
+                        "on-error": "#ffffff",
+                        "on-surface": "#1a1c1c",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e8e8e8",
+                        "outline": "#6e7979",
+                        "clinical-bg": "#fdf7ff",
+                        "primary-fixed": "#93f2f2",
+                        "on-tertiary-fixed": "#1d1b20",
+                        "tertiary-fixed-dim": "#cac5cc",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#76d6d5",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "margin": "32px",
+                        "preview-pane-min": "400px",
+                        "unit": "4px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "data-mono": ["jetbrainsMono"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.06em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "data-mono": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface h-full flex flex-col overflow-hidden font-body-md text-body-md">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim border-b border-split-divider dark:border-outline flex justify-between items-center w-full px-margin h-16 shrink-0 z-10">
+<div class="flex items-center gap-6">
+<span class="font-headline-md text-headline-md text-primary dark:text-primary-fixed">ClinicalWorkspace</span>
+<nav class="hidden md:flex gap-6 h-full items-center">
+<a class="text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors cursor-pointer active:opacity-80 h-full flex items-center px-2" href="#">Dashboard</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors cursor-pointer active:opacity-80 h-full flex items-center px-2" href="#">Patient Queue</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors cursor-pointer active:opacity-80 h-full flex items-center px-2" href="#">Inventory</a>
+<a class="text-primary dark:text-primary-fixed-dim border-b-2 border-primary font-bold hover:bg-surface-container-high dark:hover:bg-surface-variant transition-colors cursor-pointer active:opacity-80 h-full flex items-center px-2" href="#">Reports</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="bg-surface-container border-none rounded pl-8 pr-3 py-1.5 font-body-sm text-body-sm focus:ring-1 focus:ring-primary outline-none" placeholder="Search Workspace..." type="text"/>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors">sync</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors">account_circle</button>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<button class="text-primary font-bold hover:bg-surface-container-high px-3 py-1.5 rounded transition-colors text-body-sm">Save Draft</button>
+<button class="bg-primary text-on-primary font-bold hover:opacity-90 px-4 py-1.5 rounded transition-opacity text-body-sm">Sign &amp; Close</button>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- SideNavBar -->
+<aside class="bg-surface-container-lowest dark:bg-surface-container-low border-r border-split-divider dark:border-outline w-sidebar-width shrink-0 flex flex-col h-full py-margin overflow-y-auto">
+<div class="px-6 mb-8 flex flex-col gap-2">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover bg-surface-container" data-alt="A clinical headshot avatar placeholder representing a patient identity icon, clean modern flat design, minimalist styling, set against a pristine white background with subtle sterile aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRmiMSjAkUJVPYIcUQo0aK_mBGYngflIEg8dHidHEGrMrMDg8E9bfYUeWqlLNufWoeqMtdhcrwg5IJ08oBev9qkW0sUnsIxoZLJoxoNpzYINcp28YgmWvZAMrubJb4CTjat2IQP6Dj3BSoMFl_eKul6sNII9bDCyjANIcQl3hNo1buxbmPVNfWEFudyAOnrOAZjgUKjFQknn8ggx24QcrQHzcrHfVEgHB9gx79DDC8uNfP9esUCi4D"/>
+<div>
+<div class="font-headline-md text-headline-md text-primary">John Doe</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant">ID: 4492-X | 42Y Male</div>
+</div>
+</div>
+<button class="mt-4 bg-primary text-on-primary font-label-caps text-label-caps py-2 rounded-DEFAULT w-full flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[16px]">add</span> New Encounter
+                </button>
+</div>
+<nav class="flex-1 flex flex-col gap-1 px-3">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined">folder_shared</span>
+<span class="font-label-caps text-label-caps">Medical Records</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined">edit_note</span>
+<span class="font-label-caps text-label-caps">Encounter Editor</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT bg-secondary-container dark:bg-on-secondary-container text-on-secondary-container dark:text-on-primary-container font-bold transition-all duration-200" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-caps text-label-caps">Clinical History</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined">biotech</span>
+<span class="font-label-caps text-label-caps">Lab Results</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined">image</span>
+<span class="font-label-caps text-label-caps">Imaging</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant dark:text-outline-variant hover:bg-surface-container dark:hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined">medication</span>
+<span class="font-label-caps text-label-caps">Prescriptions</span>
+</a>
+</nav>
+<div class="mt-auto px-3 flex flex-col gap-1 border-t border-split-divider pt-4">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-all duration-200" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-caps text-label-caps">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Workspace Area -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Primary Column: History & Context -->
+<div class="flex-1 flex flex-col overflow-y-auto bg-background p-gutter">
+<div class="mb-6 flex justify-between items-end">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Encounter Correction</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Viewing Authored Encounters Only.</p>
+</div>
+</div>
+<!-- Authored Encounters Timeline -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-6 flex-1 flex flex-col gap-6 shadow-sm">
+<h2 class="font-headline-md text-headline-md text-primary-fixed-variant border-b border-split-divider pb-2">Your Encounters</h2>
+<div class="relative border-l-2 border-split-divider ml-3 flex flex-col gap-6">
+<!-- Timeline Item 1 -->
+<div class="relative pl-6">
+<div class="absolute w-3 h-3 bg-clinic-teal rounded-full -left-[7px] top-1.5 border-2 border-surface-container-lowest"></div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-caps text-label-caps text-clinic-teal bg-primary-fixed-dim/20 px-2 py-1 rounded">Nov 12, 2023 - 14:30</span>
+<h3 class="font-body-lg text-body-lg font-bold text-on-surface mt-1">Routine Follow-up (Hypertension)</h3>
+</div>
+<button class="font-label-caps text-label-caps text-primary hover:bg-surface-container px-3 py-1.5 rounded transition-colors border border-primary">Select for Correction</button>
+</div>
+<div class="bg-surface-container-low rounded p-3 text-body-sm text-on-surface-variant font-data-mono">
+                                    BP: 130/85 mmHg. Patient reports mild fatigue. Refilled Lisinopril 10mg.
+                                </div>
+</div>
+</div>
+<!-- Timeline Item 2 (Active) -->
+<div class="relative pl-6">
+<div class="absolute w-4 h-4 bg-primary rounded-full -left-[9px] top-1 border-2 border-surface-container-lowest ring-2 ring-primary/30"></div>
+<div class="flex flex-col gap-2 bg-surface-bright border border-primary/20 rounded-lg p-4 -mt-3 -ml-2 shadow-sm">
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-caps text-label-caps text-primary bg-primary-container/10 px-2 py-1 rounded">Oct 05, 2023 - 09:15</span>
+<h3 class="font-body-lg text-body-lg font-bold text-on-surface mt-1">Acute Bronchitis Evaluation</h3>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">edit_note</span> Editing</span>
+</div>
+<div class="bg-surface-container-low rounded p-3 text-body-sm text-on-surface-variant font-data-mono">
+                                    Cough x 5 days, productive. Prescribed Amoxicillin 500mg TID x 7 days.
+                                </div>
+<div class="mt-2 text-error font-body-sm text-body-sm flex items-center gap-1 bg-error-container/30 p-2 rounded">
+<span class="material-symbols-outlined text-[16px]">info</span>
+<span>Correction needed: Patient allergic to Penicillin.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Vertical Divider -->
+<div class="w-px bg-split-divider h-full shrink-0"></div>
+<!-- Secondary Column: Correction Editor (Split Screen Preview) -->
+<div class="w-preview-pane-min shrink-0 bg-surface-container-lowest flex flex-col h-full overflow-hidden">
+<div class="p-4 border-b border-split-divider bg-surface-container-low flex justify-between items-center shrink-0">
+<h2 class="font-body-lg text-body-lg font-bold text-on-surface">Correction Entry</h2>
+<span class="material-symbols-outlined text-on-surface-variant">draw</span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
+<!-- Requirement Card -->
+<div class="bg-clinical-bg border-l-2 border-clinic-teal p-4 rounded-r shadow-sm">
+<div class="flex gap-2 items-start">
+<span class="material-symbols-outlined text-clinic-teal text-[20px]">rule</span>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Mandatory Correction Fields</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">A valid reason and revised content are required for auditing.</p>
+</div>
+</div>
+</div>
+<!-- Correction Form -->
+<form class="flex flex-col gap-4">
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Reason for Correction <span class="text-error">*</span></label>
+<select class="bg-surface border border-outline-variant rounded p-2 text-body-sm font-body-sm focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal outline-none w-full">
+<option>Select a reason...</option>
+<option selected="">Transcription / Data Entry Error</option>
+<option>Omission of Data</option>
+<option>Incorrect Patient / Context</option>
+<option>Clarification</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Original Content (Read-Only)</label>
+<textarea class="bg-surface-container-high border-none rounded p-2 text-body-sm font-data-mono text-on-surface-variant resize-none h-24 focus:ring-0" readonly="">Cough x 5 days, productive. Prescribed Amoxicillin 500mg TID x 7 days.</textarea>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Revised Content <span class="text-error">*</span></label>
+<textarea class="bg-surface border border-clinic-teal rounded p-2 text-body-sm font-data-mono text-on-surface resize-none h-24 focus:border-clinic-teal focus:ring-1 focus:ring-clinic-teal outline-none shadow-sm">Cough x 5 days, productive. Pt noted allergy to PCN on review. Prescribed Azithromycin 250mg Z-Pak.</textarea>
+</div>
+</form>
+<!-- Diff Preview -->
+<div class="mt-2 border border-outline-variant rounded-lg overflow-hidden flex flex-col">
+<div class="bg-surface-container-low px-3 py-2 border-b border-outline-variant font-label-caps text-label-caps text-on-surface-variant flex justify-between">
+<span>Diff Preview</span>
+<span class="material-symbols-outlined text-[14px]">difference</span>
+</div>
+<div class="p-3 bg-surface font-data-mono text-body-sm flex flex-col gap-1">
+<div class="flex items-start gap-2">
+<span class="text-error w-4 text-center">-</span>
+<span class="bg-error-container text-on-error-container px-1 rounded line-through decoration-error">Amoxicillin 500mg TID x 7 days</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="text-clinic-teal w-4 text-center">+</span>
+<span class="bg-primary-fixed-dim/30 text-on-surface px-1 rounded border-b border-clinic-teal">Pt noted allergy to PCN on review. Prescribed Azithromycin 250mg Z-Pak</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Bar -->
+<div class="p-4 border-t border-split-divider bg-surface-container-low flex justify-end gap-3 shrink-0">
+<button class="px-4 py-2 font-label-caps text-label-caps text-on-surface border border-outline-variant hover:bg-surface-container rounded transition-colors">Cancel</button>
+<button class="px-4 py-2 font-label-caps text-label-caps bg-primary text-on-primary hover:opacity-90 rounded transition-opacity flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">how_to_reg</span> Submit Correction
+                    </button>
+</div>
+</div>
+</main>
+</div>
+</body></html>

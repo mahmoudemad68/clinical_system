@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Assessment - HealthPath</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "surface-container-low": "#f1f4f6",
+                  "surface-lowest": "#ffffff",
+                  "on-error-container": "#93000a",
+                  "surface-container-highest": "#e0e3e5",
+                  "inverse-surface": "#2d3133",
+                  "on-primary-fixed-variant": "#004786",
+                  "surface-tint": "#065fae",
+                  "surface-variant": "#e0e3e5",
+                  "on-surface-variant": "#414751",
+                  "secondary": "#006b5f",
+                  "primary-container": "#005dac",
+                  "error-red": "#ba1a1a",
+                  "background": "#f7fafc",
+                  "secondary-container": "#9cefdf",
+                  "inverse-on-surface": "#eef1f3",
+                  "on-tertiary-fixed-variant": "#304a56",
+                  "secondary-fixed": "#9ff2e2",
+                  "on-primary": "#ffffff",
+                  "tertiary-fixed-dim": "#afcbd9",
+                  "error": "#ba1a1a",
+                  "surface-bright": "#f7fafc",
+                  "surface-dim": "#d7dadc",
+                  "on-error": "#ffffff",
+                  "success-teal": "#006b5f",
+                  "on-primary-fixed": "#001c3a",
+                  "on-surface": "#181c1e",
+                  "tertiary-fixed": "#cbe7f5",
+                  "surface-container": "#ebeef0",
+                  "outline-variant": "#c1c6d3",
+                  "on-secondary-fixed-variant": "#005047",
+                  "tertiary-container": "#46606c",
+                  "on-tertiary-container": "#bedae8",
+                  "on-tertiary": "#ffffff",
+                  "primary-fixed-dim": "#a6c8ff",
+                  "error-container": "#ffdad6",
+                  "surface": "#f7fafc",
+                  "on-secondary-container": "#0b6f63",
+                  "on-secondary": "#ffffff",
+                  "on-background": "#181c1e",
+                  "surface-container-lowest": "#ffffff",
+                  "primary": "#004583",
+                  "surface-container-high": "#e5e9eb",
+                  "secondary-fixed-dim": "#83d5c6",
+                  "primary-fixed": "#d4e3ff",
+                  "on-primary-container": "#bfd7ff",
+                  "on-secondary-fixed": "#00201c",
+                  "tertiary": "#2e4854",
+                  "inverse-primary": "#a6c8ff",
+                  "outline": "#727783",
+                  "on-tertiary-fixed": "#011f29"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.125rem",
+                  "lg": "0.25rem",
+                  "xl": "0.5rem",
+                  "full": "0.75rem"
+          },
+          "spacing": {
+                  "lg": "24px",
+                  "xs": "4px",
+                  "margin-mobile": "16px",
+                  "gutter": "16px",
+                  "margin-tablet": "32px",
+                  "sm": "8px",
+                  "md": "16px",
+                  "xl": "32px"
+          },
+          "fontFamily": {
+                  "body-md": ["Inter"],
+                  "headline-lg-mobile": ["Inter"],
+                  "body-lg": ["Inter"],
+                  "headline-md": ["Inter"],
+                  "title-lg": ["Inter"],
+                  "display-lg": ["Inter"],
+                  "label-lg": ["Inter"],
+                  "label-sm": ["Inter"],
+                  "headline-lg": ["Inter"]
+          },
+          "fontSize": {
+                  "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                  "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                  "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                  "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                  "title-lg": ["20px", {"lineHeight": "28px", "fontWeight": "500"}],
+                  "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                  "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600"}],
+                  "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500"}],
+                  "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      background-color: #f7fafc;
+      display: flex;
+      justify-content: center;
+    }
+    .mobile-container {
+      width: 100%;
+      max-width: 390px;
+      height: 844px;
+      background-color: #f7fafc;
+      position: relative;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    /* Hide scrollbar for cleaner look in prototype */
+    .mobile-container::-webkit-scrollbar {
+      display: none;
+    }
+    .mobile-container {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    
+    .option-card input:checked + div {
+      border-color: #004583;
+      background-color: #d4e3ff;
+    }
+    .option-card input:checked ~ .radio-icon {
+      color: #004583;
+      font-variation-settings: 'FILL' 1;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body>
+<div class="mobile-container">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full max-w-[390px] z-50 flex items-center justify-between px-margin-mobile h-16 bg-surface dark:bg-on-background border-b border-surface-variant dark:border-outline-variant shadow-sm">
+<button class="text-primary dark:text-primary-fixed hover:bg-surface-container-high dark:hover:bg-surface-variant active:scale-95 transition-transform p-1 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-title-lg text-title-lg text-primary dark:text-primary-fixed">AI Assessment</h1>
+<button class="text-primary dark:text-primary-fixed hover:bg-surface-container-high dark:hover:bg-surface-variant active:scale-95 transition-transform p-1 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col pt-[88px] px-margin-mobile pb-margin-mobile">
+<!-- Progress Bar -->
+<div class="mb-lg">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-sm text-label-sm text-outline">Assessment Progress</span>
+<span class="font-label-sm text-label-sm text-primary">60%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-700 ease-in-out" style="width: 60%"></div>
+</div>
+</div>
+<!-- Question Context -->
+<div class="mb-lg">
+<div class="inline-flex items-center gap-2 mb-sm">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest">Follow-up question</span>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">How long have you been experiencing these symptoms?</h2>
+</div>
+<!-- Input: Multi-choice duration options -->
+<div class="flex flex-col gap-sm mb-lg">
+<label class="option-card relative cursor-pointer active:scale-[0.98] transition-transform">
+<input class="peer sr-only" name="duration" type="radio"/>
+<div class="flex items-center justify-between p-md bg-surface-lowest border border-outline-variant rounded-xl shadow-sm transition-colors">
+<span class="font-body-lg text-body-lg text-on-surface peer-checked:text-on-primary-container">Less than 24h</span>
+<span class="material-symbols-outlined text-outline-variant radio-icon transition-colors">radio_button_unchecked</span>
+</div>
+</label>
+<label class="option-card relative cursor-pointer active:scale-[0.98] transition-transform">
+<input checked="" class="peer sr-only" name="duration" type="radio"/>
+<div class="flex items-center justify-between p-md bg-surface-lowest border border-primary rounded-xl shadow-sm bg-primary-fixed transition-colors">
+<span class="font-body-lg text-body-lg text-on-surface">1-3 days</span>
+<span class="material-symbols-outlined text-primary radio-icon transition-colors" style="font-variation-settings: 'FILL' 1;">radio_button_checked</span>
+</div>
+</label>
+<label class="option-card relative cursor-pointer active:scale-[0.98] transition-transform">
+<input class="peer sr-only" name="duration" type="radio"/>
+<div class="flex items-center justify-between p-md bg-surface-lowest border border-outline-variant rounded-xl shadow-sm transition-colors">
+<span class="font-body-lg text-body-lg text-on-surface peer-checked:text-on-primary-container">More than a week</span>
+<span class="material-symbols-outlined text-outline-variant radio-icon transition-colors">radio_button_unchecked</span>
+</div>
+</label>
+</div>
+<!-- Explanation Link (Medical Reasoning) -->
+<div class="mb-auto bg-surface-container-low rounded-xl border border-surface-variant overflow-hidden">
+<button class="flex items-center justify-between w-full p-md text-left active:bg-surface-container-high transition-colors" onclick="document.getElementById('explanation-content').classList.toggle('hidden'); document.getElementById('expand-icon').innerText = document.getElementById('explanation-content').classList.contains('hidden') ? 'expand_more' : 'expand_less';">
+<div class="flex items-center text-primary-container gap-sm">
+<span class="material-symbols-outlined">lightbulb</span>
+<span class="font-label-lg text-label-lg">Why am I asking this?</span>
+</div>
+<span class="material-symbols-outlined text-outline" id="expand-icon">expand_more</span>
+</button>
+<div class="hidden px-md pb-md" id="explanation-content">
+<div class="pt-sm border-t border-outline-variant">
+<p class="font-body-md text-body-md text-on-surface-variant">
+              The duration of your symptoms helps differentiate between acute conditions (like a temporary infection) and chronic issues. This timeline is crucial for determining whether immediate medical intervention is necessary.
+            </p>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="mt-xl flex flex-col gap-sm">
+<button class="w-full bg-primary text-on-primary font-label-lg text-label-lg py-4 rounded-full active:scale-[0.98] transition-transform shadow-sm flex items-center justify-center gap-2">
+<span>Continue</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+<div class="flex gap-sm">
+<button class="flex-1 bg-surface-lowest border border-outline-variant text-on-surface font-label-lg text-label-lg py-3 rounded-full active:scale-[0.98] transition-transform shadow-sm">
+            Back
+          </button>
+<button class="flex-1 bg-surface-lowest border border-outline-variant text-on-surface font-label-lg text-label-lg py-3 rounded-full active:scale-[0.98] transition-transform shadow-sm">
+            Manual Search
+          </button>
+</div>
+</div>
+</main>
+</div>
+<script>
+    // Simple script to handle radio button visual state updates
+    const radioLabels = document.querySelectorAll('.option-card');
+    
+    radioLabels.forEach(label => {
+      const input = label.querySelector('input[type="radio"]');
+      const container = label.querySelector('div');
+      const icon = label.querySelector('.radio-icon');
+      
+      input.addEventListener('change', () => {
+        // Reset all
+        document.querySelectorAll('.option-card').forEach(l => {
+          const c = l.querySelector('div');
+          const i = l.querySelector('.radio-icon');
+          c.classList.remove('border-primary', 'bg-primary-fixed');
+          c.classList.add('border-outline-variant', 'bg-surface-lowest');
+          i.innerText = 'radio_button_unchecked';
+          i.classList.remove('text-primary');
+          i.classList.add('text-outline-variant');
+          i.style.fontVariationSettings = "'FILL' 0";
+        });
+        
+        // Set active
+        if(input.checked) {
+          container.classList.remove('border-outline-variant', 'bg-surface-lowest');
+          container.classList.add('border-primary', 'bg-primary-fixed');
+          icon.innerText = 'radio_button_checked';
+          icon.classList.remove('text-outline-variant');
+          icon.classList.add('text-primary');
+          icon.style.fontVariationSettings = "'FILL' 1";
+        }
+      });
+    });
+  </script>
+</body></html>

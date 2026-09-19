@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PharmaOps AI Assistant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#dde3e8",
+                        "on-background": "#161c20",
+                        "sync-running": "#3f51b5",
+                        "on-secondary-fixed-variant": "#004f4f",
+                        "surface-container-low": "#eef4f9",
+                        "primary-container": "#24389c",
+                        "tertiary-container": "#38454b",
+                        "primary-fixed-dim": "#bac3ff",
+                        "on-error-container": "#93000a",
+                        "surface": "#f4faff",
+                        "confidence-low": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "surface-border": "#ddeaf2",
+                        "on-tertiary-fixed-variant": "#3c494f",
+                        "inverse-primary": "#bac3ff",
+                        "tertiary": "#222f34",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#9dabff",
+                        "secondary-fixed-dim": "#84d4d3",
+                        "on-surface": "#161c20",
+                        "on-secondary-container": "#0b6e6e",
+                        "primary-fixed": "#dee0ff",
+                        "secondary-container": "#9deeed",
+                        "surface-dim": "#d5dbe0",
+                        "confidence-high": "#1b5e20",
+                        "tertiary-fixed-dim": "#bbc9d0",
+                        "surface-bright": "#f4faff",
+                        "ai-live": "#006a6a",
+                        "sync-fresh": "#1b5e20",
+                        "surface-container-high": "#e3e9ee",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#101d23",
+                        "sync-stale": "#757684",
+                        "sync-failed": "#ba1a1a",
+                        "surface-tint": "#4355b9",
+                        "outline-variant": "#c5c5d4",
+                        "surface-container": "#e9eff4",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2b3135",
+                        "secondary": "#006a6a",
+                        "background": "#f4faff",
+                        "on-tertiary-container": "#a4b2b9",
+                        "on-error": "#ffffff",
+                        "outline": "#757684",
+                        "confidence-medium": "#e65100",
+                        "on-primary-fixed": "#00105b",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#dde3e8",
+                        "primary": "#011d86",
+                        "on-surface-variant": "#454652",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#002020",
+                        "on-primary-fixed-variant": "#283ca0",
+                        "secondary-fixed": "#a0f0f0",
+                        "inverse-on-surface": "#ebf1f6",
+                        "ai-knowledge": "#4355b9",
+                        "tertiary-fixed": "#d7e5ec"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "base-unit": "4px",
+                        "gutter": "16px",
+                        "margin": "24px",
+                        "row-dense": "32px",
+                        "row-standard": "40px",
+                        "sidebar-width": "260px",
+                        "sidebar-collapsed": "64px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "data-mono": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "title-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "data-mono": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom scrollbar for clinical high-density feel */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #c5c5d4; border-radius: 4px; }
+        .resizer { width: 4px; cursor: col-resize; background-color: transparent; transition: background-color 0.2s; }
+        .resizer:hover, .resizer.active { background-color: #011d86; }
+    </style>
+</head>
+<body class="bg-background text-on-surface h-screen w-screen overflow-hidden flex font-body-md text-body-md">
+<!-- JSON Component: SideNavBar -->
+<aside class="hidden md:flex flex-col h-full border-r border-surface-border bg-surface-container-low py-gutter w-sidebar-width shrink-0">
+<!-- Header -->
+<div class="px-margin mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-on-primary shrink-0">
+<span class="material-symbols-outlined text-[24px]">local_pharmacy</span>
+</div>
+<div>
+<h1 class="font-title-sm text-title-sm text-primary">PharmaOps AI</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Clinical Precision</p>
+</div>
+</div>
+<!-- Main Nav -->
+<nav class="flex-1 flex flex-col gap-1 px-4">
+<!-- Workspace -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-surface-container transition-colors text-on-surface-variant font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+                Workspace
+            </a>
+<!-- Catalog -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-surface-container transition-colors text-on-surface-variant font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">medication</span>
+                Catalog
+            </a>
+<!-- POS -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-surface-container transition-colors text-on-surface-variant font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">point_of_sale</span>
+                POS
+            </a>
+<!-- Inventory -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-surface-container transition-colors text-on-surface-variant font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">inventory_2</span>
+                Inventory
+            </a>
+<!-- Integrations -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-surface-container transition-colors text-on-surface-variant font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">hub</span>
+                Integrations
+            </a>
+<!-- Assistant (ACTIVE) -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-md bg-surface-container-highest text-primary font-semibold transition-colors font-body-sm text-body-sm scale-[0.98]" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+                Assistant
+            </a>
+</nav>
+<!-- CTA -->
+<div class="px-4 mt-auto mb-4">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-2 rounded-md font-body-sm text-body-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+                Quick Sync
+            </button>
+</div>
+<!-- Footer Nav -->
+<div class="border-t border-surface-border pt-4 px-4 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-surface-container transition-colors text-on-surface-variant font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+                Settings
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-surface-container transition-colors text-on-surface-variant font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+                Support
+            </a>
+</div>
+</aside>
+<!-- Main Chat Workspace -->
+<main class="flex-1 flex flex-col h-full bg-surface-lowest relative min-w-[500px]">
+<!-- Header: Context & Safety -->
+<header class="h-[64px] border-b border-surface-border bg-surface flex items-center justify-between px-margin shrink-0">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[28px]" style="font-variation-settings: 'FILL' 1;">robot_2</span>
+                    Clinical Assistant
+                </h2>
+<!-- Safety Indicator -->
+<div class="bg-surface-container-high border border-outline-variant/30 rounded-full px-3 py-1 flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[14px] text-outline">visibility</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">Read-Only Mode</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 border border-surface-border bg-surface-container-low hover:bg-surface-container px-3 py-1.5 rounded text-on-surface-variant font-body-sm text-body-sm transition-colors">
+<span class="material-symbols-outlined text-[18px]">barcode_scanner</span>
+                    Scan Lookup
+                </button>
+<button class="flex items-center gap-2 bg-surface-container hover:bg-surface-container-highest px-3 py-1.5 rounded text-on-surface font-body-sm text-body-sm transition-colors">
+<span class="material-symbols-outlined text-[18px]">history</span>
+                    Session Log
+                </button>
+</div>
+</header>
+<!-- Chat Canvas -->
+<div class="flex-1 overflow-y-auto p-margin flex flex-col gap-6 relative" id="chat-container">
+<!-- Date Divider -->
+<div class="flex justify-center">
+<span class="bg-surface-container-high text-on-surface-variant font-data-mono text-[10px] px-2 py-1 rounded-sm uppercase tracking-widest">Today, 09:41 AM</span>
+</div>
+<!-- User Message 1 -->
+<div class="flex flex-col items-end w-full">
+<div class="bg-primary-fixed text-on-primary-fixed px-4 py-3 rounded-t-xl rounded-bl-xl rounded-br-sm max-w-[70%] shadow-sm">
+<p class="font-body-md text-body-md">What are the standard adult dosing guidelines for oral Amoxicillin in community-acquired pneumonia?</p>
+</div>
+<span class="font-data-mono text-[10px] text-outline mt-1">Pharmacist J. Doe • 09:41 AM</span>
+</div>
+<!-- AI Response: Knowledge Card -->
+<div class="flex flex-col items-start w-full">
+<div class="flex items-center gap-2 mb-1 pl-2">
+<span class="material-symbols-outlined text-[16px] text-ai-knowledge" style="font-variation-settings: 'FILL' 1;">school</span>
+<span class="font-label-caps text-label-caps text-ai-knowledge uppercase">Knowledge Answer</span>
+<span class="font-data-mono text-[10px] text-outline ml-2">Source: Lexicomp Clinical DB</span>
+</div>
+<!-- Card Body -->
+<div class="bg-surface border border-surface-border border-l-[4px] border-l-ai-knowledge p-5 rounded-r-xl rounded-bl-xl rounded-tl-sm w-full max-w-[85%] shadow-sm">
+<h4 class="font-title-sm text-title-sm text-on-surface mb-2">Amoxicillin Dosing (Adults)</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4 leading-relaxed">
+                        For typical community-acquired pneumonia (empiric therapy, outpatients without comorbidities), high-dose amoxicillin is generally recommended to overcome potential <i>S. pneumoniae</i> resistance.
+                    </p>
+<div class="bg-surface-container-low rounded p-3 mb-4 border border-surface-border">
+<div class="flex justify-between items-center mb-2">
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Standard Regimen</span>
+<span class="bg-confidence-high/20 text-confidence-high font-data-mono text-[10px] px-2 py-0.5 rounded-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">verified</span> High Confidence
+                            </span>
+</div>
+<p class="font-data-mono text-data-mono text-on-surface">1 g orally every 8 hours</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Duration: 5 to 7 days, depending on clinical response.</p>
+</div>
+<div class="flex gap-2">
+<button class="text-ai-knowledge font-body-sm text-body-sm flex items-center gap-1 hover:underline">
+<span class="material-symbols-outlined text-[16px]">menu_book</span> Full Monograph
+                        </button>
+</div>
+</div>
+</div>
+<!-- User Message 2 -->
+<div class="flex flex-col items-end w-full mt-4">
+<div class="bg-primary-fixed text-on-primary-fixed px-4 py-3 rounded-t-xl rounded-bl-xl rounded-br-sm max-w-[70%] shadow-sm">
+<p class="font-body-md text-body-md">Can you check current stock levels for Ozempic 1mg pens at the Central and Downtown branches?</p>
+</div>
+<span class="font-data-mono text-[10px] text-outline mt-1">Pharmacist J. Doe • 09:44 AM</span>
+</div>
+<!-- AI Response: Live Branch Data Card -->
+<div class="flex flex-col items-start w-full">
+<div class="flex items-center gap-2 mb-1 pl-2">
+<span class="material-symbols-outlined text-[16px] text-ai-live" style="font-variation-settings: 'FILL' 1;">sensors</span>
+<span class="font-label-caps text-label-caps text-ai-live uppercase">Live Branch Data</span>
+<!-- Sync Indicator -->
+<div class="ml-2 flex items-center gap-1 text-sync-fresh bg-sync-fresh/10 px-1.5 py-0.5 rounded-sm">
+<span class="material-symbols-outlined text-[12px]">sync</span>
+<span class="font-data-mono text-[10px]">Synced Just Now</span>
+</div>
+</div>
+<!-- Card Body -->
+<div class="bg-surface border border-surface-border border-l-[4px] border-l-ai-live p-0 rounded-r-xl rounded-bl-xl rounded-tl-sm w-full max-w-[85%] shadow-sm overflow-hidden flex flex-col">
+<!-- Table Header -->
+<div class="bg-surface-container-low px-4 py-2 border-b border-surface-border grid grid-cols-12 gap-4">
+<div class="col-span-5 font-label-caps text-label-caps text-on-surface-variant uppercase">Location</div>
+<div class="col-span-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right">Quantity</div>
+<div class="col-span-3 font-label-caps text-label-caps text-on-surface-variant uppercase text-right">Action</div>
+</div>
+<!-- Row 1: Central -->
+<div class="px-4 py-3 border-b border-surface-border grid grid-cols-12 gap-4 items-center hover:bg-surface-bright transition-colors">
+<div class="col-span-5 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-outline">storefront</span>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface font-semibold">Central Hub</p>
+<p class="font-data-mono text-[10px] text-on-surface-variant">ID: BR-001</p>
+</div>
+</div>
+<div class="col-span-4 text-right">
+<p class="font-data-mono text-data-mono text-on-surface">142 Packs</p>
+<p class="font-data-mono text-[10px] text-sync-fresh">In Stock</p>
+</div>
+<div class="col-span-3 flex justify-end">
+<button class="text-secondary border border-secondary/30 hover:bg-secondary/10 px-2 py-1 rounded text-[11px] font-body-sm flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[14px]">open_in_new</span> Inventory
+                            </button>
+</div>
+</div>
+<!-- Row 2: Downtown -->
+<div class="px-4 py-3 grid grid-cols-12 gap-4 items-center hover:bg-surface-bright transition-colors">
+<div class="col-span-5 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-outline">storefront</span>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface font-semibold">Downtown</p>
+<p class="font-data-mono text-[10px] text-on-surface-variant">ID: BR-042</p>
+</div>
+</div>
+<div class="col-span-4 text-right">
+<p class="font-data-mono text-data-mono text-error">0 Packs</p>
+<p class="font-data-mono text-[10px] text-error flex items-center justify-end gap-1"><span class="material-symbols-outlined text-[10px]">warning</span> Out of Stock</p>
+</div>
+<div class="col-span-3 flex justify-end">
+<button class="text-on-surface-variant border border-outline-variant hover:bg-surface-container px-2 py-1 rounded text-[11px] font-body-sm flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[14px]">open_in_new</span> Inventory
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<div class="h-4 w-full shrink-0"></div> <!-- Bottom padding spacer -->
+</div>
+<!-- Input Area -->
+<div class="p-margin pt-0 bg-surface-lowest shrink-0">
+<div class="border border-surface-border bg-surface rounded-xl shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all relative flex flex-col">
+<textarea class="w-full bg-transparent border-none resize-none focus:ring-0 font-body-md text-body-md p-4 min-h-[80px] max-h-[200px] text-on-surface placeholder:text-on-surface-variant/50" placeholder="Ask about medications, stock levels, clinical guidelines..."></textarea>
+<div class="flex justify-between items-center px-3 py-2 border-t border-surface-border/50 bg-surface-container-lowest rounded-b-xl">
+<div class="flex gap-1">
+<button class="p-2 rounded-md text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors flex items-center justify-center" title="Attach Image or Barcode">
+<span class="material-symbols-outlined text-[20px]">add_photo_alternate</span>
+</button>
+<button class="p-2 rounded-md text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors flex items-center justify-center" title="Voice Input">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</button>
+</div>
+<button class="bg-primary text-on-primary px-4 py-1.5 rounded-md font-body-sm text-body-sm flex items-center gap-2 hover:bg-primary-fixed-variant transition-colors">
+                        Send
+                        <span class="material-symbols-outlined text-[16px]">send</span>
+</button>
+</div>
+</div>
+<p class="text-center font-data-mono text-[10px] text-outline mt-2">AI-generated information may be incomplete. Always verify clinical data.</p>
+</div>
+</main>
+<!-- Resizable Separator (Visual Only for UI demo) -->
+<div class="resizer flex flex-col justify-center items-center h-full z-10 shrink-0">
+<div class="w-1 h-8 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Right Side Panel: Contextual Data (Collapsible/Resizable area) -->
+<aside class="w-[320px] bg-surface-container-lowest border-l border-surface-border flex flex-col h-full shrink-0 hidden lg:flex">
+<header class="h-[64px] border-b border-surface-border px-4 flex items-center justify-between shrink-0">
+<h3 class="font-title-sm text-title-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-outline">info</span>
+                Context Panel
+            </h3>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded-md hover:bg-surface-container">
+<span class="material-symbols-outlined text-[20px]">close_fullscreen</span>
+</button>
+</header>
+<div class="flex-1 overflow-y-auto p-4 space-y-6">
+<!-- Active Entity Mention -->
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Active Subject</p>
+<div class="bg-surface-container-low border border-surface-border p-3 rounded-lg">
+<div class="flex items-start justify-between mb-1">
+<h4 class="font-title-sm text-title-sm text-on-surface">Ozempic</h4>
+<span class="bg-surface text-on-surface-variant font-data-mono text-[10px] px-1.5 py-0.5 rounded border border-surface-border">Rx Only</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-2">Semaglutide injection</p>
+<div class="flex gap-2">
+<span class="inline-block bg-primary-fixed/30 text-on-primary-fixed-variant font-data-mono text-[10px] px-2 py-0.5 rounded-full">GLP-1 RA</span>
+<span class="inline-block bg-tertiary-fixed/30 text-on-tertiary-fixed-variant font-data-mono text-[10px] px-2 py-0.5 rounded-full">Antidiabetic</span>
+</div>
+</div>
+</div>
+<!-- Quick Stats -->
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Global Network Status</p>
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-surface border border-surface-border p-2 rounded-lg text-center">
+<p class="font-data-mono text-data-mono text-on-surface-variant mb-1">Total Stock</p>
+<p class="font-headline-md text-headline-md text-on-surface">8,402</p>
+</div>
+<div class="bg-surface border border-surface-border p-2 rounded-lg text-center">
+<p class="font-data-mono text-data-mono text-on-surface-variant mb-1">On Order</p>
+<p class="font-headline-md text-headline-md text-primary">1,200</p>
+</div>
+</div>
+</div>
+<!-- Abstract Graphic representing AI processing context -->
+<div class="mt-4 rounded-lg overflow-hidden border border-surface-border relative h-32 bg-surface flex items-center justify-center">
+<p class="font-data-mono text-[10px] text-outline absolute top-2 left-2 z-10">AI Mapping Context</p>
+
+</div>
+</div>
+</aside>
+</body></html>

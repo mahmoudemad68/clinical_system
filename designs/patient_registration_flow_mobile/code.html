@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>HealthConnect - Patient Registration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "outline-variant": "#cbc4d2",
+                            "error-container": "#ffdad6",
+                            "tertiary-fixed-dim": "#e7c365",
+                            "on-background": "#1d1b20",
+                            "on-surface": "#1d1b20",
+                            "on-error": "#ffffff",
+                            "surface-container-lowest": "#ffffff",
+                            "tertiary-fixed": "#ffdf93",
+                            "surface-tint": "#6750a4",
+                            "surface": "#fdf7ff",
+                            "error": "#ba1a1a",
+                            "secondary-container": "#e1d4fd",
+                            "on-error-container": "#93000a",
+                            "tertiary": "#765b00",
+                            "surface-container-highest": "#e6e0e9",
+                            "on-tertiary-fixed-variant": "#594400",
+                            "surface-variant": "#e6e0e9",
+                            "inverse-primary": "#cfbcff",
+                            "on-primary-container": "#e0d2ff",
+                            "on-surface-variant": "#494551",
+                            "outline": "#7a7582",
+                            "surface-container-high": "#ece6ee",
+                            "on-primary-fixed-variant": "#4f378a",
+                            "primary-fixed-dim": "#cfbcff",
+                            "on-tertiary": "#ffffff",
+                            "inverse-surface": "#322f35",
+                            "surface-dim": "#ded8e0",
+                            "primary": "#4f378a",
+                            "tertiary-container": "#c9a74d",
+                            "background": "#fdf7ff",
+                            "primary-fixed": "#e9ddff",
+                            "on-secondary-fixed-variant": "#4b4263",
+                            "secondary-fixed-dim": "#cdc0e9",
+                            "secondary": "#63597c",
+                            "surface-container": "#f2ecf4",
+                            "on-tertiary-fixed": "#241a00",
+                            "inverse-on-surface": "#f5eff7",
+                            "on-secondary-fixed": "#1f1635",
+                            "on-secondary-container": "#645a7d",
+                            "primary-container": "#6750a4",
+                            "on-primary-fixed": "#22005d",
+                            "on-secondary": "#ffffff",
+                            "surface-bright": "#fdf7ff",
+                            "surface-container-low": "#f8f2fa",
+                            "on-primary": "#ffffff",
+                            "secondary-fixed": "#e9ddff",
+                            "on-tertiary-container": "#503d00"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "unit": "4px",
+                            "gutter-desktop": "24px",
+                            "xs": "4px",
+                            "sm": "8px",
+                            "xl": "32px",
+                            "lg": "24px",
+                            "2xl": "48px",
+                            "md": "16px",
+                            "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                            "mono-data": [
+                                    "jetbrainsMono"
+                            ]
+                    },
+                    "fontSize": {
+                            "body-lg": [
+                                    "18px",
+                                    {
+                                            "lineHeight": "28px",
+                                            "fontWeight": "400"
+                                    }
+                            ],
+                            "h1-mobile": [
+                                    "28px",
+                                    {
+                                            "lineHeight": "34px",
+                                            "letterSpacing": "-0.01em",
+                                            "fontWeight": "700"
+                                    }
+                            ],
+                            "label-caps": [
+                                    "12px",
+                                    {
+                                            "lineHeight": "16px",
+                                            "letterSpacing": "0.05em",
+                                            "fontWeight": "600"
+                                    }
+                            ],
+                            "body-md": [
+                                    "16px",
+                                    {
+                                            "lineHeight": "24px",
+                                            "fontWeight": "400"
+                                    }
+                            ],
+                            "h2-desktop": [
+                                    "32px",
+                                    {
+                                            "lineHeight": "40px",
+                                            "fontWeight": "600"
+                                    }
+                            ],
+                            "body-sm": [
+                                    "14px",
+                                    {
+                                            "lineHeight": "20px",
+                                            "fontWeight": "400"
+                                    }
+                            ],
+                            "h1-desktop": [
+                                    "40px",
+                                    {
+                                            "lineHeight": "48px",
+                                            "letterSpacing": "-0.02em",
+                                            "fontWeight": "700"
+                                    }
+                            ],
+                            "mono-data": [
+                                    "14px",
+                                    {
+                                            "lineHeight": "20px",
+                                            "fontWeight": "400"
+                                    }
+                            ]
+                    }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex justify-center items-start pt-8 pb-8 md:bg-surface-container-highest">
+<!-- Mobile Frame (Simulated for Web View) -->
+<main class="w-full max-w-[390px] h-full min-h-[844px] bg-background relative overflow-hidden flex flex-col md:rounded-[40px] md:shadow-2xl border border-outline-variant/30">
+<!-- TopAppBar (Transactional - No shell nav, just header) -->
+<header class="flex justify-between items-center w-full px-margin-mobile h-16 bg-surface shrink-0 border-b border-surface-variant">
+<button aria-label="Go back" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant/50 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-on-surface">arrow_back</span>
+</button>
+<h1 class="font-h1-mobile text-h1-mobile font-bold text-primary truncate flex-1 text-center pr-10">HealthConnect</h1>
+<!-- The pr-10 balances the left button visually to keep title centered if trailing actions are absent/hidden -->
+<div class="absolute right-margin-mobile flex gap-2">
+<button aria-label="Change Language" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant/50 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary">language</span>
+</button>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="flex-1 overflow-y-auto px-margin-mobile py-lg pb-32 flex flex-col gap-lg">
+<!-- Page Title & Subtitle -->
+<div class="flex flex-col gap-xs">
+<h2 class="font-h2-desktop text-[24px] leading-[32px] font-bold text-on-surface">Create Account</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Please provide your details to get started.</p>
+</div>
+<!-- Mobile Stepper (Progress Bar Style for space) -->
+<div class="flex flex-col gap-sm">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-primary">Step 1 of 3</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Account details</span>
+</div>
+<div class="h-2 w-full bg-surface-variant rounded-full overflow-hidden flex">
+<div class="h-full bg-primary rounded-full transition-all duration-500 ease-out w-1/3"></div>
+</div>
+</div>
+<!-- Registration Form -->
+<form class="flex flex-col gap-md" onsubmit="event.preventDefault();">
+<!-- Full Name Field -->
+<div class="flex flex-col gap-xs">
+<label class="font-body-sm text-body-sm font-medium text-on-surface" for="fullName">Full Name</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">person</span>
+<input class="w-full bg-surface-container-lowest border border-outline rounded-lg py-3 pl-12 pr-4 font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-on-surface-variant/60 transition-colors" id="fullName" placeholder="e.g., Ahmed Hassan" required="" type="text"/>
+</div>
+</div>
+<!-- National ID Field -->
+<div class="flex flex-col gap-xs">
+<label class="font-body-sm text-body-sm font-medium text-on-surface" for="nationalId">National ID (14 digits)</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">badge</span>
+<input class="w-full bg-surface-container-lowest border border-outline rounded-lg py-3 pl-12 pr-4 font-mono-data text-mono-data text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-on-surface-variant/40 transition-colors tracking-widest" id="nationalId" inputmode="numeric" pattern="[0-9]{14}" placeholder="2  __  __  __  __  __  __  __  __" required="" type="text"/>
+</div>
+<p class="font-body-sm text-[12px] leading-tight text-on-surface-variant mt-1">Used to link your medical records securely.</p>
+</div>
+<!-- Mobile Number Field -->
+<div class="flex flex-col gap-xs">
+<label class="font-body-sm text-body-sm font-medium text-on-surface" for="mobile">Mobile Number</label>
+<div class="flex relative rounded-lg border border-outline focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden transition-colors bg-surface-container-lowest">
+<div class="bg-surface-container-low px-3 py-3 border-r border-outline flex items-center gap-1 shrink-0">
+<span class="font-mono-data text-mono-data text-on-surface">+20</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">arrow_drop_down</span>
+</div>
+<input class="w-full bg-transparent py-3 px-4 font-mono-data text-mono-data text-on-surface focus:outline-none placeholder:text-on-surface-variant/40" id="mobile" inputmode="numeric" placeholder="10XXXXX..." required="" type="tel"/>
+</div>
+</div>
+<!-- Password Field -->
+<div class="flex flex-col gap-xs">
+<label class="font-body-sm text-body-sm font-medium text-on-surface" for="password">Password</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">lock</span>
+<input class="w-full bg-surface-container-lowest border border-outline rounded-lg py-3 pl-12 pr-12 font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-on-surface-variant/60 transition-colors" id="password" placeholder="Create a strong password" required="" type="password"/>
+<button aria-label="Toggle password visibility" class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility_off</span>
+</button>
+</div>
+</div>
+<!-- Password Requirements Checklist (Glassmorphism-lite card) -->
+<div class="bg-surface-container/50 backdrop-blur-sm border border-surface-variant rounded-lg p-sm flex flex-col gap-xs mt-1">
+<h4 class="font-label-caps text-[10px] text-on-surface-variant uppercase tracking-wider mb-1">Password Requirements</h4>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-error">close</span>
+<span class="font-body-sm text-[13px] text-on-surface-variant">At least 8 characters</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary fill">check_circle</span>
+<span class="font-body-sm text-[13px] text-on-surface">Contains a number or symbol</span>
+</div>
+</div>
+</form>
+</div>
+<!-- Sticky Bottom Actions -->
+<div class="absolute bottom-0 left-0 w-full bg-surface/90 backdrop-blur-md border-t border-surface-variant px-margin-mobile py-md flex flex-col gap-sm pb-[env(safe-area-inset-bottom,16px)]">
+<button class="w-full bg-primary text-on-primary font-body-md text-body-md font-medium py-3.5 rounded-full hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm">
+                Continue to Verification
+                <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+<p class="font-body-sm text-[11px] leading-tight text-center text-on-surface-variant mt-2 px-4">
+                By continuing, you agree to our <a class="text-primary underline hover:text-primary/80" href="#">Terms of Service</a> and acknowledge our <a class="text-primary underline hover:text-primary/80" href="#">Privacy Policy</a>.
+            </p>
+</div>
+</main>
+</body></html>

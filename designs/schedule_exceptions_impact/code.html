@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>St. Jude Medical Center - Schedule Exceptions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-error-container": "#93000a",
+                      "status-consulting": "#008080",
+                      "inverse-surface": "#2f3131",
+                      "surface-container-low": "#f4f3f3",
+                      "on-error": "#ffffff",
+                      "on-background": "#1a1c1c",
+                      "error-container": "#ffdad6",
+                      "error": "#ba1a1a",
+                      "calendar-exception": "#fef2f2",
+                      "secondary-fixed-dim": "#cfbcff",
+                      "status-emergency": "#dc2626",
+                      "surface": "#f9f9f9",
+                      "primary-fixed": "#93f2f2",
+                      "surface-container-high": "#e8e8e8",
+                      "surface-variant": "#e2e2e2",
+                      "on-tertiary-container": "#fff9f7",
+                      "on-tertiary-fixed": "#341100",
+                      "on-tertiary-fixed-variant": "#733512",
+                      "tertiary-fixed": "#ffdbcb",
+                      "on-primary-fixed-variant": "#004f4f",
+                      "primary": "#006565",
+                      "secondary-container": "#bba2fd",
+                      "on-tertiary": "#ffffff",
+                      "surface-container": "#eeeeee",
+                      "on-surface-variant": "#3e4949",
+                      "on-primary-container": "#e3fffe",
+                      "surface-container-highest": "#e2e2e2",
+                      "outline": "#6e7979",
+                      "on-secondary-container": "#4b3486",
+                      "secondary": "#6750a4",
+                      "surface-tint": "#006a6a",
+                      "status-waiting": "#f59e0b",
+                      "background": "#f9f9f9",
+                      "inverse-on-surface": "#f1f1f1",
+                      "calendar-overlap": "#fff7ed",
+                      "on-surface": "#1a1c1c",
+                      "inverse-primary": "#76d6d5",
+                      "tertiary-fixed-dim": "#ffb692",
+                      "on-secondary-fixed-variant": "#4f378a",
+                      "secondary-fixed": "#e9ddff",
+                      "on-primary": "#ffffff",
+                      "on-primary-fixed": "#002020",
+                      "outline-variant": "#bdc9c8",
+                      "on-secondary-fixed": "#22005d",
+                      "surface-bright": "#f9f9f9",
+                      "surface-dim": "#dadada",
+                      "tertiary-container": "#a96039",
+                      "primary-container": "#008080",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed-dim": "#76d6d5",
+                      "privacy-mask": "#e5e7eb",
+                      "tertiary": "#8b4823",
+                      "on-secondary": "#ffffff",
+                      "status-completed": "#6b7280"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "hero-card-padding": "20px",
+                      "drawer-width": "380px",
+                      "calendar-interval-30": "80px",
+                      "calendar-interval-15": "40px",
+                      "table-row-height": "32px",
+                      "grid-gutter": "12px"
+              },
+              "fontFamily": {
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "calendar-time": [
+                              "jetbrainsMono"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "data-mono-compact": [
+                              "jetbrainsMono"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "calendar-time": [
+                              "11px",
+                              {
+                                      "lineHeight": "12px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-caps": [
+                              "10px",
+                              {
+                                      "lineHeight": "14px",
+                                      "letterSpacing": "0.06em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "data-mono-compact": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "15px",
+                              {
+                                      "lineHeight": "22px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+            }
+          }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen overflow-hidden flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface border-b border-outline-variant dark:border-outline-variant flex justify-between items-center w-full px-grid-gutter h-[table-row-height]*2 h-16 shrink-0 z-20 shadow-sm relative">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">St. Jude Medical Center</span>
+<nav class="hidden md:flex gap-4 ml-8">
+<!-- Using semantic matching logic, Schedule is active -->
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-low px-3 py-1 rounded-DEFAULT transition-all" href="#"><span class="font-body-md text-body-md font-semibold">Realtime Online</span></a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-low p-2 rounded-full transition-all flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-container-low p-2 rounded-full transition-all flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">help_outline</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A small, professional headshot of a clinical staff member in a brightly lit modern hospital environment. Crisp focus, light-mode palette, clean clinical aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBFB7G7HPcTfZt9obDrNaD1efOOomE8BCjyvjSJ6qEBG2qFsTfY5EPH8xSaIUGnIuE_SduB2OD7-2M49hi1va08VR9tTWbEk6dM4mMSIDl9eCqDjhQ0ZOeCNbT3Tm8QIKQ6QudxKPsEuwP5veQOOlCS1H0utBDIN-4HVfwxnBuT4zcqFERqduxbFF0NjSM6ekm9_-yvkrP1glcridob08fGPQgLBOO0En3PmQAYCCkJMK-oqtuEmVd"/>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden relative">
+<!-- SideNavBar -->
+<aside class="bg-surface dark:bg-surface border-r border-outline-variant dark:border-outline-variant flex flex-col h-full py-6 w-[drawer-width] w-64 shrink-0 z-10 transition-colors duration-200 ease-in-out">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-outline-variant bg-surface-container">
+<img alt="Clinic Staff Profile" class="w-full h-full object-cover" data-alt="A small, professional headshot of a clinical staff member in a brightly lit modern hospital environment. Crisp focus, light-mode palette, clean clinical aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDk5dFGMwk2avDnZADsaPvt5i5auV5JqPfW9YGTVSdkQ5yZ3-QlEv2PfedTNPDloYLhoemMZ43ZlBbnIo4_72HsyTlDppMcHdfxbt9WOnJINg-Qr5WimhMrp44PDePQv83y51mAw5enYm6NUVVYYUP79ifUC2bakBJ51v0GiQfdOelcu4IMqHezA6KjK0zYajS3zERBolkDuji5rUS0teB1z8GOZQ8r6zL03_Ptvxd_TvBPygS5VSh4"/>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-semibold text-on-surface">Clinic Ops</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Dr. Sarah Mitchell</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1 px-3">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">clinical_notes</span>
+<span class="font-body-md text-body-md font-medium">Workspace</span>
+</a>
+<!-- Active State -->
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-primary dark:text-primary-fixed font-bold border-r-2 border-primary dark:border-primary-fixed bg-surface-container-low transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-body-md text-body-md">Schedule</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-body-md text-body-md font-medium">Patients</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body-md text-body-md font-medium">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-DEFAULT text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container transition-colors duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md font-medium">Settings</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<button class="w-full bg-primary text-on-primary py-2 rounded-DEFAULT font-label-caps text-label-caps flex items-center justify-center gap-2 hover:bg-surface-tint transition-colors">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                    New Consultation
+                </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 bg-surface-bright overflow-y-auto relative flex">
+<!-- Left Area: Data Table/List -->
+<div class="flex-1 flex flex-col p-6 min-w-0">
+<div class="flex justify-between items-center mb-6">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Schedule Exceptions</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Manage blocked dates and clinic closures.</p>
+</div>
+<!-- Toggle -->
+<div class="flex bg-surface-container rounded-DEFAULT p-1 border border-outline-variant">
+<button class="px-3 py-1.5 bg-surface text-on-surface rounded shadow-sm font-label-caps text-label-caps flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">view_list</span>
+                            List
+                        </button>
+<button class="px-3 py-1.5 text-on-surface-variant rounded hover:bg-surface-container-high transition-colors font-label-caps text-label-caps flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">calendar_month</span>
+                            Calendar
+                        </button>
+</div>
+</div>
+<!-- Data Table (High-Density) -->
+<div class="bg-surface border border-outline-variant rounded-lg overflow-hidden flex-1 flex flex-col shadow-sm">
+<div class="flex items-center px-4 py-2 border-b border-outline-variant bg-surface-container-low">
+<div class="font-label-caps text-label-caps text-on-surface-variant w-1/4 uppercase">Date &amp; Time</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant w-1/4 uppercase">Exception Type</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant w-1/4 uppercase">Impact Count</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant w-1/4 text-right uppercase">Actions</div>
+</div>
+<div class="flex-1 overflow-y-auto">
+<!-- Row 1 -->
+<div class="flex items-center px-4 h-[table-row-height] border-b border-outline-variant hover:bg-surface-container transition-colors group cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-container" tabindex="0">
+<div class="w-1/4 flex flex-col justify-center">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface">Oct 6, 2024</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-[10px]">Full Day</span>
+</div>
+<div class="w-1/4 flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-status-completed"></div>
+<span class="font-body-md text-body-md font-medium text-on-surface">National Holiday</span>
+</div>
+<div class="w-1/4 flex items-center gap-2 text-status-emergency">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span class="font-body-sm text-body-sm font-semibold">14 Appointments affected</span>
+</div>
+<div class="w-1/4 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+<button class="text-on-surface-variant hover:text-status-emergency transition-colors p-1"><span class="material-symbols-outlined text-[16px]">delete</span></button>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center px-4 h-[table-row-height] border-b border-outline-variant hover:bg-surface-container transition-colors group cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-container bg-calendar-exception" tabindex="0">
+<div class="w-1/4 flex flex-col justify-center">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface">Oct 12, 2024</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-[10px]">13:00 - 15:00 (2 hrs)</span>
+</div>
+<div class="w-1/4 flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-status-waiting"></div>
+<span class="font-body-md text-body-md font-medium text-on-surface">Staff Training</span>
+</div>
+<div class="w-1/4 flex items-center gap-2 text-status-waiting">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span class="font-body-sm text-body-sm">4 Appointments affected</span>
+</div>
+<div class="w-1/4 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+<button class="text-on-surface-variant hover:text-status-emergency transition-colors p-1"><span class="material-symbols-outlined text-[16px]">delete</span></button>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="flex items-center px-4 h-[table-row-height] border-b border-outline-variant hover:bg-surface-container transition-colors group cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-container" tabindex="0">
+<div class="w-1/4 flex flex-col justify-center">
+<span class="font-data-mono-compact text-data-mono-compact text-on-surface">Oct 15, 2024</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-[10px]">Full Day</span>
+</div>
+<div class="w-1/4 flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-status-emergency"></div>
+<span class="font-body-md text-body-md font-medium text-on-surface">Emergency Maintenance</span>
+</div>
+<div class="w-1/4 flex items-center gap-2 text-status-emergency">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span class="font-body-sm text-body-sm font-semibold">22 Appointments affected</span>
+</div>
+<div class="w-1/4 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1"><span class="material-symbols-outlined text-[16px]">edit</span></button>
+<button class="text-on-surface-variant hover:text-status-emergency transition-colors p-1"><span class="material-symbols-outlined text-[16px]">delete</span></button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Panel: Sticky Side Drawer for Add Exception -->
+<div class="w-[drawer-width] bg-surface border-l border-outline-variant shadow-[-2px_0_8px_rgba(0,0,0,0.03)] flex flex-col flex-shrink-0 z-10 sticky top-0 right-0 h-full">
+<div class="flex items-center justify-between p-4 border-b border-outline-variant bg-surface-container-low">
+<h2 class="font-headline-md text-headline-md font-semibold text-on-surface">Add Exception</h2>
+<button class="text-on-surface-variant hover:bg-surface-container p-1 rounded-full transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="p-6 flex-1 overflow-y-auto flex flex-col gap-6">
+<!-- Type Selection -->
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Exception Type</label>
+<div class="relative">
+<select class="w-full bg-surface-container border border-outline-variant text-on-surface text-body-md font-body-md rounded-DEFAULT focus:ring-primary focus:border-primary block p-2.5 appearance-none">
+<option>Vacation</option>
+<option>Holiday</option>
+<option>Blocked</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">arrow_drop_down</span>
+</div>
+</div>
+</div>
+<!-- Range Selection -->
+<div class="flex gap-4">
+<div class="flex-1">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Start Date</label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">calendar_today</span>
+</div>
+<input class="bg-surface border border-outline-variant text-on-surface text-body-md font-body-md rounded-DEFAULT focus:ring-primary focus:border-primary block w-full pl-10 p-2" placeholder="Oct 20, 2024" type="text"/>
+</div>
+</div>
+<div class="flex-1">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">End Date</label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">calendar_today</span>
+</div>
+<input class="bg-surface border border-outline-variant text-on-surface text-body-md font-body-md rounded-DEFAULT focus:ring-primary focus:border-primary block w-full pl-10 p-2" placeholder="Oct 20, 2024" type="text"/>
+</div>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex-1">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Start Time</label>
+<input class="bg-surface border border-outline-variant text-on-surface text-body-md font-body-md rounded-DEFAULT focus:ring-primary focus:border-primary block w-full p-2" type="time" value="09:00"/>
+</div>
+<div class="flex-1">
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">End Time</label>
+<input class="bg-surface border border-outline-variant text-on-surface text-body-md font-body-md rounded-DEFAULT focus:ring-primary focus:border-primary block w-full p-2" type="time" value="17:00"/>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-[-12px]">
+<input class="w-4 h-4 text-primary bg-surface border-outline-variant rounded focus:ring-primary focus:ring-2" id="full-day" type="checkbox" value=""/>
+<label class="font-body-sm text-body-sm text-on-surface-variant" for="full-day">All day event</label>
+</div>
+<!-- Warning Area -->
+<div class="mt-4 bg-error-container border border-error/30 rounded-DEFAULT p-4 flex gap-3">
+<span class="material-symbols-outlined text-status-emergency">warning</span>
+<div>
+<p class="font-body-md text-body-md font-semibold text-on-error-container">Destructive Action Warning</p>
+<p class="font-body-sm text-body-sm text-on-error-container mt-1">Creating this exception will require rescheduling 18 existing appointments within this block.</p>
+</div>
+</div>
+</div>
+<div class="p-4 border-t border-outline-variant bg-surface-container-lowest flex flex-col gap-3">
+<button class="w-full bg-surface-container border border-outline-variant text-on-surface py-2 rounded-DEFAULT font-label-caps text-label-caps hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+                        Review Impacted Appointments
+                    </button>
+<button class="w-full bg-primary text-on-primary py-2 rounded-DEFAULT font-label-caps text-label-caps hover:bg-surface-tint transition-colors">
+                        Commit Exception
+                    </button>
+</div>
+</div>
+</main>
+</div>
+</body></html>

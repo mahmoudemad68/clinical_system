@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Post-visit Chat Inbox</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400&amp;family=JetBrains+Mono:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#004f4f",
+                        "surface-dim": "#cbdbf5",
+                        "on-tertiary-fixed": "#07006c",
+                        "surface-bright": "#f8f9ff",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#d9dff5",
+                        "tertiary": "#4446d2",
+                        "inverse-primary": "#76d6d5",
+                        "outline": "#6e7979",
+                        "tertiary-fixed": "#e1e0ff",
+                        "on-tertiary-container": "#fcf8ff",
+                        "surface-container-low": "#eff4ff",
+                        "tertiary-fixed-dim": "#c0c1ff",
+                        "error": "#ba1a1a",
+                        "primary": "#006565",
+                        "surface-variant": "#d3e4fe",
+                        "on-surface-variant": "#3e4949",
+                        "primary-container": "#008080",
+                        "on-primary-container": "#e3fffe",
+                        "on-secondary-container": "#5c6274",
+                        "on-surface": "#0b1c30",
+                        "secondary": "#575e70",
+                        "on-tertiary": "#ffffff",
+                        "surface-container": "#e5eeff",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#bdc9c8",
+                        "inverse-surface": "#213145",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#76d6d5",
+                        "on-secondary-fixed-variant": "#404758",
+                        "surface-container-highest": "#d3e4fe",
+                        "secondary-fixed": "#dce2f7",
+                        "inverse-on-surface": "#eaf1ff",
+                        "on-background": "#0b1c30",
+                        "surface-tint": "#006a6a",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#c0c6db",
+                        "primary-fixed": "#93f2f2",
+                        "on-primary-fixed": "#002020",
+                        "background": "#f8f9ff",
+                        "tertiary-container": "#5e61ec",
+                        "surface-container-high": "#dce9ff",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#2f2ebe",
+                        "surface": "#f8f9ff",
+                        "on-secondary-fixed": "#141b2b",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "12px",
+                        "unit": "4px",
+                        "container-margin": "16px",
+                        "row-padding": "8px",
+                        "compact-gap": "4px"
+                    },
+                    "fontFamily": {
+                        "ai-content": ["Inter"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "ai-content": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="flex flex-col h-screen fixed left-0 top-0 z-40 pt-16 bg-surface-container border-r border-outline-variant w-64 md:w-[240px] hidden md:flex transition-all duration-200 ease-in-out">
+<div class="px-gutter pb-6 border-b border-outline-variant flex flex-col gap-unit">
+<div class="flex items-center gap-2">
+<img alt="Patient Context Avatar" class="w-10 h-10 rounded-full object-cover" data-alt="A small, professional avatar image representing a generic patient identity. Clean lines, clinical light blue and gray tones, modern corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtPleRzjC0mF2e5-KYDwmJtYRckiU3IIFq3QDxB_ePjYcQTkW3L_0D85XJFTdimFw71tHueTbvzT2ceaIJ18kEzpyIIGyTZDZo8WW0JCxxWu3_y4epR8KWtE25gl_WS02xizXLUCTIbKSUm2UNuK4sHRsUSqFn7xod5f9xeX18gmhG_jS16evaZMR0aOxoCPzBcPMRSWG0T-DRgL1p_q2qOVtktFLX1SE1SvYD7P_zTV87kw0iQsY1"/>
+<div>
+<h2 class="font-headline-md text-headline-md text-primary">Patient Identity</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">DOB: 05/12/1984</p>
+</div>
+</div>
+<button class="mt-4 bg-primary text-on-primary font-label-caps text-label-caps h-9 rounded flex items-center justify-center gap-2 w-full hover:bg-primary-container hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined text-[16px]">add</span> New Encounter
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto py-unit">
+<ul class="flex flex-col gap-unit px-unit">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-caps text-label-caps">Home</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-label-caps text-label-caps">Library</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+<span class="font-label-caps text-label-caps">AI Assistant</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-primary bg-surface-container-highest font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+<span class="font-label-caps text-label-caps">Encounter Chat</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-label-caps text-label-caps">Schedule</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="border-t border-outline-variant p-unit">
+<ul class="flex flex-col gap-unit">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-caps text-label-caps">Help</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-variant transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-caps text-label-caps">Logout</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-[240px]">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center px-gutter w-full h-16 z-50 fixed top-0 bg-surface border-b border-outline-variant md:w-[calc(100%-240px)]">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md text-primary">Doctor Workspace</span>
+</div>
+<nav class="hidden md:flex gap-6 h-full items-center">
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md" href="#">Dashboard</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md" href="#">Patients</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md" href="#">Protocols</a>
+</nav>
+<div class="flex items-center gap-4">
+<div class="flex gap-2">
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+<img alt="Dr. Smith profile" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="Profile picture of Dr. Smith, a medical professional wearing a white coat. Bright, clean clinical lighting. Modern corporate headshot style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaGWyIG6Ftljf7jDbwGrvUEQBISku_p5F0SPEWIYcfvB5fwxuaq7NrkbuZnnXKwJhFC78YDfahCezf7tte_pbMTlvZlYdKaC2lc-iuppO0XVU6SYAAMzfWPZTvKskJ5TJJNjxGU9GdFXLiBvFgDR2Fb2m1J6Ix81KuYQ3ENjRUrt5qmXHosQKzygyTyeA64E-pFIECuUpzUYTedW-YDLH9PVg74UDGC9HP0PBC4e_FiXzP3huhmPYk"/>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 p-container-margin mt-16 max-w-5xl mx-auto w-full flex flex-col gap-6">
+<!-- Page Header -->
+<div class="flex justify-between items-end border-b border-outline-variant pb-4">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface">Post-visit Chat Inbox</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Encounter-scoped communication threads.</p>
+</div>
+<div class="flex gap-2 items-center bg-surface-container-low px-3 py-1.5 rounded border border-outline-variant">
+<span class="material-symbols-outlined text-[18px] text-primary" data-icon="filter_list">filter_list</span>
+<span class="font-label-caps text-label-caps text-on-surface">Filter Active</span>
+</div>
+</div>
+<!-- Inbox List -->
+<div class="flex flex-col gap-3">
+<!-- Writable Thread (Urgent) -->
+<div class="bg-surface rounded border border-outline-variant p-4 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center hover:bg-surface-container-lowest transition-colors cursor-pointer group">
+<div class="flex gap-4 items-start">
+<div class="w-10 h-10 rounded bg-primary-container text-on-primary-container flex items-center justify-center flex-shrink-0">
+<span class="font-headline-md text-headline-md">JD</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary transition-colors">John Doe</span>
+<span class="bg-error text-on-error font-label-caps text-[10px] px-1.5 py-0.5 rounded-sm">2 Unread</span>
+<span class="material-symbols-outlined text-[16px] text-tertiary" data-icon="verified_user">verified_user</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Encounter: Oct 24, 2023 - Follow-up</span>
+<span class="font-ai-content text-ai-content text-secondary truncate max-w-md">Patient asking about dosage adjustment for the new prescription...</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2 shrink-0">
+<div class="bg-surface-variant text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded flex items-center gap-1 border border-outline-variant">
+<span class="material-symbols-outlined text-[14px]">edit</span>
+                            WRITABLE
+                        </div>
+<div class="flex items-center gap-1 bg-[#ffdad6] text-[#93000a] px-2 py-0.5 rounded-full border border-[#ba1a1a]/20">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span class="font-label-caps text-[10px]">Closes in 2h</span>
+</div>
+</div>
+</div>
+<!-- Writable Thread (Standard) -->
+<div class="bg-surface rounded border border-outline-variant p-4 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center hover:bg-surface-container-lowest transition-colors cursor-pointer group">
+<div class="flex gap-4 items-start">
+<div class="w-10 h-10 rounded bg-surface-dim text-on-surface flex items-center justify-center flex-shrink-0">
+<span class="font-headline-md text-headline-md">AS</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary transition-colors">Alice Smith</span>
+<span class="material-symbols-outlined text-[16px] text-tertiary" data-icon="verified_user">verified_user</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Encounter: Oct 23, 2023 - Annual Physical</span>
+<span class="font-ai-content text-ai-content text-secondary truncate max-w-md">Lab results have been uploaded to your portal. Please review...</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2 shrink-0">
+<div class="bg-surface-variant text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded flex items-center gap-1 border border-outline-variant">
+<span class="material-symbols-outlined text-[14px]">edit</span>
+                            WRITABLE
+                        </div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span class="font-label-caps text-[10px]">Until Oct 30</span>
+</div>
+</div>
+</div>
+<!-- Read-Only Thread -->
+<div class="bg-surface-bright rounded border border-outline-variant p-4 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center hover:bg-surface-container-lowest transition-colors cursor-pointer group opacity-75">
+<div class="flex gap-4 items-start">
+<div class="w-10 h-10 rounded bg-surface-container-high text-on-surface-variant flex items-center justify-center flex-shrink-0">
+<span class="font-headline-md text-headline-md">MR</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary transition-colors">Michael Rodriguez</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Encounter: Sep 15, 2023 - Consultation</span>
+<span class="font-ai-content text-ai-content text-secondary truncate max-w-md">Thank you doctor, I will follow the treatment plan as discussed.</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2 shrink-0">
+<div class="bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps px-2 py-1 rounded flex items-center gap-1 border border-outline-variant/50 cursor-help" title="Thread closed 7 days post-encounter">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+                            READ-ONLY
+                        </div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
