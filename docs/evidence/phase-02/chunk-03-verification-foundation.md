@@ -23,10 +23,11 @@ remains off. ADR 0014 and G-08-04 are not closed by this slice. Staging
 
 - **Branch:** `cursor/verification-foundation-cc7f`
 - **Reviewed HEAD before remediation:** `cdb5e5948535b7444b5cc86ffa6bb3a7898f5dcd`
-- **Remediation commit:** `f4a0cb304ce64e21e1abc770bc8d3592b41af71d`
+- **Trusted-boundary / freeze / reviewer remediation:** `f4a0cb304ce64e21e1abc770bc8d3592b41af71d`
+- **Applicant-attribution remediation:** `6b12578423221ef61b3aadeff4ecd19013794b70`
 - **Recorded:** 2026-09-19
 - **Environment:** host PHP 8.3.6 with `pdo_pgsql`, database `clinic_test`.
-  Gates below were re-run after the security-review remediation.
+  Gates below were re-run after the applicant-attribution remediation.
 
 ## Commands actually executed
 
@@ -34,9 +35,9 @@ remains off. ADR 0014 and G-08-04 are not closed by this slice. Staging
 | --- | --- |
 | `./vendor/bin/pint --test` | `{"tool":"pint","result":"passed"}` |
 | `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | `{"tool":"phpstan","result":"passed","errors":0}` |
-| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | 0 violations, 0 uncovered, **1868** allowed |
-| `./vendor/bin/pest tests/Feature/Verification tests/Unit/Verification tests/Unit/Platform/ArchitectureBoundaryTest.php` | **62 passed** (2305 assertions) |
-| `./vendor/bin/pest` (full Core suite) | **602 passed**, 14 skipped, 616 tests (10410 assertions) |
+| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | 0 violations, 0 uncovered, **1870** allowed |
+| `./vendor/bin/pest tests/Feature/Verification tests/Unit/Verification tests/Unit/Platform/ArchitectureBoundaryTest.php` | **64 passed** (2328 assertions) |
+| `./vendor/bin/pest` (full Core suite) | **604 passed**, 14 skipped, 618 tests (10433 assertions) |
 | `npm run contracts:lint` | OpenAPI valid |
 | `npm run contracts:events` | **18** event schemas checked |
 | `npm run contracts:breaking` | no breaking changes against `origin/main` |
@@ -73,5 +74,5 @@ approval.
 - Subject erasure of a doctor profile does not automatically purge verification
   cases in this slice.
 - Staging remains unprovisioned; the post-merge deploy gate stays fail-closed.
-- Independent retest of the three foundation findings remains outstanding.
-  This implementer commit cannot close those findings.
+- Independent retest of this applicant-attribution change remains outstanding.
+  This implementer commit cannot close that finding.
