@@ -19,6 +19,21 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
+# GitHub CLI uses --cert-identity-regex. Cosign uses --certificate-identity-regexp.
+# Fail closed if this runner's gh does not advertise the flag this script passes.
+gh_attestation_help="$(gh attestation verify --help 2>&1)" || {
+  echo "gh attestation verify --help failed" >&2
+  exit 1
+}
+if ! grep -E -q -- '--cert-identity-regex([[:space:]]|$)' <<<"${gh_attestation_help}"; then
+  echo "installed gh attestation verify does not advertise --cert-identity-regex" >&2
+  exit 1
+fi
+if grep -E -q -- '--cert-identity-regexp([[:space:]]|$)' <<<"${gh_attestation_help}"; then
+  echo "installed gh attestation verify advertises --cert-identity-regexp; re-bind this script" >&2
+  exit 1
+fi
+
 expected_repo="$(echo "${REPO}" | tr '[:upper:]' '[:lower:]')"
 
 for unit in core-api ai-service; do
@@ -57,5 +72,5 @@ for unit in core-api ai-service; do
 
   gh attestation verify "oci://${image}@${digest}" \
     --repo "${REPO}" \
-    --cert-identity-regexp "${IDENTITY_REGEXP}"
+    --cert-identity-regex "${IDENTITY_REGEXP}"
 done
