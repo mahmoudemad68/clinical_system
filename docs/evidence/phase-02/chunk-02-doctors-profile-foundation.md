@@ -11,6 +11,7 @@ remains off. ADR 0014 and G-08-04 are not closed by this slice.
 - **Branch:** `cursor/doctors-profile-foundation-cc7f`
 - **Original chunk commit:** `3d9b78dbe68a313d83001d6b0b268272833f0dfb`
 - **Post-test evidence commit:** `22bda859697b9b7196382cc2308cd7c905a6ce8b`
+- **Review-remediation tests (this file):** re-run 2026-09-19 after PR #6 CHANGES_REQUIRED fixes
 - **Recorded:** 2026-09-19
 - **Environment:** host PHP 8.3.6 with `pdo_pgsql`, apt PostgreSQL 16,
   database `clinic_test`, role `clinic_migrator` (superuser for local
@@ -25,14 +26,13 @@ remains off. ADR 0014 and G-08-04 are not closed by this slice.
 | `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | `{"tool":"phpstan","result":"passed","errors":0}` |
 | `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | 0 violations, 0 uncovered, **1655** allowed |
 | `php artisan migrate --database=pgsql_migrator --force` | applied through `2026_09_19_140000_create_doctor_profile_tables` |
-| `./vendor/bin/pest tests/Feature/Doctors tests/Unit/Doctors tests/Unit/Platform/ArchitectureBoundaryTest.php tests/Unit/Identity/IdentityRulesTest.php` | **50 passed** (1578 assertions) |
-| `./vendor/bin/pest tests/Feature/Patients tests/Feature/Identity tests/Feature/Access tests/Unit/Identity tests/Unit/Platform tests/Feature/Platform` | **407 passed**, 2 skipped (7523 assertions) |
-| `./vendor/bin/pest` (full Core suite) | **550 passed**, 14 skipped (9271 assertions) |
+| `./vendor/bin/pest tests/Feature/Doctors tests/Unit/Doctors tests/Unit/Platform/ArchitectureBoundaryTest.php tests/Feature/Identity tests/Unit/Identity` | **139 passed** (2028 assertions) |
+| `./vendor/bin/pest` (full Core suite, after review remediations) | **551 passed**, 14 skipped (9277 assertions) |
 | `npm run contracts:lint` | OpenAPI valid |
 | `npm run contracts:events` | **16** event schemas checked |
 | `npm run contracts:generate:ts` | generated client matches commit (`TS_CLIENT_FRESH`) |
 | `npm run contracts:breaking` | no breaking changes against `origin/main` |
-| `python3 scripts/ci/run-isr015-validators.py` | **PASS** (path-filters, license-gate, OpenVEX, Gitleaks NID static, SF-001, promotion isolation) |
+| `python3 scripts/ci/run-isr015-validators.py` | **PASS** (path-filters, license-gate, OpenVEX including gRPC S2, catalog S3/S4, Gitleaks NID static, SF-001, promotion isolation) |
 
 Doctors-focused subset from the 50-test run:
 
@@ -40,7 +40,7 @@ Doctors-focused subset from the 50-test run:
 - `DoctorProfileRaceTest` — same-user concurrent create; two-user same National ID; two-user same syndicate
 - `DoctorPostgresPrivilegeTest` — worker/reporter denied; `clinic_app` DML; backup SELECT
 - `DoctorProfileInvariantsTest` — verification status never confers clinical capability; syndicate trim-only
-- `ArchitectureBoundaryTest` — Doctors/foreign persistence, Platform generic, Verification not leaked into Doctors
+- `ArchitectureBoundaryTest` — Doctors/foreign persistence, Platform generic, Verification not leaked into Doctors, catalog peak `sensitive`
 
 Gitleaks, Trivy image scans, and OpenVEX were **not** weakened. ISR-015 static validators passed locally; container Gitleaks/Trivy remain CI jobs.
 
