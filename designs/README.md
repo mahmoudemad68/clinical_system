@@ -11,6 +11,8 @@ This is a design handoff derived from the checked-in clients, shared design pack
 
 The documents describe screens, hierarchy, interactions, states, accessibility, localization, and safety boundaries. They do not modify or prescribe backend authority, and they do not claim that roadmap screens already exist.
 
+`designs/*/code.html` files are local Stitch mockups, not a production runtime. They are excluded from CI SAST because they load the Tailwind Play compiler, which cannot carry a stable subresource integrity hash. Do not copy those CDN tags into shipped Inertia, Electron, or Flutter surfaces.
+
 ## Maturity labels
 
 - **Current:** a recognizable implementation exists in the checked-in client.

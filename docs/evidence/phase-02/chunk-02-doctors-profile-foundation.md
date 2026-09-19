@@ -44,6 +44,11 @@ Doctors-focused subset from the 50-test run:
 
 Gitleaks, Trivy image scans, and OpenVEX were **not** weakened. ISR-015 static validators passed locally; container Gitleaks/Trivy remain CI jobs.
 
+PR CI on `298889e` reported two **pre-existing** fail-closed jobs that this Doctors diff did not introduce (same failures on patients PR #5):
+
+- **Security scans / SAST:** 117 `missing-integrity` hits on `designs/*/code.html` Tailwind Play CDN tags. Follow-up keeps `--error` and the four rulesets; CI `--exclude 'designs/**'` because those files are non-served mockups and the Play compiler cannot carry a stable SRI hash.
+- **Runtime image scan (ai-service):** 37 HIGH Debian findings. Follow-up installs distro `libpcre2` `10.42-1+deb12u1` in `ai-service.Dockerfile` and lists only unfixed util-linux/systemd IDs on `trivy-image.ignore`. `ignore-unfixed` stays false. OpenVEX remains core-api FrankenPHP `CVE-2026-56854` only.
+
 Phase 02 as a whole is **not** PASS.
 
 ## Residual (this chunk)

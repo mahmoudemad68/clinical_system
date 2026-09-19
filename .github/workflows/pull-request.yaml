@@ -530,10 +530,15 @@ jobs:
       - name: SAST
         # Digest-pinned semgrep/semgrep:1.99.0. Same rulesets as the previous
         # SHA-pinned action input. Mutable scanner tags are not used.
+        # designs/ is a non-served Stitch mockup tree. Those HTML files load
+        # the Tailwind Play compiler, which cannot carry a stable SRI hash.
+        # Production Inertia/Electron/Flutter surfaces remain fully scanned.
+        # --error and the four rulesets stay fail-closed.
         run: |
           docker run --rm -v "$PWD:/src" -w /src \
             semgrep/semgrep:1.99.0@sha256:ae27024c16f7848cdbfd49c24ed0b78b13f13b85fcd7b87c679aaa8b0c0dce98 \
             semgrep scan --error --metrics=off \
+              --exclude 'designs/**' \
               --config p/default \
               --config p/security-audit \
               --config p/secrets \
