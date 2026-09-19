@@ -4,5 +4,6 @@
     "Identity": true,
     "Auth": true,
     "Access": true,
-    "Patients": true
+    "Patients": true,
+    "Doctors": true
 }

@@ -295,7 +295,12 @@ it('enumerates an explicit technical action for every Phase-01 holding', functio
         'firebase_fcm',
         'backup_artefacts',
         'audit_checkpoints',
-    )->and($names)->not->toContain('patient_profiles', 'patient_demographic_revisions');
+    )->and($names)->not->toContain(
+        'patient_profiles',
+        'patient_demographic_revisions',
+        'doctor_profiles',
+        'specialties',
+    );
 
     $audit = collect(Phase01SubjectHoldings::plan())->firstWhere('holding', 'audit_events');
     expect($audit?->action)->toBe(SubjectHoldingAction::PreserveSecurityAudit);

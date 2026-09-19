@@ -32,6 +32,10 @@ final class Capabilities
 
     public const PATIENTS_UNLINKED_RESOLVE = 'patients.unlinked.resolve';
 
+    public const DOCTORS_ONBOARDING = 'doctors.onboarding.submit';
+
+    public const DOCTORS_PROFILE_READ_OWN = 'doctors.profile.read_own';
+
     public const MFA_MANAGE_SELF = 'auth.mfa.manage_self';
 
     public const ACCESS_GRANT_ISSUE = 'access.grant.issue';
@@ -63,6 +67,8 @@ final class Capabilities
         self::PATIENTS_ONBOARDING,
         self::PATIENTS_PROFILE_READ_OWN,
         self::PATIENTS_PROFILE_UPDATE_OWN,
+        self::DOCTORS_ONBOARDING,
+        self::DOCTORS_PROFILE_READ_OWN,
         self::MFA_MANAGE_SELF,
     ];
 

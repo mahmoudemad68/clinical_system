@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Platform;
 
 use Modules\Auth\Services\RegisterAccountService;
+use Modules\Doctors\Services\RegisterDoctor;
 use Modules\Identity\Services\DisableIdentityService;
 use Modules\Identity\Services\EraseSubjectService;
 use Modules\Identity\Services\RotateIdentityKeysService;
@@ -60,6 +61,10 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             ResolvePatientHandle::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            RegisterDoctor::class,
             ApprovedCoordinators::classes(),
         );
     }
@@ -118,7 +123,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/^use Modules\\\\(Auth|Identity|Access|Audit|Patients)\\\\/m',
+                '/^use Modules\\\\(Auth|Identity|Access|Audit|Patients|Doctors)\\\\/m',
                 $contents,
                 $file.' Platform must not import a business module. List coordinating services as class-string names.',
             );
@@ -153,10 +158,13 @@ final class ArchitectureBoundaryTest extends TestCase
 
         $this->assertStringNotContainsString('patient_profile', $contents);
         $this->assertStringNotContainsString('patient_id', $contents);
+        $this->assertStringNotContainsString('doctor_profile', $contents);
+        $this->assertStringNotContainsString('doctor_id', $contents);
+        $this->assertStringNotContainsString('specialty', $contents);
     }
 
     #[Test]
-    public function identity_does_not_query_patients_tables(): void
+    public function identity_does_not_query_patients_or_doctors_tables(): void
     {
         foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.'Identity') as $file) {
             $contents = (string) file_get_contents($file);
@@ -165,6 +173,97 @@ final class ArchitectureBoundaryTest extends TestCase
                 '/table\([\'"]patient_(profiles|demographic_revisions)/',
                 $contents,
                 $file.' Identity must not read or write Patients tables.',
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/table\([\'"](doctor_profiles|specialties)/',
+                $contents,
+                $file.' Identity must not read or write Doctors tables.',
+            );
+        }
+    }
+
+    #[Test]
+    public function patients_does_not_query_doctors_tables(): void
+    {
+        foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.'Patients') as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/table\([\'"](doctor_profiles|specialties)/',
+                $contents,
+                $file.' Patients must not read or write Doctors tables.',
+            );
+        }
+    }
+
+    #[Test]
+    public function doctors_does_not_access_foreign_module_persistence(): void
+    {
+        foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.'Doctors') as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/table\([\'"](?!doctor_profiles|specialties)[a-z_]+/',
+                $contents,
+                $file.' Doctors must not query another module\'s tables.',
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/use Modules\\\\(Patients|Auth)\\\\/',
+                $contents,
+                $file.' Doctors must not import Patients or Auth types.',
+            );
+        }
+    }
+
+    #[Test]
+    public function other_modules_do_not_query_doctors_tables(): void
+    {
+        foreach (['Platform', 'Audit', 'Identity', 'Auth', 'Access', 'Patients'] as $module) {
+            foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.$module) as $file) {
+                $contents = (string) file_get_contents($file);
+
+                $this->assertDoesNotMatchRegularExpression(
+                    '/table\([\'"](doctor_profiles|specialties)/',
+                    $contents,
+                    $file.' '.$module.' must not read or write Doctors tables.',
+                );
+            }
+        }
+    }
+
+    #[Test]
+    public function verification_ownership_has_not_leaked_into_doctors(): void
+    {
+        foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.'Doctors') as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/verification_(cases|documents|decisions)|doctor_verification_documents|SubmitVerificationDocuments/',
+                $contents,
+                $file.' Verification cases, documents, and decisions are not owned by Doctors.',
+            );
+        }
+
+        $routes = (string) file_get_contents(dirname(__DIR__, 3).'/routes/api.php');
+        $this->assertStringNotContainsString('verification-submissions', $routes);
+        $this->assertStringNotContainsString('verification-status', $routes);
+    }
+
+    #[Test]
+    public function platform_contains_no_doctors_business_logic(): void
+    {
+        $platform = $this->modulesRoot().DIRECTORY_SEPARATOR.'Platform';
+
+        foreach ($this->phpFiles($platform) as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertStringNotContainsString('doctor_profiles', $contents);
+            $this->assertStringNotContainsString('verification_status', $contents);
+            $this->assertStringNotContainsString('syndicate_number', $contents);
+            $this->assertDoesNotMatchRegularExpression(
+                '/\bspecialt(y|ies)\b/i',
+                $contents,
+                $file.' Platform must remain business-generic.',
             );
         }
     }

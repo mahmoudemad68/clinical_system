@@ -3,8 +3,9 @@
 Required by Phase 00 §5.2. One row per field, event, log, metric, cache entry,
 and file type the platform holds.
 
-**Scope: Phase 00 and Phase 01.** Later phases extend this file as part of
-their own gate; a field with no row here fails review.
+**Scope: Phase 00, Phase 01, and implemented Phase 02 profile tables.** Later
+phases extend this file as part of their own gate; a field with no row here
+fails review.
 
 Levels and rules: [`classification-policy.md`](classification-policy.md).
 
@@ -18,12 +19,11 @@ acceptance of the documented purpose, not an Egyptian PDPL article number.
 
 Deletion/purge procedure: [deletion-and-purge.md](deletion-and-purge.md).
 
-## Live PostgreSQL relations (Phase 00/01)
+## Live PostgreSQL relations (Phase 00/01/02 profile foundation)
 
 Reconciled to committed Core migrations under
 `apps/core-api/database/migrations/` plus PostGIS `CREATE EXTENSION` in
-`infra/docker/postgres/initdb/01-roles-and-extensions.sql`. Laravel Modules
-under `Modules/` currently ship no additional table migrations.
+`infra/docker/postgres/initdb/01-roles-and-extensions.sql`.
 
 **Live product/framework tables:** `users`, `sessions`, `cache`, `cache_locks`,
 `jobs`, `job_batches`, `failed_jobs`, `outbox_events`, `idempotency_keys`,
@@ -31,7 +31,8 @@ under `Modules/` currently ship no additional table migrations.
 `identity_national_ids`, `user_devices`, `otp_requests`, `mfa_factors`,
 `mfa_recovery_codes`, `mfa_challenges`, `auth_sessions`,
 `identity_profile_links`, `contextual_access_grants`, `audit_events`,
-`auth_refresh_consumptions`, `recovery_requests`.
+`auth_refresh_consumptions`, `recovery_requests`, `patient_profiles`,
+`patient_demographic_revisions`, `specialties`, `doctor_profiles`.
 
 **Laravel catalog (not created by an application `Schema::create`):**
 `migrations`.
@@ -393,6 +394,7 @@ Phase 00 status pages share only process liveness. No actor, tenant, host, check
 | `platform.diagnostics_round_trip_recorded` | 1 | internal | `diagnostics_id`, `label`, `echo_delay_ms`, `recorded_at` | `platform.diagnostics_consumer` | 7 days |
 | `patient.profile_created` | 1 | personal | `patient_id`, `linked_user_id` nullable, `source_type` | later projections | 7 days |
 | `patient.account_linked` | 1 | personal | `patient_id`, `user_id`, `assurance_level` | later projections | 7 days |
+| `doctor.profile_created` | 1 | personal | `doctor_id`, `linked_user_id`, `source_type` | later projections | 7 days |
 
 ---
 
@@ -741,6 +743,72 @@ denied by trigger. `clinic_app` may SELECT+INSERT only.
 | `request_id` | internal | Correlation identifier | app | as row | at rest | Mahmoud | n/a |
 | `created_at` | internal | When the revision was appended | app | as row | at rest | Mahmoud | n/a |
 
+### `specialties`
+
+Phase 02 chunk 02 Doctors-owned catalogue
+(`2026_09_19_140000_create_doctor_profile_tables.php`). Empty until an
+approved medical-specialty reference dataset exists; tests insert synthetic
+rows. Unique `code`; engineering format `^[a-z0-9_]+$`.
+
+**Writer.** Doctors module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked. `clinic_backup` is SELECT-only.
+
+**PII / sensitive.** Labels are professional catalogue text, not a patient
+record. Not subject-linked; erasure does not delete specialties.
+
+**Retention / deletion.** Reference data. Legal retention: **OPEN_LEGAL_DECISION**.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 specialty identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `code` | public | Stable machine code | app | as row | at rest | Mahmoud | n/a |
+| `label_ar` | public | Arabic display label | app | as row | at rest | Mahmoud | n/a |
+| `label_en` | public | English display label | app | as row | at rest | Mahmoud | n/a |
+| `active` | internal | Whether onboarding may reference this row | app | as row | at rest | Mahmoud | n/a |
+| `sort_order` | internal | Catalogue ordering | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `doctor_profiles`
+
+Phase 02 chunk 02 doctor profile foundation
+(`2026_09_19_140000_create_doctor_profile_tables.php`). One row per user.
+Unique National ID blind index. Optional unique syndicate blind index.
+
+**Writer.** Doctors module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked.
+
+**PII / sensitive.** National ID and optional syndicate identifier are
+envelope-encrypted. Lookup is HMAC only. HTTP projections never return
+ciphertext, HMAC, key versions, National ID, or syndicate number.
+`professional_display_name` is stored in plaintext as specified.
+
+**Retention / deletion.** Linked-profile subject erasure is performed by the
+Doctors `DoctorSubjectPrivacy` adapter (Identity never queries these tables).
+It tombstones crypto fields and the display name and keeps `user_id` attached.
+Legal retention: **OPEN_LEGAL_DECISION**.
+
+A newly created row is `verification_status=draft`, `public_status=hidden`,
+`approved_at`/`suspended_at` null. Listing requires `approved`. Profile
+creation does not grant clinical capabilities.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 profile identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `user_id` | personal | Attached account (unique, NOT NULL) | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `national_id_ciphertext` | sensitive | Recovery / later verification | app (audited decrypt) | until erasure tombstone | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `national_id_lookup_hmac` | sensitive | Blind match; unique | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `national_id_key_version` | internal | Envelope/HMAC key version | app | as row | at rest | Mahmoud | n/a |
+| `syndicate_number_ciphertext` | sensitive | Optional professional identifier recovery | app (audited decrypt) | until erasure tombstone | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `syndicate_number_lookup_hmac` | sensitive | Optional blind match; unique when set | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `syndicate_number_key_version` | internal | Envelope/HMAC key version when syndicate is set | app | as row | at rest | Mahmoud | n/a |
+| `specialty_id` | internal | FK to `specialties` | app | as row | at rest | Mahmoud | n/a |
+| `professional_display_name` | personal | Professional name shown to the owner | app | until erasure tombstone | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `verification_status` | internal | `draft` / `pending_review` / `changes_requested` / `approved` / `rejected` / `suspended` | app | as row | at rest | Mahmoud | n/a |
+| `public_status` | internal | `hidden` / `listed` (listed requires approved) | app | as row | at rest | Mahmoud | n/a |
+| `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
+| `approved_at`, `suspended_at` | internal | Lifecycle instants | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
 ### `auth_refresh_consumptions`
 
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
@@ -823,6 +891,7 @@ Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
 | `identity.profile_linked` | 1 | personal | user_id, profile_type, profile_id, assurance_level | later projections | 7 days |
 | `patient.profile_created` | 1 | personal | patient_id, linked_user_id nullable, source_type | later projections | 7 days |
 | `patient.account_linked` | 1 | personal | patient_id, user_id, assurance_level | later projections | 7 days |
+| `doctor.profile_created` | 1 | personal | doctor_id, linked_user_id, source_type | later projections | 7 days |
 
 `credential` classification is rejected by the outbox CHECK. Event retention
 above is the outbox `PROCESSED` engineering default, not a legal schedule.
