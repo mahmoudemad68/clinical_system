@@ -134,9 +134,9 @@ describe('doctor onboarding', function () {
 
         $caps = $this->getJson('/api/v1/me/capabilities', doctorsAuth($session['token']));
         $caps->assertOk()->assertJsonMissing(['clinical.record.read', 'clinical.encounter.write']);
-        expect($caps->json('data'))->toContain(Capabilities::DOCTORS_ONBOARDING)
-            ->and($caps->json('data'))->toContain(Capabilities::DOCTORS_PROFILE_READ_OWN)
-            ->and($caps->json('data'))->not->toContain('clinical.record.read');
+        expect($caps->json('data.capabilities'))->toContain(Capabilities::DOCTORS_ONBOARDING)
+            ->and($caps->json('data.capabilities'))->toContain(Capabilities::DOCTORS_PROFILE_READ_OWN)
+            ->and($caps->json('data.capabilities'))->not->toContain('clinical.record.read');
     });
 
     it('replays a committed idempotent onboarding without creating a second profile', function () {
