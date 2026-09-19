@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Platform\Services\ObjectStorage;
 
 use DateTimeImmutable;
+use Illuminate\Filesystem\Filesystem;
 use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Support\BoundedDocumentInspector;
@@ -161,13 +162,7 @@ final class InMemoryStoreObject implements StoreObject
     public function deleteIfPresent(StoredObjectRef $ref): void
     {
         unset($this->objects[$ref->key()]);
-        $path = $this->path($ref);
-        if ($path !== null && is_file($path)) {
-            unlink($path);
-        }
-        if ($path !== null && is_file($path.'.type')) {
-            unlink($path.'.type');
-        }
+        $this->deletePersisted($ref);
     }
 
     /**
@@ -202,6 +197,29 @@ final class InMemoryStoreObject implements StoreObject
             return null;
         }
 
-        return $this->persistDirectory.'/'.hash('sha256', $ref->key());
+        return $this->persistDirectory.DIRECTORY_SEPARATOR.hash('sha256', $ref->key());
+    }
+
+    /**
+     * Persist filenames are SHA-256 hex of the internal object key. The
+     * basename is allowlisted before deletion so a StoredObjectRef cannot
+     * become a filesystem path.
+     */
+    private function deletePersisted(StoredObjectRef $ref): void
+    {
+        $directory = $this->persistDirectory;
+        if ($directory === null || ! is_dir($directory)) {
+            return;
+        }
+
+        $name = hash('sha256', $ref->key());
+        if (preg_match('/^[a-f0-9]{64}$/', $name) !== 1) {
+            return;
+        }
+
+        (new Filesystem)->delete([
+            $directory.DIRECTORY_SEPARATOR.$name,
+            $directory.DIRECTORY_SEPARATOR.$name.'.type',
+        ]);
     }
 }
