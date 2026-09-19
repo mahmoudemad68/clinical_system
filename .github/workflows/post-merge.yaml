@@ -214,6 +214,7 @@ jobs:
 
       - name: Verify image digest, signature, and provenance
         env:
+          GH_TOKEN: ${{ github.token }}
           IMAGE_DIGEST_DIR: ${{ runner.temp }}/image-identity
           COSIGN_CERTIFICATE_OIDC_ISSUER: https://token.actions.githubusercontent.com
           COSIGN_CERTIFICATE_IDENTITY_REGEXP: https://github.com/${{ github.repository }}/.github/workflows/post-merge.yaml@refs/heads/main

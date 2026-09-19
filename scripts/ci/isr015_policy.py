@@ -157,6 +157,45 @@ def workflow_level_permissions(yaml_text: str) -> str:
     return "\n".join(out)
 
 
+def extract_named_step(job_text: str, step_name: str) -> str:
+    lines = job_text.splitlines()
+    capturing = False
+    out: list[str] = []
+    marker_indent: int | None = None
+    for line in lines:
+        match = re.match(r"^(\s*)-\s+name:\s*(.+?)\s*$", line)
+        if match:
+            indent = len(match.group(1))
+            name = match.group(2).strip().strip("'\"")
+            if capturing:
+                if marker_indent is None or indent <= marker_indent:
+                    break
+            elif name == step_name:
+                capturing = True
+                marker_indent = indent
+                out.append(line)
+                continue
+        if capturing:
+            if line.strip() and marker_indent is not None:
+                indent = len(line) - len(line.lstrip(" "))
+                if indent <= marker_indent and re.match(r"^\s+-\s+", line):
+                    break
+            out.append(line)
+    if not capturing:
+        fail(f"step {step_name!r} not found")
+    return "\n".join(out)
+
+
+def gh_token_bindings(step_text: str) -> list[str]:
+    bindings: list[str] = []
+    for raw in step_text.splitlines():
+        stripped = raw.split("#", 1)[0].rstrip()
+        match = re.match(r"^\s*GH_TOKEN:\s*(.+)$", stripped)
+        if match:
+            bindings.append(match.group(1).strip().strip("'\""))
+    return bindings
+
+
 def job_needs(job_text: str) -> str:
     lines = job_text.splitlines()
     for index, line in enumerate(lines):
@@ -541,6 +580,21 @@ def assert_provenance_wiring(workflow_path: Path | None = None) -> None:
         fail("verify-artifacts must need the build job")
     if "deploy-staging" in verify_needs:
         fail("verify-artifacts must run before deploy-staging")
+    if "contents: read" not in verify:
+        fail("verify-artifacts must keep contents: read")
+    if "packages: read" not in verify:
+        fail("verify-artifacts must keep packages: read")
+    if "attestations: read" not in verify:
+        fail("verify-artifacts must keep attestations: read")
+    step = extract_named_step(verify, "Verify image digest, signature, and provenance")
+    if "verify-signed-images.sh" not in step:
+        fail("verify step must execute verify-signed-images.sh")
+    bindings = gh_token_bindings(step)
+    if not bindings:
+        fail("verify step must expose GH_TOKEN bound to ${{ github.token }}")
+    for value in bindings:
+        if not re.fullmatch(r"\$\{\{\s*github\.token\s*\}\}", value):
+            fail("verify step GH_TOKEN must be bound to ${{ github.token }}")
     print("provenance-wiring: PASS")
 
 
