@@ -9,6 +9,8 @@ activation remain out of scope.
 remains off. ADR 0014 and G-08-04 are not closed by this slice.
 
 - **Branch:** `cursor/doctors-profile-foundation-cc7f`
+- **Original chunk commit:** `3d9b78dbe68a313d83001d6b0b268272833f0dfb`
+- **Post-test evidence commit:** `22bda859697b9b7196382cc2308cd7c905a6ce8b`
 - **Recorded:** 2026-09-19
 - **Environment:** host PHP 8.3.6 with `pdo_pgsql`, apt PostgreSQL 16,
   database `clinic_test`, role `clinic_migrator` (superuser for local
