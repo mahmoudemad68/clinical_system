@@ -187,4 +187,36 @@ return [
         'failed_job_retention_hours' => (int) env('PLATFORM_FAILED_JOB_RETENTION_HOURS', 168),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Private object store
+    |--------------------------------------------------------------------------
+    |
+    | ENGINEERING_DEFAULT size bound aligned with Phase 02 verification
+    | documents. Not a product quota catalogue.
+    |
+    */
+    'object_store' => [
+        'max_bytes' => (int) env('OBJECT_STORE_MAX_BYTES', 20_971_520),
+        'stream_chunk_bytes' => (int) env('OBJECT_STORE_STREAM_CHUNK_BYTES', 65_536),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Malware scanner
+    |--------------------------------------------------------------------------
+    |
+    | clamd INSTREAM over a private network. Empty host keeps ScanObject
+    | fail-closed (DisabledScanObject). The scanner must not be publicly
+    | exposed and must not receive URLs or application secrets.
+    |
+    */
+    'malware_scanner' => [
+        'host' => (string) env('CLAMAV_HOST', ''),
+        'port' => (int) env('CLAMAV_PORT', 3310),
+        'timeout_ms' => (int) env('CLAMAV_TIMEOUT_MS', 10_000),
+        'max_bytes' => (int) env('CLAMAV_MAX_BYTES', 20_971_520),
+        'version' => (string) env('CLAMAV_VERSION', '1.4.6'),
+    ],
+
 ];

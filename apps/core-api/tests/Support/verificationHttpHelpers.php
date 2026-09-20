@@ -11,11 +11,17 @@ use Modules\Identity\Enums\AssuranceLevel;
 use Modules\Identity\Enums\LanguagePreference;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Contracts\ScanObject;
+use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Support\Identifier;
+use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Services\VerificationDocumentService;
 use Modules\Verification\Services\VerificationService;
+use Modules\Verification\Services\VerificationUploadProcessor;
 use Modules\Verification\Support\ApplicantCaseProjection;
 use Modules\Verification\Support\VerificationPolicy;
+use PHPUnit\Framework\TestCase;
+use Tests\Support\FixtureScanObject;
 use Tests\Support\TestingTrustedDocumentEvidenceIssuer;
 
 function verificationDoctorActor(string $userId): ActorContext
@@ -199,4 +205,105 @@ function verificationOutboxPayload(string $eventType): ?string
     }
 
     return is_string($row->payload) ? $row->payload : json_encode($row->payload);
+}
+
+function verificationBindCleanScanner(): void
+{
+    app()->instance(ScanObject::class, new FixtureScanObject);
+}
+
+/**
+ * @return array{upload_id: string, object_id: string, storage_locator: string, body: string}
+ */
+function verificationCreateUploadIntent(array $onboarded, string $caseId, string $idem, ?string $mime = 'application/pdf', int $size = 0, array $extra = []): array
+{
+    $bytes = match ($mime) {
+        'image/png' => verificationMinimalPng(),
+        'image/jpeg' => verificationMinimalJpeg(),
+        default => verificationMinimalPdf(),
+    };
+    $expected = $size > 0 ? $size : strlen($bytes);
+    $payload = array_merge([
+        'case_id' => $caseId,
+        'requirement_code' => 'professional_id',
+        'expected_size_bytes' => $expected,
+        'declared_media_type' => $mime,
+    ], $extra);
+
+    $response = test()->postJson(
+        '/api/v1/verification-uploads',
+        $payload,
+        doctorsAuth($onboarded['session']['token']) + doctorsIdem($idem),
+    );
+
+    $uploadId = (string) $response->json('data.upload_id');
+    $row = $uploadId !== ''
+        ? DB::table('verification_upload_intents')->where('id', $uploadId)->first()
+        : null;
+
+    return [
+        'response' => $response,
+        'upload_id' => $uploadId,
+        'object_id' => is_object($row) ? (string) $row->object_id : '',
+        'storage_locator' => is_object($row) ? (string) $row->storage_locator : '',
+        'bytes' => $bytes,
+        'mime' => $mime,
+    ];
+}
+
+function verificationPutUploadBytes(string $uploadId, string $bytes, string $mime): void
+{
+    $row = DB::table('verification_upload_intents')->where('id', $uploadId)->first();
+    assert($row !== null);
+    $ref = new StoredObjectRef('verification', (string) $row->object_id, (string) $row->storage_locator);
+    app(StoreObject::class)->writeAt($ref, $mime, $bytes);
+}
+
+function verificationProcessUpload(string $uploadId): void
+{
+    app(VerificationUploadProcessor::class)->process(Identifier::fromTrusted($uploadId));
+}
+
+function verificationStoredRef(string $uploadId): StoredObjectRef
+{
+    $row = DB::table('verification_upload_intents')->where('id', $uploadId)->first();
+    assert($row !== null);
+
+    return new StoredObjectRef('verification', (string) $row->object_id, (string) $row->storage_locator);
+}
+
+function verificationCanonicalRef(string $uploadId): StoredObjectRef
+{
+    $row = DB::table('verification_upload_intents')->where('id', $uploadId)->first();
+    assert($row !== null);
+    $locator = is_object($row) ? (string) ($row->canonical_storage_locator ?? '') : '';
+    assert($locator !== '');
+
+    return new StoredObjectRef('verification', (string) $row->object_id, $locator);
+}
+
+function clinicProviderRequired(string $flag): bool
+{
+    $value = getenv($flag);
+    if ($value === false || $value === '') {
+        $value = (string) env($flag, 'false');
+    }
+
+    return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+}
+
+function clinicSkipUnlessTcp(TestCase $test, string $host, int $port, string $flag, string $label): void
+{
+    $socket = @fsockopen($host, $port, $errno, $error, 0.2);
+    if (is_resource($socket)) {
+        fclose($socket);
+
+        return;
+    }
+
+    if (clinicProviderRequired($flag)) {
+        $test->fail($label.' is required but not reachable.');
+    }
+
+    $test->markTestSkipped($label.' is not reachable.');
 }

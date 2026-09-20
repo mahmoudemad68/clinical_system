@@ -12,13 +12,19 @@ use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Enums\AssuranceLevel;
 use Modules\Identity\Enums\LanguagePreference;
 use Modules\Identity\Support\ActorContext;
+use Modules\Platform\Contracts\ScanObject;
+use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Exceptions\AuthorizationDenied;
 use Modules\Platform\Exceptions\FeatureUnavailable;
 use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\StateConflict;
+use Modules\Platform\Exceptions\TransientProviderFailure;
 use Modules\Platform\Exceptions\VersionConflict;
+use Modules\Platform\Services\ObjectStorage\InMemoryStoreObject;
 use Modules\Platform\Support\Identifier;
 use Modules\Verification\Services\VerificationService;
+use Modules\Verification\Services\VerificationUploadProcessor;
+use Tests\Support\FixtureScanObject;
 
 $payload = json_decode((string) stream_get_contents(STDIN), true);
 if (! is_array($payload)) {
@@ -37,6 +43,16 @@ require dirname(__DIR__, 3).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 3).'/bootstrap/app.php';
 $console = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $console->bootstrap();
+
+if (($payload['scanner'] ?? '') === 'fixture') {
+    $app->instance(ScanObject::class, new FixtureScanObject);
+}
+if (($payload['object_store'] ?? '') === 'memory') {
+    $app->instance(StoreObject::class, new InMemoryStoreObject(
+        20_971_520,
+        storage_path('framework/testing/objects'),
+    ));
+}
 
 DB::statement("SET lock_timeout = '8s'");
 DB::statement("SET statement_timeout = '15s'");
@@ -108,6 +124,8 @@ if ($op === 'refresh') {
         $headers['HTTP_IDEMPOTENCY_KEY'] = (string) $payload['idempotency_key'];
     }
 } elseif ($op === 'verification_decide') {
+    $uri = '';
+} elseif ($op === 'verification_process') {
     $uri = '';
 } else {
     fwrite(STDOUT, json_encode(['ok' => false, 'error' => 'unknown_op', 'status' => 0]));
@@ -188,6 +206,60 @@ if ($op === 'verification_decide') {
         'patient_id' => null,
         'case_id' => is_array($json) ? ($json['data']['case_id'] ?? null) : null,
         'decision' => is_array($json) ? ($json['data']['decision'] ?? null) : null,
+    ], JSON_THROW_ON_ERROR));
+    exit($error === null ? 0 : 1);
+}
+
+if ($op === 'verification_process') {
+    try {
+        $app->make(VerificationUploadProcessor::class)->process(
+            Identifier::fromTrusted((string) ($payload['upload_id'] ?? '')),
+        );
+        $status = 200;
+        $json = ['data' => ['status' => 'processed']];
+    } catch (TransientProviderFailure) {
+        $status = 503;
+        $json = ['errors' => [['code' => 'DEPENDENCY_UNAVAILABLE']]];
+    } catch (AuthorizationDenied|FeatureUnavailable) {
+        $status = 404;
+        $json = ['errors' => [['code' => 'NOT_FOUND']]];
+    } catch (StateConflict) {
+        $status = 409;
+        $json = ['errors' => [['code' => 'STATE_CONFLICT']]];
+    } catch (InvalidValueObject|ValidationException) {
+        $status = 422;
+        $json = ['errors' => [['code' => 'VALIDATION_FAILED']]];
+    } catch (Throwable $e) {
+        $error = $e::class;
+        $cursor = $e;
+        while ($cursor instanceof Throwable) {
+            if ($cursor instanceof PDOException) {
+                $sqlstate = (string) ($cursor->errorInfo[0] ?? $cursor->getCode());
+                break;
+            }
+            $cursor = $cursor->getPrevious();
+            if (! $cursor instanceof Throwable) {
+                break;
+            }
+        }
+    }
+
+    $elapsed = (hrtime(true) - $started) / 1e6;
+    $code = is_array($json) ? ($json['error']['code'] ?? $json['errors'][0]['code'] ?? null) : null;
+    fwrite(STDOUT, json_encode([
+        'ok' => $error === null && $status > 0,
+        'status' => $status,
+        'error' => $error,
+        'sqlstate' => $sqlstate,
+        'error_code' => $code,
+        'elapsed_ms' => round($elapsed, 3),
+        'has_access_token' => false,
+        'has_refresh_token' => false,
+        'session_id' => null,
+        'recovery_status' => is_array($json) ? ($json['data']['status'] ?? null) : null,
+        'patient_id' => null,
+        'case_id' => null,
+        'decision' => null,
     ], JSON_THROW_ON_ERROR));
     exit($error === null ? 0 : 1);
 }

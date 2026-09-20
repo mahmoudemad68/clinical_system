@@ -13,6 +13,7 @@ event (ADR 0001, ADR 0004).
 `Audit` append. Phase 02 chunk 01 implements `Patients` demographic profiles.
 Phase 02 chunk 02 implements the `Doctors` profile foundation. Phase 02 chunk 03
 implements the `Verification` case/document-metadata/decision foundation.
+Phase 02 chunk 04 implements doctor verification secure-file ingestion.
 Pharmacy, clinic, location, and remaining Phase 02 slices remain later work.
 
 **Classification levels** are defined in
@@ -85,6 +86,8 @@ business rule.
 | `Redaction` | Centralized redaction applied before any telemetry export |
 | `SafeIdentifier` | National ID, barcode, and opaque identifier normalization that never locale-lowercases |
 | `ErrorMapper` | Stable machine codes and safe human messages |
+| `StoreObject` | Private S3-compatible object storage: opaque locators, short-lived upload grants, server-side observe/stream/delete |
+| `ScanObject` | Malware scan of a caller-opened bounded stream (`scanStream`). Production binds `ClamdScanObject`; empty host binds `DisabledScanObject` |
 
 **Tables:** `outbox_events`, `idempotency_keys`.
 **Classification:** internal. Outbox payloads carry identifiers and non-sensitive
@@ -189,30 +192,37 @@ reference dataset. Onboarding HTTP is compact (`status`, `doctor_id`,
 return generic `manual_review_required`. `ListSpecialties` is an in-process
 public service in this slice (no HTTP catalogue endpoint).
 
-## `Verification` — cases, documents, and decisions
+## `Verification` — cases, documents, decisions, and secure upload intents
 
-**Built in:** 02 (chunk 03: Verification foundation). **Owner:** backend + security.
-**Public services:** `VerificationService`, `VerificationDocumentService`.
-`MalwareScanner` / secure-upload adapters are not wired in this slice; document
-bytes stay outside the module. Future scanner/upload adapters call
-`VerificationDocumentService` in-process without changing table ownership.
+**Built in:** 02 (chunk 03 foundation, chunk 04 secure verification files). **Owner:** backend + security.
+**Public services:** `VerificationService`, `VerificationDocumentService`,
+`VerificationUploadService`, `VerificationUploadProcessor`.
+Platform owns generic `StoreObject` / `ScanObject` adapters. Verification owns
+doctor-verification upload workflow, requirement codes, and case linkage.
+`ProcessingTrustedDocumentEvidenceIssuer` is bound as a concrete class and is
+reachable only from the trusted processing path. The default
+`TrustedDocumentEvidenceIssuer` remains `DisabledTrustedDocumentEvidenceIssuer`.
 Admin HTTP/UI is deferred; when added, Admin controllers must call
 `VerificationService` rather than writing these tables.
-**Events:** `doctor.verification_submitted`, `doctor.verification_decided`.
+**Events:** `doctor.verification_submitted`, `doctor.verification_decided`,
+`verification.upload_completed` (`upload_id` only).
 `pharmacy.verification_decided` is not implemented in this slice.
 **Tables:** `verification_cases`, `verification_documents`,
-`verification_decisions`.
+`verification_decisions`, `verification_upload_intents`.
 **Classification:** sensitive. Peak is professional-identity and verification
 document metadata (hashes, MIME, opaque object identifiers, encrypted reviewer
-notes). Document bytes live behind the future secure-files boundary; this module
-owns only case/document/decision records. HTTP and event payloads never include
-National ID, syndicate identifiers, HMAC, key versions, object storage keys,
-reviewer notes, or clinical data.
+notes, classified internal storage locators that never leave the module).
+Document bytes live in private S3-compatible quarantine until the trusted
+processor promotes them. HTTP and event payloads never include National ID,
+syndicate identifiers, HMAC, key versions, object storage keys, reviewer notes,
+or clinical data.
 **Policy catalogues:** document requirements and rejection reasons are
 `ENGINEERING_DEFAULT` config (`professional_id`; `approved`,
-`evidence_incomplete`, `identity_mismatch`, `documents_illegible`). Unknown
-case types, requirement codes, decisions, and reason codes deny. This is not an
-approved product/security catalogue.
+`evidence_incomplete`, `identity_mismatch`, `documents_illegible`). Upload
+limits are also `ENGINEERING_DEFAULT` (20 MiB, PDF/JPEG/PNG, 900s grant expiry,
+max 3 active uploads per requirement). Unknown case types, requirement codes,
+decisions, and reason codes deny. This is not an approved product/security
+catalogue.
 **Prohibited:** querying Doctors/Patients/Pharmacies/clinical tables directly
 (Doctors is reached only through `DoctorApplicantService`); exposing object keys
 or document bodies on public URLs, events, logs, or DTOs; letting Doctors or
@@ -222,9 +232,9 @@ auto-listing a doctor on approval; public APIs that mark documents scanned or
 these tables. Submit HTTP is compact (`status`, `doctor_id`, `case_id`,
 `case_status`, `case_version`, `profile_version`, `profile_verification_status`);
 `GET /doctors/me/verification-status` is the canonical projection.
-Production document registration is fail-closed through
-`DisabledTrustedDocumentEvidenceIssuer`; doctor or admin `ActorContext` cannot
-assert scan success. Submitted `verification_documents` are frozen after submission. Reviewer document evidence is assignment-gated.
+Production HTTP cannot mint `TrustedDocumentEvidence`.
+`ProcessingTrustedDocumentEvidenceIssuer` is production-wirable only through
+`VerificationUploadProcessor`. Submitted `verification_documents` are frozen after submission. Reviewer document evidence is assignment-gated.
 
 Earlier catalog drafts listed `doctor_verification_documents` under `Doctors`.
 Phase 02 module ownership is authoritative: verification documents belong here.

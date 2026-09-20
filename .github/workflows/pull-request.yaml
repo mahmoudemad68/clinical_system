@@ -278,6 +278,101 @@ jobs:
           npx --prefix tests/e2e playwright test --config tests/e2e/playwright.config.ts
 
 
+  # ----------------------------------------- secure-file providers
+  secure-file-providers:
+    name: Secure-file providers
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.core_api == 'true' || needs.changes.outputs.infra == 'true'
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4@sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5
+        env:
+          POSTGRES_DB: clinic_test
+          POSTGRES_USER: clinic_migrator
+          POSTGRES_PASSWORD: ci_only_not_a_secret
+        options: >-
+          --health-cmd "pg_isready -U clinic_migrator"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports: ['5432:5432']
+      redis:
+        image: redis:7-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports: ['6379:6379']
+    defaults:
+      run:
+        working-directory: apps/core-api
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - name: Record candidate SHA
+        working-directory: ${{ github.workspace }}
+        run: bash scripts/ci/assert-candidate-sha.sh
+      - uses: shivammathur/setup-php@9e72090525849c5e82e596468b86eb55e9cc5401  # 2.32.0
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, pgsql, intl, bcmath, zip, pcntl, redis
+          coverage: none
+          tools: composer:v2
+      - name: Application environment
+        run: cp .env.example .env
+      - name: Install dependencies from the committed lock
+        run: composer install --no-interaction --no-progress --prefer-dist
+      - name: Fail if the lockfile drifted
+        run: git diff --exit-code -- composer.lock
+      - name: Migrate
+        env:
+          DB_HOST: localhost
+          DB_DATABASE: clinic_test
+          DB_USERNAME: clinic_migrator
+          DB_PASSWORD: ci_only_not_a_secret
+          DB_MIGRATION_USERNAME: clinic_migrator
+          DB_MIGRATION_PASSWORD: ci_only_not_a_secret
+        run: php artisan migrate --database=pgsql_migrator --force
+      - name: Start digest-pinned MinIO and clamd
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          # ISR-015 pin catalogue refs (also used by docker run below).
+          # MinIO Community images are pulled from quay.io; Docker Hub
+          # minio/minio and minio/mc return 404 / pull access denied.
+          # quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e
+          # quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3
+          # clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200
+          bash scripts/ci/start-secure-file-providers.sh
+      - name: Live MinIO, clamd, and provider-backed upload
+        env:
+          DB_HOST: localhost
+          DB_DATABASE: clinic_test
+          DB_USERNAME: clinic_migrator
+          DB_PASSWORD: ci_only_not_a_secret
+          DB_MIGRATION_USERNAME: clinic_migrator
+          DB_MIGRATION_PASSWORD: ci_only_not_a_secret
+          DB_WORKER_USERNAME: clinic_worker
+          DB_WORKER_PASSWORD: local_dev_only_not_a_secret
+          REDIS_HOST: localhost
+          CLINIC_REQUIRE_OBJECT_STORE: '1'
+          CLINIC_REQUIRE_CLAMAV: '1'
+          CLAMAV_HOST: '127.0.0.1'
+          AWS_ACCESS_KEY_ID: clinic_local
+          AWS_SECRET_ACCESS_KEY: local_dev_only_not_a_secret
+          AWS_DEFAULT_REGION: us-east-1
+          AWS_BUCKET: clinic-local-private
+          AWS_ENDPOINT: http://127.0.0.1:9000
+          AWS_USE_PATH_STYLE_ENDPOINT: 'true'
+        run: |
+          ./vendor/bin/pest \
+            tests/Feature/Platform/S3StoreObjectContractTest.php \
+            tests/Unit/Platform/ClamdScanObjectTest.php \
+            tests/Feature/Verification/VerificationSecureFileProviderTest.php \
+            tests/Feature/Verification/VerificationUploadFlowsTest.php \
+            tests/Unit/Platform/BoundedDocumentInspectorTest.php \
+            tests/Unit/Platform/ProviderPortContractTest.php \
+            tests/Feature/Verification/VerificationPostgresPrivilegeTest.php
+
   # -------------------------------------------------------------- ai-service
   ai-service:
     name: AI service
@@ -565,6 +660,30 @@ jobs:
         with:
           format: spdx-json
           artifact-name: clinic-platform.sbom.spdx.json
+
+      - name: Generate ClamAV scanner image SBOM
+        run: |
+          set -euo pipefail
+          trivy image \
+            --format spdx-json \
+            --output "${RUNNER_TEMP}/clamav-scanner.sbom.spdx.json" \
+            --skip-version-check \
+            clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200
+      - name: Upload ClamAV scanner SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: clamav-scanner.sbom.spdx.json
+          path: ${{ runner.temp }}/clamav-scanner.sbom.spdx.json
+      - name: Scan pinned ClamAV scanner image
+        run: |
+          set -euo pipefail
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --ignore-unfixed=false \
+            --format table \
+            --skip-version-check \
+            clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200
 
   # ----------------------------------------------------------- runtime images
   image-scan:

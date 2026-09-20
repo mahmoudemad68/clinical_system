@@ -37,6 +37,9 @@ VERIFICATION_EVENT_SUBMITTED = (
 VERIFICATION_EVENT_DECIDED = (
     REPO_ROOT / "packages" / "contracts" / "events" / "doctor" / "verification_decided.v1.schema.json"
 )
+VERIFICATION_EVENT_UPLOAD_COMPLETED = (
+    REPO_ROOT / "packages" / "contracts" / "events" / "verification" / "upload_completed.v1.schema.json"
+)
 
 
 class GateError(Exception):
@@ -135,14 +138,23 @@ def assert_inventory_and_events() -> None:
     documents = inventory.split("### `verification_documents`")[1].split("### `")[0]
     if "| `object_id` | sensitive |" not in documents:
         fail("verification_documents.object_id must remain sensitive")
+    if "### `verification_upload_intents`" not in inventory:
+        fail("data-inventory missing verification_upload_intents")
+    uploads = inventory.split("### `verification_upload_intents`")[1].split("### `")[0]
+    if "| `storage_locator` | sensitive |" not in uploads:
+        fail("verification_upload_intents.storage_locator must remain sensitive")
+    if "| `created_by_user_id` | personal |" not in uploads:
+        fail("verification_upload_intents.created_by_user_id must remain personal")
     decisions = inventory.split("### `verification_decisions`")[1].split("### `")[0]
     if "| `notes_ciphertext` | sensitive |" not in decisions:
         fail("verification_decisions.notes_ciphertext must remain sensitive")
     submitted = VERIFICATION_EVENT_SUBMITTED.read_text(encoding="utf-8")
     decided = VERIFICATION_EVENT_DECIDED.read_text(encoding="utf-8")
+    upload_completed = VERIFICATION_EVENT_UPLOAD_COMPLETED.read_text(encoding="utf-8")
     for name, body in (
         ("doctor.verification_submitted", submitted),
         ("doctor.verification_decided", decided),
+        ("verification.upload_completed", upload_completed),
     ):
         if '"classification": "internal"' not in body:
             fail(f"{name} event classification must remain internal")

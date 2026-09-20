@@ -9,6 +9,7 @@ use Modules\Patients\Http\Controllers\PatientProfileController;
 use Modules\Platform\Http\Controllers\DiagnosticsController;
 use Modules\Platform\Http\Controllers\PlatformHealthController;
 use Modules\Verification\Http\Controllers\DoctorVerificationController;
+use Modules\Verification\Http\Controllers\DoctorVerificationUploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -130,5 +131,16 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/doctors/me/verification-status', [DoctorVerificationController::class, 'status'])
             ->name('api.v1.doctors.me.verification-status');
+
+        Route::middleware('platform.idempotency')
+            ->post('/verification-uploads', [DoctorVerificationUploadController::class, 'create'])
+            ->name('api.v1.verification-uploads.create');
+
+        Route::middleware('platform.idempotency')
+            ->post('/verification-uploads/{uploadId}/complete', [DoctorVerificationUploadController::class, 'complete'])
+            ->name('api.v1.verification-uploads.complete');
+
+        Route::get('/verification-uploads/{uploadId}', [DoctorVerificationUploadController::class, 'show'])
+            ->name('api.v1.verification-uploads.show');
     });
 });

@@ -31,6 +31,7 @@ use Modules\Platform\Contracts\DiagnosticsRepository;
 use Modules\Platform\Contracts\FieldEncryptor;
 use Modules\Platform\Contracts\GenerateText;
 use Modules\Platform\Contracts\HmacHasher;
+use Modules\Platform\Contracts\IdempotencyReplayHydrator;
 use Modules\Platform\Contracts\IdempotencyStore;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\OutboxRecorder;
@@ -51,6 +52,7 @@ use Modules\Platform\Http\Middleware\InstrumentHttp;
 use Modules\Platform\Http\Middleware\RequireDiagnosticsSlice;
 use Modules\Platform\Http\Middleware\ResolveLocale;
 use Modules\Platform\Http\Middleware\SecureResponseHeaders;
+use Modules\Platform\Services\Adapters\ClamdScanObject;
 use Modules\Platform\Services\Adapters\DisabledGenerateText;
 use Modules\Platform\Services\Adapters\DisabledRetrieveKnowledge;
 use Modules\Platform\Services\Adapters\DisabledScanObject;
@@ -71,6 +73,7 @@ use Modules\Platform\Services\Health\HttpHealthProbeClient;
 use Modules\Platform\Services\Health\ReadinessProbe;
 use Modules\Platform\Services\Health\RedisCheck;
 use Modules\Platform\Services\Idempotency\CanonicalRequestHasher;
+use Modules\Platform\Services\Idempotency\NullIdempotencyReplayHydrator;
 use Modules\Platform\Services\Identity\UuidV7Generator;
 use Modules\Platform\Services\Notifications\LaravelDatabaseInbox;
 use Modules\Platform\Services\ObjectStorage\InMemoryStoreObject;
@@ -159,6 +162,7 @@ final class PlatformServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(CanonicalRequestHasher::class);
+        $this->app->singleton(IdempotencyReplayHydrator::class, NullIdempotencyReplayHydrator::class);
 
         $this->app->singleton(CursorSigner::class, static fn (): CursorSigner => new HmacCursorSigner(
             (string) config('app.key'),
@@ -188,16 +192,35 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->bind(PlatformStatusQuery::class, static fn (): PlatformStatusQuery => new PlatformStatusQuery(
             (string) config('app.version', '0.0.0-dev'),
         ));
-        $this->app->singleton(ScanObject::class, DisabledScanObject::class);
+        $this->app->singleton(ScanObject::class, static function ($app): ScanObject {
+            $host = (string) config('platform.malware_scanner.host', '');
+            if ($host === '') {
+                return new DisabledScanObject;
+            }
+
+            return new ClamdScanObject(
+                $host,
+                (int) config('platform.malware_scanner.port', 3310),
+                (int) config('platform.malware_scanner.timeout_ms', 10_000),
+                (int) config('platform.malware_scanner.max_bytes', 20_971_520),
+                (string) config('platform.malware_scanner.version', '1.4.6'),
+            );
+        });
         $this->app->singleton(GenerateText::class, DisabledGenerateText::class);
         $this->app->singleton(RetrieveKnowledge::class, DisabledRetrieveKnowledge::class);
 
         $this->app->singleton(StoreObject::class, static function ($app): StoreObject {
             if ($app->environment('testing')) {
-                return new InMemoryStoreObject;
+                return new InMemoryStoreObject(
+                    (int) config('platform.object_store.max_bytes', 20_971_520),
+                    storage_path('framework/testing/objects'),
+                );
             }
 
-            return new S3StoreObject($app['filesystem']->disk('s3'));
+            return new S3StoreObject(
+                $app['filesystem']->disk('s3'),
+                (int) config('platform.object_store.max_bytes', 20_971_520),
+            );
         });
 
         $this->app->singleton(CacheWarmer::class, static fn ($app): CacheWarmer => new CacheWarmer(
@@ -343,6 +366,7 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->bind(EnforceIdempotency::class, static fn ($app): EnforceIdempotency => new EnforceIdempotency(
             $app->make(IdempotencyStore::class),
             $app->make(CanonicalRequestHasher::class),
+            $app->make(IdempotencyReplayHydrator::class),
         ));
 
         $this->app->bind(InstrumentHttp::class, static fn ($app): InstrumentHttp => new InstrumentHttp(

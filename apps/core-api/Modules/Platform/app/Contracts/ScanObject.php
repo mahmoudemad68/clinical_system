@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace Modules\Platform\Contracts;
 
-use Modules\Platform\Support\StoredObjectRef;
+use Modules\Platform\Support\ScanVerdict;
 
 /**
- * Scan a stored object for malware and type. Isolated from storage itself.
+ * Scan a bounded, server-resolved byte stream for malware.
  *
- * Phase 00 ships the port. Quarantine/release is Phase 02/07.
+ * Implementations must not accept URLs, signed URLs, or caller-supplied
+ * filesystem paths. The caller opens a trusted stream from StoreObject.
  */
 interface ScanObject
 {
     /**
-     * @return array{clean: bool, mime: string, scanner: string}
+     * @param  resource  $stream
      */
-    public function scan(StoredObjectRef $ref): array;
+    public function scanStream(mixed $stream, int $sizeBytes): ScanVerdict;
 }

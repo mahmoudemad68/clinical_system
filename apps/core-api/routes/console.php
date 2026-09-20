@@ -38,3 +38,7 @@ Schedule::command('audit:checkpoint-chain')
     ->withoutOverlapping()
     ->onOneServer();
 Schedule::command('identity:apply-due-recoveries')->everyFifteenMinutes();
+Schedule::command('verification:reconcile-uploads')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();

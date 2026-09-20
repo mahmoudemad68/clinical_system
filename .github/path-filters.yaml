@@ -45,3 +45,4 @@ contracts:
 infra:
   - 'infra/**'
   - '.github/workflows/**'
+  - 'scripts/ci/**'

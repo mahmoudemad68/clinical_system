@@ -98,5 +98,14 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="AUDIT_CHECKPOINT_ENABLED" value="false" force="true"/>
         <env name="AUDIT_CHECKPOINT_REQUIRED" value="false" force="true"/>
+        <env name="CLAMAV_HOST" value=""/>
+        <env name="CLAMAV_PORT" value="3310"/>
+        <env name="AWS_ACCESS_KEY_ID" value="clinic_local"/>
+        <env name="AWS_SECRET_ACCESS_KEY" value="local_dev_only_not_a_secret"/>
+        <env name="AWS_DEFAULT_REGION" value="us-east-1"/>
+        <env name="AWS_BUCKET" value="clinic-local-private"/>
+        <env name="AWS_ENDPOINT" value="http://127.0.0.1:9000"/>
+        <env name="CLINIC_REQUIRE_OBJECT_STORE" value="false"/>
+        <env name="CLINIC_REQUIRE_CLAMAV" value="false"/>
     </php>
 </phpunit>

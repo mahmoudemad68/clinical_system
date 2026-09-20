@@ -5,14 +5,27 @@ declare(strict_types=1);
 namespace Modules\Platform\Services\Adapters;
 
 use Modules\Platform\Contracts\ScanObject;
-use Modules\Platform\Exceptions\ProviderNotEnabled;
-use Modules\Platform\Support\StoredObjectRef;
+use Modules\Platform\Support\ScanVerdict;
 
-/** Fail-closed scanner. Phase 02/07 supplies the sandboxed scan port. */
+/**
+ * Fail-closed scanner. Production binds ClamdScanObject when a scanner host
+ * is configured. An unavailable/disabled scanner is never a clean verdict.
+ */
 final class DisabledScanObject implements ScanObject
 {
-    public function scan(StoredObjectRef $ref): array
+    public function scanStream(mixed $stream, int $sizeBytes): ScanVerdict
     {
-        throw new ProviderNotEnabled('ScanObject is not enabled in Phase 00.');
+        if (is_resource($stream)) {
+            while (! feof($stream)) {
+                $chunk = fread($stream, 65_536);
+                if ($chunk === false || $chunk === '') {
+                    break;
+                }
+            }
+        }
+
+        unset($sizeBytes);
+
+        return ScanVerdict::unavailable('disabled');
     }
 }

@@ -6,6 +6,7 @@ namespace Modules\Platform\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Modules\Platform\Contracts\IdempotencyReplayHydrator;
 use Modules\Platform\Contracts\IdempotencyStore;
 use Modules\Platform\Enums\IdempotencyState;
 use Modules\Platform\Exceptions\InvalidValueObject;
@@ -44,6 +45,7 @@ final class EnforceIdempotency
     public function __construct(
         private readonly IdempotencyStore $store,
         private readonly CanonicalRequestHasher $hasher,
+        private readonly IdempotencyReplayHydrator $hydrator,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -107,7 +109,7 @@ final class EnforceIdempotency
                     return $next($request);
                 }
 
-                return $this->replay($existing->statusCode, $existing->responseReference, $requestId);
+                return $this->replay($existing->statusCode, $existing->responseReference, $requestId, $request);
             }
 
             // FailedRetryable: the previous attempt failed transiently and the
@@ -142,13 +144,13 @@ final class EnforceIdempotency
         return $response;
     }
 
-    private function replay(?int $status, ?string $reference, Identifier $requestId): Response
+    private function replay(?int $status, ?string $reference, Identifier $requestId, Request $request): Response
     {
         // The store holds a reference, not a body, so a replay re-reads the
         // outcome rather than serving a cached copy of clinical or financial
         // content from a table with different retention rules.
         $decoded = $reference === null ? null : json_decode($reference, true);
-        $data = is_array($decoded) ? $this->expandReplayData($decoded) : $decoded;
+        $data = is_array($decoded) ? $this->expandReplayData($decoded, $request) : $decoded;
 
         return response()->json(
             [
@@ -209,6 +211,10 @@ final class EnforceIdempotency
                 'ref' => 'diagnostics',
                 'id' => $data['diagnostics_id'],
             ],
+            isset($data['upload_id']) => [
+                'ref' => 'verification_upload',
+                'id' => $data['upload_id'],
+            ],
             default => ['ref' => 'truncated'],
         };
 
@@ -221,8 +227,13 @@ final class EnforceIdempotency
      * @param  array<string, mixed>  $decoded
      * @return array<string, mixed>
      */
-    private function expandReplayData(array $decoded): array
+    private function expandReplayData(array $decoded, Request $request): array
     {
+        $hydrated = $this->hydrator->hydrate($decoded, $request);
+        if (is_array($hydrated)) {
+            return $hydrated;
+        }
+
         return match ($decoded['ref'] ?? null) {
             'auth_session' => [
                 'session_id' => $decoded['id'] ?? null,
@@ -234,6 +245,9 @@ final class EnforceIdempotency
             ],
             'diagnostics' => [
                 'diagnostics_id' => $decoded['id'] ?? null,
+            ],
+            'verification_upload' => [
+                'upload_id' => $decoded['id'] ?? null,
             ],
             default => $decoded,
         };

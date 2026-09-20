@@ -17,6 +17,8 @@ use Modules\Platform\Services\Coordinators\ApprovedCoordinators;
 use Modules\Platform\Services\Outbox\OutboxConsumer;
 use Modules\Verification\Services\VerificationDocumentService;
 use Modules\Verification\Services\VerificationService;
+use Modules\Verification\Services\VerificationUploadProcessor;
+use Modules\Verification\Services\VerificationUploadService;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
@@ -75,6 +77,14 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             VerificationDocumentService::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            VerificationUploadProcessor::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            VerificationUploadService::class,
             ApprovedCoordinators::classes(),
         );
     }
@@ -253,12 +263,12 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/table\([\'"]verification_(cases|documents|decisions)/',
+                '/table\([\'"]verification_(cases|documents|decisions|upload_intents)/',
                 $contents,
                 $file.' Doctors must not query Verification tables.',
             );
             $this->assertDoesNotMatchRegularExpression(
-                '/verification_(cases|documents|decisions)|doctor_verification_documents|SubmitVerificationDocuments/',
+                '/verification_(cases|documents|decisions|upload_intents)|doctor_verification_documents|SubmitVerificationDocuments/',
                 $contents,
                 $file.' Verification cases, documents, and decisions are not owned by Doctors.',
             );
@@ -280,7 +290,11 @@ final class ArchitectureBoundaryTest extends TestCase
             $routes,
         );
         $this->assertStringNotContainsString('admin/verification-cases', $routes);
-        $this->assertStringNotContainsString('verification-uploads', $routes);
+        $this->assertStringContainsString('verification-uploads', $routes);
+        $this->assertMatchesRegularExpression(
+            '/DoctorVerificationUploadController::class, [\'"]create[\'"]/',
+            $routes,
+        );
     }
 
     #[Test]
@@ -310,7 +324,7 @@ final class ArchitectureBoundaryTest extends TestCase
             foreach ($this->phpFiles($admin) as $file) {
                 $contents = (string) file_get_contents($file);
                 $this->assertDoesNotMatchRegularExpression(
-                    '/table\([\'"]verification_(cases|documents|decisions)/',
+                    '/table\([\'"]verification_(cases|documents|decisions|upload_intents)/',
                     $contents,
                     $file.' Admin must call Verification public services rather than query verification tables.',
                 );
@@ -337,6 +351,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $this->assertStringNotContainsString('verification_cases', $contents);
             $this->assertStringNotContainsString('verification_documents', $contents);
             $this->assertStringNotContainsString('verification_decisions', $contents);
+            $this->assertStringNotContainsString('verification_upload_intents', $contents);
             $this->assertDoesNotMatchRegularExpression(
                 '/\bspecialt(y|ies)\b/i',
                 $contents,
@@ -385,12 +400,15 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringContainsString('`verification_cases`', $contents);
         $this->assertStringContainsString('`verification_documents`', $contents);
         $this->assertStringContainsString('`verification_decisions`', $contents);
+        $this->assertStringContainsString('`verification_upload_intents`', $contents);
         $this->assertStringContainsString('`doctor.verification_submitted`', $contents);
         $this->assertStringContainsString('`doctor.verification_decided`', $contents);
+        $this->assertStringContainsString('`verification.upload_completed`', $contents);
         $this->assertStringContainsString('ENGINEERING_DEFAULT', $contents);
         $this->assertStringContainsString('DoctorApplicantService', $contents);
         $this->assertStringContainsString('Submit HTTP is compact', $contents);
         $this->assertStringContainsString('DisabledTrustedDocumentEvidenceIssuer', $contents);
+        $this->assertStringContainsString('ProcessingTrustedDocumentEvidenceIssuer', $contents);
         $this->assertStringContainsString('frozen after submission', $contents);
         $this->assertStringContainsString('assignment-gated', $contents);
         $this->assertStringNotContainsString('READY_TO_MERGE', $contents);
@@ -404,6 +422,11 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertStringContainsString('DisabledTrustedDocumentEvidenceIssuer::class', $provider);
         $this->assertStringContainsString('TrustedDocumentEvidenceIssuer::class', $provider);
+        $this->assertStringContainsString('ProcessingTrustedDocumentEvidenceIssuer::class', $provider);
+        $this->assertDoesNotMatchRegularExpression(
+            '/TrustedDocumentEvidenceIssuer::class,\s*ProcessingTrustedDocumentEvidenceIssuer::class/',
+            $provider,
+        );
 
         $controller = (string) file_get_contents(
             $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Http/Controllers/DoctorVerificationController.php',
@@ -411,6 +434,13 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringNotContainsString('registerValidatedMetadata', $controller);
         $this->assertStringNotContainsString('TrustedDocumentEvidence', $controller);
         $this->assertStringNotContainsString('reviewSafeMetadata', $controller);
+
+        $uploadController = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Http/Controllers/DoctorVerificationUploadController.php',
+        );
+        $this->assertStringNotContainsString('TrustedDocumentEvidence', $uploadController);
+        $this->assertStringNotContainsString('registerValidatedMetadata', $uploadController);
+        $this->assertStringNotContainsString('ProcessingTrustedDocumentEvidenceIssuer', $uploadController);
 
         $service = (string) file_get_contents(
             $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Services/VerificationDocumentService.php',
@@ -426,6 +456,46 @@ final class ArchitectureBoundaryTest extends TestCase
             $service,
         );
         $this->assertStringContainsString('findById($case->applicantId', $service);
+    }
+
+    #[Test]
+    public function scanner_and_storage_adapters_stay_generic_and_stream_bound(): void
+    {
+        $scanContract = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Platform/app/Contracts/ScanObject.php',
+        );
+        $this->assertStringContainsString('scanStream', $scanContract);
+        $this->assertStringNotContainsString('temporaryUrl', $scanContract);
+        $this->assertDoesNotMatchRegularExpression('/function scan\(/', $scanContract);
+
+        $clamd = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Platform/app/Services/Adapters/ClamdScanObject.php',
+        );
+        $this->assertStringContainsString('nINSTREAM', $clamd);
+        $this->assertStringContainsString("'stream: OK'", $clamd);
+        $this->assertStringNotContainsString("\$line === 'OK'", $clamd);
+        $this->assertStringNotContainsString("str_ends_with(\$line, 'OK')", $clamd);
+        $this->assertStringNotContainsString('Modules\\Doctors', $clamd);
+        $this->assertStringNotContainsString('Modules\\Patients', $clamd);
+        $this->assertStringNotContainsString('Modules\\Verification', $clamd);
+        $this->assertStringNotContainsString('temporaryUrl', $clamd);
+
+        $s3 = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Platform/app/Services/ObjectStorage/S3StoreObject.php',
+        );
+        $this->assertStringNotContainsString('Modules\\Doctors', $s3);
+        $this->assertStringNotContainsString('professional_id', $s3);
+        $this->assertStringContainsString("'IfNoneMatch' => '*'", $s3);
+        $this->assertStringContainsString('isConditionalConflict', $s3);
+        $this->assertStringContainsString('is_callable([$client, \'copyObject\'])', $s3);
+        $this->assertStringNotContainsString("method_exists(\$client, 'copyObject')", $s3);
+        $this->assertStringNotContainsString('$this->disk->copy(', $s3);
+
+        $issuerPath = dirname(__DIR__, 2).DIRECTORY_SEPARATOR.'Support/TestingTrustedDocumentEvidenceIssuer.php';
+        $this->assertFileExists($issuerPath);
+        $this->assertFileDoesNotExist(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Services/Adapters/TestingTrustedDocumentEvidenceIssuer.php',
+        );
     }
 
     #[Test]

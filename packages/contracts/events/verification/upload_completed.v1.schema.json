@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/verification/upload_completed.v1.schema.json",
+  "title": "verification.upload_completed v1",
+  "description": "Client upload completion was accepted. The server may now observe the quarantined object. Payload is upload_id only.",
+  "type": "object",
+  "required": ["upload_id"],
+  "additionalProperties": false,
+  "properties": {
+    "upload_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Verification",
+    "classification": "internal",
+    "consumers": ["verification.upload_processor"],
+    "retention_days": 7
+  }
+}
