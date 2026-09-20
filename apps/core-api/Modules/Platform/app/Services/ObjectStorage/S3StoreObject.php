@@ -184,13 +184,13 @@ final class S3StoreObject implements StoreObject
         }
 
         if (! $this->copyOnceUnlessExists($source, $destination)) {
-            if ($this->exists($destination)) {
+            try {
                 $this->assertOccupiedCanonical($destination);
-
-                return;
+            } catch (Throwable) {
+                throw new RuntimeException('Object seal copy failed.');
             }
 
-            throw new RuntimeException('Object seal copy failed.');
+            return;
         }
 
         try {
