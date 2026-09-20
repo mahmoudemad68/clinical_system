@@ -513,6 +513,7 @@ describe('completion, validation, scan, and promotion', function () {
             ->and(app(StoreObject::class)->exists($canonical))->toBeTrue();
 
         DB::table('verification_upload_intents')->where('id', $kept['upload_id'])->update([
+            'created_at' => now('UTC')->subMinutes(20)->format('Y-m-d H:i:s.uP'),
             'expires_at' => now('UTC')->subMinute()->format('Y-m-d H:i:s.uP'),
         ]);
         Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);

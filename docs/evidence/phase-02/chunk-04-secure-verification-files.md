@@ -29,8 +29,10 @@ it.
 - **Base (GitHub `main`):** `c9b676baed44f08239580e1fe1324f4887908939`
 - **Independent-review remediation recorded:** 2026-09-20
 - **Reviewed-then-remediated HEAD (before this work):** `39632c0bbbfd3127a6c179a0657ff82f1bcf4d87`
-- **GitHub live-provider proof HEAD:** `c5ee8d63a4252269002e223e4186f50c2c3992d7`
-- **GitHub `pull-request` run:** [35495868880](https://github.com/mahmoudemad68/clinical_system/actions/runs/35495868880) **SUCCESS**
+- **Integrity follow-up base (independently reviewed):** `eff3d4e2fbeba2cee68ebde03f0bf0273aec3852`
+- **GitHub live-provider proof HEAD (prior):** `c5ee8d63a4252269002e223e4186f50c2c3992d7`
+- **GitHub `pull-request` run (prior live providers):** [35495868880](https://github.com/mahmoudemad68/clinical_system/actions/runs/35495868880) **SUCCESS**
+- **GitHub `pull-request` run (this integrity follow-up):** pending on the follow-up HEAD; local gates below do not replace it
 
 ## Trust flow
 
@@ -310,42 +312,49 @@ Metric `clinic_secure_file_results_total` labels: `result`, `detected_type`,
 
 ## Commands actually executed
 
-GitHub `pull-request` run
-[35495868880](https://github.com/mahmoudemad68/clinical_system/actions/runs/35495868880)
-on `c5ee8d63a4252269002e223e4186f50c2c3992d7` is the recorded live-provider
-evidence. Local host PHP is supplementary; it does not replace GitHub.
+### Integrity follow-up (this HEAD, local)
+
+Local host PHP is supplementary. Live MinIO/clamd were not reachable on this
+agent VM (no Docker). GitHub `secure-file-providers` on the follow-up HEAD
+is the live-provider proof still required.
 
 | Gate | Result |
 | --- | --- |
-| Pint `--test` (Core API job) | PASS, 563 files |
-| PHPStan (Core API job) | `[OK] No errors` |
-| Deptrac `--fail-on-uncovered` (Core API job) | PASS (job succeeded) |
-| Core API Pest `./vendor/bin/pest` | **633 passed**, 12 skipped, 645 tests (11052 assertions) |
-| Secure-file providers Pest | **32 passed** (337 assertions), 0 skipped |
+| Pint `--dirty` | PASS |
+| PHPStan `analyse --memory-limit=1G` | `[OK] No errors` |
+| Deptrac `--fail-on-uncovered` | PASS (0 violations) |
+| Core API Pest `./vendor/bin/pest` | **636 passed**, 17 skipped, 653 tests (11098 assertions) |
+| Focused upload/seal/cleanup/Clamd/constraint | PASS |
+| OpenAPI lint | valid |
+| Event schemas | **19** checked |
+| Breaking contracts vs `origin/main` | none (`npm run contracts:breaking`) |
+| ISR-015 | Supply-chain policy PASS |
+
+The extra local skips versus GitHub Core API's prior 12 are the live MinIO /
+clamd / provider-backed tests on a host without `:9000` / `:3310`.
+
+In-process coverage added: crash-safe seal (locator durable before copy,
+post-copy audit failure, retry reuses the same `/c/` locator, one outbox),
+AVAILABLE ingress recreate-then-post-expiry delete, submitted canonical
+preservation, and exact clamd grammar (`stream: OK` / `WAT OK` /
+`stream: ERROR OK` / `garbageOK` / multi-line / FOUND / ERROR).
+
+### Prior live-provider GitHub proof (unchanged images)
+
+GitHub `pull-request` run
+[35495868880](https://github.com/mahmoudemad68/clinical_system/actions/runs/35495868880)
+on `c5ee8d63a4252269002e223e4186f50c2c3992d7` remains the last recorded live
+MinIO / clamd / ClamAV Trivy execution. A new run on the integrity
+follow-up HEAD must succeed before this follow-up is treated as CI-complete.
+
+| Gate | Result |
+| --- | --- |
+| Secure-file providers Pest (run 35495868880) | **32 passed** (337 assertions), 0 skipped |
 | Live MinIO | bucket `clinic-local-private` created; anonymous access `private`; S3 contract tests passed |
 | Live clamd | `clamd is ready`; `it scans a live clamd when one is reachable` passed |
 | Provider-backed upload → scan → AVAILABLE | `it promotes a real provider-backed upload and ignores later ingress overwrite` passed |
-| OpenAPI lint | valid |
-| Event schemas | **19** checked |
-| TypeScript client | committed generated client matches (`TS_CLIENT_FRESH`) |
-| Breaking contracts vs `origin/main` | none (rule-of-record `npm run contracts:breaking`) |
-| ISR-015 | Supply-chain policy PASS |
-| Gitleaks + Semgrep | Security scans PASS |
-| Trivy filesystem HIGH/CRITICAL | 0 (composer/npm/pip/pub + Dockerfiles) |
-| Trivy image `clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200` | **0** HIGH/CRITICAL (alpine 3.24.1); `--exit-code 1`, `ignore-unfixed=false`, no extra ignore |
+| Trivy image `clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200` | **0** HIGH/CRITICAL |
 | ClamAV scanner SPDX SBOM | artifact `clamav-scanner.sbom.spdx.json` id `10600364304` (6708 bytes) |
-| Runtime image scan core-api / ai-service | SUCCESS |
-
-Local skips on a host without Docker/` :9000` / `:3310` remain skip-if-absent.
-Those four live tests are **fatal** when `CLINIC_REQUIRE_OBJECT_STORE=1` /
-`CLINIC_REQUIRE_CLAMAV=1`. On GitHub run 35495868880 they passed; Core API
-job skips them because that job does not start MinIO/clamd (12 remaining
-skips are pre-existing Auth Redis/Reverb/Octane/two-connection opt-in).
-
-In-process coverage still ran: `clamd-stub.php` INSTREAM (clean / EICAR
-FOUND / timeout / malformed / short stream / long stream / partial write
-helper) and `InMemoryStoreObject` including ingress overwrite after seal
-and race workers via the shared persist directory.
 
 This chunk is **not** production-promotable: SF-001 remains MERGE_ONLY.
 
@@ -368,5 +377,10 @@ approval or READY_TO_MERGE.
   does not make the chunk production-promotable while SF-001 is MERGE_ONLY.
 - oasdiff cross-check remains `continue-on-error` (pre-existing); the
   rule-of-record is `npm run contracts:breaking`.
-- Local MinIO/ClamAV tests skip only when the provider TCP port is down and
-  `CLINIC_REQUIRE_*` is unset. A reachable but broken bucket/auth/policy fails.
+- Concurrent `copyExact` after both callers passed a dest-missing check is
+  mitigated by S3 `If-None-Match: *` when the client supports it; a provider
+  that ignores that condition could theoretically overwrite dest if ingress
+  changed between the two copies. Retry never overwrites a dest that already
+  exists. Unique `/c/` locators make foreign-key collision vanishingly unlikely.
+- A still-valid PUT can recreate ingress until `expires_at`; post-expiry
+  reconciliation deletes it. Immediate post-seal delete is best-effort.
