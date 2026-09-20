@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Start digest-pinned MinIO and clamd for the secure-file provider CI lane.
+# Path-filter trigger: scripts/ci/** re-runs this job on evidence-only HEADs.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

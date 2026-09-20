@@ -29,6 +29,8 @@ it.
 - **Base (GitHub `main`):** `c9b676baed44f08239580e1fe1324f4887908939`
 - **Independent-review remediation recorded:** 2026-09-20
 - **Reviewed-then-remediated HEAD (before this work):** `39632c0bbbfd3127a6c179a0657ff82f1bcf4d87`
+- **GitHub live-provider proof HEAD:** `c5ee8d63a4252269002e223e4186f50c2c3992d7`
+- **GitHub `pull-request` run:** [35495868880](https://github.com/mahmoudemad68/clinical_system/actions/runs/35495868880) **SUCCESS**
 
 ## Trust flow
 
@@ -292,42 +294,44 @@ Metric `clinic_secure_file_results_total` labels: `result`, `detected_type`,
 
 ## Commands actually executed
 
-Recorded 2026-09-20 on host PHP 8.3 with `pdo_pgsql` against `clinic_test`.
-GitHub PR CI on the final HEAD is the merge-review evidence; this file does
-not treat a local run as GitHub evidence.
+GitHub `pull-request` run
+[35495868880](https://github.com/mahmoudemad68/clinical_system/actions/runs/35495868880)
+on `c5ee8d63a4252269002e223e4186f50c2c3992d7` is the recorded live-provider
+evidence. Local host PHP is supplementary; it does not replace GitHub.
 
-| Command | Result |
+| Gate | Result |
 | --- | --- |
-| `./vendor/bin/pint --test` | `{"tool":"pint","result":"passed"}` |
-| `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | `{"tool":"phpstan","result":"passed","errors":0}` |
-| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | 0 violations, 0 uncovered, **2051** allowed |
-| focused Verification/file Pest (`tests/Feature/Verification`, `tests/Unit/Verification`, `ArchitectureBoundaryTest`, `BoundedDocumentInspectorTest`, `ClamdScanObjectTest`, `ProviderPortContractTest`, `S3StoreObjectContractTest`) | **94 passed**, 4 skipped, 98 tests (2943 assertions) |
-| `./vendor/bin/pest` (full Core suite) | **628 passed**, 17 skipped, 645 tests (11036 assertions) |
-| `npm run contracts:lint` | OpenAPI valid |
-| `npm run contracts:events` | **19** event schemas checked |
-| `npm run contracts:generate:ts` | generated client matches commit (`TS_CLIENT_FRESH`) |
-| `npm run contracts:breaking` vs `origin/main` | no breaking changes against `origin/main` |
-| `python3 scripts/ci/run-isr015-validators.py` | **PASS** |
+| Pint `--test` (Core API job) | PASS, 563 files |
+| PHPStan (Core API job) | `[OK] No errors` |
+| Deptrac `--fail-on-uncovered` (Core API job) | PASS (job succeeded) |
+| Core API Pest `./vendor/bin/pest` | **633 passed**, 12 skipped, 645 tests (11052 assertions) |
+| Secure-file providers Pest | **32 passed** (337 assertions), 0 skipped |
+| Live MinIO | bucket `clinic-local-private` created; anonymous access `private`; S3 contract tests passed |
+| Live clamd | `clamd is ready`; `it scans a live clamd when one is reachable` passed |
+| Provider-backed upload → scan → AVAILABLE | `it promotes a real provider-backed upload and ignores later ingress overwrite` passed |
+| OpenAPI lint | valid |
+| Event schemas | **19** checked |
+| TypeScript client | committed generated client matches (`TS_CLIENT_FRESH`) |
+| Breaking contracts vs `origin/main` | none (rule-of-record `npm run contracts:breaking`) |
+| ISR-015 | Supply-chain policy PASS |
+| Gitleaks + Semgrep | Security scans PASS |
+| Trivy filesystem HIGH/CRITICAL | 0 (composer/npm/pip/pub + Dockerfiles) |
+| Trivy image `clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200` | **0** HIGH/CRITICAL (alpine 3.24.1); `--exit-code 1`, `ignore-unfixed=false`, no extra ignore |
+| ClamAV scanner SPDX SBOM | artifact `clamav-scanner.sbom.spdx.json` id `10600364304` (6708 bytes) |
+| Runtime image scan core-api / ai-service | SUCCESS |
 
-Local skips on this host (Docker daemon unavailable; nothing on `:9000` / `:3310`):
-
-- `ClamdScanObjectTest::it scans a live clamd when one is reachable` — clamd not on `:3310`
-- `S3StoreObjectContractTest::Private objects are not anonymously readable` — MinIO not on `:9000`
-- `S3StoreObjectContractTest::Anonymous http access to the private bucket is denied` — MinIO not on `:9000`
-- `VerificationSecureFileProviderTest::it promotes a real provider-backed upload and ignores later ingress overwrite` — MinIO not on `:9000`
-
-Those four are **fatal** when `CLINIC_REQUIRE_OBJECT_STORE=1` /
-`CLINIC_REQUIRE_CLAMAV=1` (GitHub `secure-file-providers` job).
+Local skips on a host without Docker/` :9000` / `:3310` remain skip-if-absent.
+Those four live tests are **fatal** when `CLINIC_REQUIRE_OBJECT_STORE=1` /
+`CLINIC_REQUIRE_CLAMAV=1`. On GitHub run 35495868880 they passed; Core API
+job skips them because that job does not start MinIO/clamd (12 remaining
+skips are pre-existing Auth Redis/Reverb/Octane/two-connection opt-in).
 
 In-process coverage still ran: `clamd-stub.php` INSTREAM (clean / EICAR
 FOUND / timeout / malformed / short stream / long stream / partial write
 helper) and `InMemoryStoreObject` including ingress overwrite after seal
-and race workers via the shared persist directory. Pre-existing Auth
-Redis/Reverb/Octane/two-connection race skips remain opt-in (13 tests).
+and race workers via the shared persist directory.
 
-Gitleaks, Semgrep, Trivy filesystem/image, ClamAV image Trivy, and SBOM
-are GitHub PR `security` / `image-scan` / `secure-file-providers` jobs.
-GitHub CI evidence binds to the pushed HEAD of Draft PR #10.
+This chunk is **not** production-promotable: SF-001 remains MERGE_ONLY.
 
 Phase 02 as a whole is **not** PASS. This file does not claim production
 approval or READY_TO_MERGE.
@@ -344,7 +348,9 @@ approval or READY_TO_MERGE.
   verification cases or quarantine objects in this slice.
 - Staging remains unprovisioned; post-merge deploy stays fail-closed.
 - SF-001 remains MERGE_ONLY / `promotion_allowed=false`.
-- ClamAV image Trivy High/Critical findings, if any on the GitHub run,
-  follow ADR 0008 and block production promotion. They are not silently ignored.
-- Live MinIO + ClamAV GitHub results are recorded from the final HEAD CI run,
-  not from this host.
+- ClamAV image Trivy on run 35495868880 reported **0** HIGH/CRITICAL. That
+  does not make the chunk production-promotable while SF-001 is MERGE_ONLY.
+- oasdiff cross-check remains `continue-on-error` (pre-existing); the
+  rule-of-record is `npm run contracts:breaking`.
+- Local MinIO/ClamAV tests skip only when the provider TCP port is down and
+  `CLINIC_REQUIRE_*` is unset. A reachable but broken bucket/auth/policy fails.
