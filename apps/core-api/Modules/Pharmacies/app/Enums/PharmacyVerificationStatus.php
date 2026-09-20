@@ -29,6 +29,16 @@ enum PharmacyVerificationStatus: string
         };
     }
 
+    public function canTransitionTo(self $target): bool
+    {
+        return match ($this) {
+            self::Draft => $target === self::PendingReview,
+            self::PendingReview => in_array($target, [self::Approved, self::Rejected, self::ChangesRequested], true),
+            self::ChangesRequested, self::Rejected => $target === self::PendingReview,
+            self::Approved, self::Suspended => false,
+        };
+    }
+
     /**
      * @return list<string>
      */

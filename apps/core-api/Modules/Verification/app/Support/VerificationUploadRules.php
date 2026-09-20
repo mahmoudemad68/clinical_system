@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\Verification\Support;
 
 /**
- * Closed JSON for doctor verification document uploads.
+ * Closed JSON for own-case verification document uploads.
  */
 final class VerificationUploadRules
 {

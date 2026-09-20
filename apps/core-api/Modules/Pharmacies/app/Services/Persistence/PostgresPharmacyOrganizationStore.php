@@ -226,6 +226,39 @@ final class PostgresPharmacyOrganizationStore
     }
 
     /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateOrganization(Identifier $id, int $expectedVersion, array $attributes): int
+    {
+        return $this->connection->table('pharmacy_organizations')
+            ->where('id', $id->value)
+            ->where('version', $expectedVersion)
+            ->update($attributes);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateBranch(Identifier $id, int $expectedVersion, array $attributes): int
+    {
+        return $this->connection->table('pharmacy_branches')
+            ->where('id', $id->value)
+            ->where('version', $expectedVersion)
+            ->update($attributes);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateMembership(Identifier $id, int $expectedVersion, array $attributes): int
+    {
+        return $this->connection->table('pharmacy_memberships')
+            ->where('id', $id->value)
+            ->where('version', $expectedVersion)
+            ->update($attributes);
+    }
+
+    /**
      * Irreversible tombstone of protected organization/branch fields owned by
      * the subject. Membership user_id stays attached.
      *

@@ -13,6 +13,8 @@ use Modules\Doctors\Services\DoctorApplicantService;
 use Modules\Doctors\Support\DoctorApplicantProjection;
 use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Support\ActorContext;
+use Modules\Pharmacies\Services\PharmacyApplicantService;
+use Modules\Pharmacies\Support\PharmacyApplicantProjection;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\StoreObject;
@@ -26,8 +28,8 @@ use Modules\Platform\Exceptions\TransientProviderFailure;
 use Modules\Platform\Support\Identifier;
 use Modules\Platform\Support\ObjectUploadGrant;
 use Modules\Platform\Support\StoredObjectRef;
+use Modules\Verification\Enums\ApplicantType;
 use Modules\Verification\Enums\VerificationCaseStatus;
-use Modules\Verification\Enums\VerificationCaseType;
 use Modules\Verification\Enums\VerificationUploadState;
 use Modules\Verification\Events\VerificationUploadCompleted;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
@@ -39,7 +41,9 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Doctor verification upload intents. Platform storage stays generic.
+ * Own-case verification upload intents for doctor or pharmacy applicants.
+ * Platform storage stays generic. The public method names retain Doctor for
+ * compatibility; ownership is derived from the authenticated actor and case.
  *
  * @phpstan-type CreateResult array{
  *     projection: VerificationUploadProjection,
@@ -52,6 +56,7 @@ final class VerificationUploadService
         private readonly TransactionRunner $transactions,
         private readonly PostgresVerificationStore $store,
         private readonly DoctorApplicantService $doctors,
+        private readonly PharmacyApplicantService $pharmacies,
         private readonly VerificationPolicy $policy,
         private readonly Authorize $authorize,
         private readonly StoreObject $objects,
@@ -72,7 +77,7 @@ final class VerificationUploadService
      */
     public function createDoctorUpload(ActorContext $actor, array $input): array
     {
-        $this->assertDoctorActor($actor);
+        $this->assertApplicantActor($actor);
         $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN);
         if (! $decision->allowed) {
             throw new AuthorizationDenied;
@@ -86,9 +91,6 @@ final class VerificationUploadService
             ? $input['sha256']
             : null;
 
-        if (! $this->policy->isKnownRequirement(VerificationCaseType::DoctorVerification->value, $requirement)) {
-            throw ValidationException::withMessages(['requirement_code' => 'Requirement code is not allowed.']);
-        }
         if (! $this->policy->isAllowedMime($declaredMime)) {
             throw ValidationException::withMessages(['declared_media_type' => 'Declared media type is not allowed.']);
         }
@@ -97,14 +99,10 @@ final class VerificationUploadService
         }
 
         return $this->transactions->run(function (TransactionContext $tx) use ($actor, $caseId, $requirement, $expectedSize, $declaredMime, $expectedSha): array {
-            $doctor = $this->requireDoctor($actor->userId);
             $this->store->lockCase($caseId);
-            $case = $this->store->findCaseById($caseId, true);
-            if (! $case instanceof VerificationCaseRecord || ! $case->applicantId->equals($doctor->doctorId)) {
-                throw new AuthorizationDenied;
-            }
-            if ($case->status !== VerificationCaseStatus::Draft) {
-                throw new StateConflict;
+            $case = $this->requireOwnDraftCase($actor, $caseId);
+            if (! $this->policy->isKnownRequirement($case->caseType->value, $requirement)) {
+                throw ValidationException::withMessages(['requirement_code' => 'Requirement code is not allowed.']);
             }
 
             if ($this->store->countActiveUploads($case->id, $requirement) >= $this->policy->maxActiveUploadsPerRequirement()) {
@@ -187,22 +185,18 @@ final class VerificationUploadService
      */
     public function replayDoctorUploadCreate(ActorContext $actor, Identifier $uploadId): array
     {
-        $this->assertDoctorActor($actor);
+        $this->assertApplicantActor($actor);
         $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN);
         if (! $decision->allowed) {
             throw new AuthorizationDenied;
         }
 
-        $doctor = $this->requireDoctor($actor->userId);
         $upload = $this->store->findUploadById($uploadId, false);
         if (! $upload instanceof VerificationUploadIntentRecord) {
             throw new AuthorizationDenied;
         }
 
-        $case = $this->store->findCaseById($upload->caseId, false);
-        if (! $case instanceof VerificationCaseRecord || ! $case->applicantId->equals($doctor->doctorId)) {
-            throw new AuthorizationDenied;
-        }
+        $this->assertOwnsCase($actor, $upload->caseId);
 
         $projection = $this->project($upload);
         $data = $projection->toArray();
@@ -234,7 +228,7 @@ final class VerificationUploadService
 
     public function completeDoctorUpload(ActorContext $actor, Identifier $uploadId): VerificationUploadProjection
     {
-        $this->assertDoctorActor($actor);
+        $this->assertApplicantActor($actor);
         $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN);
         if (! $decision->allowed) {
             throw new AuthorizationDenied;
@@ -243,7 +237,6 @@ final class VerificationUploadService
         $failure = null;
         /** @var array{outcome: 'replay'|'seal'|'rejected', projection: VerificationUploadProjection, ingress: StoredObjectRef|null, canonical: StoredObjectRef|null} $prepared */
         $prepared = $this->transactions->run(function (TransactionContext $tx) use ($actor, $uploadId, &$failure): array {
-            $doctor = $this->requireDoctor($actor->userId);
             $this->store->lockUpload($uploadId);
             $upload = $this->store->findUploadById($uploadId, true);
             if (! $upload instanceof VerificationUploadIntentRecord) {
@@ -251,13 +244,7 @@ final class VerificationUploadService
             }
 
             $this->store->lockCase($upload->caseId);
-            $case = $this->store->findCaseById($upload->caseId, true);
-            if (! $case instanceof VerificationCaseRecord || ! $case->applicantId->equals($doctor->doctorId)) {
-                throw new AuthorizationDenied;
-            }
-            if ($case->status !== VerificationCaseStatus::Draft) {
-                throw new StateConflict;
-            }
+            $this->requireOwnDraftCase($actor, $upload->caseId);
 
             $now = $this->clock->now();
             if ($upload->state->isProcessable() || $upload->state === VerificationUploadState::Available) {
@@ -363,13 +350,7 @@ final class VerificationUploadService
             }
 
             $this->store->lockCase($upload->caseId);
-            $case = $this->store->findCaseById($upload->caseId, true);
-            if (! $case instanceof VerificationCaseRecord) {
-                throw new AuthorizationDenied;
-            }
-            if ($case->status !== VerificationCaseStatus::Draft) {
-                throw new StateConflict;
-            }
+            $this->requireOwnDraftCase($actor, $upload->caseId);
 
             if ($upload->state->isProcessable() || $upload->state === VerificationUploadState::Available) {
                 return $this->project($upload);
@@ -426,22 +407,18 @@ final class VerificationUploadService
 
     public function doctorUploadStatus(ActorContext $actor, Identifier $uploadId): VerificationUploadProjection
     {
-        $this->assertDoctorActor($actor);
+        $this->assertApplicantActor($actor);
         $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_STATUS_READ_OWN);
         if (! $decision->allowed) {
             throw new AuthorizationDenied;
         }
 
-        $doctor = $this->requireDoctor($actor->userId);
         $upload = $this->store->findUploadById($uploadId, false);
         if (! $upload instanceof VerificationUploadIntentRecord) {
             throw new AuthorizationDenied;
         }
 
-        $case = $this->store->findCaseById($upload->caseId, false);
-        if (! $case instanceof VerificationCaseRecord || ! $case->applicantId->equals($doctor->doctorId)) {
-            throw new AuthorizationDenied;
-        }
+        $this->assertOwnsCase($actor, $upload->caseId);
 
         return $this->project($upload);
     }
@@ -484,6 +461,53 @@ final class VerificationUploadService
         );
     }
 
+    private function requireOwnDraftCase(ActorContext $actor, Identifier $caseId): VerificationCaseRecord
+    {
+        $case = $this->assertOwnsCase($actor, $caseId, true);
+        if ($case->status !== VerificationCaseStatus::Draft) {
+            throw new StateConflict;
+        }
+
+        return $case;
+    }
+
+    private function assertOwnsCase(ActorContext $actor, Identifier $caseId, bool $lock = false): VerificationCaseRecord
+    {
+        $case = $this->store->findCaseById($caseId, $lock);
+        if (! $case instanceof VerificationCaseRecord) {
+            throw new AuthorizationDenied;
+        }
+
+        $expectedType = $this->applicantTypeFor($actor);
+        if ($case->applicantType !== $expectedType) {
+            throw new AuthorizationDenied;
+        }
+
+        $applicantId = $this->applicantIdFor($actor, $expectedType);
+        if (! $case->applicantId->equals($applicantId)) {
+            throw new AuthorizationDenied;
+        }
+
+        return $case;
+    }
+
+    private function applicantTypeFor(ActorContext $actor): ApplicantType
+    {
+        return match ($actor->accountType) {
+            AccountType::Doctor => ApplicantType::Doctor,
+            AccountType::Pharmacy => ApplicantType::Pharmacy,
+            default => throw new FeatureUnavailable,
+        };
+    }
+
+    private function applicantIdFor(ActorContext $actor, ApplicantType $type): Identifier
+    {
+        return match ($type) {
+            ApplicantType::Doctor => $this->requireDoctor($actor->userId)->doctorId,
+            ApplicantType::Pharmacy => $this->requirePharmacy($actor->userId)->organizationId,
+        };
+    }
+
     private function requireDoctor(Identifier $userId): DoctorApplicantProjection
     {
         $doctor = $this->doctors->findByUserId($userId, true);
@@ -494,9 +518,22 @@ final class VerificationUploadService
         return $doctor;
     }
 
-    private function assertDoctorActor(ActorContext $actor): void
+    private function requirePharmacy(Identifier $userId): PharmacyApplicantProjection
     {
-        if ($actor->accountType !== AccountType::Doctor || ! $actor->status->canAccessBusinessEndpoints()) {
+        $pharmacy = $this->pharmacies->findByUserId($userId, true);
+        if (! $pharmacy instanceof PharmacyApplicantProjection) {
+            throw new AuthorizationDenied;
+        }
+
+        return $pharmacy;
+    }
+
+    private function assertApplicantActor(ActorContext $actor): void
+    {
+        if (
+            ! in_array($actor->accountType, [AccountType::Doctor, AccountType::Pharmacy], true)
+            || ! $actor->status->canAccessBusinessEndpoints()
+        ) {
             throw new FeatureUnavailable;
         }
     }

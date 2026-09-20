@@ -1,8 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError, apiClient, toApiFailure } from '@/api/client';
+import { isDoctorVerificationCase } from '@/features/verification/doctorVerification';
 import { verificationKeys } from '@/session/keys';
 import { useSession } from '@/session/useSession';
 import type { DecisionPayload } from '@/features/verification/idempotency';
+
+function requireDoctorVerificationCase<T>(data: T): T & { case_type: 'doctor_verification' } {
+  if (!isDoctorVerificationCase(data as Parameters<typeof isDoctorVerificationCase>[0])) {
+    throw new ApiError({
+      code: 'NOT_FOUND',
+      message: 'The requested record is not available.',
+      status: 404,
+    });
+  }
+
+  return data as T & { case_type: 'doctor_verification' };
+}
 
 export function useVerificationCase(caseId: string | undefined) {
   const session = useSession();
@@ -37,7 +50,7 @@ export function useVerificationCase(caseId: string | undefined) {
         throw new ApiError(toApiFailure(error, response.status));
       }
 
-      return data.data;
+      return requireDoctorVerificationCase(data.data);
     },
   });
 }
@@ -60,7 +73,7 @@ export function useClaimVerificationCase(caseId: string) {
         throw new ApiError(toApiFailure(error, response.status));
       }
 
-      return data.data;
+      return requireDoctorVerificationCase(data.data);
     },
     onSuccess: async (detail) => {
       queryClient.setQueryData(verificationKeys.case(caseId), detail);
@@ -111,7 +124,7 @@ export function useDecideVerificationCase(caseId: string) {
         throw new ApiError(toApiFailure(error, response.status));
       }
 
-      return data.data;
+      return requireDoctorVerificationCase(data.data);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: verificationKeys.case(caseId) });

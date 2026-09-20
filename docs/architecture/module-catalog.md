@@ -15,10 +15,11 @@ Phase 02 chunk 02 implements the `Doctors` profile foundation. Phase 02 chunk 03
 implements the `Verification` case/document-metadata/decision foundation.
 Phase 02 chunk 04 implements doctor verification secure-file ingestion.
 Phase 02 chunk 07 implements the canonical `Pharmacies` organization, initial
-branch, and founding owner-membership foundation. Phase 10 later extends that
-same module with catalog, operating mode, payment methods, and business
-capability tenancy. Clinic locations and remaining Phase 02 slices remain
-later work.
+branch, and founding owner-membership foundation. Phase 02 chunk 08 integrates
+pharmacy verification into the existing Verification pipeline. Phase 10 later
+extends that same module with catalog, operating mode, payment methods, and
+business capability tenancy. Clinic locations and remaining Phase 02 slices
+remain later work.
 
 **Classification levels** are defined in
 [`docs/data-classification/classification-policy.md`](../data-classification/classification-policy.md):
@@ -202,23 +203,27 @@ public service in this slice (no HTTP catalogue endpoint).
 ## `Verification` — cases, documents, decisions, and secure upload intents
 
 **Built in:** 02 (chunk 03 foundation, chunk 04 secure verification files,
-chunk 05 Admin verification review backend, chunk 06 React Admin review UI). **Owner:** backend + security.
+chunk 05 Admin verification review backend, chunk 06 React Admin review UI,
+chunk 08 pharmacy verification backend). **Owner:** backend + security.
 **Public services:** `VerificationService`, `VerificationDocumentService`,
 `VerificationUploadService`, `VerificationUploadProcessor`.
 Platform owns generic `StoreObject` / `ScanObject` adapters. Verification owns
-doctor-verification upload workflow, requirement codes, case linkage, reviewer
-queue, claim, decision, and canonical document-access grants.
+doctor and pharmacy verification cases, upload workflow, requirement codes,
+case linkage, reviewer queue, claim, decision, and canonical document-access
+grants.
 `ProcessingTrustedDocumentEvidenceIssuer` is bound as a concrete class and is
 reachable only from the trusted processing path. The default
 `TrustedDocumentEvidenceIssuer` remains `DisabledTrustedDocumentEvidenceIssuer`.
 Admin HTTP controllers call `VerificationService` / `VerificationDocumentService`
 rather than writing these tables. Phase 02 chunk 06 adds the React Admin
 verification review workspace in `apps/admin-web` (queue, claim, explicit
-document access, decision). That UI consumes Admin HTTP only; it does not
-own Verification tables or recreate authorization rules.
+document access, decision). That UI consumes Admin HTTP only, still requests
+`case_type=doctor_verification` by default, and does not render pharmacy cases
+in this slice. It does not own Verification tables or recreate authorization
+rules.
 **Events:** `doctor.verification_submitted`, `doctor.verification_decided`,
+`pharmacy.verification_decided`,
 `verification.upload_completed` (`upload_id` only).
-`pharmacy.verification_decided` is not implemented in this slice.
 **Tables:** `verification_cases`, `verification_documents`,
 `verification_decisions`, `verification_upload_intents`.
 **Classification:** sensitive. Peak is professional-identity and verification
@@ -226,25 +231,35 @@ document metadata (hashes, MIME, opaque object identifiers, encrypted reviewer
 notes, classified internal storage locators that never leave the module).
 Document bytes live in private S3-compatible quarantine until the trusted
 processor promotes them. HTTP and event payloads never include National ID,
-syndicate identifiers, HMAC, key versions, object storage keys, reviewer notes,
+syndicate identifiers, legal registration, legal name, address, phone,
+coordinates, HMAC, key versions, object storage keys, reviewer notes,
 or clinical data.
 **Policy catalogues:** document requirements and rejection reasons are
-`ENGINEERING_DEFAULT` config (`professional_id`; `approved`,
-`evidence_incomplete`, `identity_mismatch`, `documents_illegible`). Upload
-limits are also `ENGINEERING_DEFAULT` (20 MiB, PDF/JPEG/PNG, 900s grant expiry,
-max 3 active uploads per requirement). Unknown case types, requirement codes,
-decisions, and reason codes deny. This is not an approved product/security
-catalogue.
+`ENGINEERING_DEFAULT` config (`professional_id` for `doctor_verification`;
+`organization_registration_evidence` for `pharmacy_verification`; `approved`,
+`evidence_incomplete`, `identity_mismatch`, `documents_illegible`).
+`organization_registration_evidence` is a technical pipeline requirement, not
+government verification, pharmacy licensing sufficiency, commercial-registry
+validity, or legal approval. Upload limits are also `ENGINEERING_DEFAULT`
+(20 MiB, PDF/JPEG/PNG, 900s grant expiry, max 3 active uploads per requirement).
+Unknown case types, requirement codes, decisions, and reason codes deny. This
+is not an approved product/security catalogue.
 **Prohibited:** querying Doctors/Patients/Pharmacies/clinical tables directly
 (Doctors is reached only through `DoctorApplicantService` and
-`DoctorReviewerService`); exposing object keys
+`DoctorReviewerService`; Pharmacies is reached only through
+`PharmacyApplicantService` and `PharmacyReviewerService`); exposing object keys
 or document bodies on public URLs, events, logs, or DTOs; letting Doctors or
 Pharmacies own the verification pipeline; granting clinical capabilities or
 auto-listing a doctor on approval; public APIs that mark documents scanned or
 `AVAILABLE`. Admin work-queue UI calls `VerificationService` rather than writing
 these tables. Admin review HTTP is a thin facade over those services. Submit HTTP is compact (`status`, `doctor_id`, `case_id`,
 `case_status`, `case_version`, `profile_version`, `profile_verification_status`);
-`GET /doctors/me/verification-status` is the canonical projection.
+`GET /doctors/me/verification-status` is the canonical doctor projection.
+Pharmacy open/submit HTTP is compact (`status`, `organization_id`, `case_id`,
+`case_status`, `case_version`, `organization_version`, and on submit
+`organization_verification_status`); `GET /pharmacy-organizations/me/verification-status`
+is the canonical pharmacy projection. Default Admin queue filter remains
+`doctor_verification`; `pharmacy_verification` is an explicit filter.
 Production HTTP cannot mint `TrustedDocumentEvidence`.
 `ProcessingTrustedDocumentEvidenceIssuer` is production-wirable only through
 `VerificationUploadProcessor`. Submitted `verification_documents` are frozen after submission. Reviewer document evidence is assignment-gated.
@@ -338,9 +353,9 @@ anonymous object access.
 10 (operating mode, payment methods, and business capability tenancy).
 **Owner:** pharmacy domain.
 **Public services:** `RegisterPharmacyOrganization`, `GetOwnPharmacyOrganization`,
-`PharmacyApplicantService` (narrow Verification-facing applicant projection;
-find-only in chunk 07, no status transition and no National-ID-equivalent
-fields), `PharmacyReviewerService` (narrow reviewer-facing public name,
+`PharmacyApplicantService` (narrow Verification-facing applicant projection and
+verification-driven organization/branch/membership transitions; no
+National-ID-equivalent fields), `PharmacyReviewerService` (narrow reviewer-facing public name,
 verification/lifecycle status, and initial-branch public identity; no legal
 registration, legal name, address, phone, or coordinates),
 `PharmacySubjectPrivacy` (Identity erasure/export adapter).
@@ -348,8 +363,9 @@ Phase 10 later adds `CreateBranch`, `AssignEmployeeRole`, `GetBranch`, and
 branch-authorization/operating-mode services on this same module. There is no
 separate `PharmacyOrganizations` module.
 **Events:** `pharmacy.organization_created` (personal identifier-only).
-`pharmacy.verification_decided`, `pharmacy.branch_created`, and
-`pharmacy.role_assigned` are not implemented in this slice.
+`pharmacy.verification_decided` is owned by `Verification`.
+`pharmacy.branch_created` and `pharmacy.role_assigned` are not implemented
+in this slice.
 **Tables:** `pharmacy_organizations`, `pharmacy_branches`,
 `pharmacy_memberships`. Phase 10 later adds `branch_payment_methods` and
 branch-role capability rows to this module; it does not create a second
@@ -488,11 +504,11 @@ review UI) and 20. **Owner:** backend.
 verification queue, case detail, claim, decision, and document-access grant).
 Controllers map transport input/output only and call `VerificationService` and
 `VerificationDocumentService`. Safe professional fields come from
-`DoctorReviewerService` through Verification; Admin does not query Doctors or
-Verification persistence.
+`DoctorReviewerService` and `PharmacyReviewerService` through Verification;
+Admin does not query Doctors, Pharmacies, or Verification persistence.
 **Events:** none. Admin does not emit `admin.verification_decided`. The
-authoritative business event remains Verification-owned
-`doctor.verification_decided`.
+authoritative business events remain Verification-owned
+`doctor.verification_decided` and `pharmacy.verification_decided`.
 **Tables:** none in this slice. Queue reads and decisions are owned by
 Verification.
 **Classification:** internal.

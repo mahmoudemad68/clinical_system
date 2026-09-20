@@ -8,6 +8,8 @@ enum ApplicantType: string
 {
     case Doctor = 'doctor';
 
+    case Pharmacy = 'pharmacy';
+
     /**
      * @return list<string>
      */

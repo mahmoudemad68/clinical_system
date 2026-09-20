@@ -12,6 +12,7 @@ use Modules\Platform\Http\Controllers\DiagnosticsController;
 use Modules\Platform\Http\Controllers\PlatformHealthController;
 use Modules\Verification\Http\Controllers\DoctorVerificationController;
 use Modules\Verification\Http\Controllers\DoctorVerificationUploadController;
+use Modules\Verification\Http\Controllers\PharmacyVerificationController;
 use Modules\Verification\Http\Controllers\ReviewerDocumentDownloadController;
 
 /*
@@ -139,6 +140,17 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/pharmacy-organizations/me', [PharmacyOrganizationController::class, 'me'])
             ->name('api.v1.pharmacy-organizations.me');
+
+        Route::middleware('platform.idempotency')
+            ->post('/pharmacy-organizations/me/verification-cases', [PharmacyVerificationController::class, 'open'])
+            ->name('api.v1.pharmacy-organizations.me.verification-cases');
+
+        Route::middleware('platform.idempotency')
+            ->post('/pharmacy-organizations/me/verification-submissions', [PharmacyVerificationController::class, 'submit'])
+            ->name('api.v1.pharmacy-organizations.me.verification-submissions');
+
+        Route::get('/pharmacy-organizations/me/verification-status', [PharmacyVerificationController::class, 'status'])
+            ->name('api.v1.pharmacy-organizations.me.verification-status');
 
         Route::middleware('platform.idempotency')
             ->post('/doctors/me/verification-submissions', [DoctorVerificationController::class, 'submit'])

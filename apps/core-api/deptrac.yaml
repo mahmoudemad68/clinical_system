@@ -180,6 +180,7 @@ parameters:
       - Access
       - Audit
       - Doctors
+      - Pharmacies
       - DomainSafeVendor
       - Framework
       - Providers

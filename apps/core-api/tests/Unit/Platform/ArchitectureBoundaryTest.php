@@ -306,6 +306,18 @@ final class ArchitectureBoundaryTest extends TestCase
             '/DoctorVerificationController::class, [\'"]status[\'"]/',
             $routes,
         );
+        $this->assertMatchesRegularExpression(
+            '/PharmacyVerificationController::class, [\'"]open[\'"]/',
+            $routes,
+        );
+        $this->assertMatchesRegularExpression(
+            '/PharmacyVerificationController::class, [\'"]submit[\'"]/',
+            $routes,
+        );
+        $this->assertMatchesRegularExpression(
+            '/PharmacyVerificationController::class, [\'"]status[\'"]/',
+            $routes,
+        );
         $this->assertStringContainsString('admin/verification-cases', $routes);
         $this->assertMatchesRegularExpression(
             '/AdminVerificationController::class, [\'"]index[\'"]/',
@@ -331,7 +343,7 @@ final class ArchitectureBoundaryTest extends TestCase
                 $file.' Verification must not query Doctors, Patients, or Pharmacies tables.',
             );
             $this->assertDoesNotMatchRegularExpression(
-                '/use Modules\\\\(Patients|Auth|Clinical|Pharmacies|Clinics)\\\\/',
+                '/use Modules\\\\(Patients|Auth|Clinical|Clinics)\\\\/',
                 $contents,
                 $file.' Verification must not import Patients, Auth, or clinical persistence types.',
             );
@@ -339,6 +351,11 @@ final class ArchitectureBoundaryTest extends TestCase
                 '/use Modules\\\\Doctors\\\\Services\\\\Persistence\\\\/',
                 $contents,
                 $file.' Verification must reach Doctors only through public services.',
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/use Modules\\\\Pharmacies\\\\Services\\\\Persistence\\\\/',
+                $contents,
+                $file.' Verification must reach Pharmacies only through public services.',
             );
         }
     }
@@ -373,6 +390,7 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringContainsString('`VerificationService`', $catalog);
         $this->assertStringContainsString('`VerificationDocumentService`', $catalog);
         $this->assertStringContainsString('`DoctorReviewerService`', $catalog);
+        $this->assertStringContainsString('`PharmacyReviewerService`', $catalog);
         $this->assertStringContainsString('does not emit `admin.verification_decided`', $catalog);
         $this->assertStringContainsString('Phase 02 chunk 06 delivers the React Admin verification review workspace', $catalog);
         $this->assertStringContainsString('apps/admin-web', $catalog);
@@ -533,10 +551,13 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringContainsString('`verification_upload_intents`', $contents);
         $this->assertStringContainsString('`doctor.verification_submitted`', $contents);
         $this->assertStringContainsString('`doctor.verification_decided`', $contents);
+        $this->assertStringContainsString('`pharmacy.verification_decided`', $contents);
         $this->assertStringContainsString('`verification.upload_completed`', $contents);
         $this->assertStringContainsString('ENGINEERING_DEFAULT', $contents);
         $this->assertStringContainsString('DoctorApplicantService', $contents);
         $this->assertStringContainsString('DoctorReviewerService', $contents);
+        $this->assertStringContainsString('PharmacyApplicantService', $contents);
+        $this->assertStringContainsString('PharmacyReviewerService', $contents);
         $this->assertStringContainsString('Submit HTTP is compact', $contents);
         $this->assertStringContainsString('DisabledTrustedDocumentEvidenceIssuer', $contents);
         $this->assertStringContainsString('ProcessingTrustedDocumentEvidenceIssuer', $contents);
