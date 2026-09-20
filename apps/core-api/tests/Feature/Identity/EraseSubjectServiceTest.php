@@ -300,6 +300,9 @@ it('enumerates an explicit technical action for every Phase-01 holding', functio
         'patient_demographic_revisions',
         'doctor_profiles',
         'specialties',
+        'pharmacy_organizations',
+        'pharmacy_branches',
+        'pharmacy_memberships',
     );
 
     $audit = collect(Phase01SubjectHoldings::plan())->firstWhere('holding', 'audit_events');

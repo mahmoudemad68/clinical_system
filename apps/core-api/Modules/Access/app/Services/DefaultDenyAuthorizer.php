@@ -15,7 +15,7 @@ use Modules\Platform\Support\Identifier;
 /**
  * Phase 01 policy: self-service identity/session capabilities only.
  *
- * Clinical, pharmacy, and catalog actions are unknown and therefore denied.
+ * Clinical, pharmacy-stock, and catalog actions are unknown and therefore denied.
  * account_type is never read from the client; ActorContext is server-built.
  * Contextual grants never confer operator privileges and must match resource.
  */
@@ -91,6 +91,8 @@ final class DefaultDenyAuthorizer implements Authorize
             || $action === Capabilities::PATIENTS_PROFILE_UPDATE_OWN
             || $action === Capabilities::DOCTORS_ONBOARDING
             || $action === Capabilities::DOCTORS_PROFILE_READ_OWN
+            || $action === Capabilities::PHARMACIES_ONBOARDING
+            || $action === Capabilities::PHARMACIES_ORGANIZATION_READ_OWN
             || $action === Capabilities::VERIFICATION_SUBMIT_OWN
             || $action === Capabilities::VERIFICATION_STATUS_READ_OWN;
     }

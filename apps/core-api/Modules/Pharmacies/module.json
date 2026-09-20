@@ -1,0 +1,11 @@
+{
+    "name": "Pharmacies",
+    "alias": "pharmacies",
+    "description": "Clinic Pharmacies module",
+    "keywords": [],
+    "priority": 53,
+    "providers": [
+        "Modules\\Pharmacies\\Providers\\PharmaciesServiceProvider"
+    ],
+    "files": []
+}

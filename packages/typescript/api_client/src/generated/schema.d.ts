@@ -651,6 +651,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pharmacy-organizations/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create or resume the authenticated pharmacy actor's organization draft
+         * @description Authenticated, phone-verified pharmacy actor submits allowlisted
+         *     organization and initial-branch fields plus a legal registration
+         *     identifier. The server canonicalizes the identifier and computes a
+         *     blind index. Address and phone are stored with Identity protection
+         *     services. The command creates the organization, initial branch, and
+         *     founding owner membership in one transaction. The successful body is
+         *     compact (`status`, `organization_id`, `branch_id`, `membership_id`,
+         *     `version`); `GET /api/v1/pharmacy-organizations/me` is the canonical
+         *     projection. Collisions return the generic `manual_review_required`
+         *     outcome without disclosing another organization's identity or
+         *     protected metadata.
+         *
+         *     Creating an organization does not grant inventory, purchasing, POS,
+         *     catalog-administration, clinical, or public-activation capability.
+         *     Retries with the same Idempotency-Key replay the compact business
+         *     result. The request cannot set ownership, verification state,
+         *     lifecycle status, membership role/status, version, or encryption
+         *     metadata. Actor eligibility is server-derived from Identity/Access
+         *     context. V1 country is Egypt (`EG`); multi-country requests are
+         *     rejected.
+         */
+        post: operations["onboardPharmacyOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy-organizations/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current user's pharmacy organization projection
+         * @description Server-derived from the authenticated user's founding owner
+         *     membership. Never returns ciphertext, HMAC, key versions, legal
+         *     registration, legal name, address, phone, coordinates, or another
+         *     organization's data. There is no GET-by-id pharmacy organization API
+         *     and no public lookup in this slice. Verification case status is a
+         *     later endpoint.
+         */
+        get: operations["getOwnPharmacyOrganization"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/doctors/me/verification-submissions": {
         parameters: {
             query?: never;
@@ -1382,6 +1446,68 @@ export interface components {
             suspended_at: string | null;
             created_at: components["schemas"]["Instant"];
             updated_at: components["schemas"]["Instant"];
+        };
+        PharmacyOnboardingRequest: {
+            /** @description Write-only. Envelope-encrypted. Never echoed. */
+            legal_name: string;
+            public_name: string;
+            /**
+             * @description Write-only. Canonicalized server-side (trim, collapse whitespace,
+             *     uppercase). Stored with Identity protection services and a
+             *     purpose-bound blind HMAC. No official checksum is applied. Never
+             *     echoed.
+             */
+            legal_registration_identifier: string;
+            branch_public_name: string;
+            /** @description Write-only. Envelope-encrypted. Never echoed. */
+            address: string;
+            country_code: components["schemas"]["CountryCode"];
+            /**
+             * Format: double
+             * @description WGS-84 latitude. V1 also requires the Egypt service area.
+             */
+            latitude: number;
+            /**
+             * Format: double
+             * @description WGS-84 longitude. Stored as PostGIS geography(Point, 4326).
+             */
+            longitude: number;
+            /** @description Write-only Egyptian mobile number. Envelope-encrypted. Never echoed. */
+            phone: string;
+        };
+        PharmacyOnboardingResult: {
+            /** @enum {string} */
+            status: "organization_ready" | "manual_review_required";
+            organization_id?: components["schemas"]["Uuid"];
+            branch_id?: components["schemas"]["Uuid"];
+            membership_id?: components["schemas"]["Uuid"];
+            version?: number;
+        };
+        PharmacyOrganization: {
+            organization_id: components["schemas"]["Uuid"];
+            public_name: string;
+            /** @enum {string} */
+            verification_status: "draft" | "pending_review" | "changes_requested" | "approved" | "rejected" | "suspended";
+            /** @enum {string} */
+            status: "draft" | "pending" | "active" | "suspended" | "closed";
+            version: number;
+            created_at: components["schemas"]["Instant"];
+            updated_at: components["schemas"]["Instant"];
+            initial_branch: {
+                branch_id: components["schemas"]["Uuid"];
+                public_name: string;
+                country_code: components["schemas"]["CountryCode"];
+                /** @enum {string} */
+                status: "draft" | "pending" | "active" | "suspended" | "closed";
+                version: number;
+            };
+            membership: {
+                membership_id: components["schemas"]["Uuid"];
+                /** @enum {string} */
+                role: "owner";
+                /** @enum {string} */
+                status: "pending" | "active" | "suspended" | "revoked";
+            };
         };
         DoctorVerificationSubmissionRequest: {
             /** @description Optimistic verification-case version. Not a reviewer identity. */
@@ -2809,6 +2935,99 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Envelope"] & {
                         data?: components["schemas"]["DoctorProfile"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    onboardPharmacyOrganization: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PharmacyOnboardingRequest"];
+            };
+        };
+        responses: {
+            /**
+             * @description Idempotent replay of a compact own-organization result, retry of
+             *     an already-linked caller, or generic `manual_review_required` for
+             *     colliding legal registration identifiers. Pending-phone callers
+             *     remain 404. Non-pharmacy account types remain 404.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyOnboardingResult"];
+                    };
+                };
+            };
+            /** @description A new draft organization, branch, and owner membership were created. Body is compact. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyOnboardingResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getOwnPharmacyOrganization: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Own pharmacy organization projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyOrganization"];
                     };
                 };
             };

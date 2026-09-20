@@ -34,7 +34,8 @@ Reconciled to committed Core migrations under
 `auth_refresh_consumptions`, `recovery_requests`, `patient_profiles`,
 `patient_demographic_revisions`, `specialties`, `doctor_profiles`,
 `verification_cases`, `verification_documents`, `verification_decisions`,
-`verification_upload_intents`.
+`verification_upload_intents`, `pharmacy_organizations`, `pharmacy_branches`,
+`pharmacy_memberships`.
 
 **Laravel catalog (not created by an application `Schema::create`):**
 `migrations`.
@@ -826,6 +827,95 @@ creation does not grant clinical capabilities.
 | `public_status` | internal | `hidden` / `listed` (listed requires approved) | app | as row | at rest | Mahmoud | n/a |
 | `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
 | `approved_at`, `suspended_at` | internal | Lifecycle instants | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `pharmacy_organizations`
+
+Phase 02 chunk 07 pharmacy organization foundation
+(`2026_09_20_180000_create_pharmacy_organization_tables.php`). One
+authoritative organization per legal-registration blind index. Phase 10 later
+extends this same table; it does not create a second aggregate.
+
+**Writer.** Pharmacies module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked.
+
+**PII / sensitive.** Legal name and legal registration identifier are
+envelope-encrypted. Lookup is HMAC only. HTTP projections never return
+ciphertext, HMAC, key versions, legal name, or the registration identifier.
+`public_name` is stored in plaintext as specified.
+
+**Retention / deletion.** Linked-organization subject erasure is performed by
+the Pharmacies `PharmacySubjectPrivacy` adapter (Identity never queries these
+tables). It tombstones crypto fields and the public name. Legal retention:
+**OPEN_LEGAL_DECISION**.
+
+A newly created row is `verification_status=draft`, `status=draft`. Active
+status requires `approved`. Creation does not grant inventory, POS, catalog,
+clinical, or public-activation capability.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 organization identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `legal_name_ciphertext` | sensitive | Protected legal name | app (audited decrypt) | until erasure tombstone | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `legal_name_key_version` | internal | Envelope key version | app | as row | at rest | Mahmoud | n/a |
+| `public_name` | personal | Public organization name shown to the owner | app | until erasure tombstone | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `registration_ciphertext` | sensitive | Protected legal registration identifier | app (audited decrypt) | until erasure tombstone | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `registration_lookup_hmac` | sensitive | Blind match; unique | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `registration_key_version` | internal | Envelope/HMAC key version | app | as row | at rest | Mahmoud | n/a |
+| `verification_status` | internal | `draft` / `pending_review` / `changes_requested` / `approved` / `rejected` / `suspended` | app | as row | at rest | Mahmoud | n/a |
+| `status` | internal | `draft` / `pending` / `active` / `suspended` / `closed` (active requires approved) | app | as row | at rest | Mahmoud | n/a |
+| `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `pharmacy_branches`
+
+Phase 02 chunk 07 initial branch created with the organization. PostGIS
+`geography(Point, 4326)` with a GiST index. Coordinates are validated to legal
+latitude/longitude at the database. V1 Egypt service-area check is application
+`ENGINEERING_DEFAULT`. Schema is country-ready (`country_code` ISO-2).
+
+**Writer.** Pharmacies module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked.
+
+**PII / sensitive.** Address and phone are envelope-encrypted. HTTP own
+projections omit address, phone, and coordinates.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 branch identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `organization_id` | internal | FK to `pharmacy_organizations` | app | as row | at rest | Mahmoud | n/a |
+| `public_name` | personal | Public branch name shown to the owner | app | until erasure tombstone | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `address_ciphertext` | sensitive | Protected physical address | app (audited decrypt) | until erasure tombstone | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `address_key_version` | internal | Envelope key version | app | as row | at rest | Mahmoud | n/a |
+| `country_code` | internal | ISO 3166-1 alpha-2; V1 application requires EG | app | as row | at rest | Mahmoud | n/a |
+| `geography_point` | personal | PostGIS geography(Point, 4326) | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `phone_ciphertext` | sensitive | Protected branch contact | app (audited decrypt) | until erasure tombstone | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `phone_key_version` | internal | Envelope key version | app | as row | at rest | Mahmoud | n/a |
+| `status` | internal | `draft` / `pending` / `active` / `suspended` / `closed` | app | as row | at rest | Mahmoud | n/a |
+| `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `pharmacy_memberships`
+
+Phase 02 chunk 07 founding owner membership, created atomically with the
+organization and initial branch. Scope, role, and status are server-derived.
+Only `owner` is written in this slice; `branch_operator` is reserved in the
+check constraint. This is not the Phase-10 business capability matrix.
+
+**Writer.** Pharmacies module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 membership identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `organization_id` | internal | FK to `pharmacy_organizations` | app | as row | at rest | Mahmoud | n/a |
+| `user_id` | personal | Founding pharmacy actor | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `branch_id` | internal | Null for org-level owner; FK when branch-scoped | app | as row | at rest | Mahmoud | n/a |
+| `role` | internal | `owner` / `branch_operator` | app | as row | at rest | Mahmoud | n/a |
+| `status` | internal | `pending` / `active` / `suspended` / `revoked` | app | as row | at rest | Mahmoud | n/a |
+| `invited_at`, `accepted_at`, `revoked_at` | internal | Membership lifecycle instants | app | as row | at rest | Mahmoud | n/a |
+| `inviter_user_id`, `revoker_user_id` | personal | Nullable actor references | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
 | `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
 ### `verification_cases`

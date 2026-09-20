@@ -30,6 +30,7 @@ NATIONAL_ID_MODULES = {
     "Identity": "sensitive",
     "Patients": "sensitive",
     "Doctors": "sensitive",
+    "Pharmacies": "sensitive",
 }
 VERIFICATION_EVENT_SUBMITTED = (
     REPO_ROOT / "packages" / "contracts" / "events" / "doctor" / "verification_submitted.v1.schema.json"
@@ -110,6 +111,15 @@ def assert_catalog(path: Path) -> None:
         fail("Doctors catalog must keep doctor.profile_created as the safe event projection")
     if "personal identifier-only" not in doctors_section:
         fail("Doctors catalog must keep doctor.profile_created at personal, not peak sensitive")
+    pharmacies_section = text.split("## `Pharmacies`")[1].split("## `")[0]
+    if "pharmacy.organization_created" not in pharmacies_section:
+        fail("Pharmacies catalog must keep pharmacy.organization_created as the safe event projection")
+    if "personal identifier-only" not in pharmacies_section:
+        fail("Pharmacies catalog must keep pharmacy.organization_created at personal, not peak sensitive")
+    if "Phase 02 chunk 07" not in pharmacies_section:
+        fail("Pharmacies catalog must record the Phase 02 identity foundation")
+    if "Phase 10 later extends" not in pharmacies_section:
+        fail("Pharmacies catalog must record that Phase 10 extends the same module")
     print("module-catalog-summary-detail: PASS")
 
 
@@ -130,6 +140,29 @@ def assert_inventory_and_events() -> None:
         fail("doctor.profile_created event classification must remain personal")
     if '"classification": "sensitive"' in event:
         fail("do not raise doctor.profile_created to sensitive")
+    pharmacy_event = (
+        REPO_ROOT / "packages" / "contracts" / "events" / "pharmacy" / "organization_created.v1.schema.json"
+    ).read_text(encoding="utf-8")
+    if "### `pharmacy_organizations`" not in inventory:
+        fail("data-inventory missing pharmacy_organizations")
+    orgs = inventory.split("### `pharmacy_organizations`")[1].split("### `")[0]
+    if "| `registration_ciphertext` | sensitive |" not in orgs:
+        fail("pharmacy_organizations.registration_ciphertext must remain sensitive")
+    if "| `legal_name_ciphertext` | sensitive |" not in orgs:
+        fail("pharmacy_organizations.legal_name_ciphertext must remain sensitive")
+    branches = inventory.split("### `pharmacy_branches`")[1].split("### `")[0]
+    if "| `address_ciphertext` | sensitive |" not in branches:
+        fail("pharmacy_branches.address_ciphertext must remain sensitive")
+    if "| `phone_ciphertext` | sensitive |" not in branches:
+        fail("pharmacy_branches.phone_ciphertext must remain sensitive")
+    if "### `pharmacy_memberships`" not in inventory:
+        fail("data-inventory missing pharmacy_memberships")
+    if '"classification": "personal"' not in pharmacy_event:
+        fail("pharmacy.organization_created event classification must remain personal")
+    if '"classification": "sensitive"' in pharmacy_event:
+        fail("do not raise pharmacy.organization_created to sensitive")
+    if '"legal_registration"' in pharmacy_event or '"legal_name"' in pharmacy_event or '"address"' in pharmacy_event:
+        fail("pharmacy.organization_created must not declare protected organization fields")
     if "### `verification_cases`" not in inventory:
         fail("data-inventory missing verification_cases")
     cases = inventory.split("### `verification_cases`")[1].split("### `")[0]

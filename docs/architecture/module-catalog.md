@@ -14,7 +14,11 @@ event (ADR 0001, ADR 0004).
 Phase 02 chunk 02 implements the `Doctors` profile foundation. Phase 02 chunk 03
 implements the `Verification` case/document-metadata/decision foundation.
 Phase 02 chunk 04 implements doctor verification secure-file ingestion.
-Pharmacy, clinic, location, and remaining Phase 02 slices remain later work.
+Phase 02 chunk 07 implements the canonical `Pharmacies` organization, initial
+branch, and founding owner-membership foundation. Phase 10 later extends that
+same module with catalog, operating mode, payment methods, and business
+capability tenancy. Clinic locations and remaining Phase 02 slices remain
+later work.
 
 **Classification levels** are defined in
 [`docs/data-classification/classification-policy.md`](../data-classification/classification-policy.md):
@@ -37,7 +41,7 @@ Pharmacy, clinic, location, and remaining Phase 02 slices remain later work.
 | `Clinical` | 05 | Clinical domain | sensitive |
 | `Prescriptions` | 06 | Clinical domain | sensitive |
 | `Labs` | 07 | Clinical domain | sensitive |
-| `Pharmacies` | 10 | Pharmacy domain | personal |
+| `Pharmacies` | 02, 10 | Pharmacy domain | sensitive |
 | `MedicationCatalog` | 10 | Pharmacy + clinical | public |
 | `Inventory` | 11–12 | Pharmacy domain | internal |
 | `Purchasing` | 12 | Pharmacy domain | internal |
@@ -330,15 +334,42 @@ anonymous object access.
 
 ## `Pharmacies` — organizations and branches
 
-**Built in:** 10. **Owner:** pharmacy domain.
-**Public ports:** `CreateOrganization`, `CreateBranch`, `AssignEmployeeRole`,
-`GetBranch`.
-**Events:** `pharmacy.branch_created`, `pharmacy.role_assigned`.
+**Built in:** 02 (chunk 07: organization/branch/owner-membership foundation);
+10 (operating mode, payment methods, and business capability tenancy).
+**Owner:** pharmacy domain.
+**Public services:** `RegisterPharmacyOrganization`, `GetOwnPharmacyOrganization`,
+`PharmacyApplicantService` (narrow Verification-facing applicant projection;
+find-only in chunk 07, no status transition and no National-ID-equivalent
+fields), `PharmacyReviewerService` (narrow reviewer-facing public name,
+verification/lifecycle status, and initial-branch public identity; no legal
+registration, legal name, address, phone, or coordinates),
+`PharmacySubjectPrivacy` (Identity erasure/export adapter).
+Phase 10 later adds `CreateBranch`, `AssignEmployeeRole`, `GetBranch`, and
+branch-authorization/operating-mode services on this same module. There is no
+separate `PharmacyOrganizations` module.
+**Events:** `pharmacy.organization_created` (personal identifier-only).
+`pharmacy.verification_decided`, `pharmacy.branch_created`, and
+`pharmacy.role_assigned` are not implemented in this slice.
 **Tables:** `pharmacy_organizations`, `pharmacy_branches`,
-`branch_payment_methods`.
-**Classification:** personal.
-**Prohibited:** cross-tenant reads. Every query is branch- or
-organization-scoped by a server-owned predicate.
+`pharmacy_memberships`. Phase 10 later adds `branch_payment_methods` and
+branch-role capability rows to this module; it does not create a second
+organization aggregate.
+**Classification:** sensitive. Peak is the protected legal registration
+identifier and legal-name ciphertext stored with Identity protection services.
+`pharmacy.organization_created` remains a personal identifier-only projection.
+HTTP projections never return legal registration, legal name, address, phone,
+coordinates, ciphertext, HMAC, or key versions.
+**Prohibited:** cross-tenant reads. Every query is organization- or
+membership-scoped by a server-owned predicate. Granting inventory, purchasing,
+POS, catalog-administration, clinical, or public-activation capability from
+draft/pending/unverified onboarding. Owning verification cases, documents, or
+decisions (`Verification` owns that pipeline). Direct access to Identity/Access
+tables. A generic role designer or the Phase-10 OWNER/PHARMACIST/CASHIER
+capability matrix in Phase 02. Onboarding HTTP is compact (`status`,
+`organization_id`, `branch_id`, `membership_id`, `version`);
+`GET /pharmacy-organizations/me` is the canonical own-organization projection.
+Collisions return generic `manual_review_required`. Phase 02 chunk 07
+establishes the canonical identity Phase 10 later extends.
 
 ## `MedicationCatalog`
 

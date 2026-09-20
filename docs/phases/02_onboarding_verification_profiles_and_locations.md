@@ -295,6 +295,7 @@ POST   /doctors/me/verification-submissions
 GET    /doctors/me/verification-status
 
 POST   /pharmacy-organizations/onboarding
+GET    /pharmacy-organizations/me
 POST   /pharmacy-organizations/{id}/branches
 GET    /pharmacy-organizations/{id}/verification-status
 
@@ -314,6 +315,7 @@ DELETE /clinic-locations/{id}/memberships/{membership_id}
 - Verification decision and onboarding submission require idempotency keys and optimistic case/profile version.
 - Upload requests specify requirement code, expected size, and declared media type; server returns an opaque upload ID and signed target, never an object key.
 - Patient exact-match lookup is not a public/general endpoint. It is an internal `PatientRegistryService` method invoked only by approved registration/walk-in services.
+- `GET /pharmacy-organizations/me` is the Phase 02 chunk 07 own-organization projection. Additional-branch `POST /pharmacy-organizations/{id}/branches` and `GET /pharmacy-organizations/{id}/verification-status` remain later Phase 02 work. There is no public pharmacy lookup.
 
 ## Events and jobs
 
@@ -322,6 +324,7 @@ PatientProfileCreated.v1 {patient_id, linked_user_id|null, source_type}
 PatientAccountLinked.v1 {patient_id, user_id, assurance_level}
 DoctorVerificationSubmitted.v1 {doctor_id, case_id}
 DoctorVerificationDecided.v1 {doctor_id, case_id, decision, reason_code}
+PharmacyOrganizationCreated.v1 {organization_id, branch_id, membership_id, linked_user_id, source_type}
 PharmacyVerificationDecided.v1 {organization_id, branch_ids, decision, reason_code}
 ClinicLocationChanged.v1 {location_id, doctor_id, version, change_type}
 MembershipChanged.v1 {membership_id, scope_type, scope_id, status}

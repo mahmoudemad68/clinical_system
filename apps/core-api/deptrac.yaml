@@ -52,6 +52,11 @@ parameters:
         - type: directory
           value: Modules/Doctors/.*
 
+    - name: Pharmacies
+      collectors:
+        - type: directory
+          value: Modules/Pharmacies/.*
+
     - name: Verification
       collectors:
         - type: directory
@@ -152,6 +157,15 @@ parameters:
       - Providers
 
     Doctors:
+      - Platform
+      - Identity
+      - Access
+      - Audit
+      - DomainSafeVendor
+      - Framework
+      - Providers
+
+    Pharmacies:
       - Platform
       - Identity
       - Access
