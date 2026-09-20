@@ -198,7 +198,7 @@ public service in this slice (no HTTP catalogue endpoint).
 ## `Verification` — cases, documents, decisions, and secure upload intents
 
 **Built in:** 02 (chunk 03 foundation, chunk 04 secure verification files,
-chunk 05 Admin verification review backend). **Owner:** backend + security.
+chunk 05 Admin verification review backend, chunk 06 React Admin review UI). **Owner:** backend + security.
 **Public services:** `VerificationService`, `VerificationDocumentService`,
 `VerificationUploadService`, `VerificationUploadProcessor`.
 Platform owns generic `StoreObject` / `ScanObject` adapters. Verification owns
@@ -208,7 +208,10 @@ queue, claim, decision, and canonical document-access grants.
 reachable only from the trusted processing path. The default
 `TrustedDocumentEvidenceIssuer` remains `DisabledTrustedDocumentEvidenceIssuer`.
 Admin HTTP controllers call `VerificationService` / `VerificationDocumentService`
-rather than writing these tables. React Admin verification UI remains deferred.
+rather than writing these tables. Phase 02 chunk 06 adds the React Admin
+verification review workspace in `apps/admin-web` (queue, claim, explicit
+document access, decision). That UI consumes Admin HTTP only; it does not
+own Verification tables or recreate authorization rules.
 **Events:** `doctor.verification_submitted`, `doctor.verification_decided`,
 `verification.upload_completed` (`upload_id` only).
 `pharmacy.verification_decided` is not implemented in this slice.
@@ -448,7 +451,8 @@ retrieval leakage.
 
 ## `Admin`
 
-**Built in:** 02 (chunk 05 verification review HTTP) and 20. **Owner:** backend.
+**Built in:** 02 (chunk 05 verification review HTTP, chunk 06 React Admin
+review UI) and 20. **Owner:** backend.
 **Public services:** `AdminVerificationReviewService` (HTTP facade for the
 verification queue, case detail, claim, decision, and document-access grant).
 Controllers map transport input/output only and call `VerificationService` and
@@ -466,7 +470,9 @@ verification, catalog approval, support, security, and operations capabilities
 stay separate internally even if V1 presents one admin persona
 (`docs/phases/README.md` open decisions). Admin verification must not import
 Clinical, Appointments, Prescriptions, Labs, Patients, or Doctors persistence.
-React Admin verification UI remains deferred.
+Phase 02 chunk 06 delivers the React Admin verification review workspace
+(`apps/admin-web`: session bootstrap, `verification.case.review` gate, queue,
+claim, explicit document access, decision). It is presentation only.
 
 ## `Audit`
 

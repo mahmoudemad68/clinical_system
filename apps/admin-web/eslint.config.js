@@ -77,11 +77,26 @@ export default tseslint.config(
   },
 
   {
+    // The reviewer download helper is the one approved raw-fetch site: it
+    // consumes a short-lived application HMAC URL with no-store / no-referrer
+    // and must not go through the cookie CSRF client.
+    files: ['src/api/downloadReviewerDocument.ts'],
+    rules: {
+      'no-restricted-globals': 'off',
+    },
+  },
+
+  {
     // Tests stub globals and assert on loose shapes by nature.
     files: ['**/*.test.{ts,tsx}', 'src/test/**'],
     rules: {
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-base-to-string': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/restrict-template-expressions': 'off',
+      '@typescript-eslint/no-unnecessary-condition': 'off',
+      'react-refresh/only-export-components': 'off',
       'no-restricted-globals': 'off',
     },
   },

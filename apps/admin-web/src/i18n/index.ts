@@ -2,6 +2,7 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { ar } from './ar';
 import { en } from './en';
+import { setClientLocale } from '@/api/locale';
 
 /**
  * Arabic and English (plan.md section 148). No hard-coded strings anywhere in
@@ -35,6 +36,9 @@ void i18n.use(initReactI18next).init({
   },
 });
 
-i18n.on('languageChanged', applyDocumentDirection);
+i18n.on('languageChanged', (locale) => {
+  applyDocumentDirection(locale);
+  setClientLocale(locale);
+});
 
 export default i18n;

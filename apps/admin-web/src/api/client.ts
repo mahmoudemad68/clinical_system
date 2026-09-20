@@ -1,55 +1,27 @@
 import createClient from 'openapi-fetch';
 import type { paths } from '@clinic/api-client/schema';
+import { uuidV7 } from '@clinic/api-client';
+import {
+  ApiError,
+  isApiErrorCode,
+  toApiFailure as toSharedApiFailure,
+  type ApiFailure,
+} from '@clinic/error-handling';
+import { clientLocale } from './locale';
+
+export { ApiError, type ApiFailure };
 
 /**
  * The single transport wrapper for the admin application.
  *
- * One place owns credentials, CSRF, request IDs, and error mapping (phase file,
- * "React baseline"). Feature code never calls `fetch` directly: a second
- * transport path is how one request quietly ships without the CSRF header or
- * without credentials.
+ * One place owns credentials, CSRF, request IDs, and error mapping. Feature
+ * code never calls `fetch` directly: a second transport path is how one request
+ * quietly ships without the CSRF header or without credentials.
  *
  * Types come from the generated OpenAPI schema, so a contract change that
  * breaks this client is a compile error rather than a runtime surprise.
  */
 
-/** Stable machine codes the server may return. Branch on these, never on the message. */
-export type ErrorCode =
-  paths['/api/v1/health']['get']['responses']['500']['content']['application/json']['errors'][number]['code'];
-
-export interface ApiFailure {
-  readonly code: ErrorCode | 'NETWORK_ERROR';
-  readonly message: string;
-  readonly field?: string | undefined;
-  /** Correlation id. The only handle support needs to find the trace. */
-  readonly requestId?: string | undefined;
-  readonly status: number;
-}
-
-export class ApiError extends Error {
-  constructor(readonly failure: ApiFailure) {
-    super(failure.message);
-    this.name = 'ApiError';
-  }
-}
-
-/**
- * Admin authentication is a secure HTTP-only session cookie, never a token in
- * local storage (plan.md section 5). `credentials: 'same-origin'` is what
- * actually sends it, and it is set here so no caller can forget.
- */
-/**
- * Absolute origin for API calls.
- *
- * A relative base such as '/' works in a browser, which resolves it against the
- * document origin, but fails anywhere without one — Node, jsdom, and any
- * server-side render — with "Failed to parse URL". Resolving to an absolute
- * origin here keeps one code path for every environment.
- *
- * Same-origin by default so the session cookie is sent; VITE_API_BASE_URL
- * exists for a deployment that fronts the API on a different host, which then
- * also needs that origin in the server's CORS allow-list.
- */
 function resolveBaseUrl(): string {
   const configured = import.meta.env.VITE_API_BASE_URL;
 
@@ -66,16 +38,16 @@ export const apiClient = createClient<paths>({
   headers: {
     Accept: 'application/json',
   },
-  // Dereference globalThis.fetch per call rather than letting the client
-  // capture it at construction time. Capturing it binds whatever `fetch`
-  // existed when this module first loaded, which makes the transport
-  // impossible to substitute in a test and impossible to wrap later without
-  // editing this file. The indirection costs nothing at runtime.
   fetch: (...args: Parameters<typeof globalThis.fetch>) => globalThis.fetch(...args),
 });
 
 apiClient.use({
   onRequest({ request }) {
+    request.headers.set('Accept-Language', clientLocale());
+    if (!request.headers.has('X-Request-Id')) {
+      request.headers.set('X-Request-Id', uuidV7());
+    }
+
     if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
       for (const [header, value] of Object.entries(csrfHeader())) {
         request.headers.set(header, value);
@@ -99,32 +71,40 @@ export function csrfHeader(): Record<string, string> {
 /**
  * Normalize any failure into one shape the UI can render.
  *
- * The server never sends a stack trace or internal detail, so whatever arrives
- * is safe to display. A network failure gets a synthetic code so callers do not
- * have to distinguish "no response" from "error response".
+ * Branch on machine codes, never on message text. Unknown server codes stay
+ * out of the typed union and are shown with a generic i18n fallback plus
+ * request id.
  */
 export function toApiFailure(error: unknown, status = 0): ApiFailure {
   if (error && typeof error === 'object' && 'errors' in error) {
     const body = error as {
-      errors?: { code: string; message: string; field?: string }[];
-      request_id?: string;
+      errors?: { code?: unknown; message?: unknown; field?: unknown }[];
+      request_id?: unknown;
     };
     const first = body.errors?.[0];
 
-    if (first) {
+    if (first && typeof first.code === 'string' && isApiErrorCode(first.code)) {
       return {
-        code: first.code as ErrorCode,
-        message: first.message,
-        field: first.field,
-        requestId: body.request_id,
+        code: first.code,
+        message: typeof first.message === 'string' ? first.message : 'The request failed.',
         status,
+        ...(typeof first.field === 'string' ? { field: first.field } : {}),
+        ...(typeof body.request_id === 'string' ? { requestId: body.request_id } : {}),
       };
     }
   }
 
-  return {
-    code: 'NETWORK_ERROR',
-    message: 'The service could not be reached.',
-    status,
-  };
+  return toSharedApiFailure(error, status);
+}
+
+export function isAuthFailure(failure: ApiFailure): boolean {
+  return (
+    failure.status === 401 ||
+    failure.code === 'UNAUTHENTICATED' ||
+    failure.code === 'TOKEN_EXPIRED'
+  );
+}
+
+export function isAuthError(error: unknown): boolean {
+  return error instanceof ApiError && isAuthFailure(error.failure);
 }
