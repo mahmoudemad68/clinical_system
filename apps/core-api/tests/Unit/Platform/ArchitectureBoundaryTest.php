@@ -361,7 +361,9 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringContainsString('`VerificationDocumentService`', $catalog);
         $this->assertStringContainsString('`DoctorReviewerService`', $catalog);
         $this->assertStringContainsString('does not emit `admin.verification_decided`', $catalog);
-        $this->assertStringContainsString('React Admin verification UI remains deferred', $catalog);
+        $this->assertStringContainsString('Phase 02 chunk 06 delivers the React Admin verification review workspace', $catalog);
+        $this->assertStringContainsString('apps/admin-web', $catalog);
+        $this->assertStringNotContainsString('React Admin verification UI remains deferred', $catalog);
         $this->assertStringNotContainsString('READY_TO_MERGE', $catalog);
     }
 

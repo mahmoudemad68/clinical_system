@@ -1,16 +1,32 @@
 import { defineConfig } from '@playwright/test';
 
-const baseURL = process.env.CLINIC_WEB_BASE_URL || 'http://127.0.0.1:8080';
+const laravelBaseURL = process.env.CLINIC_WEB_BASE_URL || 'http://127.0.0.1:8080';
+const adminWebBaseURL = process.env.CLINIC_ADMIN_WEB_BASE_URL || 'http://127.0.0.1:4173';
 
 export default defineConfig({
   testDir: '.',
-  testMatch: 'csrf-session.spec.ts',
-  timeout: 30_000,
+  timeout: 60_000,
   retries: 0,
-  use: {
-    baseURL,
-    extraHTTPHeaders: {
-      Accept: 'text/html,application/json',
+  fullyParallel: false,
+  workers: 1,
+  projects: [
+    {
+      name: 'csrf',
+      testMatch: 'csrf-session.spec.ts',
+      use: {
+        baseURL: laravelBaseURL,
+        extraHTTPHeaders: {
+          Accept: 'text/html,application/json',
+        },
+      },
     },
-  },
+    {
+      name: 'admin-verification',
+      testMatch: 'admin-verification.spec.ts',
+      timeout: 90_000,
+      use: {
+        baseURL: adminWebBaseURL,
+      },
+    },
+  ],
 });

@@ -275,7 +275,7 @@ jobs:
           npx --prefix tests/e2e playwright install --with-deps chromium
           php apps/core-api/artisan serve --host=127.0.0.1 --port=8080 &
           sleep 3
-          npx --prefix tests/e2e playwright test --config tests/e2e/playwright.config.ts
+          npx --prefix tests/e2e playwright test --config tests/e2e/playwright.config.ts --project=csrf
 
 
   # ----------------------------------------- secure-file providers
@@ -415,6 +415,25 @@ jobs:
     runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.admin_web == 'true'
+    timeout-minutes: 45
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4@sha256:44126d872ac91993766c341e369c539e8196614321765d36a6f1bab0419a5fa5
+        env:
+          POSTGRES_DB: clinic_test
+          POSTGRES_USER: clinic_migrator
+          POSTGRES_PASSWORD: ci_only_not_a_secret
+        options: >-
+          --health-cmd "pg_isready -U clinic_migrator"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports: ['5432:5432']
+      redis:
+        image: redis:7-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+        ports: ['6379:6379']
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
@@ -432,6 +451,102 @@ jobs:
       - run: npm run admin:typecheck
       - run: npm run admin:test
       - run: npm run admin:build
+
+      - uses: shivammathur/setup-php@9e72090525849c5e82e596468b86eb55e9cc5401  # 2.32.0
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, pgsql, intl, bcmath, zip, pcntl, redis
+          coverage: none
+          tools: composer:v2
+
+      - name: Application environment
+        working-directory: apps/core-api
+        run: cp .env.example .env
+
+      - name: Install Core API dependencies
+        working-directory: apps/core-api
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Migrate
+        working-directory: apps/core-api
+        env:
+          DB_HOST: localhost
+          DB_DATABASE: clinic_test
+          DB_USERNAME: clinic_migrator
+          DB_PASSWORD: ci_only_not_a_secret
+          DB_MIGRATION_USERNAME: clinic_migrator
+          DB_MIGRATION_PASSWORD: ci_only_not_a_secret
+        run: php artisan migrate --database=pgsql_migrator --force
+
+      - name: Browser admin verification
+        env:
+          DB_HOST: localhost
+          DB_DATABASE: clinic_test
+          DB_USERNAME: clinic_migrator
+          DB_PASSWORD: ci_only_not_a_secret
+          DB_MIGRATION_USERNAME: clinic_migrator
+          DB_MIGRATION_PASSWORD: ci_only_not_a_secret
+          DB_WORKER_USERNAME: clinic_worker
+          DB_WORKER_PASSWORD: local_dev_only_not_a_secret
+          REDIS_HOST: localhost
+          APP_ENV: testing
+          APP_URL: http://127.0.0.1:8080
+          SESSION_DRIVER: file
+          CACHE_STORE: array
+          QUEUE_CONNECTION: sync
+          AUTH_RATE_LIMIT_DRIVER: array
+          SESSION_COOKIE: clinic_session
+          IDENTITY_ALLOW_SYNTHETIC_NATIONAL_IDS: 'true'
+          FEATURE_AUTH_REGISTRATION: 'true'
+          SANCTUM_STATEFUL_DOMAINS: localhost,127.0.0.1,127.0.0.1:4173,127.0.0.1:8080
+          CORS_ALLOWED_ORIGINS: http://127.0.0.1:4173,http://127.0.0.1:8080,http://localhost:5173
+          CLAMAV_HOST: ''
+          CLINIC_REQUIRE_OBJECT_STORE: 'false'
+          CLINIC_REQUIRE_CLAMAV: 'false'
+          CLINIC_WEB_BASE_URL: http://127.0.0.1:8080
+          CLINIC_ADMIN_WEB_BASE_URL: http://127.0.0.1:4173
+          CLINIC_E2E_ADMIN_FIXTURE: /tmp/clinic-e2e-admin-verification.json
+        run: |
+          set -euo pipefail
+          mkdir -p apps/core-api/storage/framework/testing/objects
+          node --test tests/e2e/admin-web-server.test.mjs tests/e2e/sanitize-request-log.test.mjs
+          php apps/core-api/artisan e2e:seed-admin-verification --write=/tmp/clinic-e2e-admin-verification.json
+          node tests/e2e/sync-core-api-e2e-env.mjs
+          # Inherit the job environment. `php artisan serve` only forwards a
+          # short whitelist to its PHP child, so SESSION_DRIVER/DB_* from this
+          # step would otherwise be replaced by .env.example defaults.
+          # php -S stderr is query-stripped so a REQUEST_URI warning cannot
+          # land in /tmp/clinic-e2e-laravel.log when CI tails it on failure.
+          (
+            cd apps/core-api/public
+            php -S 127.0.0.1:8080 -d variables_order=EGPCS "${GITHUB_WORKSPACE:-$(git rev-parse --show-toplevel)}/tests/e2e/php-built-in-router.php"
+          ) 2>&1 | node tests/e2e/redact-e2e-stdio.mjs > /tmp/clinic-e2e-laravel.log &
+          node tests/e2e/admin-web-server.mjs > /tmp/clinic-e2e-preview.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:8080/api/v1/health >/dev/null && curl -sf http://127.0.0.1:4173/ >/dev/null; then
+              break
+            fi
+            if [ "$i" -eq 40 ]; then
+              echo '::error::Laravel or Admin preview did not become ready.'
+              tail -n 80 /tmp/clinic-e2e-laravel.log || true
+              tail -n 40 /tmp/clinic-e2e-preview.log || true
+              exit 1
+            fi
+            sleep 1
+          done
+          npm ci --prefix tests/e2e
+          npx --prefix tests/e2e playwright install --with-deps chromium
+          set +e
+          npx --prefix tests/e2e playwright test --config tests/e2e/playwright.config.ts --project=admin-verification
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo '::error::Admin verification Playwright failed.'
+            tail -n 120 /tmp/clinic-e2e-laravel.log || true
+            tail -n 80 /tmp/clinic-e2e-preview.log || true
+            tail -n 80 apps/core-api/storage/logs/laravel.log || true
+          fi
+          exit "$status"
 
   # ----------------------------------------------------------------- flutter
   flutter:

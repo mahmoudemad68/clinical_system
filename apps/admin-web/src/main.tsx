@@ -1,21 +1,16 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter } from 'react-router-dom';
 import { App } from '@/app/App';
+import { createAdminQueryClient } from '@/app/queryClient';
 import i18n, { applyDocumentDirection } from '@/i18n';
+import { setClientLocale } from '@/api/locale';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Server state is authoritative and cheap to refetch. Refetching on focus
-      // means an operator who leaves a tab open does not act on stale status.
-      refetchOnWindowFocus: true,
-      staleTime: 10_000,
-    },
-  },
-});
+const queryClient = createAdminQueryClient();
 
 applyDocumentDirection(i18n.resolvedLanguage ?? 'en');
+setClientLocale(i18n.resolvedLanguage ?? 'en');
 
 const container = document.getElementById('root');
 
@@ -26,7 +21,9 @@ if (!container) {
 createRoot(container).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,
 );

@@ -2,7 +2,23 @@
 // extension and vite's own type does not know about it.
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import type { ProxyOptions } from 'vite';
 import { fileURLToPath, URL } from 'node:url';
+
+const laravelApiProxy: ProxyOptions = {
+  target: 'http://127.0.0.1:8080',
+  changeOrigin: false,
+  configure(proxy) {
+    proxy.on('proxyReq', (proxyReq, req) => {
+      const cookie = req.headers.cookie;
+      if (Array.isArray(cookie)) {
+        proxyReq.setHeader('Cookie', cookie.join('; '));
+      } else if (typeof cookie === 'string' && cookie !== '') {
+        proxyReq.setHeader('Cookie', cookie);
+      }
+    });
+  },
+};
 
 export default defineConfig({
   plugins: [react()],
@@ -19,7 +35,14 @@ export default defineConfig({
     proxy: {
       // The admin authenticates with a session cookie, so it must be
       // same-origin in development or the cookie will not be sent.
-      '/api': { target: 'http://localhost:8080', changeOrigin: false },
+      '/api': laravelApiProxy,
+    },
+  },
+  preview: {
+    port: 4173,
+    host: '127.0.0.1',
+    proxy: {
+      '/api': laravelApiProxy,
     },
   },
   build: {

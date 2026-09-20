@@ -1,27 +1,37 @@
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import { useState, type SubmitEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { apiClient, ApiError, toApiFailure } from '@/api/client';
+import { ApiError, apiClient, toApiFailure } from '@/api/client';
+import { SafeError } from '@/app/SafeError';
+import type { ApiFailure } from '@/api/client';
 
 interface LoginPanelProps {
   onAuthenticated: () => void;
+  sessionExpired?: boolean;
 }
 
 /**
- * Cookie/CSRF admin login. Tokens never enter local or session storage.
+ * Cookie/CSRF admin login. Tokens, passwords, and MFA codes never enter
+ * local or session storage.
  */
-export function LoginPanel({ onAuthenticated }: LoginPanelProps) {
+export function LoginPanel({ onAuthenticated, sessionExpired = false }: LoginPanelProps) {
   const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [challengeId, setChallengeId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<ApiFailure | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
   async function submit(event: SubmitEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setBusy(true);
-    setError(null);
+    setFailure(undefined);
 
     try {
       await apiClient.GET('/api/v1/auth/csrf');
@@ -37,6 +47,10 @@ export function LoginPanel({ onAuthenticated }: LoginPanelProps) {
         if (verifyError || !data.data) {
           throw new ApiError(toApiFailure(verifyError));
         }
+        setPassword('');
+        setCode('');
+        setChallengeId(null);
+        await apiClient.GET('/api/v1/auth/csrf');
         onAuthenticated();
         return;
       }
@@ -58,67 +72,75 @@ export function LoginPanel({ onAuthenticated }: LoginPanelProps) {
       const payload = data.data;
       if (payload.mfa_required === true && typeof payload.challenge_id === 'string') {
         setChallengeId(payload.challenge_id);
+        setPassword('');
         return;
       }
 
+      setPassword('');
+      await apiClient.GET('/api/v1/auth/csrf');
       onAuthenticated();
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.failure.message : t('auth.failed'));
+      setFailure(caught instanceof ApiError ? caught.failure : undefined);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form
-      onSubmit={(event) => {
-        void submit(event);
-      }}
-    >
-      <h2>{t('auth.title')}</h2>
-      <label>
-        {t('auth.phone')}
-        <input
+    <Box component="form" onSubmit={(event) => void submit(event)} sx={{ maxWidth: 420 }}>
+      <Stack spacing={2}>
+        <Typography variant="h5" component="h1">
+          {t('auth.title')}
+        </Typography>
+        {sessionExpired ? (
+          <Alert severity="warning" role="status">
+            {t('auth.sessionExpired')}
+          </Alert>
+        ) : null}
+        <TextField
           name="phone"
           type="tel"
+          label={t('auth.phone')}
           autoComplete="username"
           value={phone}
           onChange={(event) => {
             setPhone(event.target.value);
           }}
+          required
+          fullWidth
         />
-      </label>
-      <label>
-        {t('auth.password')}
-        <input
+        <TextField
           name="password"
           type="password"
+          label={t('auth.password')}
           autoComplete="current-password"
           value={password}
           onChange={(event) => {
             setPassword(event.target.value);
           }}
+          required={challengeId === null}
+          fullWidth
         />
-      </label>
-      {challengeId !== null ? (
-        <label>
-          {t('auth.mfaCode')}
-          <input
+        {challengeId !== null ? (
+          <TextField
             name="code"
+            label={t('auth.mfaCode')}
             inputMode="numeric"
             autoComplete="one-time-code"
-            maxLength={6}
+            slotProps={{ htmlInput: { maxLength: 6 } }}
             value={code}
             onChange={(event) => {
               setCode(event.target.value);
             }}
+            required
+            fullWidth
           />
-        </label>
-      ) : null}
-      {error ? <p role="alert">{error}</p> : null}
-      <button type="submit" disabled={busy}>
-        {t('auth.signIn')}
-      </button>
-    </form>
+        ) : null}
+        {failure ? <SafeError failure={failure} fallbackKey="auth.failed" /> : null}
+        <Button type="submit" variant="contained" disabled={busy}>
+          {t('auth.signIn')}
+        </Button>
+      </Stack>
+    </Box>
   );
 }

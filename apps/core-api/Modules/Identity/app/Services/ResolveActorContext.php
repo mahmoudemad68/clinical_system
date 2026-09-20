@@ -14,6 +14,7 @@ use Modules\Identity\Support\UserAccount;
 use Modules\Platform\Contracts\HmacHasher;
 use Modules\Platform\Exceptions\AuthenticationFailed;
 use Modules\Platform\Support\Identifier;
+use stdClass;
 
 final class ResolveActorContext
 {
@@ -78,16 +79,72 @@ final class ResolveActorContext
 
     public function fromCookieUser(Identifier $userId, string $laravelSessionId): ActorContext
     {
+        $user = $this->requireCookieUser($userId);
+        $session = $this->sessionByLaravelId($laravelSessionId);
+
+        if ((string) $session->user_id !== $userId->value) {
+            throw new AuthenticationFailed;
+        }
+
+        return $this->cookieContext($user, $session);
+    }
+
+    /**
+     * Cookie API auth is bound to the Laravel session id via HMAC, not to the
+     * presence of `login_web_*` in the session payload.
+     */
+    public function fromLaravelCookieSession(string $laravelSessionId): ActorContext
+    {
+        $session = $this->sessionByLaravelId($laravelSessionId);
+        $user = $this->requireCookieUser(Identifier::fromTrusted((string) $session->user_id));
+
+        return $this->cookieContext($user, $session);
+    }
+
+    /**
+     * After Laravel rotates the session id, `login_web_*` may still be present
+     * while the HMAC remains bound to the previous id. Rebind once, then the
+     * caller must resolve through {@see fromCookieUser()}.
+     */
+    public function rebindCookieSessionHash(Identifier $userId, string $laravelSessionId): void
+    {
+        if ($laravelSessionId === '') {
+            throw new AuthenticationFailed;
+        }
+
+        $latest = $this->auth->latestCookieSession($userId);
+        if ($latest === null || (string) $latest->user_id !== $userId->value || (string) $latest->session_kind !== 'admin_cookie') {
+            throw new AuthenticationFailed;
+        }
+
+        $this->auth->bindCookieSessionHash(
+            Identifier::fromTrusted((string) $latest->id),
+            $this->hmac->digest('session_token', 'cookie:'.$laravelSessionId),
+            new DateTimeImmutable('now'),
+        );
+    }
+
+    private function requireCookieUser(Identifier $userId): UserAccount
+    {
         $user = $this->identities->findById($userId);
 
         if ($user === null || ! $user->status->canReceiveDeviceSession()) {
             throw new AuthenticationFailed;
         }
 
+        return $user;
+    }
+
+    private function sessionByLaravelId(string $laravelSessionId): stdClass
+    {
+        if ($laravelSessionId === '') {
+            throw new AuthenticationFailed;
+        }
+
         $hash = $this->hmac->digest('session_token', 'cookie:'.$laravelSessionId);
         $session = $this->auth->findSessionByHash($hash);
 
-        if ($session === null || (string) $session->user_id !== $userId->value || (string) $session->session_kind !== 'admin_cookie') {
+        if ($session === null || (string) $session->session_kind !== 'admin_cookie') {
             throw new AuthenticationFailed;
         }
 
@@ -100,6 +157,11 @@ final class ResolveActorContext
             throw new AuthenticationFailed;
         }
 
+        return $session;
+    }
+
+    private function cookieContext(UserAccount $user, stdClass $session): ActorContext
+    {
         if ((int) $session->credential_version !== $user->credentialVersion) {
             throw new AuthenticationFailed;
         }
