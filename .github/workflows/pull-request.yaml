@@ -509,6 +509,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p apps/core-api/storage/framework/testing/objects
+          node --test tests/e2e/admin-web-server.test.mjs
           php apps/core-api/artisan e2e:seed-admin-verification --write=/tmp/clinic-e2e-admin-verification.json
           php apps/core-api/artisan serve --host=127.0.0.1 --port=8080 > /tmp/clinic-e2e-laravel.log 2>&1 &
           node tests/e2e/admin-web-server.mjs > /tmp/clinic-e2e-preview.log 2>&1 &

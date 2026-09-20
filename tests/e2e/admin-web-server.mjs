@@ -3,10 +3,14 @@
  * Same-origin static host for the Admin production build plus an /api proxy
  * to Laravel. Vite preview's http-proxy-3 path is not used here because
  * cookie sessions must keep Cookie and Set-Cookie arrays intact on POST.
+ *
+ * Set-Cookie must be applied with `setHeader` *before* `writeHead`. Calling
+ * `setHeader` after `writeHead` throws ERR_HTTP_HEADERS_SENT on Node 22 and
+ * kills the host, which then surfaces as Playwright net::ERR_CONNECTION_REFUSED.
  */
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import http from 'node:http';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const distRoot = resolve(fileURLToPath(new URL('../../apps/admin-web/dist', import.meta.url))) + sep;
@@ -60,22 +64,24 @@ function incomingHeaders(req) {
   return headers;
 }
 
-function writeProxyHead(proxyRes, res) {
-  const headers = {};
-  for (const [name, value] of Object.entries(proxyRes.headers)) {
-    const lower = name.toLowerCase();
-    if (hopByHop.has(lower) || lower === 'set-cookie' || value === undefined) {
-      continue;
-    }
-    headers[name] = value;
-  }
-  res.writeHead(proxyRes.statusCode ?? 502, headers);
+function setCookieCount(proxyRes) {
   const cookies = proxyRes.headers['set-cookie'];
   if (Array.isArray(cookies)) {
-    res.setHeader('Set-Cookie', cookies);
-  } else if (typeof cookies === 'string' && cookies !== '') {
-    res.setHeader('Set-Cookie', cookies);
+    return cookies.length;
   }
+
+  return typeof cookies === 'string' && cookies !== '' ? 1 : 0;
+}
+
+function writeProxyHead(proxyRes, res) {
+  for (const [name, value] of Object.entries(proxyRes.headers)) {
+    const lower = name.toLowerCase();
+    if (hopByHop.has(lower) || value === undefined) {
+      continue;
+    }
+    res.setHeader(name, value);
+  }
+  res.writeHead(proxyRes.statusCode ?? 502);
 }
 
 function proxyApi(req, res) {
@@ -91,10 +97,24 @@ function proxyApi(req, res) {
     (proxyRes) => {
       const status = proxyRes.statusCode ?? 502;
       process.stderr.write(
-        `${req.method ?? 'GET'} ${req.url ?? ''} cookie=${hasCookie ? '1' : '0'} -> ${String(status)}\n`,
+        `${req.method ?? 'GET'} ${req.url ?? ''} cookie=${hasCookie ? '1' : '0'} set-cookie=${String(setCookieCount(proxyRes))} -> ${String(status)}\n`,
       );
-      writeProxyHead(proxyRes, res);
-      proxyRes.pipe(res);
+      try {
+        writeProxyHead(proxyRes, res);
+        proxyRes.pipe(res);
+      } catch (error) {
+        process.stderr.write(
+          `proxy response failed: ${error instanceof Error ? error.message : 'unknown'}\n`,
+        );
+        if (!res.writableEnded) {
+          if (!res.headersSent) {
+            res.writeHead(502, { 'content-type': 'application/json' });
+          }
+          res.end(
+            '{"errors":[{"code":"DEPENDENCY_UNAVAILABLE","message":"The API proxy could not complete the response."}]}',
+          );
+        }
+      }
     },
   );
 
@@ -136,5 +156,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(listenPort, '127.0.0.1', () => {
-  process.stderr.write(`Admin web E2E host listening on http://127.0.0.1:${String(listenPort)}\n`);
+  const address = server.address();
+  const port = typeof address === 'object' && address !== null ? address.port : listenPort;
+  process.stderr.write(`Admin web E2E host listening on http://127.0.0.1:${String(port)}\n`);
 });
