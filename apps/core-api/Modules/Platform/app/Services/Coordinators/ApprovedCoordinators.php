@@ -32,6 +32,7 @@ final class ApprovedCoordinators
             'Modules\\Patients\\Services\\CreateUnlinkedPatientProfile',
             'Modules\\Patients\\Services\\ResolvePatientHandle',
             'Modules\\Doctors\\Services\\RegisterDoctor',
+            'Modules\\Pharmacies\\Services\\RegisterPharmacyOrganization',
             'Modules\\Verification\\Services\\VerificationService',
             'Modules\\Verification\\Services\\VerificationDocumentService',
             'Modules\\Verification\\Services\\VerificationUploadService',

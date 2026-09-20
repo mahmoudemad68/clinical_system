@@ -16,6 +16,7 @@ use Modules\Auth\Events\CredentialVersionChanged;
 use Modules\Auth\Services\RecordSessionRevokedEvents;
 use Modules\Identity\Contracts\DoctorSubjectPrivacy;
 use Modules\Identity\Contracts\PatientSubjectPrivacy;
+use Modules\Identity\Contracts\PharmacySubjectPrivacy;
 use Modules\Identity\Contracts\UserDirectory;
 use Modules\Identity\Enums\AccountStatus;
 use Modules\Identity\Events\StatusChanged;
@@ -54,6 +55,7 @@ final class EraseSubjectService
         private readonly RecordSessionRevokedEvents $sessionRevoked,
         private readonly PatientSubjectPrivacy $patientPrivacy,
         private readonly DoctorSubjectPrivacy $doctorPrivacy,
+        private readonly PharmacySubjectPrivacy $pharmacyPrivacy,
     ) {}
 
     public function handle(ActorContext $initiator, Identifier $userId, string $reasonCode): SubjectErasureReport
@@ -72,7 +74,7 @@ final class EraseSubjectService
             throw new AuthorizationDenied;
         }
 
-        $plan = [...Phase01SubjectHoldings::plan(), ...$this->patientPrivacy->holdings(), ...$this->doctorPrivacy->holdings()];
+        $plan = [...Phase01SubjectHoldings::plan(), ...$this->patientPrivacy->holdings(), ...$this->doctorPrivacy->holdings(), ...$this->pharmacyPrivacy->holdings()];
 
         $report = $this->transactions->run(function (TransactionContext $tx) use ($initiator, $userId, $reasonCode, $plan): SubjectErasureReport {
             $user = $this->identities->lockById($userId);
@@ -105,6 +107,7 @@ final class EraseSubjectService
             $profileLinks = $this->identities->deleteProfileLinks($userId);
             $patientCounts = $this->patientPrivacy->eraseLinked($userId);
             $doctorCounts = $this->doctorPrivacy->eraseLinked($userId);
+            $pharmacyCounts = $this->pharmacyPrivacy->eraseLinked($userId);
 
             $version = $user->credentialVersion + 1;
             $this->identities->tombstoneIdentity(
@@ -153,7 +156,7 @@ final class EraseSubjectService
                 'mfa_recovery_codes' => $authCounts['mfa_recovery_codes'],
                 'mfa_challenges' => $authCounts['mfa_challenges'],
                 'recovery_requests' => $authCounts['recovery_requests'],
-            ], $patientCounts, $doctorCounts));
+            ], $patientCounts, $doctorCounts, $pharmacyCounts));
         });
 
         assert($report instanceof SubjectErasureReport);

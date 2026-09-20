@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/pharmacy/organization_created.v1.schema.json",
+  "title": "pharmacy.organization_created v1",
+  "description": "A pharmacy organization, initial branch, and founding owner membership were created. No legal registration, legal name, address, phone, coordinates, ciphertext, HMAC, or key versions.",
+  "type": "object",
+  "required": ["organization_id", "branch_id", "membership_id", "linked_user_id", "source_type"],
+  "additionalProperties": false,
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "branch_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "membership_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "linked_user_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": ["self_onboarding"]
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Pharmacies",
+    "classification": "personal",
+    "consumers": ["audit.identity"],
+    "retention_days": 365
+  }
+}

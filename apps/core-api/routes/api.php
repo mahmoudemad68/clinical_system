@@ -7,6 +7,7 @@ use Modules\Admin\Http\Controllers\AdminVerificationController;
 use Modules\Auth\Http\Controllers\AuthController;
 use Modules\Doctors\Http\Controllers\DoctorProfileController;
 use Modules\Patients\Http\Controllers\PatientProfileController;
+use Modules\Pharmacies\Http\Controllers\PharmacyOrganizationController;
 use Modules\Platform\Http\Controllers\DiagnosticsController;
 use Modules\Platform\Http\Controllers\PlatformHealthController;
 use Modules\Verification\Http\Controllers\DoctorVerificationController;
@@ -131,6 +132,13 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/doctors/me/profile', [DoctorProfileController::class, 'me'])
             ->name('api.v1.doctors.me.profile');
+
+        Route::middleware('platform.idempotency')
+            ->post('/pharmacy-organizations/onboarding', [PharmacyOrganizationController::class, 'onboard'])
+            ->name('api.v1.pharmacy-organizations.onboarding');
+
+        Route::get('/pharmacy-organizations/me', [PharmacyOrganizationController::class, 'me'])
+            ->name('api.v1.pharmacy-organizations.me');
 
         Route::middleware('platform.idempotency')
             ->post('/doctors/me/verification-submissions', [DoctorVerificationController::class, 'submit'])

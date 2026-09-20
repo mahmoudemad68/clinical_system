@@ -36,6 +36,10 @@ final class Capabilities
 
     public const DOCTORS_PROFILE_READ_OWN = 'doctors.profile.read_own';
 
+    public const PHARMACIES_ONBOARDING = 'pharmacies.onboarding.submit';
+
+    public const PHARMACIES_ORGANIZATION_READ_OWN = 'pharmacies.organization.read_own';
+
     public const VERIFICATION_SUBMIT_OWN = 'verification.case.submit_own';
 
     public const VERIFICATION_STATUS_READ_OWN = 'verification.case.read_own';
@@ -75,6 +79,8 @@ final class Capabilities
         self::PATIENTS_PROFILE_UPDATE_OWN,
         self::DOCTORS_ONBOARDING,
         self::DOCTORS_PROFILE_READ_OWN,
+        self::PHARMACIES_ONBOARDING,
+        self::PHARMACIES_ORGANIZATION_READ_OWN,
         self::VERIFICATION_SUBMIT_OWN,
         self::VERIFICATION_STATUS_READ_OWN,
         self::MFA_MANAGE_SELF,

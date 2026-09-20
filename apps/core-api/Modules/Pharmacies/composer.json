@@ -1,0 +1,22 @@
+{
+    "name": "clinic/pharmacies",
+    "description": "Clinic Pharmacies module",
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Pharmacies\\": "app/",
+            "Modules\\Pharmacies\\Database\\Factories\\": "database/factories/",
+            "Modules\\Pharmacies\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Pharmacies\\Tests\\": "tests/"
+        }
+    }
+}

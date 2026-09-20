@@ -13,6 +13,7 @@ use Modules\Patients\Services\CreatePatientProfile;
 use Modules\Patients\Services\CreateUnlinkedPatientProfile;
 use Modules\Patients\Services\ResolvePatientHandle;
 use Modules\Patients\Services\UpdateOwnDemographics;
+use Modules\Pharmacies\Services\RegisterPharmacyOrganization;
 use Modules\Platform\Services\Coordinators\ApprovedCoordinators;
 use Modules\Platform\Services\Outbox\OutboxConsumer;
 use Modules\Verification\Services\VerificationDocumentService;
@@ -69,6 +70,10 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             RegisterDoctor::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            RegisterPharmacyOrganization::class,
             ApprovedCoordinators::classes(),
         );
         $this->assertContains(
@@ -143,7 +148,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/^use Modules\\\\(Auth|Identity|Access|Audit|Patients|Doctors|Verification)\\\\/m',
+                '/^use Modules\\\\(Auth|Identity|Access|Audit|Patients|Doctors|Pharmacies|Verification)\\\\/m',
                 $contents,
                 $file.' Platform must not import a business module. List coordinating services as class-string names.',
             );
@@ -181,6 +186,9 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringNotContainsString('doctor_profile', $contents);
         $this->assertStringNotContainsString('doctor_id', $contents);
         $this->assertStringNotContainsString('specialty', $contents);
+        $this->assertStringNotContainsString('pharmacy_organization', $contents);
+        $this->assertStringNotContainsString('organization_id', $contents);
+        $this->assertStringNotContainsString('legal_registration', $contents);
     }
 
     #[Test]
@@ -198,6 +206,11 @@ final class ArchitectureBoundaryTest extends TestCase
                 '/table\([\'"](doctor_profiles|specialties)/',
                 $contents,
                 $file.' Identity must not read or write Doctors tables.',
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/table\([\'"](pharmacy_organizations|pharmacy_branches|pharmacy_memberships)/',
+                $contents,
+                $file.' Identity must not read or write Pharmacies tables.',
             );
             $this->assertDoesNotMatchRegularExpression(
                 '/table\([\'"]verification_(cases|documents|decisions)/',
@@ -233,9 +246,9 @@ final class ArchitectureBoundaryTest extends TestCase
                 $file.' Doctors must not query another module\'s tables.',
             );
             $this->assertDoesNotMatchRegularExpression(
-                '/use Modules\\\\(Patients|Auth|Verification)\\\\/',
+                '/use Modules\\\\(Patients|Auth|Verification|Pharmacies)\\\\/',
                 $contents,
-                $file.' Doctors must not import Patients, Auth, or Verification types.',
+                $file.' Doctors must not import Patients, Auth, Verification, or Pharmacies types.',
             );
         }
     }
@@ -243,7 +256,7 @@ final class ArchitectureBoundaryTest extends TestCase
     #[Test]
     public function other_modules_do_not_query_doctors_tables(): void
     {
-        foreach (['Platform', 'Audit', 'Identity', 'Auth', 'Access', 'Patients', 'Verification', 'Admin'] as $module) {
+        foreach (['Platform', 'Audit', 'Identity', 'Auth', 'Access', 'Patients', 'Verification', 'Admin', 'Pharmacies'] as $module) {
             foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.$module) as $file) {
                 $contents = (string) file_get_contents($file);
 
@@ -313,9 +326,9 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions)/',
+                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions|pharmacy_organizations|pharmacy_branches|pharmacy_memberships)/',
                 $contents,
-                $file.' Verification must not query Doctors or Patients tables.',
+                $file.' Verification must not query Doctors, Patients, or Pharmacies tables.',
             );
             $this->assertDoesNotMatchRegularExpression(
                 '/use Modules\\\\(Patients|Auth|Clinical|Pharmacies|Clinics)\\\\/',
@@ -344,9 +357,9 @@ final class ArchitectureBoundaryTest extends TestCase
                 $file.' Admin must call Verification public services rather than query verification tables.',
             );
             $this->assertDoesNotMatchRegularExpression(
-                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions)/',
+                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions|pharmacy_organizations|pharmacy_branches|pharmacy_memberships)/',
                 $contents,
-                $file.' Admin must not query Doctors or Patients persistence.',
+                $file.' Admin must not query Doctors, Patients, or Pharmacies persistence.',
             );
             $this->assertDoesNotMatchRegularExpression(
                 '/use Modules\\\\(Doctors|Patients|Clinical|Appointments|Prescriptions|Labs|Pharmacies|Clinics)\\\\/',
@@ -378,6 +391,10 @@ final class ArchitectureBoundaryTest extends TestCase
             $this->assertStringNotContainsString('doctor_profiles', $contents);
             $this->assertStringNotContainsString('verification_status', $contents);
             $this->assertStringNotContainsString('syndicate_number', $contents);
+            $this->assertStringNotContainsString('pharmacy_organizations', $contents);
+            $this->assertStringNotContainsString('pharmacy_branches', $contents);
+            $this->assertStringNotContainsString('pharmacy_memberships', $contents);
+            $this->assertStringNotContainsString('legal_registration', $contents);
             $this->assertStringNotContainsString('verification_cases', $contents);
             $this->assertStringNotContainsString('verification_documents', $contents);
             $this->assertStringNotContainsString('verification_decisions', $contents);
@@ -411,6 +428,89 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringContainsString('`doctor.profile_created`', $contents);
         $this->assertStringContainsString('personal identifier-only', $contents);
         $this->assertStringContainsString('`specialties`', $contents);
+    }
+
+    #[Test]
+    public function pharmacies_does_not_access_foreign_module_persistence(): void
+    {
+        foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.'Pharmacies') as $file) {
+            $contents = (string) file_get_contents($file);
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/table\([\'"](?!pharmacy_organizations|pharmacy_branches|pharmacy_memberships)[a-z_]+/',
+                $contents,
+                $file.' Pharmacies must not query another module\'s tables.',
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/use Modules\\\\(Patients|Doctors|Auth|Verification|Admin)\\\\/',
+                $contents,
+                $file.' Pharmacies must not import Patients, Doctors, Auth, Verification, or Admin types.',
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/verification_(cases|documents|decisions|upload_intents)|pharmacy.verification_decided|SubmitVerification/',
+                $contents,
+                $file.' Verification cases, documents, and decisions are not owned by Pharmacies.',
+            );
+        }
+
+        $applicant = $this->modulesRoot().DIRECTORY_SEPARATOR.'Pharmacies/app/Support/PharmacyApplicantProjection.php';
+        $applicantContents = (string) file_get_contents($applicant);
+        $this->assertStringNotContainsString('legal_registration', $applicantContents);
+        $this->assertStringNotContainsString('hmac', $applicantContents);
+        $this->assertStringNotContainsString('key_version', $applicantContents);
+        $this->assertStringNotContainsString('ciphertext', $applicantContents);
+
+        $reviewer = $this->modulesRoot().DIRECTORY_SEPARATOR.'Pharmacies/app/Support/PharmacyReviewerProjection.php';
+        $reviewerContents = (string) file_get_contents($reviewer);
+        $this->assertDoesNotMatchRegularExpression(
+            "/'(legal_registration|legal_name|address|phone|latitude|longitude|hmac|key_version|ciphertext)'/",
+            $reviewerContents,
+        );
+    }
+
+    #[Test]
+    public function other_modules_do_not_query_pharmacies_tables(): void
+    {
+        foreach (['Platform', 'Audit', 'Identity', 'Auth', 'Access', 'Patients', 'Doctors', 'Verification', 'Admin'] as $module) {
+            foreach ($this->phpFiles($this->modulesRoot().DIRECTORY_SEPARATOR.$module) as $file) {
+                $contents = (string) file_get_contents($file);
+
+                $this->assertDoesNotMatchRegularExpression(
+                    '/table\([\'"](pharmacy_organizations|pharmacy_branches|pharmacy_memberships)/',
+                    $contents,
+                    $file.' '.$module.' must not read or write Pharmacies tables.',
+                );
+            }
+        }
+    }
+
+    #[Test]
+    public function pharmacies_module_catalog_peak_classification_is_sensitive(): void
+    {
+        $catalog = dirname(__DIR__, 3).'/../../docs/architecture/module-catalog.md';
+        $contents = (string) file_get_contents($catalog);
+
+        $this->assertMatchesRegularExpression(
+            '/^\| `Pharmacies` \| 02, 10 \| Pharmacy domain \| sensitive \|/m',
+            $contents,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/^\| `Pharmacies` \| 10 \| Pharmacy domain \| personal \|/m',
+            $contents,
+        );
+        $this->assertMatchesRegularExpression(
+            '/^## `Pharmacies`.+\*\*Classification:\*\* sensitive\./ms',
+            $contents,
+        );
+        $this->assertStringContainsString('`pharmacy.organization_created`', $contents);
+        $this->assertStringContainsString('personal identifier-only', $contents);
+        $this->assertStringContainsString('Phase 02 chunk 07', $contents);
+        $this->assertStringContainsString('Phase 10 later extends', $contents);
+        $this->assertStringContainsString('RegisterPharmacyOrganization', $contents);
+        $this->assertStringContainsString('PharmacyApplicantService', $contents);
+        $this->assertStringContainsString('PharmacyReviewerService', $contents);
+        $this->assertStringNotContainsString('READY_TO_MERGE', $contents);
+        $this->assertDoesNotMatchRegularExpression('/^## `PharmacyOrganizations`/m', $contents);
     }
 
     #[Test]

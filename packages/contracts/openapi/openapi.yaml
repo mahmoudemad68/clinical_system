@@ -26,7 +26,11 @@ info:
     `POST /api/v1/admin/verification-cases/{case_id}/decisions`,
     `POST /api/v1/admin/verification-cases/{case_id}/documents/{document_id}/access`,
     `GET /api/v1/verification-review-files/{case_id}/{document_id}`).
-    React Admin verification UI, pharmacy, clinic, and AI capabilities remain
+    Phase 02 chunk 07 adds the Pharmacies organization foundation
+    (`POST /api/v1/pharmacy-organizations/onboarding`,
+    `GET /api/v1/pharmacy-organizations/me`). Creating a draft organization
+    does not verify, activate, or grant inventory/POS/catalog capability.
+    Pharmacy verification, additional clinic slices, and AI capabilities remain
     absent.
 
     Compatibility rules (ADR 0003):
@@ -80,6 +84,14 @@ tags:
       own-case only. Creating a draft doctor profile does not approve, list, or
       grant clinical capability. National ID and syndicate number are write-only
       and never returned. Admin verification review HTTP lives under `/api/v1/admin`.
+  - name: pharmacies
+    description: |
+      Phase 02 chunk 07 pharmacy organization foundation. Own-organization
+      only. Creating a draft organization, initial branch, and founding owner
+      membership does not approve, activate, or grant inventory, POS, catalog,
+      clinical, or public-activation capability. Legal registration, legal
+      name, address, and phone are write-only and never returned. There is no
+      public pharmacy lookup or admin organization search in this slice.
   - name: admin
     description: |
       Phase 02 chunk 05 privileged Admin verification review. Requires an
@@ -1157,6 +1169,116 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/DoctorProfile'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/pharmacy-organizations/onboarding:
+    post:
+      tags: [pharmacies]
+      operationId: onboardPharmacyOrganization
+      summary: Create or resume the authenticated pharmacy actor's organization draft
+      description: |
+        Authenticated, phone-verified pharmacy actor submits allowlisted
+        organization and initial-branch fields plus a legal registration
+        identifier. The server canonicalizes the identifier and computes a
+        blind index. Address and phone are stored with Identity protection
+        services. The command creates the organization, initial branch, and
+        founding owner membership in one transaction. The successful body is
+        compact (`status`, `organization_id`, `branch_id`, `membership_id`,
+        `version`); `GET /api/v1/pharmacy-organizations/me` is the canonical
+        projection. Collisions return the generic `manual_review_required`
+        outcome without disclosing another organization's identity or
+        protected metadata.
+
+        Creating an organization does not grant inventory, purchasing, POS,
+        catalog-administration, clinical, or public-activation capability.
+        Retries with the same Idempotency-Key replay the compact business
+        result. The request cannot set ownership, verification state,
+        lifecycle status, membership role/status, version, or encryption
+        metadata. Actor eligibility is server-derived from Identity/Access
+        context. V1 country is Egypt (`EG`); multi-country requests are
+        rejected.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PharmacyOnboardingRequest'
+      responses:
+        '201':
+          description: A new draft organization, branch, and owner membership were created. Body is compact.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PharmacyOnboardingResult'
+        '200':
+          description: |
+            Idempotent replay of a compact own-organization result, retry of
+            an already-linked caller, or generic `manual_review_required` for
+            colliding legal registration identifiers. Pending-phone callers
+            remain 404. Non-pharmacy account types remain 404.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PharmacyOnboardingResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/pharmacy-organizations/me:
+    get:
+      tags: [pharmacies]
+      operationId: getOwnPharmacyOrganization
+      summary: Current user's pharmacy organization projection
+      description: |
+        Server-derived from the authenticated user's founding owner
+        membership. Never returns ciphertext, HMAC, key versions, legal
+        registration, legal name, address, phone, coordinates, or another
+        organization's data. There is no GET-by-id pharmacy organization API
+        and no public lookup in this slice. Verification case status is a
+        later endpoint.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: Own pharmacy organization projection.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PharmacyOrganization'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -2777,6 +2899,148 @@ components:
           $ref: '#/components/schemas/Instant'
         updated_at:
           $ref: '#/components/schemas/Instant'
+
+    PharmacyOnboardingRequest:
+      type: object
+      required:
+        - legal_name
+        - public_name
+        - legal_registration_identifier
+        - branch_public_name
+        - address
+        - country_code
+        - latitude
+        - longitude
+        - phone
+      additionalProperties: false
+      properties:
+        legal_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Write-only. Envelope-encrypted. Never echoed.
+        public_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        legal_registration_identifier:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: |
+            Write-only. Canonicalized server-side (trim, collapse whitespace,
+            uppercase). Stored with Identity protection services and a
+            purpose-bound blind HMAC. No official checksum is applied. Never
+            echoed.
+        branch_public_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        address:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Write-only. Envelope-encrypted. Never echoed.
+        country_code:
+          $ref: '#/components/schemas/CountryCode'
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: WGS-84 latitude. V1 also requires the Egypt service area.
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: WGS-84 longitude. Stored as PostGIS geography(Point, 4326).
+        phone:
+          type: string
+          maxLength: 32
+          description: Write-only Egyptian mobile number. Envelope-encrypted. Never echoed.
+
+    PharmacyOnboardingResult:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [organization_ready, manual_review_required]
+        organization_id:
+          $ref: '#/components/schemas/Uuid'
+        branch_id:
+          $ref: '#/components/schemas/Uuid'
+        membership_id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          type: integer
+          minimum: 1
+
+    PharmacyOrganization:
+      type: object
+      additionalProperties: false
+      required:
+        - organization_id
+        - public_name
+        - verification_status
+        - status
+        - version
+        - created_at
+        - updated_at
+        - initial_branch
+        - membership
+      properties:
+        organization_id:
+          $ref: '#/components/schemas/Uuid'
+        public_name:
+          type: string
+          maxLength: 200
+        verification_status:
+          type: string
+          enum: [draft, pending_review, changes_requested, approved, rejected, suspended]
+        status:
+          type: string
+          enum: [draft, pending, active, suspended, closed]
+        version:
+          type: integer
+          minimum: 1
+        created_at:
+          $ref: '#/components/schemas/Instant'
+        updated_at:
+          $ref: '#/components/schemas/Instant'
+        initial_branch:
+          type: object
+          additionalProperties: false
+          required: [branch_id, public_name, country_code, status, version]
+          properties:
+            branch_id:
+              $ref: '#/components/schemas/Uuid'
+            public_name:
+              type: string
+              maxLength: 200
+            country_code:
+              $ref: '#/components/schemas/CountryCode'
+            status:
+              type: string
+              enum: [draft, pending, active, suspended, closed]
+            version:
+              type: integer
+              minimum: 1
+        membership:
+          type: object
+          additionalProperties: false
+          required: [membership_id, role, status]
+          properties:
+            membership_id:
+              $ref: '#/components/schemas/Uuid'
+            role:
+              type: string
+              enum: [owner]
+            status:
+              type: string
+              enum: [pending, active, suspended, revoked]
 
     DoctorVerificationSubmissionRequest:
       type: object

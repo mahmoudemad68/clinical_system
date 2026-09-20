@@ -50,8 +50,15 @@ Phase 15 implements connector synchronization, but the mode and authorization in
       provenance, lifecycle, admin approval, search projection
 
     PharmacyOrganizations
+      (canonical identity is Modules/Pharmacies, established in Phase 02)
       organization, branch, location, operating mode,
       memberships, roles, capabilities, payment-method settings
+
+Phase 02 already created the authoritative `pharmacy_organizations`,
+`pharmacy_branches`, and `pharmacy_memberships` tables and the founding
+owner membership. Phase 10 extends that same `Pharmacies` module. Do not
+create a second organization/branch aggregate or a `PharmacyOrganizations`
+module.
 
     Admin controllers and services
       authenticated catalog approval and pharmacy verification actions;
