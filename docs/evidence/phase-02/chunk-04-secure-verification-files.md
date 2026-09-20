@@ -156,8 +156,11 @@ it.
 
 ## MinIO bucket provisioning
 
-Compose starts digest-pinned MinIO and an idempotent `minio-init` using
-digest-pinned `minio/mc`. It creates `clinic-local-private`, sets anonymous
+Compose starts digest-pinned MinIO (`quay.io/minio/minio`) and an
+idempotent `minio-init` using digest-pinned `quay.io/minio/mc`. Docker Hub
+`minio/minio` / `minio/mc` are gone (404 / pull access denied); the same
+RELEASE tags and index digests remain on quay.io. It creates
+`clinic-local-private`, sets anonymous
 access to `none`, and uses local-only credentials
 (`clinic_local` / `local_dev_only_not_a_secret`). Those values must not be
 reused in shared environments. Application roles in real environments must

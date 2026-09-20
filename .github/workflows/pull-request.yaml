@@ -336,9 +336,11 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           set -euo pipefail
-          # ISR-015 pin catalogue refs (also used by docker run below):
-          # minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e
-          # minio/mc:RELEASE.2025-04-16T18-13-26Z@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3
+          # ISR-015 pin catalogue refs (also used by docker run below).
+          # MinIO Community images are pulled from quay.io; Docker Hub
+          # minio/minio and minio/mc return 404 / pull access denied.
+          # quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e
+          # quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3
           # clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200
           bash scripts/ci/start-secure-file-providers.sh
       - name: Live MinIO, clamd, and provider-backed upload
