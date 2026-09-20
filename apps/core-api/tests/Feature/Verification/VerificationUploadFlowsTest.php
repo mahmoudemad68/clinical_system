@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Modules\Audit\Contracts\AppendAuditEvent;
+use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\ScanObject;
 use Modules\Platform\Contracts\StoreObject;
@@ -19,12 +20,32 @@ use Modules\Verification\Contracts\TrustedDocumentEvidenceIssuer;
 use Modules\Verification\Services\Adapters\DisabledTrustedDocumentEvidenceIssuer;
 use Modules\Verification\Services\Adapters\ProcessingTrustedDocumentEvidenceIssuer;
 use Modules\Verification\Services\VerificationUploadService;
+use Modules\Verification\Support\VerificationPolicy;
 use Tests\Support\FailOnceAppendAuditEvent;
 use Tests\Support\FixtureScanObject;
 use Tests\Support\RecordingStoreObject;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
+
+function verificationCleanupReasonCount(string $uploadId, string $reason): int
+{
+    $count = 0;
+    foreach (DB::table('audit_events')->where('event_name', 'verification.upload_cleanup')->where('object_id', $uploadId)->pluck('metadata') as $metadata) {
+        if (is_string($metadata)) {
+            $decoded = json_decode($metadata, true);
+        } elseif (is_array($metadata)) {
+            $decoded = $metadata;
+        } else {
+            $decoded = json_decode((string) json_encode($metadata), true);
+        }
+        if (is_array($decoded) && ($decoded['reason_code'] ?? '') === $reason) {
+            $count++;
+        }
+    }
+
+    return $count;
+}
 
 function verificationUploadJsonHasSecrets(string $body, string $locator, string $nationalId): bool
 {
@@ -505,10 +526,19 @@ describe('completion, validation, scan, and promotion', function () {
         expect(app(StoreObject::class)->exists($ingress))->toBeTrue()
             ->and(app(StoreObject::class)->observe($canonical, 20_971_520)->sha256)->toBe($originalHash);
 
+        $beforeExpire = app(Clock::class)->now();
         Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
 
-        expect((string) DB::table('verification_upload_intents')->where('id', $expired['upload_id'])->value('state'))->toBe('rejected')
-            ->and(app(StoreObject::class)->exists(verificationStoredRef($expired['upload_id'])))->toBeFalse()
+        $expiredRow = DB::table('verification_upload_intents')->where('id', $expired['upload_id'])->first();
+        $retentionSeconds = app(VerificationPolicy::class)->cleanupRejectedAfterSeconds();
+        $eligibleAt = new DateTimeImmutable((string) $expiredRow->cleanup_eligible_at);
+        expect((string) $expiredRow->state)->toBe('rejected')
+            ->and((string) $expiredRow->rejection_reason)->toBe('expired')
+            ->and($expiredRow->cleanup_completed_at)->toBeNull()
+            ->and($retentionSeconds)->toBe(86_400)
+            ->and($eligibleAt->getTimestamp() - $beforeExpire->getTimestamp())->toBeGreaterThanOrEqual($retentionSeconds - 2)
+            ->and($eligibleAt->getTimestamp() - $beforeExpire->getTimestamp())->toBeLessThanOrEqual($retentionSeconds + 2)
+            ->and(app(StoreObject::class)->exists(verificationStoredRef($expired['upload_id'])))->toBeTrue()
             ->and(app(StoreObject::class)->exists($ingress))->toBeTrue()
             ->and(app(StoreObject::class)->exists($canonical))->toBeTrue();
 
@@ -540,6 +570,72 @@ describe('completion, validation, scan, and promotion', function () {
             ->and(app(StoreObject::class)->observe($canonical, 20_971_520)->sha256)->toBe($originalHash)
             ->and(DB::table('verification_documents')->where('upload_intent_id', $kept['upload_id'])->count())->toBe(1)
             ->and((string) DB::table('verification_documents')->where('upload_intent_id', $kept['upload_id'])->value('sha256'))->toBe($originalHash);
+    });
+
+    it('retains expired uploading objects until rejected cleanup eligibility and retries a failed deletion', function () {
+        verificationBindCleanScanner();
+        $onboarded = verificationOnboardDoctor('up-exp-retain');
+        $opened = verificationOpenCase($onboarded['actor']);
+        $expired = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-exp-retain-c');
+        verificationPutUploadBytes($expired['upload_id'], $expired['bytes'], 'application/pdf');
+        $ingress = verificationStoredRef($expired['upload_id']);
+        DB::table('verification_upload_intents')->where('id', $expired['upload_id'])->update([
+            'created_at' => now('UTC')->subMinutes(20)->format('Y-m-d H:i:s.uP'),
+            'expires_at' => now('UTC')->subMinute()->format('Y-m-d H:i:s.uP'),
+        ]);
+
+        $beforeExpire = app(Clock::class)->now();
+        Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+
+        $row = DB::table('verification_upload_intents')->where('id', $expired['upload_id'])->first();
+        $retentionSeconds = app(VerificationPolicy::class)->cleanupRejectedAfterSeconds();
+        $eligibleAt = new DateTimeImmutable((string) $row->cleanup_eligible_at);
+        expect((string) $row->state)->toBe('rejected')
+            ->and((string) $row->rejection_reason)->toBe('expired')
+            ->and($row->cleanup_completed_at)->toBeNull()
+            ->and($retentionSeconds)->toBe(86_400)
+            ->and($eligibleAt->getTimestamp() - $beforeExpire->getTimestamp())->toBeGreaterThanOrEqual($retentionSeconds - 2)
+            ->and($eligibleAt->getTimestamp() - $beforeExpire->getTimestamp())->toBeLessThanOrEqual($retentionSeconds + 2)
+            ->and(app(StoreObject::class)->exists($ingress))->toBeTrue()
+            ->and(verificationCleanupReasonCount($expired['upload_id'], 'expired'))->toBe(1)
+            ->and(verificationCleanupReasonCount($expired['upload_id'], 'rejected_object_removed'))->toBe(0);
+
+        Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+        expect(app(StoreObject::class)->exists($ingress))->toBeTrue()
+            ->and(DB::table('verification_upload_intents')->where('id', $expired['upload_id'])->value('cleanup_completed_at'))->toBeNull()
+            ->and(verificationCleanupReasonCount($expired['upload_id'], 'rejected_object_removed'))->toBe(0);
+
+        DB::table('verification_upload_intents')->where('id', $expired['upload_id'])->update([
+            'cleanup_eligible_at' => now('UTC')->subMinute()->format('Y-m-d H:i:s.uP'),
+        ]);
+
+        $innerStore = app(StoreObject::class);
+        $recording = new RecordingStoreObject($innerStore);
+        $recording->failNextDeletes = 1;
+        app()->instance(StoreObject::class, $recording);
+
+        try {
+            Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+            expect(app(StoreObject::class)->exists($ingress))->toBeTrue()
+                ->and(DB::table('verification_upload_intents')->where('id', $expired['upload_id'])->value('cleanup_completed_at'))->toBeNull()
+                ->and(verificationCleanupReasonCount($expired['upload_id'], 'rejected_object_removed'))->toBe(0)
+                ->and($recording->deleteAttempts)->toBe(1)
+                ->and($recording->failNextDeletes)->toBe(0);
+
+            Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+            expect(app(StoreObject::class)->exists($ingress))->toBeFalse()
+                ->and(DB::table('verification_upload_intents')->where('id', $expired['upload_id'])->value('cleanup_completed_at'))->not->toBeNull()
+                ->and(verificationCleanupReasonCount($expired['upload_id'], 'rejected_object_removed'))->toBe(1)
+                ->and(verificationCleanupReasonCount($expired['upload_id'], 'expired'))->toBe(1)
+                ->and($recording->deleteAttempts)->toBe(2);
+
+            Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+            expect(app(StoreObject::class)->exists($ingress))->toBeFalse()
+                ->and(verificationCleanupReasonCount($expired['upload_id'], 'rejected_object_removed'))->toBe(1)
+                ->and($recording->deleteAttempts)->toBe(2);
+        } finally {
+            app()->instance(StoreObject::class, $innerStore);
+        }
     });
 
     it('recovers a crash after canonical copy without allocating a second locator', function () {

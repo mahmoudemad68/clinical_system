@@ -14,6 +14,7 @@ use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Enums\VerificationDocumentStatus;
 use Modules\Verification\Enums\VerificationUploadState;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
+use Modules\Verification\Support\VerificationPolicy;
 use Modules\Verification\Support\VerificationUploadIntentRecord;
 use Throwable;
 
@@ -38,6 +39,7 @@ final class ReconcileVerificationUploadsCommand extends Command
         StoreObject $objects,
         Clock $clock,
         AppendAuditEvent $audit,
+        VerificationPolicy $policy,
     ): int {
         $limit = max(1, min(200, (int) $this->option('limit')));
         $now = $clock->now();
@@ -52,7 +54,7 @@ final class ReconcileVerificationUploadsCommand extends Command
             }
 
             if (in_array($upload->state, [VerificationUploadState::Requested, VerificationUploadState::Uploading], true)) {
-                $this->expireStaleUpload($transactions, $store, $objects, $audit, $upload, $now, $stamp);
+                $this->expireStaleUpload($transactions, $store, $audit, $policy, $upload, $now, $stamp);
 
                 continue;
             }
@@ -113,38 +115,39 @@ final class ReconcileVerificationUploadsCommand extends Command
     private function expireStaleUpload(
         TransactionRunner $transactions,
         PostgresVerificationStore $store,
-        StoreObject $objects,
         AppendAuditEvent $audit,
+        VerificationPolicy $policy,
         VerificationUploadIntentRecord $upload,
         \DateTimeImmutable $now,
         string $stamp,
     ): void {
-        $refs = $transactions->run(function (TransactionContext $tx) use ($store, $audit, $upload, $now, $stamp): ?array {
+        $cleanup = $now->modify('+'.$policy->cleanupRejectedAfterSeconds().' seconds');
+        $transactions->run(function (TransactionContext $tx) use ($store, $audit, $upload, $now, $stamp, $cleanup): void {
             $store->lockUpload($upload->id);
             $fresh = $store->findUploadById($upload->id, true);
             if (! $fresh instanceof VerificationUploadIntentRecord) {
-                return null;
+                return;
             }
 
             $document = $store->findDocumentByObjectId($fresh->objectId);
             if ($document !== null && $document->status === VerificationDocumentStatus::Available) {
-                return null;
+                return;
             }
 
             if (! in_array($fresh->state, [VerificationUploadState::Requested, VerificationUploadState::Uploading], true)
                 || $fresh->expiresAt > $now) {
-                return null;
+                return;
             }
 
             $affected = $store->updateUpload($fresh->id, $fresh->version, [
                 'state' => VerificationUploadState::Rejected->value,
                 'rejection_reason' => 'expired',
-                'cleanup_eligible_at' => $stamp,
+                'cleanup_eligible_at' => $cleanup->format('Y-m-d H:i:s.uP'),
                 'version' => $fresh->version + 1,
                 'updated_at' => $stamp,
             ]);
             if ($affected !== 1) {
-                return null;
+                return;
             }
 
             $audit->append(
@@ -160,27 +163,7 @@ final class ReconcileVerificationUploadsCommand extends Command
                 null,
                 'system',
             );
-
-            return $fresh->storageRefs();
         });
-
-        if (! is_array($refs) || $refs === []) {
-            return;
-        }
-
-        if (! $this->deleteConfirmed($objects, $refs)) {
-            return;
-        }
-
-        $this->markCleanupCompleted(
-            $transactions,
-            $store,
-            $audit,
-            $upload,
-            VerificationUploadState::Rejected,
-            null,
-            $stamp,
-        );
     }
 
     private function reconcileRejectedStorage(

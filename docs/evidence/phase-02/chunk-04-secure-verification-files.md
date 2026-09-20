@@ -276,7 +276,7 @@ INSERT/UPDATE/DELETE on `verification_documents` is rejected.
 
 `verification:reconcile-uploads` (hourly):
 
-- expired `requested`/`uploading` intents → `rejected`/`expired`, then delete tracked objects only after provider-confirmed absence and set `cleanup_completed_at`
+- expired `requested`/`uploading` intents → `rejected`/`expired` with `cleanup_eligible_at = now + 86_400` seconds; tracked objects are **not** deleted in that run
 - `rejected` rows past `cleanup_eligible_at` with `cleanup_completed_at` null → delete ingress and canonical objects, then mark completion and audit `rejected_object_removed` once
 - after seal, ingress is deleted best-effort; a still-valid PUT may recreate it until `expires_at`
 - `AVAILABLE` with `expires_at` in the past and `cleanup_completed_at` null → delete **ingress only**, confirm absence, then set `cleanup_completed_at` and audit `available_ingress_removed`
