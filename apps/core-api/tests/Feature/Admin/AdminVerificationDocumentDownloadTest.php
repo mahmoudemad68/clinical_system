@@ -7,9 +7,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\StoreObject;
+use Modules\Platform\Services\Telemetry\PlatformMetrics;
 use Modules\Platform\Services\Time\FrozenClock;
 use Modules\Platform\Support\Identifier;
+use Modules\Verification\Exceptions\ReviewerDocumentStreamAborted;
 use Modules\Verification\Services\ReviewerDocumentUrlSigner;
+use Tests\Support\ObserveThenFailStoreObject;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -39,8 +42,15 @@ describe('admin verification signed document download', function () {
 
         $download = adminVerificationDownload($url)->assertOk();
         $body = adminVerificationDownloadBody($download);
-        $sha = (string) DB::table('verification_documents')->where('id', $pending['document_id'])->value('sha256');
+        $document = DB::table('verification_documents')->where('id', $pending['document_id'])->first();
+        assert($document !== null);
+        $sha = (string) $document->sha256;
+        $size = (int) $document->size_bytes;
         expect(hash('sha256', $body))->toBe($sha)
+            ->and(strlen($body))->toBe($size)
+            ->and((string) $download->headers->get('Content-Length'))->toBe((string) $size)
+            ->and($recording->observeRefs)->not->toBe([])
+            ->and($recording->observeWhileTransactionOpen)->toBe(0)
             ->and($recording->openStreamRefs)->not->toBe([])
             ->and((string) $recording->openStreamRefs[0]->storageLocator)->toBe($pending['canonical_storage_locator'])
             ->and((string) $recording->openStreamRefs[0]->storageLocator)->toStartWith('verification/c/')
@@ -175,5 +185,153 @@ describe('admin verification signed document download', function () {
             '/api/v1/admin/verification-cases/'.$pending['case_id'].'/documents/'.$pending['document_id'].'/access',
             [],
         )->assertNotFound();
+    });
+
+    it('denies a same-size mutated canonical object before serving drifted bytes', function () {
+        $pending = adminVerificationPendingCanonicalCase('dl-drift-same');
+        $admin = adminVerificationInsertAdmin('dl-drift-same');
+        adminVerificationLogin($admin);
+        adminVerificationPostJson('/api/v1/admin/verification-cases/'.$pending['case_id'].'/claim', [
+            'expected_case_version' => $pending['case_version'],
+        ])->assertOk();
+        $url = (string) adminVerificationPostJson(
+            '/api/v1/admin/verification-cases/'.$pending['case_id'].'/documents/'.$pending['document_id'].'/access',
+            [],
+        )->assertOk()->json('data.url');
+
+        $document = DB::table('verification_documents')->where('id', $pending['document_id'])->first();
+        assert($document !== null);
+        $trustedSha = (string) $document->sha256;
+        $trustedSize = (int) $document->size_bytes;
+        $mutated = verificationAlternatePdf();
+        if (strlen($mutated) < $trustedSize) {
+            $mutated .= str_repeat(' ', $trustedSize - strlen($mutated));
+        } elseif (strlen($mutated) > $trustedSize) {
+            $mutated = substr($mutated, 0, $trustedSize);
+        }
+        expect(strlen($mutated))->toBe($trustedSize)
+            ->and(hash('sha256', $mutated))->not->toBe($trustedSha);
+
+        app(StoreObject::class)->writeAt(
+            verificationCanonicalRef($pending['upload_id']),
+            'application/pdf',
+            $mutated,
+        );
+
+        $download = adminVerificationDownload($url);
+        expect($download->getStatusCode())->toBe(404);
+        $body = (string) $download->getContent();
+        expect(hash('sha256', $body))->not->toBe(hash('sha256', $mutated))
+            ->and($body)->not->toContain($trustedSha)
+            ->and($body)->not->toContain(hash('sha256', $mutated))
+            ->and($body)->not->toContain($pending['canonical_storage_locator'])
+            ->and($body)->not->toContain('verification/c/')
+            ->and($body)->not->toContain('integrity_mismatch');
+
+        $metrics = app(PlatformMetrics::class)->render();
+        expect($metrics)->toContain('integrity_mismatch')
+            ->and($metrics)->not->toContain($trustedSha)
+            ->and($metrics)->not->toContain(hash('sha256', $mutated))
+            ->and($metrics)->not->toContain($pending['canonical_storage_locator']);
+    });
+
+    it('denies a shorter canonical object than the persisted trusted size', function () {
+        $pending = adminVerificationPendingCanonicalCase('dl-drift-short');
+        $admin = adminVerificationInsertAdmin('dl-drift-short');
+        adminVerificationLogin($admin);
+        adminVerificationPostJson('/api/v1/admin/verification-cases/'.$pending['case_id'].'/claim', [
+            'expected_case_version' => $pending['case_version'],
+        ])->assertOk();
+        $url = (string) adminVerificationPostJson(
+            '/api/v1/admin/verification-cases/'.$pending['case_id'].'/documents/'.$pending['document_id'].'/access',
+            [],
+        )->assertOk()->json('data.url');
+
+        $trustedSize = (int) DB::table('verification_documents')->where('id', $pending['document_id'])->value('size_bytes');
+        $short = substr(verificationMinimalPdf(), 0, max(1, intdiv($trustedSize, 2)));
+        expect(strlen($short))->toBeLessThan($trustedSize);
+
+        app(StoreObject::class)->writeAt(
+            verificationCanonicalRef($pending['upload_id']),
+            'application/pdf',
+            $short,
+        );
+
+        $download = adminVerificationDownload($url);
+        expect($download->getStatusCode())->toBe(404)
+            ->and(strlen((string) $download->getContent()))->not->toBe($trustedSize)
+            ->and((string) $download->getContent())->not->toContain($pending['canonical_storage_locator']);
+    });
+
+    it('denies a longer canonical object than the persisted trusted size', function () {
+        $pending = adminVerificationPendingCanonicalCase('dl-drift-long');
+        $admin = adminVerificationInsertAdmin('dl-drift-long');
+        adminVerificationLogin($admin);
+        adminVerificationPostJson('/api/v1/admin/verification-cases/'.$pending['case_id'].'/claim', [
+            'expected_case_version' => $pending['case_version'],
+        ])->assertOk();
+        $url = (string) adminVerificationPostJson(
+            '/api/v1/admin/verification-cases/'.$pending['case_id'].'/documents/'.$pending['document_id'].'/access',
+            [],
+        )->assertOk()->json('data.url');
+
+        $trustedSize = (int) DB::table('verification_documents')->where('id', $pending['document_id'])->value('size_bytes');
+        $long = verificationMinimalPdf().str_repeat('X', 32);
+        expect(strlen($long))->toBeGreaterThan($trustedSize);
+
+        app(StoreObject::class)->writeAt(
+            verificationCanonicalRef($pending['upload_id']),
+            'application/pdf',
+            $long,
+        );
+
+        $download = adminVerificationDownload($url);
+        expect($download->getStatusCode())->toBe(404)
+            ->and(strlen((string) $download->getContent()))->not->toBe(strlen($long))
+            ->and((string) $download->getContent())->not->toContain($pending['canonical_storage_locator']);
+    });
+
+    it('does not complete a valid-looking document when the provider stream truncates after a matching observation', function () {
+        $pending = adminVerificationPendingCanonicalCase('dl-stream-fail');
+        $admin = adminVerificationInsertAdmin('dl-stream-fail');
+        adminVerificationLogin($admin);
+        adminVerificationPostJson('/api/v1/admin/verification-cases/'.$pending['case_id'].'/claim', [
+            'expected_case_version' => $pending['case_version'],
+        ])->assertOk();
+        $url = (string) adminVerificationPostJson(
+            '/api/v1/admin/verification-cases/'.$pending['case_id'].'/documents/'.$pending['document_id'].'/access',
+            [],
+        )->assertOk()->json('data.url');
+
+        $document = DB::table('verification_documents')->where('id', $pending['document_id'])->first();
+        assert($document !== null);
+        $trustedSha = (string) $document->sha256;
+        $trustedSize = (int) $document->size_bytes;
+        expect($trustedSize)->toBeGreaterThan(8);
+
+        app()->instance(StoreObject::class, new ObserveThenFailStoreObject(app(StoreObject::class), 8, true));
+
+        $download = adminVerificationDownload($url);
+        expect($download->getStatusCode())->toBe(200)
+            ->and((string) $download->headers->get('Content-Length'))->toBe((string) $trustedSize);
+
+        $completed = false;
+        $body = '';
+        $buffers = ob_get_level();
+        try {
+            $body = $download->streamedContent();
+            $completed = true;
+        } catch (ReviewerDocumentStreamAborted) {
+            while (ob_get_level() > $buffers) {
+                ob_end_clean();
+            }
+        } catch (Throwable) {
+            while (ob_get_level() > $buffers) {
+                ob_end_clean();
+            }
+        }
+
+        expect($completed && strlen($body) === $trustedSize && hash('sha256', $body) === $trustedSha)->toBeFalse()
+            ->and(strlen($body))->toBeLessThan($trustedSize);
     });
 });

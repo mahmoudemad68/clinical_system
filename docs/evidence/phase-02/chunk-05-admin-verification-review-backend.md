@@ -30,8 +30,10 @@ remains fail-closed. This chunk does not bypass those controls.
 - **Draft PR:** [#11](https://github.com/mahmoudemad68/clinical_system/pull/11) (kept Draft; not merged)
 - **Base (GitHub `main`):** `722bca7e76f6e9565086da0c9709aad4ba57eaed`
 - **Document-access remediation HEAD:** `ab5c92b5d6f99639d487e7ee5d8fefdcc67abc5b`
-- **GitHub `pull-request` run:** [35507430702](https://github.com/mahmoudemad68/clinical_system/actions/runs/35507430702) **SUCCESS**
-- **Prior independently reviewed HEAD:** `2ec1db4329ae355cc206b41518ef740eea99b81b`
+- **Prior independently reviewed HEAD:** `c1375248348590a945085f480ca96d52ef515864`
+- **Reviewer-download integrity remediation:** this revision (canonical
+  hash/size observe-before-serve, exact-length `Content-Length` streaming,
+  fail-closed truncation and canonical drift)
 - **Recorded:** 2026-09-20
 
 ## Boundaries
@@ -138,19 +140,54 @@ private bucket, no listing, no URL logging, and atomic audited
 issuance.
 
 `GET /api/v1/verification-review-files/{case_id}/{document_id}` is
-unauthenticated (bearer URL). On each GET the handler verifies signature
-and expiry, then re-resolves the document through Verification-owned
-services: the document must still belong to that case, remain
-AVAILABLE+CLEAN, retain an AVAILABLE upload intent, and have a canonical
-locator. Bytes are opened with `StoreObject::openStream()` of
-`trustedRef()` only and streamed in 64 KiB chunks bounded by persisted
-`size_bytes` and `VerificationPolicy::maxDocumentBytes()`. The handler
-does not `file_get_contents` the object, does not buffer the full file
-into one PHP string, does not expose filesystem paths, and does not
-redirect to the canonical S3 URL. If the case is no longer
-`pending_review` (including after approval/rejection/changes_requested),
-GET fails closed as 404 even when the HMAC is still unexpired. An issued
-URL is not a generic permanent document capability.
+unauthenticated (bearer URL). On each GET the handler:
+
+1. Verifies the HMAC signature and expiry.
+2. Resolves the case/document/upload/canonical relationship under the
+   existing Verification transaction and `lockCase` rules (`pending_review`,
+   document belongs to that case, AVAILABLE+CLEAN, AVAILABLE upload intent,
+   canonical `trustedRef()` only). The accidental consecutive duplicate
+   `resolveCanonicalDownloadTarget` call is gone; there is one authorized
+   resolve, then observation, then one post-observe re-check.
+3. **Outside** the case lock / Verification transaction, observes the
+   canonical object with `StoreObject::observe()`. The bytes currently
+   stored at the locator must match the trusted document identity:
+   `exists`, `sizeBytes == verification_documents.size_bytes`, and
+   `sha256 == verification_documents.sha256`. When a real provider
+   version-id is recorded on the upload intent **and** the provider
+   returns one, those strings are compared as version-ids. SHA-256 is
+   never treated as a VersionId.
+4. Re-checks the same review-state authorization after observation so a
+   GET that starts after a decision fails closed. Hashing is not held
+   inside the advisory lock.
+5. Opens `StoreObject::openStream()` of `trustedRef()` only.
+
+Any integrity mismatch, missing object, or provider observe/open failure
+fails closed as 404. The handler never falls back to ingress, never
+serves drifted bytes, and never tells the bearer which field mismatched.
+Bounded metrics may increment
+`clinic_verification_review_results_total` with `result=integrity_mismatch`
+or `result=provider_read_failure` (no IDs, hashes, or locators as labels).
+
+`ReviewerDocumentStream` carries the authoritative expected size.
+`ReviewerDocumentStreamResponse` sets `Content-Length: <trusted size_bytes>`
+and streams in 64 KiB chunks. It does not `file_get_contents`, does not
+buffer the full file, does not pad, and does not `break` on an empty or
+failed `fread`. If `fread` returns false, returns empty, or EOF occurs
+before the trusted size, the stream aborts (`ReviewerDocumentStreamAborted`)
+so the connection cannot complete as a valid document. Content-Length lets
+a client or proxy detect truncation. Locators, buckets, keys, expected
+SHA, and observed SHA never appear in the HTTP body.
+
+If the case is no longer `pending_review` (including after
+approval/rejection/changes_requested), GET fails closed as 404 even when
+the HMAC is still unexpired. An issued URL is not a generic permanent
+document capability.
+
+Canonical drift after promotion (same-size different bytes, shorter
+object, longer object) is denied before any reviewer body is served.
+A matching observation followed by a truncated or failed `openStream` /
+`fread` does not complete a valid-looking partial document.
 
 Safe download headers (React viewer remains deferred; PDFs are not
 rendered inline):
@@ -159,6 +196,7 @@ rendered inline):
 - `Content-Disposition` = `attachment; filename="verification-document.<ext>"`
   (generic server-owned name from MIME; never the original filename;
   never derived from user input)
+- `Content-Length` = persisted `verification_documents.size_bytes`
 - `X-Content-Type-Options: nosniff`
 - `Cache-Control: private, no-store`
 - `Referrer-Policy: no-referrer`
@@ -215,9 +253,11 @@ and missing records are indistinguishable `404`.
 - Queue page size 25/100 is ENGINEERING_DEFAULT.
 - Signed GET URLs are application-owned and bearer-style while valid;
   they are not actor-bound after issuance. GET re-checks
-  `pending_review` so a URL stops serving after a decision. A residual
-  window remains only for bytes already in flight after the last
-  pre-stream state check.
+  `pending_review` so a URL stops serving after a decision. Canonical
+  hash/size is verified before `openStream`. A residual window remains
+  only for bytes already in flight after the last pre-stream state and
+  integrity check; a truncated provider stream aborts rather than
+  completing as a valid file.
 - Approval still does not list the doctor or grant clinical capabilities.
 - React Admin verification UI remains deferred.
 - SF-001 remains MERGE_ONLY / `promotion_allowed=false`.
@@ -226,14 +266,31 @@ and missing records are indistinguishable `404`.
 
 ## Commands actually executed
 
-### GitHub CI (authoritative)
+### Reviewer-download integrity (this revision)
+
+Local gates on the integrity remediation (observe-before-serve, exact-length
+stream, canonical drift, truncated provider stream):
+
+| Gate | Result |
+| --- | --- |
+| Focused download + architecture Pest | **26 passed** (2514 assertions) |
+| Document access + live MinIO skip + grant race + review HTTP | **15 passed**, 1 skipped live MinIO |
+| Claim race + decision rollback | **5 passed** |
+| Pint `--test --dirty` | PASS |
+| PHPStan (changed Verification download files) | `[OK] No errors` |
+| Deptrac `--fail-on-uncovered` | PASS (0 uncovered) |
+
+Full Core API Pest, secure-file providers, ISR-015, and GitHub
+`pull-request` CI are recorded against the exact HEAD after push.
+
+### GitHub CI (authoritative, prior document-access HEAD)
 
 GitHub `pull-request` run
 [35507430702](https://github.com/mahmoudemad68/clinical_system/actions/runs/35507430702)
-on `ab5c92b5d6f99639d487e7ee5d8fefdcc67abc5b` **SUCCESS**. This is the
-document-access remediation (application-signed reviewer download). Local
-host PHP is supplementary and does not replace this run. This file does
-not claim production approval.
+on `ab5c92b5d6f99639d487e7ee5d8fefdcc67abc5b` **SUCCESS**. Independently
+reviewed HEAD `c1375248348590a945085f480ca96d52ef515864` recorded that
+SUCCESS. Local host PHP is supplementary and does not replace GitHub CI.
+This file does not claim production approval.
 
 | Gate | Result |
 | --- | --- |

@@ -488,8 +488,17 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringNotContainsString('temporaryUrl', $service);
         $this->assertStringContainsString('ReviewerDocumentUrlSigner', $service);
         $this->assertStringContainsString('openStream', $service);
+        $this->assertStringContainsString('->observe(', $service);
         $this->assertStringContainsString('trustedRef()', $service);
         $this->assertStringNotContainsString('file_get_contents', $service);
+        $this->assertDoesNotMatchRegularExpression(
+            '/resolveCanonicalDownloadTarget\(\$caseIdentifier, \$documentIdentifier\);\s*\$prepared = \$this->resolveCanonicalDownloadTarget\(\$caseIdentifier, \$documentIdentifier\);/',
+            $service,
+        );
+        $this->assertMatchesRegularExpression(
+            '/\$prepared = \$this->resolveCanonicalDownloadTarget\(\$caseIdentifier, \$documentIdentifier\);.{0,1200}?->observe\(.{0,1600}?\$confirmed = \$this->resolveCanonicalDownloadTarget\(\$caseIdentifier, \$documentIdentifier\);/s',
+            $service,
+        );
 
         $download = (string) file_get_contents(
             $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Support/ReviewerDocumentStreamResponse.php',
@@ -497,6 +506,10 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringContainsString('fread', $download);
         $this->assertStringContainsString('attachment', $download);
         $this->assertStringContainsString('nosniff', $download);
+        $this->assertStringContainsString('Content-Length', $download);
+        $this->assertStringContainsString('expectedBytes', $download);
+        $this->assertStringContainsString('ReviewerDocumentStreamAborted', $download);
+        $this->assertStringNotContainsString('break;', $download);
         $this->assertStringNotContainsString('file_get_contents', $download);
         $this->assertStringNotContainsString('temporaryUrl', $download);
         $this->assertStringNotContainsString('Redirect', $download);

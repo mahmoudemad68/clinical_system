@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Modules\Platform\Contracts\ScanObject;
 use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Services\Adapters\ClamdScanObject;
@@ -60,13 +61,22 @@ it('issues a live MinIO reviewer grant against the canonical object only', funct
         ->and($recording->temporaryUrlRefs)->toBe([]);
 
     $canonical = verificationCanonicalRef($pending['upload_id']);
+    $document = DB::table('verification_documents')->where('id', $pending['document_id'])->first();
+    assert($document !== null);
+    $persistedSha = (string) $document->sha256;
+    $persistedSize = (int) $document->size_bytes;
     $observed = app(StoreObject::class)->observe($canonical, 20_971_520);
     expect($observed->exists)->toBeTrue()
+        ->and($observed->sha256)->toBe($persistedSha)
+        ->and($observed->sizeBytes)->toBe($persistedSize)
         ->and($observed->sha256)->not->toBe('');
 
     $download = adminVerificationDownload($url)->assertOk();
+    expect((string) $download->headers->get('Content-Length'))->toBe((string) $persistedSize);
     $body = adminVerificationDownloadBody($download);
-    expect(hash('sha256', $body))->toBe($observed->sha256)
+    expect(strlen($body))->toBe($persistedSize)
+        ->and(hash('sha256', $body))->toBe($persistedSha)
+        ->and(hash('sha256', $body))->toBe($observed->sha256)
         ->and((string) $download->headers->get('Content-Type'))->toContain('pdf')
         ->and((string) $download->headers->get('Content-Disposition'))->toBe('attachment; filename="verification-document.pdf"')
         ->and((string) $download->headers->get('X-Content-Type-Options'))->toBe('nosniff')

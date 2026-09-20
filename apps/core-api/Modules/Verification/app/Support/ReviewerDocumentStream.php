@@ -6,7 +6,8 @@ namespace Modules\Verification\Support;
 
 /**
  * Authorized canonical byte stream for a reviewer download. The storage
- * locator never leaves the issuing service.
+ * locator never leaves the issuing service. expectedBytes is the persisted
+ * trusted size and the authoritative Content-Length.
  */
 final readonly class ReviewerDocumentStream
 {
@@ -17,7 +18,7 @@ final readonly class ReviewerDocumentStream
         public mixed $stream,
         public string $detectedMime,
         public string $filename,
-        public int $maxBytes,
+        public int $expectedBytes,
         public int $chunkBytes,
     ) {}
 }

@@ -23,6 +23,7 @@ use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\StateConflict;
 use Modules\Platform\Services\Telemetry\PlatformMetrics;
 use Modules\Platform\Support\Identifier;
+use Modules\Platform\Support\ObservedObject;
 use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Enums\VerificationCaseStatus;
 use Modules\Verification\Enums\VerificationUploadState;
@@ -295,29 +296,54 @@ final class VerificationDocumentService
             throw new AuthorizationDenied;
         }
 
-        $this->resolveCanonicalDownloadTarget($caseIdentifier, $documentIdentifier);
         $prepared = $this->resolveCanonicalDownloadTarget($caseIdentifier, $documentIdentifier);
+        $expectedSize = $prepared['document']->sizeBytes;
+        $expectedSha = $prepared['document']->sha256;
+        $ref = $prepared['ref'];
+        $recordedVersion = $prepared['object_version'];
 
         try {
-            $stream = $this->objects->openStream($prepared['ref']);
+            $observed = $this->objects->observe($ref, $this->policy->maxDocumentBytes());
         } catch (\Throwable) {
+            $this->countDownloadResult('provider_read_failure');
+            throw new AuthorizationDenied;
+        }
+
+        if (! $this->canonicalObservationMatches($observed, $expectedSize, $expectedSha, $recordedVersion)) {
+            $this->countDownloadResult('integrity_mismatch');
+            throw new AuthorizationDenied;
+        }
+
+        $confirmed = $this->resolveCanonicalDownloadTarget($caseIdentifier, $documentIdentifier);
+        if ($confirmed['ref']->key() !== $ref->key()
+            || $confirmed['document']->sizeBytes !== $expectedSize
+            || ! hash_equals($confirmed['document']->sha256, $expectedSha)) {
+            $this->countDownloadResult('integrity_mismatch');
+            throw new AuthorizationDenied;
+        }
+
+        try {
+            $stream = $this->objects->openStream($ref);
+        } catch (\Throwable) {
+            $this->countDownloadResult('provider_read_failure');
             throw new AuthorizationDenied;
         }
         if (! is_resource($stream)) {
+            $this->countDownloadResult('provider_read_failure');
             throw new AuthorizationDenied;
         }
 
         return new ReviewerDocumentStream(
             $stream,
-            $prepared['document']->detectedMime,
-            $this->policy->reviewerDownloadFilename($prepared['document']->detectedMime),
-            min($prepared['document']->sizeBytes, $this->policy->maxDocumentBytes()),
+            $confirmed['document']->detectedMime,
+            $this->policy->reviewerDownloadFilename($confirmed['document']->detectedMime),
+            $expectedSize,
             $this->policy->reviewerDownloadChunkBytes(),
         );
     }
 
     /**
-     * @return array{document: VerificationDocumentRecord, ref: StoredObjectRef}
+     * @return array{document: VerificationDocumentRecord, ref: StoredObjectRef, object_version: ?string}
      */
     private function resolveCanonicalDownloadTarget(Identifier $caseId, Identifier $documentId): array
     {
@@ -336,7 +362,7 @@ final class VerificationDocumentService
     }
 
     /**
-     * @return array{document: VerificationDocumentRecord, ref: StoredObjectRef}
+     * @return array{document: VerificationDocumentRecord, ref: StoredObjectRef, object_version: ?string}
      */
     private function canonicalReviewTarget(VerificationCaseRecord $case, Identifier $documentId): array
     {
@@ -375,7 +401,41 @@ final class VerificationDocumentService
         return [
             'document' => $row,
             'ref' => $trusted,
+            'object_version' => $upload->objectVersion,
         ];
+    }
+
+    private function canonicalObservationMatches(
+        ObservedObject $observed,
+        int $expectedSize,
+        string $expectedSha,
+        ?string $recordedVersion,
+    ): bool {
+        if (! $observed->exists || $observed->sizeBytes !== $expectedSize) {
+            return false;
+        }
+        if ($expectedSha === '' || ! hash_equals($expectedSha, $observed->sha256)) {
+            return false;
+        }
+        if ($recordedVersion !== null && $recordedVersion !== '' && $observed->objectVersion !== '') {
+            if (! hash_equals($recordedVersion, $observed->objectVersion)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function countDownloadResult(string $result): void
+    {
+        try {
+            $this->metrics->increment('clinic_verification_review_results_total', [
+                'result' => $result,
+                'case_type' => 'doctor_verification',
+                'reason_code' => 'verification_review_download',
+            ]);
+        } catch (\Throwable) {
+        }
     }
 
     private function assertPrivilegedReviewer(ActorContext $reviewer, Identifier $objectId): void
