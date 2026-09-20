@@ -168,7 +168,9 @@ not receive CreateBucket.
 
 CI uses `scripts/ci/start-secure-file-providers.sh` and
 `scripts/ci/provision-minio-bucket.sh` (same local credentials, host
-network, fail closed). `CLINIC_REQUIRE_OBJECT_STORE=1` /
+network, fail closed). The `mc` image entrypoint is overridden to
+`/bin/sh` so bucket init is not passed to `mc` as a subcommand.
+`CLINIC_REQUIRE_OBJECT_STORE=1` /
 `CLINIC_REQUIRE_CLAMAV=1` turn provider absence into a test failure. A
 reachable provider with a missing bucket, bad auth, or public policy fails
 rather than skips.

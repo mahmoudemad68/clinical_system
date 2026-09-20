@@ -33,7 +33,12 @@ docker run -d --name clinic-ci-clamav --network host \
   "${CLAMAV_IMAGE}"
 
 wait_tcp 127.0.0.1 9000 30
-bash "${ROOT}/scripts/ci/provision-minio-bucket.sh"
+if ! bash "${ROOT}/scripts/ci/provision-minio-bucket.sh"; then
+  echo "::error::MinIO bucket provision failed" >&2
+  docker logs clinic-ci-minio >&2 || true
+  exit 1
+fi
+echo "MinIO bucket clinic-local-private is private"
 
 wait_tcp 127.0.0.1 3310 120
 deadline=$((SECONDS + 240))
