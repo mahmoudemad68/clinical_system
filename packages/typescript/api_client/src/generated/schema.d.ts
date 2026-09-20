@@ -874,15 +874,51 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Issue a short-lived canonical document read grant
+         * Issue a short-lived application-signed document read grant
          * @description Purpose-bound reviewer access to an AVAILABLE+CLEAN document that
-         *     belongs to this exact case after assignment. Resolves the canonical
-         *     trusted object only; ingress is never used. The signed GET URL is
-         *     bearer-style while valid, is not actor-bound after issuance, and is
+         *     belongs to this exact case after assignment. Authorization, application
+         *     URL signing, and `verification.document_access_granted` commit in one
+         *     locked transaction. The returned URL is an application-owned signed GET
+         *     for `/api/v1/verification-review-files/{case_id}/{document_id}`; it is
+         *     never a direct S3/MinIO presigned URL and never contains a storage
+         *     locator, bucket, object key, or object_id locator. Ingress is never
+         *     used. The URL is bearer-style while valid (ENGINEERING_DEFAULT 120
+         *     seconds, hard-capped 300), is not actor-bound after issuance, and is
          *     never stored in audit, logs, metrics, events, the database, or
          *     idempotency replay. This endpoint is not idempotency-stored.
          */
         post: operations["grantAdminVerificationDocumentAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/verification-review-files/{case_id}/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream a purpose-bound reviewer document
+         * @description Bearer-style application-signed download issued by
+         *     `grantAdminVerificationDocumentAccess`. Query `expires` and
+         *     `signature` are the capability. The handler verifies the HMAC and
+         *     expiry, then re-resolves the canonical trusted object server-side.
+         *     Storage locators, buckets, object keys, and ingress locators are
+         *     never accepted from the URL. If the case is no longer
+         *     `pending_review`, or the document is no longer AVAILABLE+CLEAN with
+         *     an AVAILABLE upload intent and canonical locator, the request fails
+         *     closed as 404. Bytes are streamed in bounded chunks. Content is
+         *     served as an attachment with a generic server-owned filename; the
+         *     original uploaded filename is never used. This is not a generic
+         *     file browser.
+         */
+        get: operations["downloadVerificationReviewFile"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1572,9 +1608,10 @@ export interface components {
         /** @description Closed empty body. Unknown fields are rejected. */
         AdminVerificationDocumentAccessRequest: Record<string, never>;
         /**
-         * @description Short-lived signed GET. The URL is bearer-style until expires_at and
-         *     is not actor-bound after issuance. Storage locator, bucket, and
-         *     object key are never included.
+         * @description Short-lived application-signed GET. The URL is bearer-style until
+         *     expires_at and is not actor-bound after issuance. It never contains a
+         *     storage locator, bucket, object key, object_id locator, or a direct
+         *     S3/MinIO presigned URL.
          */
         AdminVerificationDocumentAccessGrant: {
             document_id: components["schemas"]["Uuid"];
@@ -3192,6 +3229,48 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
             422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    downloadVerificationReviewFile: {
+        parameters: {
+            query: {
+                /** @description Unix timestamp (UTC seconds) bound into the HMAC. */
+                expires: string;
+                /** @description Server-owned HMAC-SHA256 over purpose, case id, document id, and expiry. */
+                signature: string;
+            };
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+            };
+            path: {
+                case_id: components["schemas"]["Uuid"];
+                document_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical document bytes with safe download headers. */
+            200: {
+                headers: {
+                    /** @description attachment with a generic server-owned filename. */
+                    "Content-Disposition"?: string;
+                    "X-Content-Type-Options"?: "nosniff";
+                    "Cache-Control"?: string;
+                    "Referrer-Policy"?: "no-referrer";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
 }

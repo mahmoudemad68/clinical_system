@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Modules\Platform\Contracts\ScanObject;
 use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Services\Adapters\ClamdScanObject;
@@ -56,18 +55,28 @@ it('issues a live MinIO reviewer grant against the canonical object only', funct
     )->assertOk();
 
     $url = (string) $grant->json('data.url');
-    expect($url)->toContain('X-Amz-Signature')
-        ->and($url)->toContain($pending['canonical_storage_locator'])
-        ->and($url)->not->toContain($pending['storage_locator'])
-        ->and((string) $recording->temporaryUrlRefs[0]->storageLocator)->toBe($pending['canonical_storage_locator']);
+    adminVerificationAssertApplicationDownloadUrl($url, $pending);
+    expect($url)->not->toContain('X-Amz-Signature')
+        ->and($recording->temporaryUrlRefs)->toBe([]);
 
-    $get = Http::get($url);
-    expect($get->successful())->toBeTrue()
-        ->and($get->header('Content-Type'))->toContain('pdf');
+    $canonical = verificationCanonicalRef($pending['upload_id']);
+    $observed = app(StoreObject::class)->observe($canonical, 20_971_520);
+    expect($observed->exists)->toBeTrue()
+        ->and($observed->sha256)->not->toBe('');
+
+    $download = adminVerificationDownload($url)->assertOk();
+    $body = adminVerificationDownloadBody($download);
+    expect(hash('sha256', $body))->toBe($observed->sha256)
+        ->and((string) $download->headers->get('Content-Type'))->toContain('pdf')
+        ->and((string) $download->headers->get('Content-Disposition'))->toBe('attachment; filename="verification-document.pdf"')
+        ->and((string) $download->headers->get('X-Content-Type-Options'))->toBe('nosniff')
+        ->and($recording->openStreamRefs)->not->toBe([])
+        ->and((string) $recording->openStreamRefs[0]->storageLocator)->toBe($pending['canonical_storage_locator']);
 
     $audit = adminVerificationAuditJson('verification.document_access_granted');
     expect($audit)->not->toContain($url)
-        ->and($audit)->not->toContain($pending['canonical_storage_locator']);
+        ->and($audit)->not->toContain($pending['canonical_storage_locator'])
+        ->and($audit)->not->toContain($pending['storage_locator']);
 
     unset($claimed);
 });

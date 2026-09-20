@@ -267,3 +267,44 @@ function adminVerificationAuditJson(string $eventName): string
         JSON_THROW_ON_ERROR,
     );
 }
+
+/**
+ * @param  array{case_id: string, document_id: string, storage_locator: string, canonical_storage_locator: string}  $pending
+ */
+function adminVerificationAssertApplicationDownloadUrl(string $url, array $pending): void
+{
+    expect($url)->toContain('/api/v1/verification-review-files/'.$pending['case_id'].'/'.$pending['document_id'])
+        ->and($url)->toContain('expires=')
+        ->and($url)->toContain('signature=')
+        ->and($url)->not->toContain('X-Amz-')
+        ->and($url)->not->toContain('X-Amz-Signature')
+        ->and($url)->not->toContain($pending['canonical_storage_locator'])
+        ->and($url)->not->toContain($pending['storage_locator'])
+        ->and($url)->not->toContain('clinic-local-private')
+        ->and($url)->not->toContain('verification/c/')
+        ->and($url)->not->toContain('verification/q/')
+        ->and($url)->not->toContain('objects.invalid')
+        ->and($url)->not->toContain(':9000');
+}
+
+function adminVerificationDownload(string $url): TestResponse
+{
+    $parts = parse_url($url);
+    $path = (string) ($parts['path'] ?? '');
+    $query = (string) ($parts['query'] ?? '');
+
+    return test()->get($query === '' ? $path : $path.'?'.$query);
+}
+
+function adminVerificationDownloadBody(TestResponse $response): string
+{
+    try {
+        $streamed = $response->streamedContent();
+        if (is_string($streamed) && $streamed !== '') {
+            return $streamed;
+        }
+    } catch (Throwable) {
+    }
+
+    return (string) $response->getContent();
+}

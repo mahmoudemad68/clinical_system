@@ -5,8 +5,10 @@ Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 
 **Scope implemented:** privileged Admin HTTP for the existing doctor
 verification workflow: pending-review queue, claim, reviewer-safe case
-detail, purpose-bound canonical document-access grant, and
-approve/reject/changes_requested decisions. Admin is a transport facade.
+detail, purpose-bound **application-signed** document-access grant
+(canonical bytes streamed; storage locators never leave the backend),
+and approve/reject/changes_requested decisions. Admin is a transport
+facade.
 Verification remains the owner of cases, documents, decisions, assignment,
 and review authorization. Doctors remains the owner of the reviewer-safe
 professional projection. Applicant HTTP is unchanged: safe result/reason
@@ -92,28 +94,78 @@ signed URLs are never included.
 
 `POST /api/v1/admin/verification-cases/{case_id}/documents/{document_id}/access`
 
-Preconditions: privileged assigned reviewer, case `pending_review`,
-document belongs to that case, AVAILABLE+CLEAN, `upload_intent_id`
-present, intent AVAILABLE, canonical locator present. Resolves
-canonical `trustedRef` only. Never ingress. Never request-supplied
-locators.
+Preconditions (re-read under `lockCase`): privileged assigned reviewer,
+case `pending_review`, document belongs to that case, AVAILABLE+CLEAN,
+`upload_intent_id` present, intent AVAILABLE, canonical locator present.
+Resolves canonical `trustedRef()` / `canonicalRef()` server-side only.
+Never ingress. Never request-supplied locators, keys, or buckets.
 
-Returns: `document_id`, short-lived signed GET `url`, `expires_at`,
-`detected_mime`, `size_bytes`. TTL ENGINEERING_DEFAULT 120 seconds,
-hard-capped 1–300.
+Grant issuance is linearizable with case state. While the case lock is
+held the service:
 
-**Bearer-URL limitation:** the signed URL is not actor-bound after
-issuance. Security relies on reviewer authorization before issuance,
-exact case/document binding, canonical-only object, short expiry,
-private bucket, no listing, no URL logging, and audited issuance.
+1. validates the review preconditions above;
+2. mints an **application-owned** HMAC URL locally (no object-store I/O);
+3. appends `verification.document_access_granted`;
+4. commits.
 
-The URL is never written to audit metadata, logs, metrics, events,
-PostgreSQL, or idempotency replay. The endpoint is not
-idempotency-stored.
+Only then is the URL returned. If audit append fails, the transaction
+rolls back, the POST fails, and no grant response is returned. The
+signing secret is `app.key` and never leaves the server. The signed URL,
+signature, and canonical locator are never stored in audit, outbox, or
+idempotency persistence.
 
-Successful grants audit `verification.document_access_granted` with
-reviewer actor, case object, document id, requirement_code,
-`verification_review_access`, and assurance level.
+Returns: `document_id`, short-lived application-signed GET `url`,
+`expires_at`, `detected_mime`, `size_bytes`. TTL ENGINEERING_DEFAULT 120
+seconds, hard-capped 1–300.
+
+The URL shape is:
+
+`GET /api/v1/verification-review-files/{case_id}/{document_id}?expires=…&signature=…`
+
+It may expose the already-authorized opaque case/document UUIDs. It does
+**not** contain `canonical_storage_locator`, ingress `storage_locator`,
+bucket name, object key, `object_id` used as a storage locator, or a
+direct S3/MinIO presigned URL (`X-Amz-Signature` never appears). Reviewer
+HTTP never receives a storage locator.
+
+**Bearer-URL limitation:** the application-signed URL is not actor-bound
+after issuance. During its short TTL it is a capability token. Security
+relies on reviewer authorization before issuance (serialized with case
+state), exact case/document HMAC binding, canonical-only server-side
+resolution on GET, fail-closed review-state checks, short expiry,
+private bucket, no listing, no URL logging, and atomic audited
+issuance.
+
+`GET /api/v1/verification-review-files/{case_id}/{document_id}` is
+unauthenticated (bearer URL). On each GET the handler verifies signature
+and expiry, then re-resolves the document through Verification-owned
+services: the document must still belong to that case, remain
+AVAILABLE+CLEAN, retain an AVAILABLE upload intent, and have a canonical
+locator. Bytes are opened with `StoreObject::openStream()` of
+`trustedRef()` only and streamed in 64 KiB chunks bounded by persisted
+`size_bytes` and `VerificationPolicy::maxDocumentBytes()`. The handler
+does not `file_get_contents` the object, does not buffer the full file
+into one PHP string, does not expose filesystem paths, and does not
+redirect to the canonical S3 URL. If the case is no longer
+`pending_review` (including after approval/rejection/changes_requested),
+GET fails closed as 404 even when the HMAC is still unexpired. An issued
+URL is not a generic permanent document capability.
+
+Safe download headers (React viewer remains deferred; PDFs are not
+rendered inline):
+
+- `Content-Type` = authoritative detected MIME
+- `Content-Disposition` = `attachment; filename="verification-document.<ext>"`
+  (generic server-owned name from MIME; never the original filename;
+  never derived from user input)
+- `X-Content-Type-Options: nosniff`
+- `Cache-Control: private, no-store`
+- `Referrer-Policy: no-referrer`
+
+Grant vs concurrent decision is linearizable: either the grant
+transaction commits first (valid at that instant; later GET fails once
+the case is decided) or the decision commits first (grant issuance is
+denied). A usable review grant is never issued after a decision commits.
 
 ## Decision
 
@@ -160,11 +212,11 @@ and missing records are indistinguishable `404`.
 - Document requirement and reason catalogues remain ENGINEERING_DEFAULT.
 - Reviewer document TTL 120s is ENGINEERING_DEFAULT (cap 300s).
 - Queue page size 25/100 is ENGINEERING_DEFAULT.
-- Signed GET URLs are bearer-style while valid; they are not actor-bound
-  after issuance.
-- Document-access audit is a second transaction after URL issuance. If
-  that audit insert fails, the HTTP request fails; a minted URL may still
-  exist until TTL. Residual, short-lived.
+- Signed GET URLs are application-owned and bearer-style while valid;
+  they are not actor-bound after issuance. GET re-checks
+  `pending_review` so a URL stops serving after a decision. A residual
+  window remains only for bytes already in flight after the last
+  pre-stream state check.
 - Approval still does not list the doctor or grant clinical capabilities.
 - React Admin verification UI remains deferred.
 - SF-001 remains MERGE_ONLY / `promotion_allowed=false`.

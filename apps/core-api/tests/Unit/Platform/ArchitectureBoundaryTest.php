@@ -303,6 +303,7 @@ final class ArchitectureBoundaryTest extends TestCase
             '/DoctorVerificationUploadController::class, [\'"]create[\'"]/',
             $routes,
         );
+        $this->assertStringContainsString('verification-review-files', $routes);
     }
 
     #[Test]
@@ -484,6 +485,28 @@ final class ArchitectureBoundaryTest extends TestCase
             $service,
         );
         $this->assertStringContainsString('findById($case->applicantId', $service);
+        $this->assertStringNotContainsString('temporaryUrl', $service);
+        $this->assertStringContainsString('ReviewerDocumentUrlSigner', $service);
+        $this->assertStringContainsString('openStream', $service);
+        $this->assertStringContainsString('trustedRef()', $service);
+        $this->assertStringNotContainsString('file_get_contents', $service);
+
+        $download = (string) file_get_contents(
+            $this->modulesRoot().DIRECTORY_SEPARATOR.'Verification/app/Support/ReviewerDocumentStreamResponse.php',
+        );
+        $this->assertStringContainsString('fread', $download);
+        $this->assertStringContainsString('attachment', $download);
+        $this->assertStringContainsString('nosniff', $download);
+        $this->assertStringNotContainsString('file_get_contents', $download);
+        $this->assertStringNotContainsString('temporaryUrl', $download);
+        $this->assertStringNotContainsString('Redirect', $download);
+
+        $routes = (string) file_get_contents(dirname(__DIR__, 3).'/routes/api.php');
+        $this->assertStringContainsString('verification-review-files', $routes);
+        $this->assertMatchesRegularExpression(
+            '/ReviewerDocumentDownloadController::class, [\'"]show[\'"]/',
+            $routes,
+        );
     }
 
     #[Test]

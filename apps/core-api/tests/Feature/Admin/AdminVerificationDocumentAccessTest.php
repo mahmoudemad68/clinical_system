@@ -5,7 +5,9 @@ declare(strict_types=1);
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Modules\Audit\Contracts\AppendAuditEvent;
 use Modules\Platform\Support\Identifier;
+use Tests\Support\FailOnceAppendAuditEvent;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -41,7 +43,6 @@ describe('admin verification document access', function () {
         $url = (string) $grant->json('data.url');
         $expires = (string) $grant->json('data.expires_at');
         expect($grant->json('data.document_id'))->toBe($pending['document_id'])
-            ->and($url)->toStartWith('https://')
             ->and($grant->json('data.detected_mime'))->toBe('application/pdf')
             ->and($grant->json('data.size_bytes'))->toBeGreaterThan(0)
             ->and($grant->json('data'))->not->toHaveKey('storage_locator')
@@ -51,14 +52,13 @@ describe('admin verification document access', function () {
             ->and(json_encode($grant->json('data'), JSON_THROW_ON_ERROR))->not->toContain($pending['storage_locator'])
             ->and(json_encode($grant->json('data'), JSON_THROW_ON_ERROR))->not->toContain($pending['canonical_storage_locator'])
             ->and(json_encode($grant->json('data'), JSON_THROW_ON_ERROR))->not->toContain($pending['national_id']);
+        adminVerificationAssertApplicationDownloadUrl($url, $pending);
 
         $ttl = (new DateTimeImmutable($expires))->getTimestamp() - time();
         expect($ttl)->toBeGreaterThan(0)->and($ttl)->toBeLessThanOrEqual(300);
 
-        expect($recording->temporaryUrlRefs)->not->toBe([])
-            ->and((string) $recording->temporaryUrlRefs[0]->storageLocator)->toStartWith('verification/c/')
-            ->and((string) $recording->temporaryUrlRefs[0]->storageLocator)->not->toStartWith('verification/q/')
-            ->and((string) $recording->temporaryUrlRefs[0]->storageLocator)->toBe($pending['canonical_storage_locator']);
+        expect($recording->temporaryUrlRefs)->toBe([])
+            ->and($recording->openStreamRefs)->toBe([]);
 
         $audit = adminVerificationAuditJson('verification.document_access_granted');
         expect(DB::table('audit_events')->where('event_name', 'verification.document_access_granted')->count())->toBe(1);
@@ -157,5 +157,30 @@ describe('admin verification document access', function () {
             '/api/v1/admin/verification-cases/'.$left['case_id'].'/documents/'.$left['document_id'].'/access',
             [],
         )->assertNotFound();
+    });
+
+    it('rolls back issuance when document-access audit append fails', function () {
+        $pending = adminVerificationPendingCanonicalCase('doc-audit-fail');
+        $admin = adminVerificationInsertAdmin('doc-audit-fail');
+        adminVerificationLogin($admin);
+        adminVerificationPostJson('/api/v1/admin/verification-cases/'.$pending['case_id'].'/claim', [
+            'expected_case_version' => $pending['case_version'],
+        ])->assertOk();
+
+        $inner = app(AppendAuditEvent::class);
+        app()->instance(
+            AppendAuditEvent::class,
+            new FailOnceAppendAuditEvent($inner, 'verification.document_access_granted'),
+        );
+
+        $failed = adminVerificationPostJson(
+            '/api/v1/admin/verification-cases/'.$pending['case_id'].'/documents/'.$pending['document_id'].'/access',
+            [],
+        );
+        expect($failed->status())->toBe(500)
+            ->and($failed->json('data'))->toBeNull()
+            ->and((string) $failed->getContent())->not->toContain($pending['canonical_storage_locator'])
+            ->and((string) $failed->getContent())->not->toContain('/api/v1/verification-review-files/')
+            ->and(DB::table('audit_events')->where('event_name', 'verification.document_access_granted')->count())->toBe(0);
     });
 });

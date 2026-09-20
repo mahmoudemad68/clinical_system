@@ -139,6 +139,25 @@ final class VerificationPolicy
         return (int) config('verification_module.reviewer_document_access_ttl_seconds', 120);
     }
 
+    public function reviewerDownloadChunkBytes(): int
+    {
+        return 65_536;
+    }
+
+    /**
+     * Generic server-owned download name. Never the original filename and
+     * never derived from request input.
+     */
+    public function reviewerDownloadFilename(string $detectedMime): string
+    {
+        return match ($detectedMime) {
+            'application/pdf' => 'verification-document.pdf',
+            'image/jpeg' => 'verification-document.jpg',
+            'image/png' => 'verification-document.png',
+            default => 'verification-document.bin',
+        };
+    }
+
     public function queueDefaultLimit(): int
     {
         return (int) config('verification_module.queue_default_limit', 25);

@@ -877,11 +877,14 @@ available over HTTP in this slice; only a trusted in-process registrar writes
 rows. Object keys and file bytes never appear on public DTOs. Assigned
 reviewers may receive SHA-256 plus MIME/size metadata after claim. Short-lived
 signed GET URLs for `AVAILABLE`+`CLEAN` canonical objects are issued at
-runtime by `VerificationDocumentService::issueReviewerReadGrant` and are
-**never persisted** in PostgreSQL, audit metadata, idempotency replay, events,
-logs, or metrics. The signed URL is bearer-style until `expires_at`
-(ENGINEERING_DEFAULT 120 seconds; hard-capped at 300). Ingress locators are
-never used for reviewer reads.
+runtime by `VerificationDocumentService::issueReviewerReadGrant` as
+**application-owned** HMAC URLs (`GET /api/v1/verification-review-files/{case_id}/{document_id}`).
+They are **never** direct S3/MinIO presigned URLs and **never persisted** in
+PostgreSQL, audit metadata, idempotency replay, events, logs, or metrics.
+The signed URL is bearer-style until `expires_at` (ENGINEERING_DEFAULT 120
+seconds; hard-capped at 300). Canonical locators are resolved server-side
+on GET via `trustedRef()`; ingress locators are never used for reviewer
+reads and never appear in reviewer HTTP.
 
 **Writer.** Verification module via `clinic_app`. `clinic_worker` has
 `SELECT, INSERT` so the trusted processor can persist AVAILABLE metadata;

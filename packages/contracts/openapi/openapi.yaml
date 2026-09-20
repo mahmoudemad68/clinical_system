@@ -24,7 +24,8 @@ info:
     `GET /api/v1/admin/verification-cases/{case_id}`,
     `POST /api/v1/admin/verification-cases/{case_id}/claim`,
     `POST /api/v1/admin/verification-cases/{case_id}/decisions`,
-    `POST /api/v1/admin/verification-cases/{case_id}/documents/{document_id}/access`).
+    `POST /api/v1/admin/verification-cases/{case_id}/documents/{document_id}/access`,
+    `GET /api/v1/verification-review-files/{case_id}/{document_id}`).
     React Admin verification UI, pharmacy, clinic, and AI capabilities remain
     absent.
 
@@ -1581,12 +1582,17 @@ paths:
     post:
       tags: [admin]
       operationId: grantAdminVerificationDocumentAccess
-      summary: Issue a short-lived canonical document read grant
+      summary: Issue a short-lived application-signed document read grant
       description: |
         Purpose-bound reviewer access to an AVAILABLE+CLEAN document that
-        belongs to this exact case after assignment. Resolves the canonical
-        trusted object only; ingress is never used. The signed GET URL is
-        bearer-style while valid, is not actor-bound after issuance, and is
+        belongs to this exact case after assignment. Authorization, application
+        URL signing, and `verification.document_access_granted` commit in one
+        locked transaction. The returned URL is an application-owned signed GET
+        for `/api/v1/verification-review-files/{case_id}/{document_id}`; it is
+        never a direct S3/MinIO presigned URL and never contains a storage
+        locator, bucket, object key, or object_id locator. Ingress is never
+        used. The URL is bearer-style while valid (ENGINEERING_DEFAULT 120
+        seconds, hard-capped 300), is not actor-bound after issuance, and is
         never stored in audit, logs, metrics, events, the database, or
         idempotency replay. This endpoint is not idempotency-stored.
       security:
@@ -1628,6 +1634,87 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/verification-review-files/{case_id}/{document_id}:
+    get:
+      tags: [admin]
+      operationId: downloadVerificationReviewFile
+      summary: Stream a purpose-bound reviewer document
+      description: |
+        Bearer-style application-signed download issued by
+        `grantAdminVerificationDocumentAccess`. Query `expires` and
+        `signature` are the capability. The handler verifies the HMAC and
+        expiry, then re-resolves the canonical trusted object server-side.
+        Storage locators, buckets, object keys, and ingress locators are
+        never accepted from the URL. If the case is no longer
+        `pending_review`, or the document is no longer AVAILABLE+CLEAN with
+        an AVAILABLE upload intent and canonical locator, the request fails
+        closed as 404. Bytes are streamed in bounded chunks. Content is
+        served as an attachment with a generic server-owned filename; the
+        original uploaded filename is never used. This is not a generic
+        file browser.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: expires
+          in: query
+          required: true
+          description: Unix timestamp (UTC seconds) bound into the HMAC.
+          schema:
+            type: string
+            pattern: '^[0-9]{1,16}$'
+        - name: signature
+          in: query
+          required: true
+          description: Server-owned HMAC-SHA256 over purpose, case id, document id, and expiry.
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_-]+$'
+            maxLength: 128
+      responses:
+        '200':
+          description: Canonical document bytes with safe download headers.
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: attachment with a generic server-owned filename.
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum: [nosniff]
+            Cache-Control:
+              schema:
+                type: string
+            Referrer-Policy:
+              schema:
+                type: string
+                enum: [no-referrer]
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
 
 components:
 
@@ -3234,9 +3321,10 @@ components:
       type: object
       additionalProperties: false
       description: |
-        Short-lived signed GET. The URL is bearer-style until expires_at and
-        is not actor-bound after issuance. Storage locator, bucket, and
-        object key are never included.
+        Short-lived application-signed GET. The URL is bearer-style until
+        expires_at and is not actor-bound after issuance. It never contains a
+        storage locator, bucket, object key, object_id locator, or a direct
+        S3/MinIO presigned URL.
       required:
         - document_id
         - url

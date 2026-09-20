@@ -11,6 +11,7 @@ use Modules\Platform\Http\Controllers\DiagnosticsController;
 use Modules\Platform\Http\Controllers\PlatformHealthController;
 use Modules\Verification\Http\Controllers\DoctorVerificationController;
 use Modules\Verification\Http\Controllers\DoctorVerificationUploadController;
+use Modules\Verification\Http\Controllers\ReviewerDocumentDownloadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,9 +19,11 @@ use Modules\Verification\Http\Controllers\DoctorVerificationUploadController;
 |--------------------------------------------------------------------------
 |
 | Every externally reachable route lives here and speaks the response
-| envelope. Operational probes (/live, /ready) are deliberately NOT here:
-| they are unversioned, unenveloped, and registered in routes/operational.php
-| so they can be excluded from the public gateway route.
+| envelope, except the purpose-bound reviewer document download which
+| streams canonical bytes. Operational probes (/live, /ready) are
+| deliberately NOT here: they are unversioned, unenveloped, and registered
+| in routes/operational.php so they can be excluded from the public
+| gateway route.
 |
 */
 
@@ -70,6 +73,9 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware('platform.idempotency')
         ->post('/auth/recovery/complete', [AuthController::class, 'recoveryComplete'])
         ->name('api.v1.auth.recovery.complete');
+
+    Route::get('/verification-review-files/{caseId}/{documentId}', [ReviewerDocumentDownloadController::class, 'show'])
+        ->name('api.v1.verification-review-files.show');
 
     Route::middleware(['identity.session', 'auth.actor', 'auth.pending'])->group(function (): void {
         Route::post('/auth/logout', [AuthController::class, 'logout'])

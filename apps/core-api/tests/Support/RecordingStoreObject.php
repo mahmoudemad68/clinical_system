@@ -38,6 +38,9 @@ final class RecordingStoreObject implements StoreObject
     /** @var list<StoredObjectRef> */
     public array $temporaryUrlRefs = [];
 
+    /** @var list<StoredObjectRef> */
+    public array $openStreamRefs = [];
+
     public int $deleteAttempts = 0;
 
     public int $failNextDeletes = 0;
@@ -145,6 +148,8 @@ final class RecordingStoreObject implements StoreObject
      */
     public function openStream(StoredObjectRef $ref)
     {
+        $this->openStreamRefs[] = $ref;
+
         return $this->inner->openStream($ref);
     }
 
