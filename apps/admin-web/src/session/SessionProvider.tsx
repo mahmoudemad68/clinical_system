@@ -180,7 +180,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await apiClient.POST('/api/v1/auth/logout', {});
+      const { error } = await apiClient.POST('/api/v1/auth/logout', {});
+      if (error) {
+        await apiClient.GET('/api/v1/auth/csrf');
+      }
     } catch {
       // Server logout is best-effort; local sensitive state still clears.
     }

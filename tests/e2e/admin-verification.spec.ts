@@ -17,8 +17,23 @@ function loadFixture(): FixtureFile {
   return JSON.parse(readFileSync(path, 'utf8')) as FixtureFile;
 }
 
+async function waitForSessionReady(page: Page): Promise<void> {
+  await page.getByText(/Checking your session|جارٍ التحقق من جلستك/).waitFor({ state: 'hidden', timeout: 20_000 }).catch(() => undefined);
+}
+
+async function ensureSignedOut(page: Page): Promise<void> {
+  await waitForSessionReady(page);
+  const signOut = page.getByRole('button', { name: /Sign out|خروج/ });
+  if (await signOut.isVisible().catch(() => false)) {
+    await signOut.click();
+  }
+  await page.getByRole('heading', { name: /Admin sign in|دخول المسؤول/ }).waitFor({ timeout: 20_000 });
+  await page.getByRole('textbox', { name: /Mobile number|رقم الجوال/ }).waitFor({ timeout: 20_000 });
+}
+
 async function signIn(page: Page, phone: string, password: string, totpSecret: string): Promise<void> {
   await page.goto('/');
+  await ensureSignedOut(page);
   await page.getByRole('textbox', { name: /Mobile number|رقم الجوال/ }).fill(phone);
   await page.getByRole('textbox', { name: /Password|كلمة المرور/ }).fill(password);
   await page.getByRole('button', { name: /Sign in|دخول/ }).click();
@@ -26,7 +41,11 @@ async function signIn(page: Page, phone: string, password: string, totpSecret: s
   const mfa = page.getByRole('textbox', { name: /Authenticator code|رمز التحقق/ });
   const unauthorized = page.getByRole('heading', { name: /Verification review is not available|مراجعة التحقق غير متاحة/ });
   const queue = page.getByRole('heading', { name: /Pending doctor verification|تحقق الأطباء المعلّق/ });
-  await Promise.race([mfa.waitFor({ timeout: 20_000 }), unauthorized.waitFor({ timeout: 20_000 }), queue.waitFor({ timeout: 20_000 })]);
+  await Promise.race([
+    mfa.waitFor({ timeout: 20_000 }),
+    unauthorized.waitFor({ timeout: 20_000 }),
+    queue.waitFor({ timeout: 20_000 }),
+  ]);
 
   if (await mfa.isVisible()) {
     await mfa.fill(totpCode(totpSecret));
@@ -69,7 +88,7 @@ test.describe('admin verification review', () => {
     await expect(page.getByText(fixture.case.professional_display_name)).toBeVisible();
     expect(queueHits.length).toBeGreaterThan(0);
 
-    await page.getByRole('button', { name: /Open case|فتح الحالة/ }).click();
+    await page.getByRole('link', { name: /Open case|فتح الحالة/ }).click();
     await expect(page.getByRole('heading', { name: /Verification case|حالة التحقق/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /View \/ download document|عرض \/ تنزيل المستند/ })).toHaveCount(0);
     expect(accessPosts).toEqual([]);

@@ -15,7 +15,7 @@ import TableRow from '@mui/material/TableRow';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { ApiError } from '@/api/client';
@@ -40,17 +40,16 @@ export function VerificationQueuePage() {
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const [cursorRecovered, setCursorRecovered] = useState(false);
   const query = useVerificationQueue(assignment, cursor);
-  const cursorInvalid =
-    query.error instanceof ApiError && query.error.failure.code === 'CURSOR_INVALID' && cursor !== null;
 
-  useEffect(() => {
-    if (!cursorInvalid) {
-      return;
-    }
+  if (
+    query.error instanceof ApiError &&
+    query.error.failure.code === 'CURSOR_INVALID' &&
+    cursor !== null
+  ) {
     setCursor(null);
     setCursorStack([]);
     setCursorRecovered(true);
-  }, [cursorInvalid]);
+  }
 
   function changeAssignment(next: QueueAssignmentFilter): void {
     setAssignment(next);

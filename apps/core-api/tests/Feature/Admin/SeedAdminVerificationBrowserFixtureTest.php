@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Modules\Access\Support\Capabilities;
 use Tests\TestCase;
 
-uses(TestCase::class);
+uses(TestCase::class, RefreshDatabase::class);
 
 it('refuses the browser verification fixture seeder outside local/testing', function () {
     config(['app.env' => 'production']);
@@ -40,10 +40,10 @@ it('seeds a secretary unauthorized actor who can read me but not the review queu
         ->and(is_string($fixture['unauthorized']['phone'] ?? null))->toBeTrue()
         ->and(is_string($fixture['unauthorized']['password'] ?? null))->toBeTrue();
 
-    test()->withCredentials();
-    test()->getJson('/api/v1/auth/csrf')->assertOk();
+    $this->withCredentials();
+    $this->getJson('/api/v1/auth/csrf')->assertOk();
     $csrf = csrf_token();
-    $login = test()->postJson('/api/v1/auth/login', [
+    $login = $this->postJson('/api/v1/auth/login', [
         'phone' => $fixture['unauthorized']['phone'],
         'password' => $fixture['unauthorized']['password'],
         'client_class' => 'admin_web',
@@ -66,4 +66,4 @@ it('seeds a secretary unauthorized actor who can read me but not the review queu
     adminVerificationGetJson('/api/v1/admin/verification-cases')->assertNotFound();
 
     @unlink($path);
-})->uses(RefreshDatabase::class);
+});
