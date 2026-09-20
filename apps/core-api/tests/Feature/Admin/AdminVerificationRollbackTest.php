@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Modules\Audit\Contracts\AppendAuditEvent;
@@ -67,7 +68,7 @@ it('rolls back when PostgreSQL rejects the decision insert', function () {
             'approved',
             'approved',
             $claimed['version'],
-        ))->toThrow(Throwable::class);
+        ))->toThrow(QueryException::class);
         adminVerificationAssertDecisionRolledBack($claimed['case_id'], $claimed['doctor_id']);
     } finally {
         DB::statement('DROP TRIGGER IF EXISTS clinic_test_fail_verification_decision ON verification_decisions');
@@ -135,7 +136,7 @@ it('rolls back when the outbox insert fails', function () {
             'approved',
             'approved',
             $claimed['version'],
-        ))->toThrow(Throwable::class);
+        ))->toThrow(QueryException::class);
         adminVerificationAssertDecisionRolledBack($claimed['case_id'], $claimed['doctor_id']);
     } finally {
         DB::statement('DROP TRIGGER IF EXISTS clinic_test_fail_verification_outbox ON outbox_events');

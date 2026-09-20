@@ -263,8 +263,9 @@ describe('admin verification review HTTP', function () {
             ->and((string) verificationOutboxPayload('doctor.verification_decided'))->not->toContain('internal reviewer note');
 
         $notes = DB::table('verification_decisions')->where('case_id', $approve['case_id'])->value('notes_ciphertext');
+        $notesBytes = is_resource($notes) ? (string) stream_get_contents($notes) : (is_string($notes) ? $notes : '');
         expect($notes)->not->toBeNull()
-            ->and(json_encode($notes, JSON_THROW_ON_ERROR))->not->toContain('internal reviewer note must stay encrypted');
+            ->and($notesBytes)->not->toContain('internal reviewer note must stay encrypted');
 
         $replay = adminVerificationPostJson(
             '/api/v1/admin/verification-cases/'.$approve['case_id'].'/decisions',
@@ -450,8 +451,6 @@ describe('admin verification review HTTP', function () {
 
 describe('admin verification review service queue', function () {
     it('uses the reviewer queue keyset index', function () {
-        $admin = adminVerificationInsertAdmin('explain');
-        adminVerificationLogin($admin);
         adminVerificationPendingCase('explain-case');
         DB::statement('SET enable_seqscan = off');
         $json = DB::select(

@@ -105,6 +105,7 @@ function adminVerificationLogin(array $admin): void
 
 function adminVerificationPinCookie(): void
 {
+    Auth::guard('web')->forgetUser();
     test()->withCredentials()
         ->withCookie((string) config('session.cookie'), (string) session()->getId());
 }
@@ -254,4 +255,15 @@ function adminVerificationVersionedCursor(string $reviewerUserId, array $positio
     $mac = rtrim(strtr(base64_encode(hash_hmac('sha256', $payload, (string) config('app.key'), true)), '+/', '-_'), '=');
 
     return $payload.'.'.$mac;
+}
+
+function adminVerificationAuditJson(string $eventName): string
+{
+    return json_encode(
+        DB::table('audit_events')
+            ->where('event_name', $eventName)
+            ->get(['event_name', 'actor_id', 'actor_type', 'object_type', 'object_id', 'metadata'])
+            ->all(),
+        JSON_THROW_ON_ERROR,
+    );
 }

@@ -66,7 +66,7 @@ it('issues a live MinIO reviewer grant against the canonical object only', funct
     expect($get->successful())->toBeTrue()
         ->and($get->header('Content-Type'))->toContain('pdf');
 
-    $audit = json_encode(DB::table('audit_events')->where('event_name', 'verification.document_access_granted')->get()->all(), JSON_THROW_ON_ERROR);
+    $audit = adminVerificationAuditJson('verification.document_access_granted');
     expect($audit)->not->toContain($url)
         ->and($audit)->not->toContain($pending['canonical_storage_locator']);
 

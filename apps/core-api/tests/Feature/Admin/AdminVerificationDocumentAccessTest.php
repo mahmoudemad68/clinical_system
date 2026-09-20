@@ -12,7 +12,6 @@ uses(TestCase::class, RefreshDatabase::class);
 
 describe('admin verification document access', function () {
     it('issues a short-lived canonical grant to the assigned reviewer only', function () {
-        Log::fake();
         $pending = adminVerificationPendingCanonicalCase('doc-ok');
         $admin = adminVerificationInsertAdmin('doc-ok');
         adminVerificationLogin($admin);
@@ -26,6 +25,11 @@ describe('admin verification document access', function () {
             'expected_case_version' => $pending['case_version'],
         ])->assertOk();
         expect($claimed->json('data.documents.0.document_id'))->toBe($pending['document_id']);
+
+        $logged = [];
+        Log::listen(function (object $event) use (&$logged): void {
+            $logged[] = ($event->message ?? '').' '.json_encode($event->context ?? [], JSON_THROW_ON_ERROR);
+        });
 
         $recording = adminVerificationWrapObjectStore();
         $before = DB::table('idempotency_keys')->count();
@@ -56,9 +60,9 @@ describe('admin verification document access', function () {
             ->and((string) $recording->temporaryUrlRefs[0]->storageLocator)->not->toStartWith('verification/q/')
             ->and((string) $recording->temporaryUrlRefs[0]->storageLocator)->toBe($pending['canonical_storage_locator']);
 
-        $audit = DB::table('audit_events')->where('event_name', 'verification.document_access_granted')->get();
-        expect($audit)->toHaveCount(1);
-        $metadata = json_encode($audit->all(), JSON_THROW_ON_ERROR);
+        $audit = adminVerificationAuditJson('verification.document_access_granted');
+        expect(DB::table('audit_events')->where('event_name', 'verification.document_access_granted')->count())->toBe(1);
+        $metadata = $audit;
         expect($metadata)->toContain($pending['document_id'])
             ->and($metadata)->toContain('verification_review_access')
             ->and($metadata)->not->toContain($url)
@@ -67,13 +71,8 @@ describe('admin verification document access', function () {
             ->and($metadata)->not->toContain('X-Amz-Signature');
 
         expect(DB::table('outbox_events')->get()->pluck('payload')->implode(''))->not->toContain($url)
-            ->and(DB::table('idempotency_keys')->count())->toBe($before);
-
-        $logged = [];
-        if (is_object(Log::getFacadeRoot()) && method_exists(Log::getFacadeRoot(), 'logged')) {
-            $logged = Log::logged();
-        }
-        expect(json_encode($logged, JSON_THROW_ON_ERROR))->not->toContain($url);
+            ->and(DB::table('idempotency_keys')->count())->toBe($before)
+            ->and(json_encode($logged, JSON_THROW_ON_ERROR))->not->toContain($url);
 
         adminVerificationPostJson(
             '/api/v1/admin/verification-cases/'.$pending['case_id'].'/documents/'.$pending['document_id'].'/access',
