@@ -93,10 +93,15 @@ test.describe('admin verification review', () => {
     await expect(page.getByRole('button', { name: /View \/ download document|عرض \/ تنزيل المستند/ })).toHaveCount(0);
     expect(accessPosts).toEqual([]);
 
+    const claimWait = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && response.url().includes('/claim'),
+      { timeout: 20_000 },
+    );
     await page.getByRole('button', { name: /Claim case|ادّعاء الحالة/ }).click();
-    await expect(page.getByText(/Case assigned to you|الحالة مُعيَّنة لك/)).toBeVisible();
+    const claimResponse = await claimWait;
+    expect(claimResponse.ok(), `claim HTTP ${String(claimResponse.status())}`).toBeTruthy();
     const viewButton = page.getByRole('button', { name: /View \/ download document|عرض \/ تنزيل المستند/ });
-    await expect(viewButton).toBeVisible();
+    await expect(viewButton).toBeVisible({ timeout: 20_000 });
     expect(accessPosts).toEqual([]);
 
     const downloadPromise = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null);

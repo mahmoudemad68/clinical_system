@@ -50,6 +50,7 @@ export function LoginPanel({ onAuthenticated, sessionExpired = false }: LoginPan
         setPassword('');
         setCode('');
         setChallengeId(null);
+        await apiClient.GET('/api/v1/auth/csrf');
         onAuthenticated();
         return;
       }
@@ -76,6 +77,7 @@ export function LoginPanel({ onAuthenticated, sessionExpired = false }: LoginPan
       }
 
       setPassword('');
+      await apiClient.GET('/api/v1/auth/csrf');
       onAuthenticated();
     } catch (caught) {
       setFailure(caught instanceof ApiError ? caught.failure : undefined);

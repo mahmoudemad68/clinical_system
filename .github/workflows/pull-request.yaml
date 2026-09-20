@@ -509,14 +509,16 @@ jobs:
           set -euo pipefail
           mkdir -p apps/core-api/storage/framework/testing/objects
           php apps/core-api/artisan e2e:seed-admin-verification --write=/tmp/clinic-e2e-admin-verification.json
-          php apps/core-api/artisan serve --host=127.0.0.1 --port=8080 &
-          npm run preview --workspace apps/admin-web -- --host 127.0.0.1 --port 4173 --strictPort &
+          php apps/core-api/artisan serve --host=127.0.0.1 --port=8080 > /tmp/clinic-e2e-laravel.log 2>&1 &
+          npm run preview --workspace apps/admin-web -- --host 127.0.0.1 --port 4173 --strictPort > /tmp/clinic-e2e-preview.log 2>&1 &
           for i in $(seq 1 40); do
             if curl -sf http://127.0.0.1:8080/api/v1/health >/dev/null && curl -sf http://127.0.0.1:4173/ >/dev/null; then
               break
             fi
             if [ "$i" -eq 40 ]; then
               echo '::error::Laravel or Admin preview did not become ready.'
+              tail -n 80 /tmp/clinic-e2e-laravel.log || true
+              tail -n 40 /tmp/clinic-e2e-preview.log || true
               exit 1
             fi
             sleep 1
@@ -524,6 +526,13 @@ jobs:
           npm ci --prefix tests/e2e
           npx --prefix tests/e2e playwright install --with-deps chromium
           npx --prefix tests/e2e playwright test --config tests/e2e/playwright.config.ts --project=admin-verification
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo '::error::Admin verification Playwright failed.'
+            tail -n 120 /tmp/clinic-e2e-laravel.log || true
+            tail -n 80 /tmp/clinic-e2e-preview.log || true
+          fi
+          exit "$status"
 
   # ----------------------------------------------------------------- flutter
   flutter:
