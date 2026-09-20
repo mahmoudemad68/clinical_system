@@ -64,3 +64,38 @@ it('rejects zero-byte, mismatch, unsupported, truncated pdf, and active pdf cont
     fclose($active);
     expect($js->ok)->toBeFalse()->and($js->rejectionReason)->toBe('malformed');
 });
+
+it('rejects oversized pdf page counts and trailing payload after pdf eof, jpeg eoi, and png iend', function () {
+    $inspector = new BoundedDocumentInspector;
+
+    $pages = inspectionStream(verificationOverPagePdf());
+    $overPages = $inspector->inspect($pages, 20_971_520, FileMagic::PDF, [FileMagic::PDF]);
+    fclose($pages);
+    expect($overPages->ok)->toBeFalse()->and($overPages->rejectionReason)->toBe('malformed');
+
+    $pdfTrail = inspectionStream(verificationPdfWithTrailingPayload());
+    $pdfRejected = $inspector->inspect($pdfTrail, 20_971_520, FileMagic::PDF, [FileMagic::PDF]);
+    fclose($pdfTrail);
+    expect($pdfRejected->ok)->toBeFalse()->and($pdfRejected->rejectionReason)->toBe('malformed');
+
+    $jpegTrail = inspectionStream(verificationJpegWithTrailingPayload());
+    $jpegRejected = $inspector->inspect($jpegTrail, 20_971_520, FileMagic::JPEG, [FileMagic::JPEG]);
+    fclose($jpegTrail);
+    expect($jpegRejected->ok)->toBeFalse()->and($jpegRejected->rejectionReason)->toBe('malformed');
+
+    $pngTrail = inspectionStream(verificationPngWithTrailingPayload());
+    $pngRejected = $inspector->inspect($pngTrail, 20_971_520, FileMagic::PNG, [FileMagic::PNG]);
+    fclose($pngTrail);
+    expect($pngRejected->ok)->toBeFalse()->and($pngRejected->rejectionReason)->toBe('malformed');
+
+    foreach ([
+        [verificationMinimalPdf(), FileMagic::PDF],
+        [verificationMinimalJpeg(), FileMagic::JPEG],
+        [verificationMinimalPng(), FileMagic::PNG],
+    ] as [$bytes, $mime]) {
+        $stream = inspectionStream($bytes);
+        $ok = $inspector->inspect($stream, 20_971_520, $mime, [$mime]);
+        fclose($stream);
+        expect($ok->ok)->toBeTrue()->and($ok->detectedMime)->toBe($mime);
+    }
+});

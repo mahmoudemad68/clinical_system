@@ -71,3 +71,35 @@ function verificationActivePdf(): string
         ."trailer<< /Root 1 0 R >>\n"
         ."%%EOF\n";
 }
+
+function verificationOverPagePdf(): string
+{
+    $body = "%PDF-1.4\n";
+    $body .= "1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n";
+    $kids = [];
+    for ($i = 0; $i < 52; $i++) {
+        $id = $i + 3;
+        $kids[] = $id.' 0 R';
+        $body .= str_repeat("% pad\n", 800);
+        $body .= $id." 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 3 3] >>endobj\n";
+    }
+    $body .= '2 0 obj<< /Type /Pages /Count 52 /Kids ['.implode(' ', $kids)."] >>endobj\n";
+    $body .= "trailer<< /Root 1 0 R >>\n%%EOF\n";
+
+    return $body;
+}
+
+function verificationPdfWithTrailingPayload(): string
+{
+    return verificationMinimalPdf()."PK\x03\x04".str_repeat("\x00", 26);
+}
+
+function verificationJpegWithTrailingPayload(): string
+{
+    return verificationMinimalJpeg()."PK\x03\x04".str_repeat("\x00", 26);
+}
+
+function verificationPngWithTrailingPayload(): string
+{
+    return verificationMinimalPng().'TRAIL';
+}

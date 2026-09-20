@@ -4,12 +4,15 @@ Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 **not** claim the branch is READY_TO_MERGE.
 
 **Scope implemented:** doctor-verification fail-closed upload intent,
-private quarantine storage, server-side observation (streamed SHA-256 +
-magic MIME + structural bounds), clamd-compatible malware scan, durable
-outbox processing, transactional promotion to `TrustedDocumentEvidence` /
-AVAILABLE verification documents, TOCTOU binding, applicant-safe status,
-BOLA, idempotency, bounded cleanup, audit/redaction, OpenAPI + generated
-TypeScript contracts.
+private **ingress** object plus server-only **canonical/sealed** object,
+server-side observation (streamed SHA-256 + magic MIME + structural
+bounds, including trailing-payload rejection), exact-byte clamd INSTREAM,
+durable outbox processing, transactional promotion to
+`TrustedDocumentEvidence` / AVAILABLE verification documents, TOCTOU
+binding to canonical bytes, applicant-safe status, BOLA, create-idempotency
+grant reissue, bounded cleanup, audit/redaction, OpenAPI + generated
+TypeScript contracts, digest-pinned live MinIO/clamd CI lane, blocking
+Trivy of the pinned ClamAV image.
 
 **Explicitly deferred:** Admin verification UI/HTTP, reviewer download URLs,
 Pharmacy verification, Clinics/locations/memberships, approved document
@@ -22,18 +25,20 @@ Staging `Deploy to staging` remains fail-closed; this chunk does not bypass
 it.
 
 - **Branch:** `cursor/secure-verification-files-cc7f`
+- **Draft PR:** #10 (kept Draft; not merged)
 - **Base (GitHub `main`):** `c9b676baed44f08239580e1fe1324f4887908939`
-- **Recorded:** 2026-09-19
+- **Independent-review remediation recorded:** 2026-09-20
+- **Reviewed-then-remediated HEAD (before this work):** `39632c0bbbfd3127a6c179a0657ff82f1bcf4d87`
 
 ## Trust flow
 
 ```
 REQUESTED
   -> UPLOADING          (persisted on intent create; REQUESTED is not a wait state)
-  -> QUARANTINED        (client complete accepted; object not yet trusted)
-  -> VALIDATING         (server observes bytes)
-  -> SCANNING           (clamd INSTREAM or fail-closed miss)
-  -> AVAILABLE          (only after exact object + hash + magic + structure + clean scan)
+  -> QUARANTINED        (client complete accepted; ingress copied to canonical)
+  -> VALIDATING         (server observes canonical bytes)
+  -> SCANNING           (clamd INSTREAM of canonical bytes, or fail-closed miss)
+  -> AVAILABLE          (only after exact canonical object + hash + magic + structure + clean scan)
 or REJECTED             (terminal unsafe)
 ```
 
@@ -41,8 +46,13 @@ No path jumps from client upload completion to AVAILABLE.
 
 `CLIENT CLAIM != SERVER OBSERVATION != SCANNER VERDICT`.
 
-Create persists `uploading`. Complete means only: the client claims it
-finished; the server may now inspect. Duplicate complete is safe.
+Create persists `uploading` and issues a PUT grant **only** for the ingress
+locator (`verification/q/...`). Complete means: the client claims it
+finished; the server copies the exact observed ingress bytes to a
+server-only canonical locator (`verification/c/...`) and may now inspect
+that copy. Duplicate complete is safe. Inspection, malware scanning,
+re-observation, promotion, and later trusted access use the canonical
+locator only.
 
 ## Upload purpose and policy (`ENGINEERING_DEFAULT`)
 
@@ -52,34 +62,61 @@ finished; the server may now inspect. Duplicate complete is safe.
 | Requirement | `professional_id` | ENGINEERING_DEFAULT |
 | Allowed formats | `application/pdf`, `image/jpeg`, `image/png` (magic + declared must match) | ENGINEERING_DEFAULT |
 | Max bytes | 20_971_520 (20 MiB) | ENGINEERING_DEFAULT |
-| Upload grant expiry | 900 seconds | ENGINEERING_DEFAULT |
+| Upload grant expiry | 900 seconds, capped by the upload-intent `expires_at` | ENGINEERING_DEFAULT |
 | Max active uploads per requirement | 3 | ENGINEERING_DEFAULT |
 | Max processing attempts | 8 | ENGINEERING_DEFAULT |
 | Rejected-object cleanup eligibility | 86_400 seconds | ENGINEERING_DEFAULT; not a legal retention schedule |
 | Archives / Office / SVG / HTML / executables / AV | denied | fail closed |
 
-## Storage adapter
+## Canonical sealed-object design
 
-Platform `StoreObject`: production/local `S3StoreObject` (MinIO locally,
-private bucket, no public ACL). Tests use `InMemoryStoreObject` with a
-shared persist directory so race workers see the same bytes.
+Client-writable ingress and server-only canonical objects are separate
+locators. SHA-256 is a content hash, **not** an S3/MinIO version-id.
 
-Server generates the opaque object id and random quarantine locator
-(`verification/q/...`). The locator is classified, never returned in HTTP,
-events, logs, or metrics, and is not authorization. Short-lived PUT grants
-only. Anonymous GET/list is denied (MinIO contract test).
+```
+client PUT grant
+  -> writable ingress locator (verification/q/<random>)
+  -> complete: server copyExact to canonical locator (verification/c/<random>)
+  -> validate + scan + re-observe canonical bytes
+  -> AVAILABLE document hash/MIME/size bind canonical bytes only
+```
 
-## Server observation
+| Rule | Mechanism |
+| --- | --- |
+| Signed upload URL writes only ingress | `createUploadGrant` / `issueUploadGrant` refuse `/c/` locators |
+| Canonical locator is classified | never in HTTP, events, audit metadata, or metrics |
+| `storage_locator` is not client-selectable | server-generated; identity trigger makes it immutable |
+| Canonical locator is immutable once set | PostgreSQL protect trigger |
+| AVAILABLE requires canonical locator | state-consistency CHECK |
+| Ingress overwrite after seal cannot change trusted bytes | processor uses `trustedRef()` / `canonicalRef()` |
+| Provider version-id | `StoreObject::providerVersionId()` stores a real S3 `VersionId` when present; otherwise NULL. Immutability is the server-only canonical locator plus SHA-256 |
+
+`object_version` is **not** populated with SHA-256.
+
+Local MinIO in this foundation typically has object versioning off, so
+`providerVersionId` is null. That is documented, not treated as a storage
+version.
+
+## Server observation / polyglot bounds
 
 `BoundedDocumentInspector` streams chunks (default 65_536 bytes), computes
 SHA-256 without loading the whole object into a PHP string, detects PDF /
-JPEG / PNG magic, and applies structural bounds (PDF `%%EOF` / page bound,
-PNG IHDR/IEND, JPEG SOF/EOI, zero-byte and oversize reject). Declared MIME
-cannot override detection.
+JPEG / PNG magic, and applies structural bounds:
 
-Object version for this slice is the observed SHA-256 (S3/MinIO local
-foundation does not expose a distinct version-id on every PUT). Promotion
-re-observes and rejects on hash/size/MIME/version mismatch (`toctou_mismatch`).
+- PDF: global `/Type /Page` minus `/Type /Pages` across the stream (carry
+  so needles that split across chunks count once); `maxPages` is global;
+  last `%%EOF` in the terminal window may be followed only by whitespace;
+  meaningful trailing payload is `malformed`
+- JPEG: first EOI (`FF D9`) is terminal; any later bytes are `malformed`
+- PNG: IEND is terminal; leftover bytes after IEND are `malformed`
+- PNG/JPEG dimension and chunk/resource caps retained
+- zero-byte, oversize, MIME mismatch, unsupported magic, active PDF
+  tokens (`/JavaScript`, `/JS `, `/Launch`, `/EmbeddedFile`, `/RichMedia`,
+  `/XFA`) remain rejected
+
+Declared MIME cannot override detection. Synthetic inert fixtures cover
+oversized PDF page counts, PDF+trailing payload, JPEG+trailing ZIP-like
+bytes, PNG+trailing payload, and valid PDF/JPEG/PNG.
 
 ## Scanner adapter
 
@@ -89,6 +126,8 @@ re-observes and rejects on hash/size/MIME/version mismatch (`toctou_mismatch`).
 | Production bind | `ClamdScanObject` when `CLAMAV_HOST` is set |
 | Fail-closed bind | `DisabledScanObject` (`unavailable`) when host is empty |
 | Protocol | clamd `nINSTREAM` over private TCP |
+| Write helper | `BoundedSocketWriter::writeAll` — every frame is fully written or fail closed |
+| Exact bytes | `sent === sizeBytes` required before the terminal zero-length frame and before accepting a result. Short streams are `invalid` (never clean). Longer streams remain `invalid` |
 | Local/integration image | `clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200` |
 | Digest source | Docker Hub tag `clamav/clamav:1.4.6` index digest, verified 2026-09-19 |
 | Network | Compose publishes `127.0.0.1:3310` only; port 7357 unpublished; no secrets; no host filesystem |
@@ -96,13 +135,65 @@ re-observes and rejects on hash/size/MIME/version mismatch (`toctou_mismatch`).
 | Verdicts | `clean` / `infected` / `unavailable` (retryable) / `invalid` |
 | Test fixtures | clean PDF/JPEG/PNG; EICAR *string* inside an otherwise valid PDF; no live malware committed |
 
-GitHub Core CI does **not** add ClamAV as a workflow `image:` service (ISR-015
-pin catalog would then require bidirectional workflow refs). CI scanner tests
-use a local `clamd-stub.php` or skip when the daemon is down.
-
 Unavailable/timeout/malformed scanner responses leave the intent
 quarantined/scanning and throw `TransientProviderFailure` for outbox retry.
 They never mint AVAILABLE.
+
+## Create-idempotency recovery
+
+Create responses include a signed `upload_target` longer than the 255-byte
+idempotency reference. The middleware still stores only
+`{ref: verification_upload, id: <upload_id>}`. Signed URLs are never stored.
+
+Verification registers `VerificationUploadIdempotencyReplayHydrator` on the
+generic Platform `IdempotencyReplayHydrator` port. Same key + same payload
+replays the same `upload_id` and, while the intent is still `uploading` and
+unexpired, reissues a bounded PUT grant for that intent's existing ingress
+locator. Grant expiry is the intent `expires_at` (never extended). Terminal /
+rejected / available states get no grant. Only the owning authenticated
+doctor can obtain a reissue. Tests PUT via the recovered intent and complete
+it.
+
+## MinIO bucket provisioning
+
+Compose starts digest-pinned MinIO and an idempotent `minio-init` using
+digest-pinned `minio/mc`. It creates `clinic-local-private`, sets anonymous
+access to `none`, and uses local-only credentials
+(`clinic_local` / `local_dev_only_not_a_secret`). Those values must not be
+reused in shared environments. Application roles in real environments must
+not receive CreateBucket.
+
+CI uses `scripts/ci/start-secure-file-providers.sh` and
+`scripts/ci/provision-minio-bucket.sh` (same local credentials, host
+network, fail closed). `CLINIC_REQUIRE_OBJECT_STORE=1` /
+`CLINIC_REQUIRE_CLAMAV=1` turn provider absence into a test failure. A
+reachable provider with a missing bucket, bad auth, or public policy fails
+rather than skips.
+
+## Live provider CI (GitHub)
+
+Job `secure-file-providers` on `pull-request`:
+
+- digest-pinned `docker run` of MinIO, `mc` bucket init, and clamd (not
+  unpinned GHA `services:` images)
+- ISR-015 pin catalogue updated; workflow blob references every catalogued
+  image ref
+- runs live S3 contract tests, live Clamd tests, and a provider-backed
+  upload → scan → AVAILABLE path
+- proves anonymous HTTP GET/list of the bucket is not 200
+- `CLINIC_REQUIRE_*` makes skip-if-absent fatal
+
+Job `security` additionally:
+
+- generates an SPDX SBOM of the pinned ClamAV image
+- blocking Trivy image scan (`CRITICAL,HIGH`, `ignore-unfixed=false`, no
+  new ignore file)
+
+If Trivy reports High/Critical on the ClamAV image, follow ADR 0008: High
+blocks promotion; Critical blocks merge. Do not create an undocumented
+ignore. This chunk is **not** production-promotable while High/Critical
+scanner-image findings remain, and is not production-promotable while
+SF-001 remains MERGE_ONLY.
 
 ## TrustedDocumentEvidence issuance
 
@@ -115,15 +206,10 @@ They never mint AVAILABLE.
   under `tests/Support` (not a production adapter).
 
 Promotion transaction: lock upload (advisory) → confirm draft case →
-re-observe exact object → issue evidence → `registerValidatedMetadataWithin`
-→ persist AVAILABLE document + intent. Duplicate `object_id` rolls back
-(`StateConflict`); no AVAILABLE row and no success outbox/audit from that
-transaction.
-
-Applicant attribution on the processing path uses
-`verification_upload_intents.created_by_user_id` recorded at HTTP create so
-`clinic_worker` does not query `doctor_profiles`. The test-fixture registrar
-still uses `DoctorApplicantService::findById`.
+re-observe exact **canonical** object → issue evidence →
+`registerValidatedMetadataWithin` → persist AVAILABLE document + intent.
+Duplicate `object_id` rolls back (`StateConflict`); no AVAILABLE row and no
+success outbox/audit from that transaction.
 
 ## Queue / outbox / retry
 
@@ -133,25 +219,33 @@ the transactional outbox. `VerificationUploadCompletedConsumer` calls
 
 Retry-safe: versioned row updates, processing-attempt bound, terminal
 rejected/available cannot be overwritten to AVAILABLE by a stale worker
-(PostgreSQL trigger). Scanner misses retry the same immutable locator.
+(PostgreSQL trigger). Scanner misses retry the same canonical locator.
 
 `clinic_worker` least privilege for this slice:
 
-| Table | Worker |
-| --- | --- |
-| `verification_cases` | `SELECT` |
-| `verification_documents` | `SELECT, INSERT` |
-| `verification_upload_intents` | `SELECT, UPDATE, DELETE` |
-| `verification_decisions` | none |
-| `doctor_profiles` | none |
+| Table | Worker | App |
+| --- | --- | --- |
+| `verification_cases` | `SELECT` | existing |
+| `verification_documents` | `SELECT, INSERT` | existing |
+| `verification_upload_intents` | `SELECT, UPDATE` (no DELETE) | `SELECT, INSERT, UPDATE` (no DELETE) |
+| `verification_decisions` | none | insert-only |
+| `doctor_profiles` | none | existing |
+
+Upload-intent history is preserved. Privilege tests assert
+`clinic_worker DELETE = false` and `clinic_app DELETE = false`.
 
 Audit append still uses `pgsql_audit` / `clinic_append_audit_event`, not
 worker DML on `audit_events`.
 
 ## TOCTOU
 
-Promotion binds object id, observed SHA-256, size, detected MIME, and the
-storage version (SHA-256). Bytes replaced during scan fail `toctou_mismatch`.
+Promotion binds object id, observed SHA-256, size, detected MIME, and a
+true provider version-id when one exists. Replacing **canonical** bytes
+during scan fails `toctou_mismatch`. Replacing **ingress** bytes after
+complete, including between complete and worker execution and after
+AVAILABLE, does not change the canonical hash or the persisted document
+hash.
+
 Chunk 03 submitted-document freeze remains: after the case leaves `draft`,
 INSERT/UPDATE/DELETE on `verification_documents` is rejected.
 
@@ -160,7 +254,7 @@ INSERT/UPDATE/DELETE on `verification_documents` is rejected.
 `verification:reconcile-uploads` (hourly):
 
 - expired `requested`/`uploading` intents → `rejected`/`expired` and object delete
-- `rejected` rows past `cleanup_eligible_at` → object delete
+- `rejected` rows past `cleanup_eligible_at` → delete ingress and canonical objects
 - never deletes `AVAILABLE` or submitted evidence
 - never accepts a user-supplied path
 - object I/O runs after the DB commit
@@ -187,13 +281,13 @@ Metric `clinic_secure_file_results_total` labels: `result`, `detected_type`,
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| POST | `/api/v1/verification-uploads` | Idempotent create + bounded PUT grant |
-| POST | `/api/v1/verification-uploads/{upload_id}/complete` | Empty closed body; not evidence |
+| POST | `/api/v1/verification-uploads` | Idempotent create + bounded PUT grant; replay reissues a grant for the same ingress |
+| POST | `/api/v1/verification-uploads/{upload_id}/complete` | Empty closed body; not evidence; seals canonical copy |
 | GET | `/api/v1/verification-uploads/{upload_id}` | Applicant-safe status |
 
 ## Commands actually executed
 
-Recorded 2026-09-19 on host PHP 8.3 with `pdo_pgsql` against `clinic_test`.
+Recorded 2026-09-20 on host PHP 8.3 with `pdo_pgsql` against `clinic_test`.
 GitHub PR CI on the final HEAD is the merge-review evidence; this file does
 not treat a local run as GitHub evidence.
 
@@ -201,37 +295,51 @@ not treat a local run as GitHub evidence.
 | --- | --- |
 | `./vendor/bin/pint --test` | `{"tool":"pint","result":"passed"}` |
 | `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | `{"tool":"phpstan","result":"passed","errors":0}` |
-| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | 0 violations, 0 uncovered, **2019** allowed |
-| focused Verification/file Pest (`tests/Feature/Verification`, `tests/Unit/Verification`, `ArchitectureBoundaryTest`, `BoundedDocumentInspectorTest`, `ClamdScanObjectTest`, `ProviderPortContractTest`, `S3StoreObjectContractTest`) | **91 passed**, 2 skipped, 93 tests (2854 assertions) |
-| `./vendor/bin/pest` (full Core suite) | **625 passed**, 15 skipped, 640 tests (10947 assertions) |
+| `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | 0 violations, 0 uncovered, **2051** allowed |
+| focused Verification/file Pest (`tests/Feature/Verification`, `tests/Unit/Verification`, `ArchitectureBoundaryTest`, `BoundedDocumentInspectorTest`, `ClamdScanObjectTest`, `ProviderPortContractTest`, `S3StoreObjectContractTest`) | **94 passed**, 4 skipped, 98 tests (2943 assertions) |
+| `./vendor/bin/pest` (full Core suite) | **628 passed**, 17 skipped, 645 tests (11036 assertions) |
 | `npm run contracts:lint` | OpenAPI valid |
 | `npm run contracts:events` | **19** event schemas checked |
 | `npm run contracts:generate:ts` | generated client matches commit (`TS_CLIENT_FRESH`) |
 | `npm run contracts:breaking` vs `origin/main` | no breaking changes against `origin/main` |
 | `python3 scripts/ci/run-isr015-validators.py` | **PASS** |
 
-Local skips on this host (Docker daemon unavailable):
+Local skips on this host (Docker daemon unavailable; nothing on `:9000` / `:3310`):
 
 - `ClamdScanObjectTest::it scans a live clamd when one is reachable` — clamd not on `:3310`
 - `S3StoreObjectContractTest::Private objects are not anonymously readable` — MinIO not on `:9000`
+- `S3StoreObjectContractTest::Anonymous http access to the private bucket is denied` — MinIO not on `:9000`
+- `VerificationSecureFileProviderTest::it promotes a real provider-backed upload and ignores later ingress overwrite` — MinIO not on `:9000`
 
-In-process coverage still ran: `clamd-stub.php` INSTREAM (clean / EICAR FOUND / timeout / malformed) and `InMemoryStoreObject` (including race workers via the shared persist directory). Pre-existing Auth Redis/Reverb/Octane/two-connection race skips remain opt-in.
+Those four are **fatal** when `CLINIC_REQUIRE_OBJECT_STORE=1` /
+`CLINIC_REQUIRE_CLAMAV=1` (GitHub `secure-file-providers` job).
 
-Gitleaks, Semgrep, Trivy filesystem/image, and SBOM remain GitHub PR `security` / `image-scan` jobs. This host could not pull `clamav/clamav:1.4.6` (no Docker). The compose sidecar is digest-pinned; it is **not** added as a GitHub Actions `services:` image (ISR-015 pin catalog / bidirectional workflow refs). Prior GitHub SAST on `2746c4e` flagged `unlink()` in the in-memory persist adapter; deletion now allowlists a SHA-256 hex basename and uses Laravel `Filesystem::delete` (no `unlink()` in that adapter).
+In-process coverage still ran: `clamd-stub.php` INSTREAM (clean / EICAR
+FOUND / timeout / malformed / short stream / long stream / partial write
+helper) and `InMemoryStoreObject` including ingress overwrite after seal
+and race workers via the shared persist directory. Pre-existing Auth
+Redis/Reverb/Octane/two-connection race skips remain opt-in (13 tests).
 
-Phase 02 as a whole is **not** PASS. GitHub PR CI binds to the pushed HEAD;
-this file does not claim production approval.
+Gitleaks, Semgrep, Trivy filesystem/image, ClamAV image Trivy, and SBOM
+are GitHub PR `security` / `image-scan` / `secure-file-providers` jobs.
+GitHub CI evidence binds to the pushed HEAD of Draft PR #10.
+
+Phase 02 as a whole is **not** PASS. This file does not claim production
+approval or READY_TO_MERGE.
 
 ## Residual (this chunk)
 
 - Document requirement catalogue remains `ENGINEERING_DEFAULT` (`professional_id`).
 - Allowed MIME/size/expiry/active-upload/cleanup windows are ENGINEERING_DEFAULT.
-- Object version id is the observed SHA-256 on this MinIO foundation.
-- GitHub Actions does not run a live ClamAV or MinIO service; those tests
-  skip-if-down or use in-process fixtures/stubs.
+- MinIO local/CI typically has no object versioning; immutability is the
+  server-only canonical locator plus SHA-256, not a provider version-id.
 - Reviewer signed download URLs and Admin decision HTTP remain deferred.
 - Approval still does not list the doctor or grant clinical capabilities.
 - Subject erasure of a doctor profile does not automatically purge
   verification cases or quarantine objects in this slice.
 - Staging remains unprovisioned; post-merge deploy stays fail-closed.
 - SF-001 remains MERGE_ONLY / `promotion_allowed=false`.
+- ClamAV image Trivy High/Critical findings, if any on the GitHub run,
+  follow ADR 0008 and block production promotion. They are not silently ignored.
+- Live MinIO + ClamAV GitHub results are recorded from the final HEAD CI run,
+  not from this host.

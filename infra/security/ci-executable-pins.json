@@ -20,6 +20,21 @@
       "readable": "semgrep/semgrep:1.99.0",
       "digest": "sha256:ae27024c16f7848cdbfd49c24ed0b78b13f13b85fcd7b87c679aaa8b0c0dce98",
       "ref": "semgrep/semgrep:1.99.0@sha256:ae27024c16f7848cdbfd49c24ed0b78b13f13b85fcd7b87c679aaa8b0c0dce98"
+    },
+    {
+      "readable": "minio/minio:RELEASE.2025-04-22T22-12-26Z",
+      "digest": "sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+      "ref": "minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e"
+    },
+    {
+      "readable": "minio/mc:RELEASE.2025-04-16T18-13-26Z",
+      "digest": "sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3",
+      "ref": "minio/mc:RELEASE.2025-04-16T18-13-26Z@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3"
+    },
+    {
+      "readable": "clamav/clamav:1.4.6",
+      "digest": "sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200",
+      "ref": "clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200"
     }
   ],
   "tools": [

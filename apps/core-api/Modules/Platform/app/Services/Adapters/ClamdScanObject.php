@@ -6,6 +6,7 @@ namespace Modules\Platform\Services\Adapters;
 
 use Modules\Platform\Contracts\ScanObject;
 use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Support\BoundedSocketWriter;
 use Modules\Platform\Support\ScanVerdict;
 use RuntimeException;
 
@@ -51,7 +52,7 @@ final class ClamdScanObject implements ScanObject
         stream_set_timeout($socket, $timeoutSeconds);
 
         try {
-            if (@fwrite($socket, "nINSTREAM\n") === false) {
+            if (! BoundedSocketWriter::writeAll($socket, "nINSTREAM\n")) {
                 return ScanVerdict::unavailable('clamd', $this->scannerVersion);
             }
 
@@ -69,12 +70,16 @@ final class ClamdScanObject implements ScanObject
                     return ScanVerdict::invalid('clamd', $this->scannerVersion);
                 }
                 $frame = pack('N', strlen($chunk)).$chunk;
-                if (@fwrite($socket, $frame) === false) {
+                if (! BoundedSocketWriter::writeAll($socket, $frame)) {
                     return ScanVerdict::unavailable('clamd', $this->scannerVersion);
                 }
             }
 
-            if (@fwrite($socket, pack('N', 0)) === false) {
+            if ($sent !== $sizeBytes) {
+                return ScanVerdict::invalid('clamd', $this->scannerVersion);
+            }
+
+            if (! BoundedSocketWriter::writeAll($socket, pack('N', 0))) {
                 return ScanVerdict::unavailable('clamd', $this->scannerVersion);
             }
 

@@ -66,7 +66,7 @@ final class ReconcileVerificationUploadsCommand extends Command
                         'version' => $fresh->version + 1,
                         'updated_at' => $stamp,
                     ]);
-                    $toDelete[] = $fresh->storedRef();
+                    $toDelete = array_merge($toDelete, $fresh->storageRefs());
                     $audit->append(
                         $tx,
                         'verification.upload_cleanup',
@@ -85,7 +85,7 @@ final class ReconcileVerificationUploadsCommand extends Command
                 }
 
                 if ($fresh->state === VerificationUploadState::Rejected) {
-                    $toDelete[] = $fresh->storedRef();
+                    $toDelete = array_merge($toDelete, $fresh->storageRefs());
                     $audit->append(
                         $tx,
                         'verification.upload_cleanup',

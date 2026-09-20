@@ -45,6 +45,7 @@ it('keeps reporter off verification tables and worker off decisions', function (
     $caseUpdate = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'verification_cases', 'UPDATE') AS allowed");
     $docInsert = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'verification_documents', 'INSERT') AS allowed");
     $docUpdate = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'verification_documents', 'UPDATE') AS allowed");
+    $uploadDelete = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'verification_upload_intents', 'DELETE') AS allowed");
     $uploadUpdate = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'verification_upload_intents', 'UPDATE') AS allowed");
     $uploadInsert = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'verification_upload_intents', 'INSERT') AS allowed");
 
@@ -53,7 +54,8 @@ it('keeps reporter off verification tables and worker off decisions', function (
         ->and((bool) $docInsert->allowed)->toBeTrue()
         ->and((bool) $docUpdate->allowed)->toBeFalse()
         ->and((bool) $uploadUpdate->allowed)->toBeTrue()
-        ->and((bool) $uploadInsert->allowed)->toBeFalse();
+        ->and((bool) $uploadInsert->allowed)->toBeFalse()
+        ->and((bool) $uploadDelete->allowed)->toBeFalse();
 });
 
 it('lets clinic_app mutate cases and documents but only insert decisions', function () {
@@ -68,13 +70,15 @@ it('lets clinic_app mutate cases and documents but only insert decisions', funct
     $decisionUpdate = DB::selectOne("SELECT has_table_privilege('clinic_app', 'verification_decisions', 'UPDATE') AS allowed");
     $decisionDelete = DB::selectOne("SELECT has_table_privilege('clinic_app', 'verification_decisions', 'DELETE') AS allowed");
     $uploadUpdate = DB::selectOne("SELECT has_table_privilege('clinic_app', 'verification_upload_intents', 'UPDATE') AS allowed");
+    $uploadDelete = DB::selectOne("SELECT has_table_privilege('clinic_app', 'verification_upload_intents', 'DELETE') AS allowed");
 
     expect((bool) $caseUpdate->allowed)->toBeTrue()
         ->and((bool) $docInsert->allowed)->toBeTrue()
         ->and((bool) $decisionInsert->allowed)->toBeTrue()
         ->and((bool) $decisionUpdate->allowed)->toBeFalse()
         ->and((bool) $decisionDelete->allowed)->toBeFalse()
-        ->and((bool) $uploadUpdate->allowed)->toBeTrue();
+        ->and((bool) $uploadUpdate->allowed)->toBeTrue()
+        ->and((bool) $uploadDelete->allowed)->toBeFalse();
 
     $backup = DB::selectOne("SELECT 1 AS ok FROM pg_roles WHERE rolname = 'clinic_backup'");
     if ($backup === null) {

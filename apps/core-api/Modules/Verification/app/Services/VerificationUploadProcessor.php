@@ -19,6 +19,7 @@ use Modules\Platform\Support\BoundedDocumentInspector;
 use Modules\Platform\Support\Identifier;
 use Modules\Platform\Support\ObservedObject;
 use Modules\Platform\Support\ScanVerdict;
+use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Enums\VerificationCaseStatus;
 use Modules\Verification\Enums\VerificationDocumentScanStatus;
 use Modules\Verification\Enums\VerificationDocumentStatus;
@@ -96,7 +97,7 @@ final class VerificationUploadProcessor
             || $reobserved->sha256 !== $original->sha256
             || $reobserved->sizeBytes !== $original->sizeBytes
             || $reobserved->detectedMime !== $original->detectedMime
-            || $reobserved->objectVersion !== $original->objectVersion
+            || $this->providerVersionMismatch($original, $reobserved)
         ) {
             $this->reject($claimed->id, 'toctou_mismatch', $reobserved, $verdict);
 
@@ -170,8 +171,8 @@ final class VerificationUploadProcessor
      */
     private function inspect(VerificationUploadIntentRecord $upload): array
     {
-        $ref = $upload->storedRef();
-        if (! $this->objects->exists($ref)) {
+        $ref = $upload->canonicalRef();
+        if (! $ref instanceof StoredObjectRef || ! $this->objects->exists($ref)) {
             return ['reason' => 'object_missing', 'observed' => null];
         }
 
@@ -194,7 +195,7 @@ final class VerificationUploadProcessor
             $result->sizeBytes,
             $result->sha256,
             $result->detectedMime,
-            $result->sha256,
+            $this->objects->providerVersionId($ref) ?? '',
         );
 
         if ($upload->expectedSha256 !== null && $upload->expectedSha256 !== $result->sha256) {
@@ -210,7 +211,7 @@ final class VerificationUploadProcessor
 
     private function scan(VerificationUploadIntentRecord $upload, int $sizeBytes): ScanVerdict
     {
-        $stream = $this->objects->openStream($upload->storedRef());
+        $stream = $this->objects->openStream($upload->trustedRef());
         try {
             return $this->scanner->scanStream($stream, $sizeBytes);
         } finally {
@@ -223,7 +224,7 @@ final class VerificationUploadProcessor
     private function reobserve(VerificationUploadIntentRecord $upload): ObservedObject
     {
         try {
-            return $this->objects->observe($upload->storedRef(), $this->policy->maxDocumentBytes());
+            return $this->objects->observe($upload->trustedRef(), $this->policy->maxDocumentBytes());
         } catch (Throwable) {
             return new ObservedObject(false, 0, '', null, '');
         }
@@ -244,7 +245,7 @@ final class VerificationUploadProcessor
                 'updated_at' => $stamp,
             ];
             if ($observed instanceof ObservedObject) {
-                $attributes['object_version'] = $observed->objectVersion;
+                $attributes['object_version'] = $observed->objectVersion !== '' ? $observed->objectVersion : null;
                 $attributes['observed_size_bytes'] = $observed->sizeBytes > 0 ? $observed->sizeBytes : null;
                 $attributes['observed_sha256'] = $observed->sha256;
                 $attributes['detected_mime'] = $observed->detectedMime;
@@ -287,7 +288,7 @@ final class VerificationUploadProcessor
             }
 
             try {
-                $fresh = $this->objects->observe($upload->storedRef(), $this->policy->maxDocumentBytes());
+                $fresh = $this->objects->observe($upload->trustedRef(), $this->policy->maxDocumentBytes());
             } catch (Throwable) {
                 $this->rejectLocked($tx, $upload, 'toctou_mismatch', $this->clock->now(), $observed, $verdict);
 
@@ -297,7 +298,7 @@ final class VerificationUploadProcessor
                 ! $fresh->exists
                 || $fresh->sha256 !== $observed->sha256
                 || $fresh->sizeBytes !== $observed->sizeBytes
-                || $fresh->objectVersion !== $observed->objectVersion
+                || $this->providerVersionMismatch($observed, $fresh)
                 || $fresh->detectedMime !== $observed->detectedMime
             ) {
                 $this->rejectLocked($tx, $upload, 'toctou_mismatch', $this->clock->now(), $observed, $verdict);
@@ -323,7 +324,7 @@ final class VerificationUploadProcessor
             $stamp = $now->format('Y-m-d H:i:s.uP');
             $affected = $this->store->updateUpload($upload->id, $upload->version, [
                 'state' => VerificationUploadState::Available->value,
-                'object_version' => $observed->objectVersion,
+                'object_version' => $observed->objectVersion !== '' ? $observed->objectVersion : null,
                 'observed_size_bytes' => $observed->sizeBytes,
                 'observed_sha256' => $observed->sha256,
                 'detected_mime' => $observed->detectedMime,
@@ -392,7 +393,7 @@ final class VerificationUploadProcessor
             $attributes['observed_size_bytes'] = $observed->sizeBytes > 0 ? $observed->sizeBytes : null;
             $attributes['observed_sha256'] = $observed->sha256 !== '' ? $observed->sha256 : null;
             $attributes['detected_mime'] = $observed->detectedMime;
-            $attributes['object_version'] = $observed->objectVersion;
+            $attributes['object_version'] = $observed->objectVersion !== '' ? $observed->objectVersion : null;
         }
         if ($verdict instanceof ScanVerdict) {
             $attributes['scanner_identity'] = $verdict->scannerIdentity;
@@ -414,6 +415,15 @@ final class VerificationUploadProcessor
             'system',
         );
         $this->metric($reason, $upload, $observed?->detectedMime);
+    }
+
+    private function providerVersionMismatch(ObservedObject $left, ObservedObject $right): bool
+    {
+        if ($left->objectVersion === '' && $right->objectVersion === '') {
+            return false;
+        }
+
+        return $left->objectVersion !== $right->objectVersion;
     }
 
     private function reload(Identifier $uploadId): ?VerificationUploadIntentRecord

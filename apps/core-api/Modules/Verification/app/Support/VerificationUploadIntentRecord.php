@@ -18,6 +18,7 @@ final readonly class VerificationUploadIntentRecord
         public string $requirementCode,
         public Identifier $objectId,
         public string $storageLocator,
+        public ?string $canonicalStorageLocator,
         public VerificationUploadState $state,
         public int $expectedSizeBytes,
         public string $declaredMediaType,
@@ -46,5 +47,46 @@ final readonly class VerificationUploadIntentRecord
             $this->objectId->value,
             $this->storageLocator,
         );
+    }
+
+    public function canonicalRef(): ?StoredObjectRef
+    {
+        if ($this->canonicalStorageLocator === null || $this->canonicalStorageLocator === '') {
+            return null;
+        }
+
+        return new StoredObjectRef(
+            'verification',
+            $this->objectId->value,
+            $this->canonicalStorageLocator,
+        );
+    }
+
+    /**
+     * Trusted bytes after seal. Scan, inspect, promote, and later reviewer
+     * access must use this locator, never the client-writable ingress.
+     */
+    public function trustedRef(): StoredObjectRef
+    {
+        $canonical = $this->canonicalRef();
+        if (! $canonical instanceof StoredObjectRef) {
+            throw new \RuntimeException('Canonical object has not been sealed.');
+        }
+
+        return $canonical;
+    }
+
+    /**
+     * @return list<StoredObjectRef>
+     */
+    public function storageRefs(): array
+    {
+        $refs = [$this->storedRef()];
+        $canonical = $this->canonicalRef();
+        if ($canonical instanceof StoredObjectRef) {
+            $refs[] = $canonical;
+        }
+
+        return $refs;
     }
 }

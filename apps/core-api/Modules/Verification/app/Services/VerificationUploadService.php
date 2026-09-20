@@ -22,6 +22,7 @@ use Modules\Platform\Exceptions\AuthorizationDenied;
 use Modules\Platform\Exceptions\FeatureUnavailable;
 use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\StateConflict;
+use Modules\Platform\Exceptions\TransientProviderFailure;
 use Modules\Platform\Support\Identifier;
 use Modules\Platform\Support\ObjectUploadGrant;
 use Modules\Verification\Enums\VerificationCaseStatus;
@@ -127,6 +128,7 @@ final class VerificationUploadService
                 'requirement_code' => $requirement,
                 'object_id' => $objectId->value,
                 'storage_locator' => $grant->storageLocator,
+                'canonical_storage_locator' => null,
                 'state' => VerificationUploadState::Uploading->value,
                 'expected_size_bytes' => $expectedSize,
                 'declared_media_type' => $declaredMime,
@@ -170,6 +172,60 @@ final class VerificationUploadService
                 'grant' => $grant,
             ];
         });
+    }
+
+    /**
+     * Reconstruct a usable create outcome for the same upload intent.
+     * Never stores or logs a signed URL. Grant expiry cannot exceed the
+     * intent's expires_at.
+     *
+     * @return array<string, mixed>
+     */
+    public function replayDoctorUploadCreate(ActorContext $actor, Identifier $uploadId): array
+    {
+        $this->assertDoctorActor($actor);
+        $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN);
+        if (! $decision->allowed) {
+            throw new AuthorizationDenied;
+        }
+
+        $doctor = $this->requireDoctor($actor->userId);
+        $upload = $this->store->findUploadById($uploadId, false);
+        if (! $upload instanceof VerificationUploadIntentRecord) {
+            throw new AuthorizationDenied;
+        }
+
+        $case = $this->store->findCaseById($upload->caseId, false);
+        if (! $case instanceof VerificationCaseRecord || ! $case->applicantId->equals($doctor->doctorId)) {
+            throw new AuthorizationDenied;
+        }
+
+        $projection = $this->project($upload);
+        $data = $projection->toArray();
+        if ($upload->state !== VerificationUploadState::Uploading) {
+            return $data;
+        }
+
+        $now = $this->clock->now();
+        if ($upload->expiresAt <= $now) {
+            return $data;
+        }
+
+        $grant = $this->objects->issueUploadGrant(
+            $upload->storedRef(),
+            $upload->expectedSizeBytes,
+            $upload->declaredMediaType,
+            $upload->expiresAt,
+        );
+
+        $data['upload_target'] = [
+            'method' => $grant->method,
+            'url' => $grant->url,
+            'headers' => $grant->headers,
+            'expires_at' => $projection->expiresAt,
+        ];
+
+        return $data;
     }
 
     public function completeDoctorUpload(ActorContext $actor, Identifier $uploadId): VerificationUploadProjection
@@ -227,9 +283,24 @@ final class VerificationUploadService
                 return $this->project($fresh);
             }
 
+            try {
+                $canonical = $this->objects->allocateCanonicalRef(
+                    $this->policy->objectNamespace(),
+                    $upload->objectId->value,
+                );
+                $this->objects->copyExact($ref, $canonical);
+            } catch (\Throwable) {
+                $failure = new TransientProviderFailure('Object seal failed.');
+                $fresh = $this->store->findUploadById($upload->id, false);
+                assert($fresh instanceof VerificationUploadIntentRecord);
+
+                return $this->project($fresh);
+            }
+
             $stamp = $now->format('Y-m-d H:i:s.uP');
             $affected = $this->store->updateUpload($upload->id, $upload->version, [
                 'state' => VerificationUploadState::Quarantined->value,
+                'canonical_storage_locator' => $canonical->storageLocator,
                 'completed_at' => $stamp,
                 'version' => $upload->version + 1,
                 'updated_at' => $stamp,

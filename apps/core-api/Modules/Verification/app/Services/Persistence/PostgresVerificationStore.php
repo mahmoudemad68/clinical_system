@@ -347,6 +347,9 @@ final class PostgresVerificationStore
             (string) $row->requirement_code,
             Identifier::fromTrusted((string) $row->object_id),
             (string) $row->storage_locator,
+            isset($row->canonical_storage_locator) && is_string($row->canonical_storage_locator) && $row->canonical_storage_locator !== ''
+                ? $row->canonical_storage_locator
+                : null,
             VerificationUploadState::from((string) $row->state),
             (int) $row->expected_size_bytes,
             (string) $row->declared_media_type,

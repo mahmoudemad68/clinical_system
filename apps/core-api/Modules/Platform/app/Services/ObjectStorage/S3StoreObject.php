@@ -13,6 +13,7 @@ use Modules\Platform\Support\ObjectUploadGrant;
 use Modules\Platform\Support\ObservedObject;
 use Modules\Platform\Support\StoredObjectRef;
 use RuntimeException;
+use Throwable;
 
 /**
  * Private S3-compatible object store (MinIO locally).
@@ -99,8 +100,28 @@ final class S3StoreObject implements StoreObject
             throw new InvalidValueObject('Object content type is not an allowed media type.');
         }
 
-        $locator = $namespace.'/q/'.bin2hex(random_bytes(16));
-        $ref = new StoredObjectRef($namespace, $objectId, $locator);
+        $ref = new StoredObjectRef($namespace, $objectId, $namespace.'/q/'.bin2hex(random_bytes(16)));
+
+        return $this->issueUploadGrant($ref, $expectedSizeBytes, $declaredMediaType, $expiresAt);
+    }
+
+    public function issueUploadGrant(
+        StoredObjectRef $ref,
+        int $expectedSizeBytes,
+        string $declaredMediaType,
+        DateTimeImmutable $expiresAt,
+    ): ObjectUploadGrant {
+        if ($expectedSizeBytes < 1 || $expectedSizeBytes > $this->maxBytes) {
+            throw new InvalidValueObject('Object exceeds the configured size bound.');
+        }
+
+        if (! preg_match('/^[a-z0-9][a-z0-9.+\/-]{0,126}[a-z0-9]$/', $declaredMediaType)) {
+            throw new InvalidValueObject('Object content type is not an allowed media type.');
+        }
+
+        if (! str_contains($ref->key(), '/q/') || str_contains($ref->key(), '/c/')) {
+            throw new InvalidValueObject('Upload grants are only issued for ingress locators.');
+        }
 
         if (! method_exists($this->disk, 'temporaryUploadUrl')) {
             throw new RuntimeException('Object store does not support upload grants.');
@@ -134,7 +155,62 @@ final class S3StoreObject implements StoreObject
             }
         }
 
-        return new ObjectUploadGrant($ref->objectId, $locator, 'PUT', $url, $headers, $expiresAt);
+        return new ObjectUploadGrant($ref->objectId, (string) $ref->storageLocator, 'PUT', $url, $headers, $expiresAt);
+    }
+
+    public function allocateCanonicalRef(string $namespace, string $objectId): StoredObjectRef
+    {
+        return new StoredObjectRef($namespace, $objectId, $namespace.'/c/'.bin2hex(random_bytes(16)));
+    }
+
+    public function copyExact(StoredObjectRef $source, StoredObjectRef $destination): void
+    {
+        if (! $this->exists($source)) {
+            throw new RuntimeException('Object does not exist.');
+        }
+        if ($this->exists($destination)) {
+            throw new InvalidValueObject('Canonical locator is already occupied.');
+        }
+
+        $copied = $this->disk->copy($source->key(), $destination->key());
+        if ($copied === false) {
+            throw new RuntimeException('Object seal copy failed.');
+        }
+
+        try {
+            $this->disk->setVisibility($destination->key(), 'private');
+        } catch (Throwable) {
+        }
+    }
+
+    public function providerVersionId(StoredObjectRef $ref): ?string
+    {
+        if (! method_exists($this->disk, 'getClient')) {
+            return null;
+        }
+
+        try {
+            $client = $this->disk->getClient();
+            $config = method_exists($this->disk, 'getConfig') ? $this->disk->getConfig() : [];
+            $bucket = is_array($config) ? (string) ($config['bucket'] ?? '') : '';
+            if ($bucket === '' || ! is_object($client) || ! method_exists($client, 'headObject')) {
+                return null;
+            }
+
+            /** @var array<string, mixed> $result */
+            $result = $client->headObject([
+                'Bucket' => $bucket,
+                'Key' => $ref->key(),
+            ]);
+            $version = $result['VersionId'] ?? null;
+            if (! is_string($version) || $version === '' || strtolower($version) === 'null') {
+                return null;
+            }
+
+            return $version;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     public function writeAt(StoredObjectRef $ref, string $contentType, string $bytes): void
@@ -165,14 +241,12 @@ final class S3StoreObject implements StoreObject
             }
         }
 
-        $version = $observed->sha256;
-
         return new ObservedObject(
             $observed->exists,
             $observed->sizeBytes,
             $observed->sha256,
             $observed->detectedMime,
-            $version,
+            $this->providerVersionId($ref) ?? '',
         );
     }
 

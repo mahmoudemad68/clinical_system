@@ -25,6 +25,7 @@ return new class extends Migration
             $table->string('requirement_code', 64);
             $table->uuid('object_id');
             $table->string('storage_locator', 201);
+            $table->string('canonical_storage_locator', 201)->nullable();
             $table->string('state', 32);
             $table->unsignedBigInteger('expected_size_bytes');
             $table->string('declared_media_type', 128);
@@ -97,6 +98,16 @@ return new class extends Migration
                     storage_locator ~ '^[a-z][a-z0-9_./-]{1,200}$'
                     AND position('..' in storage_locator) = 0
                     AND position('//' in storage_locator) = 0
+                    AND position('/q/' in storage_locator) > 0
+                    AND (
+                        canonical_storage_locator IS NULL
+                        OR (
+                            canonical_storage_locator ~ '^[a-z][a-z0-9_./-]{1,200}$'
+                            AND position('..' in canonical_storage_locator) = 0
+                            AND position('//' in canonical_storage_locator) = 0
+                            AND position('/c/' in canonical_storage_locator) > 0
+                        )
+                    )
                 )
         SQL);
 
@@ -135,6 +146,7 @@ return new class extends Migration
                         AND available_at IS NOT NULL
                         AND completed_at IS NOT NULL
                         AND rejection_reason IS NULL
+                        AND canonical_storage_locator IS NOT NULL
                     )
                     OR (
                         state = 'rejected'
@@ -176,6 +188,12 @@ return new class extends Migration
         SQL);
 
         DB::statement(<<<'SQL'
+            CREATE UNIQUE INDEX verification_upload_intents_canonical_locator_unique
+                ON verification_upload_intents (canonical_storage_locator)
+                WHERE canonical_storage_locator IS NOT NULL
+        SQL);
+
+        DB::statement(<<<'SQL'
             CREATE INDEX verification_upload_intents_case_requirement_index
                 ON verification_upload_intents (case_id, requirement_code)
         SQL);
@@ -200,6 +218,12 @@ return new class extends Migration
                         OR NEW.storage_locator IS DISTINCT FROM OLD.storage_locator
                     THEN
                         RAISE EXCEPTION 'verification_upload_intents identity is immutable';
+                    END IF;
+
+                    IF OLD.canonical_storage_locator IS NOT NULL
+                        AND NEW.canonical_storage_locator IS DISTINCT FROM OLD.canonical_storage_locator
+                    THEN
+                        RAISE EXCEPTION 'verification_upload_intents canonical locator is immutable';
                     END IF;
 
                     IF OLD.state = 'available' AND NEW.state IS DISTINCT FROM 'available' THEN
@@ -313,10 +337,10 @@ return new class extends Migration
         $this->revokeIfRole('clinic_worker', 'ALL', 'verification_upload_intents');
         $this->grantIfRole('clinic_backup', 'SELECT', 'verification_upload_intents');
         $this->revokeIfRole('clinic_app', 'ALL', 'verification_upload_intents');
-        $this->grantIfRole('clinic_app', 'SELECT, INSERT, UPDATE, DELETE', 'verification_upload_intents');
+        $this->grantIfRole('clinic_app', 'SELECT, INSERT, UPDATE', 'verification_upload_intents');
         $this->grantIfRole('clinic_worker', 'SELECT', 'verification_cases');
         $this->grantIfRole('clinic_worker', 'SELECT, INSERT', 'verification_documents');
-        $this->grantIfRole('clinic_worker', 'SELECT, UPDATE, DELETE', 'verification_upload_intents');
+        $this->grantIfRole('clinic_worker', 'SELECT, UPDATE', 'verification_upload_intents');
     }
 
     private function grantIfRole(string $role, string $privileges, string $table): void

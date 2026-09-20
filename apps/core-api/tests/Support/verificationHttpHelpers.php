@@ -20,6 +20,7 @@ use Modules\Verification\Services\VerificationService;
 use Modules\Verification\Services\VerificationUploadProcessor;
 use Modules\Verification\Support\ApplicantCaseProjection;
 use Modules\Verification\Support\VerificationPolicy;
+use PHPUnit\Framework\TestCase;
 use Tests\Support\FixtureScanObject;
 use Tests\Support\TestingTrustedDocumentEvidenceIssuer;
 
@@ -269,4 +270,40 @@ function verificationStoredRef(string $uploadId): StoredObjectRef
     assert($row !== null);
 
     return new StoredObjectRef('verification', (string) $row->object_id, (string) $row->storage_locator);
+}
+
+function verificationCanonicalRef(string $uploadId): StoredObjectRef
+{
+    $row = DB::table('verification_upload_intents')->where('id', $uploadId)->first();
+    assert($row !== null);
+    $locator = is_object($row) ? (string) ($row->canonical_storage_locator ?? '') : '';
+    assert($locator !== '');
+
+    return new StoredObjectRef('verification', (string) $row->object_id, $locator);
+}
+
+function clinicProviderRequired(string $flag): bool
+{
+    $value = getenv($flag);
+    if ($value === false || $value === '') {
+        $value = (string) env($flag, 'false');
+    }
+
+    return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+}
+
+function clinicSkipUnlessTcp(TestCase $test, string $host, int $port, string $flag, string $label): void
+{
+    $socket = @fsockopen($host, $port, $errno, $error, 0.2);
+    if (is_resource($socket)) {
+        fclose($socket);
+
+        return;
+    }
+
+    if (clinicProviderRequired($flag)) {
+        $test->fail($label.' is required but not reachable.');
+    }
+
+    $test->markTestSkipped($label.' is not reachable.');
 }

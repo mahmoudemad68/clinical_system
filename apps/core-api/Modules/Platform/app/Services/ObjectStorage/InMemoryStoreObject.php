@@ -97,12 +97,28 @@ final class InMemoryStoreObject implements StoreObject
             throw new InvalidValueObject('Object exceeds the configured size bound.');
         }
 
-        $locator = $namespace.'/q/'.bin2hex(random_bytes(16));
-        $ref = new StoredObjectRef($namespace, $objectId, $locator);
+        $ref = new StoredObjectRef($namespace, $objectId, $namespace.'/q/'.bin2hex(random_bytes(16)));
+
+        return $this->issueUploadGrant($ref, $expectedSizeBytes, $declaredMediaType, $expiresAt);
+    }
+
+    public function issueUploadGrant(
+        StoredObjectRef $ref,
+        int $expectedSizeBytes,
+        string $declaredMediaType,
+        DateTimeImmutable $expiresAt,
+    ): ObjectUploadGrant {
+        if ($expectedSizeBytes < 1 || $expectedSizeBytes > $this->maxBytes) {
+            throw new InvalidValueObject('Object exceeds the configured size bound.');
+        }
+
+        if (! str_contains($ref->key(), '/q/') || str_contains($ref->key(), '/c/')) {
+            throw new InvalidValueObject('Upload grants are only issued for ingress locators.');
+        }
 
         return new ObjectUploadGrant(
             $ref->objectId,
-            $locator,
+            (string) $ref->storageLocator,
             'PUT',
             'https://objects.invalid/upload/'.$ref->objectId.'?expires='.$expiresAt->getTimestamp(),
             [
@@ -111,6 +127,28 @@ final class InMemoryStoreObject implements StoreObject
             ],
             $expiresAt,
         );
+    }
+
+    public function allocateCanonicalRef(string $namespace, string $objectId): StoredObjectRef
+    {
+        return new StoredObjectRef($namespace, $objectId, $namespace.'/c/'.bin2hex(random_bytes(16)));
+    }
+
+    public function copyExact(StoredObjectRef $source, StoredObjectRef $destination): void
+    {
+        $stored = $this->read($source);
+        if ($this->exists($destination)) {
+            throw new InvalidValueObject('Canonical locator is already occupied.');
+        }
+
+        $this->writeAt($destination, $stored['content_type'], $stored['bytes']);
+    }
+
+    public function providerVersionId(StoredObjectRef $ref): ?string
+    {
+        unset($ref);
+
+        return null;
     }
 
     public function writeAt(StoredObjectRef $ref, string $contentType, string $bytes): void
@@ -136,10 +174,18 @@ final class InMemoryStoreObject implements StoreObject
         $stream = $this->openStream($ref);
 
         try {
-            return (new BoundedDocumentInspector)->hashAndSize($stream, $maxBytes);
+            $observed = (new BoundedDocumentInspector)->hashAndSize($stream, $maxBytes);
         } finally {
             fclose($stream);
         }
+
+        return new ObservedObject(
+            $observed->exists,
+            $observed->sizeBytes,
+            $observed->sha256,
+            $observed->detectedMime,
+            '',
+        );
     }
 
     /**

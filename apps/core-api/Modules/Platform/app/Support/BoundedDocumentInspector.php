@@ -33,8 +33,10 @@ final class BoundedDocumentInspector
         $head = '';
         $tail = '';
         $pdfNeedle = '';
+        $pdfCarry = '';
+        $pdfPages = 0;
         $png = ['seen_sig' => false, 'ihdr' => false, 'width' => 0, 'height' => 0, 'chunks' => 0, 'buf' => '', 'ended' => false];
-        $jpeg = ['sof' => false, 'width' => 0, 'height' => 0, 'eoi' => false];
+        $jpeg = ['soi' => false, 'sof' => false, 'width' => 0, 'height' => 0, 'eoi' => false, 'buf' => ''];
 
         while (! feof($stream)) {
             $chunk = fread($stream, $this->chunkBytes);
@@ -72,6 +74,10 @@ final class BoundedDocumentInspector
                 if ($this->pdfHasActiveContent($chunk) || $this->pdfHasActiveContent($pdfNeedle)) {
                     return $this->reject($size, hash_final($hash), FileMagic::PDF, 'malformed');
                 }
+                $pdfPages += $this->accumulatePdfPages($pdfCarry, $chunk);
+                if ($pdfPages > $this->maxPages) {
+                    return $this->reject($size, hash_final($hash), FileMagic::PDF, 'malformed');
+                }
             } elseif ($detected === FileMagic::PNG) {
                 $png['buf'] .= $chunk;
                 $pngReason = $this->consumePng($png);
@@ -79,7 +85,7 @@ final class BoundedDocumentInspector
                     return $this->reject($size, hash_final($hash), FileMagic::PNG, $pngReason);
                 }
             } elseif ($detected === FileMagic::JPEG) {
-                $jpegReason = $this->consumeJpeg($jpeg, $chunk, $head, $size === strlen($chunk));
+                $jpegReason = $this->consumeJpeg($jpeg, $chunk);
                 if (is_string($jpegReason)) {
                     return $this->reject($size, hash_final($hash), FileMagic::JPEG, $jpegReason);
                 }
@@ -103,12 +109,12 @@ final class BoundedDocumentInspector
         }
 
         if ($detectedMime === FileMagic::PDF) {
-            if (! str_contains($tail, '%%EOF')) {
+            if (! str_contains($tail, '%%EOF') || $this->pdfHasTrailingPayload($tail) || $pdfPages > $this->maxPages) {
                 return $this->reject($size, $sha, $detectedMime, 'malformed');
             }
         }
 
-        if ($detectedMime === FileMagic::PNG && ($png['ended'] !== true || $png['ihdr'] !== true)) {
+        if ($detectedMime === FileMagic::PNG && ($png['ended'] !== true || $png['ihdr'] !== true || $png['buf'] !== '')) {
             return $this->reject($size, $sha, $detectedMime, 'malformed');
         }
 
@@ -152,7 +158,7 @@ final class BoundedDocumentInspector
 
         $sha = hash_final($hash);
 
-        return new ObservedObject($size > 0, $size, $sha, FileMagic::detect($head), $sha);
+        return new ObservedObject($size > 0, $size, $sha, FileMagic::detect($head), '');
     }
 
     private function pdfHasActiveContent(string $haystack): bool
@@ -163,7 +169,29 @@ final class BoundedDocumentInspector
             }
         }
 
-        return substr_count($haystack, '/Type /Page') - substr_count($haystack, '/Type /Pages') > $this->maxPages;
+        return false;
+    }
+
+    private function accumulatePdfPages(string &$carry, string $chunk): int
+    {
+        $haystack = $carry.$chunk;
+        $pages = substr_count($haystack, '/Type /Page') - substr_count($carry, '/Type /Page');
+        $trees = substr_count($haystack, '/Type /Pages') - substr_count($carry, '/Type /Pages');
+        $carry = substr($haystack, -12);
+
+        return $pages - $trees;
+    }
+
+    private function pdfHasTrailingPayload(string $tail): bool
+    {
+        $pos = strrpos($tail, '%%EOF');
+        if ($pos === false) {
+            return true;
+        }
+
+        $after = substr($tail, $pos + 5);
+
+        return preg_match('/\A[ \t\r\n]*\z/', $after) !== 1;
     }
 
     /**
@@ -228,6 +256,9 @@ final class BoundedDocumentInspector
             }
             if ($type === 'IEND') {
                 $png['ended'] = true;
+                if ($png['buf'] !== '') {
+                    return 'malformed';
+                }
             }
         }
 
@@ -235,33 +266,49 @@ final class BoundedDocumentInspector
     }
 
     /**
-     * @param  array{sof: bool, width: int, height: int, eoi: bool}  $jpeg
+     * @param  array{soi: bool, sof: bool, width: int, height: int, eoi: bool, buf: string}  $jpeg
      */
-    private function consumeJpeg(array &$jpeg, string $chunk, string $head, bool $isFirst): ?string
+    private function consumeJpeg(array &$jpeg, string $chunk): ?string
     {
-        if ($isFirst && (strlen($head) < 3 || $head[0] !== "\xFF" || $head[1] !== "\xD8" || $head[2] !== "\xFF")) {
+        if ($jpeg['eoi'] === true && $chunk !== '') {
             return 'malformed';
         }
 
-        if (str_contains($chunk, "\xFF\xD9")) {
+        $jpeg['buf'] .= $chunk;
+
+        if ($jpeg['soi'] === false) {
+            if (strlen($jpeg['buf']) < 3) {
+                return null;
+            }
+            if ($jpeg['buf'][0] !== "\xFF" || $jpeg['buf'][1] !== "\xD8" || $jpeg['buf'][2] !== "\xFF") {
+                return 'malformed';
+            }
+            $jpeg['soi'] = true;
+        }
+
+        $eoi = strpos($jpeg['buf'], "\xFF\xD9");
+        if ($eoi !== false) {
+            if (substr($jpeg['buf'], $eoi + 2) !== '') {
+                return 'malformed';
+            }
             $jpeg['eoi'] = true;
         }
 
         $offset = 0;
-        $length = strlen($chunk);
+        $length = strlen($jpeg['buf']);
         while ($offset < $length - 3) {
-            if ($chunk[$offset] !== "\xFF") {
+            if ($jpeg['buf'][$offset] !== "\xFF") {
                 $offset++;
 
                 continue;
             }
-            $marker = ord($chunk[$offset + 1]);
+            $marker = ord($jpeg['buf'][$offset + 1]);
             if ($marker === 0xC0 || $marker === 0xC2) {
                 if ($offset + 9 >= $length) {
                     break;
                 }
-                $height = (ord($chunk[$offset + 5]) << 8) + ord($chunk[$offset + 6]);
-                $width = (ord($chunk[$offset + 7]) << 8) + ord($chunk[$offset + 8]);
+                $height = (ord($jpeg['buf'][$offset + 5]) << 8) + ord($jpeg['buf'][$offset + 6]);
+                $width = (ord($jpeg['buf'][$offset + 7]) << 8) + ord($jpeg['buf'][$offset + 8]);
                 if ($width < 1 || $height < 1 || $width > $this->maxImageEdge || $height > $this->maxImageEdge) {
                     return 'malformed';
                 }
@@ -270,6 +317,14 @@ final class BoundedDocumentInspector
                 $jpeg['height'] = $height;
             }
             $offset++;
+        }
+
+        if ($jpeg['eoi'] === true) {
+            $jpeg['buf'] = '';
+        } elseif (str_ends_with($jpeg['buf'], "\xFF")) {
+            $jpeg['buf'] = "\xFF";
+        } elseif (strlen($jpeg['buf']) > 16) {
+            $jpeg['buf'] = substr($jpeg['buf'], -16);
         }
 
         return null;

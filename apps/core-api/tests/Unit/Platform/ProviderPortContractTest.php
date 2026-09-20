@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Enums\ScanOutcome;
+use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\ProviderNotEnabled;
 use Modules\Platform\Services\Adapters\DisabledGenerateText;
 use Modules\Platform\Services\Adapters\DisabledRetrieveKnowledge;
@@ -15,6 +16,7 @@ use Modules\Platform\Services\Adapters\DisabledScanObject;
 use Modules\Platform\Services\Adapters\DisabledSendOtp;
 use Modules\Platform\Services\Adapters\DisabledSendPush;
 use Modules\Platform\Services\ObjectStorage\InMemoryStoreObject;
+use Modules\Platform\Support\StoredObjectRef;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -92,6 +94,20 @@ final class ProviderPortContractTest extends TestCase
         $grant = $store->createUploadGrant('phase00', 'object-2', 32, 'text/plain', $expires);
         $this->assertSame('PUT', $grant->method);
         $this->assertStringNotContainsString($grant->storageLocator, json_encode($grant->__debugInfo(), JSON_THROW_ON_ERROR));
+
+        $ingress = new StoredObjectRef('phase00', 'object-2', $grant->storageLocator);
+        $store->writeAt($ingress, 'text/plain', 'canonical-source-bytes');
+        $canonical = $store->allocateCanonicalRef('phase00', 'object-2');
+        $store->copyExact($ingress, $canonical);
+        $store->writeAt($ingress, 'text/plain', 'overwritten-ingress');
+        $this->assertSame(hash('sha256', 'canonical-source-bytes'), $store->observe($canonical, 20_971_520)->sha256);
+        $this->assertNull($store->providerVersionId($canonical));
+
+        try {
+            $store->issueUploadGrant($canonical, 16, 'text/plain', $expires);
+            $this->fail('canonical locators must not receive upload grants');
+        } catch (InvalidValueObject) {
+        }
 
         $this->expectException(RuntimeException::class);
         $store->anonymousList();

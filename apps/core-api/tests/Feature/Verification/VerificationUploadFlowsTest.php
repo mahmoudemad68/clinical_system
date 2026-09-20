@@ -122,7 +122,26 @@ describe('verification upload intent HTTP', function () {
         $second = test()->postJson('/api/v1/verification-uploads', $payload, $headers);
         $second->assertCreated();
         expect($second->json('data.upload_id'))->toBe($first->json('data.upload_id'))
+            ->and($second->json('data.upload_target.method'))->toBe('PUT')
+            ->and((string) $second->json('data.upload_target.url'))->not->toBe('')
+            ->and((string) $second->json('data.upload_target.url'))->not->toContain('verification/q/')
+            ->and((string) $second->json('data.upload_target.url'))->not->toContain('verification/c/')
             ->and(DB::table('verification_upload_intents')->count())->toBe(1);
+
+        $replayedId = (string) $second->json('data.upload_id');
+        verificationPutUploadBytes($replayedId, verificationMinimalPdf(), 'application/pdf');
+        test()->postJson(
+            '/api/v1/verification-uploads/'.$replayedId.'/complete',
+            [],
+            doctorsAuth($onboarded['session']['token']) + doctorsIdem('up-idem-replay-complete'),
+        )->assertOk()->assertJsonPath('data.state', 'quarantined');
+        expect((string) DB::table('verification_upload_intents')->where('id', $replayedId)->value('canonical_storage_locator'))
+            ->toStartWith('verification/c/');
+
+        $afterComplete = test()->postJson('/api/v1/verification-uploads', $payload, $headers);
+        $afterComplete->assertCreated()
+            ->assertJsonPath('data.upload_id', $replayedId)
+            ->assertJsonMissingPath('data.upload_target');
 
         $mismatch = test()->postJson('/api/v1/verification-uploads', [
             'case_id' => (string) $opened->caseId,
@@ -181,7 +200,9 @@ describe('completion, validation, scan, and promotion', function () {
         expect((string) $row->state)->toBe('available')
             ->and((string) $row->observed_sha256)->toBe(hash('sha256', $created['bytes']))
             ->and((string) $row->detected_mime)->toBe('application/pdf')
-            ->and((string) $row->object_version)->toBe(hash('sha256', $created['bytes']))
+            ->and((string) $row->canonical_storage_locator)->toStartWith('verification/c/')
+            ->and((string) $row->canonical_storage_locator)->not->toBe((string) $row->storage_locator)
+            ->and((string) $row->object_version)->not->toBe(hash('sha256', $created['bytes']))
             ->and($document)->not->toBeNull()
             ->and((string) $document->status)->toBe('available')
             ->and((string) $document->scan_status)->toBe('clean')
@@ -333,7 +354,12 @@ describe('completion, validation, scan, and promotion', function () {
         $opened = verificationOpenCase($onboarded['actor']);
         $created = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-toctou-c');
         verificationPutUploadBytes($created['upload_id'], $created['bytes'], 'application/pdf');
-        $ref = verificationStoredRef($created['upload_id']);
+        test()->postJson(
+            '/api/v1/verification-uploads/'.$created['upload_id'].'/complete',
+            [],
+            doctorsAuth($onboarded['session']['token']) + doctorsIdem('up-toctou-done'),
+        )->assertOk();
+        $ref = verificationCanonicalRef($created['upload_id']);
         app()->instance(ScanObject::class, new class($ref) implements ScanObject
         {
             public function __construct(private StoredObjectRef $ref) {}
@@ -354,11 +380,6 @@ describe('completion, validation, scan, and promotion', function () {
                 return ScanVerdict::clean('fixture', 'test');
             }
         });
-        test()->postJson(
-            '/api/v1/verification-uploads/'.$created['upload_id'].'/complete',
-            [],
-            doctorsAuth($onboarded['session']['token']) + doctorsIdem('up-toctou-done'),
-        )->assertOk();
         verificationProcessUpload($created['upload_id']);
         expect((string) DB::table('verification_upload_intents')->where('id', $created['upload_id'])->value('rejection_reason'))->toBe('toctou_mismatch')
             ->and(DB::table('verification_documents')->count())->toBe(0);
@@ -449,6 +470,43 @@ describe('completion, validation, scan, and promotion', function () {
         expect((string) DB::table('verification_upload_intents')->where('id', $expired['upload_id'])->value('state'))->toBe('rejected')
             ->and(app(StoreObject::class)->exists(verificationStoredRef($expired['upload_id'])))->toBeFalse()
             ->and((string) DB::table('verification_upload_intents')->where('id', $kept['upload_id'])->value('state'))->toBe('available')
-            ->and(app(StoreObject::class)->exists(verificationStoredRef($kept['upload_id'])))->toBeTrue();
+            ->and(app(StoreObject::class)->exists(verificationStoredRef($kept['upload_id'])))->toBeTrue()
+            ->and(app(StoreObject::class)->exists(verificationCanonicalRef($kept['upload_id'])))->toBeTrue();
+    });
+
+    it('keeps canonical AVAILABLE bytes when the client-writable ingress object is overwritten', function () {
+        verificationBindCleanScanner();
+        $onboarded = verificationOnboardDoctor('up-seal');
+        $opened = verificationOpenCase($onboarded['actor']);
+        $created = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-seal-c');
+        $original = $created['bytes'];
+        $originalHash = hash('sha256', $original);
+        verificationPutUploadBytes($created['upload_id'], $original, 'application/pdf');
+        test()->postJson(
+            '/api/v1/verification-uploads/'.$created['upload_id'].'/complete',
+            [],
+            doctorsAuth($onboarded['session']['token']) + doctorsIdem('up-seal-done'),
+        )->assertOk()->assertJsonPath('data.state', 'quarantined');
+
+        $ingress = verificationStoredRef($created['upload_id']);
+        app(StoreObject::class)->writeAt($ingress, 'application/pdf', verificationAlternatePdf());
+        verificationProcessUpload($created['upload_id']);
+
+        $row = DB::table('verification_upload_intents')->where('id', $created['upload_id'])->first();
+        $canonical = verificationCanonicalRef($created['upload_id']);
+        $canonicalObserved = app(StoreObject::class)->observe($canonical, 20_971_520);
+        $ingressObserved = app(StoreObject::class)->observe($ingress, 20_971_520);
+        $document = DB::table('verification_documents')->where('upload_intent_id', $created['upload_id'])->first();
+
+        expect((string) $row->state)->toBe('available')
+            ->and((string) $row->observed_sha256)->toBe($originalHash)
+            ->and($canonicalObserved->sha256)->toBe($originalHash)
+            ->and($ingressObserved->sha256)->toBe(hash('sha256', verificationAlternatePdf()))
+            ->and((string) $document->sha256)->toBe($originalHash);
+
+        app(StoreObject::class)->writeAt($ingress, 'application/pdf', verificationZipBytes());
+        $afterAvailable = app(StoreObject::class)->observe($canonical, 20_971_520);
+        expect($afterAvailable->sha256)->toBe($originalHash)
+            ->and((string) DB::table('verification_documents')->where('upload_intent_id', $created['upload_id'])->value('sha256'))->toBe($originalHash);
     });
 });

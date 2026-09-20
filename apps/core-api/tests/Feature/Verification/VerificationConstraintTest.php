@@ -254,6 +254,7 @@ function verificationInsertUpload(string $caseId, string $state = 'uploading'): 
         'requirement_code' => 'professional_id',
         'object_id' => $ids->next()->value,
         'storage_locator' => 'verification/q/'.bin2hex(random_bytes(16)),
+        'canonical_storage_locator' => $state === 'available' ? 'verification/c/'.bin2hex(random_bytes(16)) : null,
         'state' => $state,
         'expected_size_bytes' => 128,
         'declared_media_type' => 'application/pdf',

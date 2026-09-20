@@ -50,6 +50,35 @@ interface StoreObject
     ): ObjectUploadGrant;
 
     /**
+     * Reissue a bounded PUT grant for an existing ingress locator only.
+     * Never signs a canonical/sealed locator.
+     */
+    public function issueUploadGrant(
+        StoredObjectRef $ref,
+        int $expectedSizeBytes,
+        string $declaredMediaType,
+        DateTimeImmutable $expiresAt,
+    ): ObjectUploadGrant;
+
+    /**
+     * Allocate a server-only canonical locator. The client never receives
+     * this locator or a write grant to it.
+     */
+    public function allocateCanonicalRef(string $namespace, string $objectId): StoredObjectRef;
+
+    /**
+     * Copy the exact bytes currently stored at $source onto $destination.
+     * Destination must not already exist. This is a server-only path.
+     */
+    public function copyExact(StoredObjectRef $source, StoredObjectRef $destination): void;
+
+    /**
+     * True object-store version identifier when the provider exposes one.
+     * Never a content hash. Null when the provider has no version-id.
+     */
+    public function providerVersionId(StoredObjectRef $ref): ?string;
+
+    /**
      * Server-side write to a previously issued locator. Used by tests and
      * internal copies. Not a client authorization path.
      */

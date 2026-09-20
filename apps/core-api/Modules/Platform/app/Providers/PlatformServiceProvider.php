@@ -31,6 +31,7 @@ use Modules\Platform\Contracts\DiagnosticsRepository;
 use Modules\Platform\Contracts\FieldEncryptor;
 use Modules\Platform\Contracts\GenerateText;
 use Modules\Platform\Contracts\HmacHasher;
+use Modules\Platform\Contracts\IdempotencyReplayHydrator;
 use Modules\Platform\Contracts\IdempotencyStore;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\OutboxRecorder;
@@ -72,6 +73,7 @@ use Modules\Platform\Services\Health\HttpHealthProbeClient;
 use Modules\Platform\Services\Health\ReadinessProbe;
 use Modules\Platform\Services\Health\RedisCheck;
 use Modules\Platform\Services\Idempotency\CanonicalRequestHasher;
+use Modules\Platform\Services\Idempotency\NullIdempotencyReplayHydrator;
 use Modules\Platform\Services\Identity\UuidV7Generator;
 use Modules\Platform\Services\Notifications\LaravelDatabaseInbox;
 use Modules\Platform\Services\ObjectStorage\InMemoryStoreObject;
@@ -160,6 +162,7 @@ final class PlatformServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(CanonicalRequestHasher::class);
+        $this->app->singleton(IdempotencyReplayHydrator::class, NullIdempotencyReplayHydrator::class);
 
         $this->app->singleton(CursorSigner::class, static fn (): CursorSigner => new HmacCursorSigner(
             (string) config('app.key'),
@@ -363,6 +366,7 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->bind(EnforceIdempotency::class, static fn ($app): EnforceIdempotency => new EnforceIdempotency(
             $app->make(IdempotencyStore::class),
             $app->make(CanonicalRequestHasher::class),
+            $app->make(IdempotencyReplayHydrator::class),
         ));
 
         $this->app->bind(InstrumentHttp::class, static fn ($app): InstrumentHttp => new InstrumentHttp(
