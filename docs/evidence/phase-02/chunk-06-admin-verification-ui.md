@@ -98,9 +98,24 @@ No grant runs on queue load, case open, mount, or hover. One click on
 
 The signed URL exists only inside `grantAndDownloadReviewerDocument` /
 `downloadSignedReviewerFile`. It is not stored in React Query, component
-state, Web Storage, the DOM, or logs. After a successful grant the operator
+state, Web Storage, or the DOM. After a successful grant the operator
 sees that **document access was recorded** (grant issuance, not proof of
 reading).
+
+The helper still forwards `parsed.search` on the same-origin GET so HMAC
+query parameters reach Laravel. Logs must not. The Admin E2E host
+(`tests/e2e/admin-web-server.mjs`) still proxies `path: req.url` (query
+intact) but writes only method + pathname + `qs=0|1` plus cookie/auth
+presence flags. `tests/e2e/admin-web-server.test.mjs` GETs a reviewer-file
+path with `signature=SIGNED_SECRET_CANARY` and
+`X-Amz-Signature=AMZ_SECRET_CANARY` (plus cursor/token canaries) and
+asserts those values are absent from proxy stdout/stderr while the
+upstream request still receives the original query. That is the log
+oracle; Playwright DOM/cache assertions are separate and insufficient
+for this invariant. php-router logs remain presence-only (no
+REQUEST_URI). php -S stderr is piped through
+`tests/e2e/redact-e2e-stdio.mjs` before `/tmp/clinic-e2e-laravel.log` so
+a REQUEST_URI warning cannot be tailed into GitHub Actions.
 
 The helper:
 
@@ -109,7 +124,10 @@ The helper:
    path is `/api/v1/verification-review-files/{uuid-v7}/{uuid-v7}`.
 3. GETs with `cache: 'no-store'`, `referrerPolicy: 'no-referrer'`,
    `credentials: 'omit'`, `redirect: 'error'`.
-4. Verifies status and exact `Content-Length`.
+4. Verifies HTTP success and that the body byte count equals the signed
+   grant `size_bytes`. A missing `Content-Length` is allowed and is
+   treated as that expected size; when the header is present it must
+   match both the body and `size_bytes`.
 5. Creates a Blob URL, triggers an attachment download with a generic
    filename (`verification-document.pdf` and siblings), and revokes the Blob
    URL immediately.
@@ -177,7 +195,9 @@ are absent from queue/detail HTML. Feature code cannot call raw `fetch`
   New `--project=admin-verification` against the Admin production build hosted
   by `tests/e2e/admin-web-server.mjs` (static `dist/` plus `/api` proxy that
   forwards Cookie and Set-Cookie arrays via `setHeader` before `writeHead`) and
-  Laravel, seeded with synthetic data only. Applying Set-Cookie after
+  Laravel, seeded with synthetic data only. The proxy access log is pathname
+  plus `qs=0|1` only; `admin-web-server.test.mjs` regresses signed-query
+  canaries against proxy stdio (not DOM). Applying Set-Cookie after
   `writeHead` throws `ERR_HTTP_HEADERS_SENT` on Node 22 and killed the host;
   `tests/e2e/admin-web-server.test.mjs` locks the ordering. Empty POST bodies
   such as logout send `Content-Type: application/json` so EnforceRequestBounds
@@ -210,6 +230,10 @@ are absent from queue/detail HTML. Feature code cannot call raw `fetch`
 - Browser E2E uses `APP_ENV=testing` so the fixture seeder can persist
   canonical bytes across the artisan serve process. That is not a production
   configuration.
+- Playwright traces/HAR (if captured) are browser artifacts, not the
+  preview/php-S CI tails covered by the stdio canary. Application
+  `storage/logs/laravel.log` still depends on PatternRedactor for signed-URL
+  strings. If `redact-e2e-stdio.mjs` exits, the php -S pipe receives SIGPIPE.
 
 GitHub CI on the final HEAD is recorded on the Draft PR after the closing
 push of this chunk.

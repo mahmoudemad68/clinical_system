@@ -7,11 +7,13 @@
  * Set-Cookie must be applied with `setHeader` *before* `writeHead`. Calling
  * `setHeader` after `writeHead` throws ERR_HTTP_HEADERS_SENT on Node 22 and
  * kills the host, which then surfaces as Playwright net::ERR_CONNECTION_REFUSED.
+ * Access logs are pathname + qs=0|1 only; query strings are never written.
  */
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import http from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { formatSanitizedAccessLog } from './sanitize-request-log.mjs';
 
 const distRoot = resolve(fileURLToPath(new URL('../../apps/admin-web/dist', import.meta.url))) + sep;
 const listenPort = Number.parseInt(process.env.CLINIC_ADMIN_WEB_PORT ?? '4173', 10);
@@ -136,6 +138,7 @@ function proxyApi(req, res) {
     {
       hostname: api.hostname,
       port: api.port === '' ? (api.protocol === 'https:' ? 443 : 80) : Number.parseInt(api.port, 10),
+      // Forward path AND query. HMAC reviewer URLs require search; only logs are sanitized.
       path: req.url,
       method: req.method,
       headers: incomingHeaders(req),
@@ -144,7 +147,16 @@ function proxyApi(req, res) {
       const status = proxyRes.statusCode ?? 502;
       const authorization = typeof req.headers.authorization === 'string' && req.headers.authorization !== '';
       process.stderr.write(
-        `${req.method ?? 'GET'} ${req.url ?? ''} cookie=${hasCookie ? '1' : '0'} names=${cookieNames(req.headers.cookie)} auth=${authorization ? '1' : '0'} xsrf=${req.headers['x-xsrf-token'] ? '1' : '0'} set-cookie=${String(setCookieCount(proxyRes))} -> ${String(status)}\n`,
+        formatSanitizedAccessLog({
+          method: req.method ?? 'GET',
+          rawUrl: req.url ?? '/',
+          cookie: hasCookie ? '1' : '0',
+          cookieNames: cookieNames(req.headers.cookie),
+          auth: authorization ? '1' : '0',
+          xsrf: req.headers['x-xsrf-token'] ? '1' : '0',
+          setCookie: String(setCookieCount(proxyRes)),
+          status: String(status),
+        }),
       );
       try {
         writeProxyHead(proxyRes, res);

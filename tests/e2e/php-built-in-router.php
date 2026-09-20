@@ -11,7 +11,11 @@ declare(strict_types=1);
  * PHP's built-in server historically treats the Cookie header name as
  * case-sensitive and may leave $_COOKIE empty even when the header is
  * present. Hydrate $_SERVER / $_COOKIE from getallheaders() before Laravel
- * boots. Logs are presence-only (no cookie values, tokens, or ids).
+ * boots. Logs are presence-only (no cookie values, tokens, ids,
+ * REQUEST_URI, or query strings). php -S 8.3 default Accepted/Closing
+ * lines also omit the URI; CI still pipes this process through
+ * tests/e2e/redact-e2e-stdio.mjs so a warning that interpolates
+ * REQUEST_URI cannot reprint signatures.
  */
 $publicPath = getcwd();
 

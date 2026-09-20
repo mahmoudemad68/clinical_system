@@ -27,7 +27,11 @@ async function startProxy(t, apiPort) {
     child.kill('SIGTERM');
   });
 
+  let stdout = '';
   let stderr = '';
+  child.stdout.on('data', (chunk) => {
+    stdout += chunk.toString();
+  });
   const previewPort = await new Promise((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error(`proxy did not start: ${stderr}`)), 10_000);
     const onExit = (code, signal) => {
@@ -46,7 +50,44 @@ async function startProxy(t, apiPort) {
     child.once('exit', onExit);
   });
 
-  return { child, previewPort, stderr: () => stderr };
+  return {
+    child,
+    previewPort,
+    stderr: () => stderr,
+    stdout: () => stdout,
+    combined: () => `${stdout}${stderr}`,
+  };
+}
+
+function proxyGet(port, { path, headers = {} }) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        hostname: '127.0.0.1',
+        port,
+        path,
+        method: 'GET',
+        headers,
+      },
+      (res) => {
+        res.resume();
+        res.on('end', () => resolve(res.statusCode ?? 0));
+      },
+    );
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+async function waitUntil(predicate, timeoutMs = 2_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error('timed out waiting for proxy access log');
 }
 
 function proxyPost(port, { path, headers, body }) {
@@ -149,4 +190,51 @@ test('admin web proxy forwards Cookie with RFC casing and the API Host on POST',
   assert.equal(seen[0]?.cookieName, 'Cookie');
   assert.equal(seen[0]?.cookie, 'clinic_session=e2e-session; XSRF-TOKEN=e2e-xsrf');
   assert.equal(seen[0]?.host, `127.0.0.1:${String(apiPort)}`);
+});
+
+test('admin web proxy logs pathname only and never query signatures', async (t) => {
+  const reviewerPath =
+    '/api/v1/verification-review-files/0199a5c8-0000-7000-8000-000000000021/0199a5c8-0000-7000-8000-000000000041';
+  const query =
+    'signature=SIGNED_SECRET_CANARY&X-Amz-Signature=AMZ_SECRET_CANARY&expires=1&cursor=SIGNED_CURSOR_CANARY&token=TOKEN_SECRET_CANARY';
+  /** @type {string[]} */
+  const upstreamUrls = [];
+  const api = http.createServer((req, res) => {
+    upstreamUrls.push(req.url ?? '');
+    res.writeHead(200, { 'content-type': 'application/pdf', 'content-length': '4' });
+    res.end('test');
+  });
+  const apiPort = await listen(api);
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        api.close(resolve);
+      }),
+  );
+
+  const { previewPort, combined } = await startProxy(t, apiPort);
+  const status = await proxyGet(previewPort, {
+    path: `${reviewerPath}?${query}`,
+    headers: {
+      Authorization: 'Bearer BEARER_SECRET_CANARY',
+      Cookie: 'clinic_session=COOKIE_SECRET_CANARY',
+    },
+  });
+  assert.equal(status, 200);
+  assert.equal(upstreamUrls.length, 1);
+  assert.equal(upstreamUrls[0], `${reviewerPath}?${query}`);
+
+  await waitUntil(() => combined().includes(`${reviewerPath} qs=1`));
+
+  const logs = combined();
+  assert.match(logs, /GET \/api\/v1\/verification-review-files\/0199a5c8-0000-7000-8000-000000000021\/0199a5c8-0000-7000-8000-000000000041 qs=1 /);
+  assert.equal(logs.includes('SIGNED_SECRET_CANARY'), false, 'signature canary must not enter proxy logs');
+  assert.equal(logs.includes('AMZ_SECRET_CANARY'), false, 'X-Amz-Signature canary must not enter proxy logs');
+  assert.equal(logs.includes('SIGNED_CURSOR_CANARY'), false, 'cursor canary must not enter proxy logs');
+  assert.equal(logs.includes('TOKEN_SECRET_CANARY'), false, 'token canary must not enter proxy logs');
+  assert.equal(logs.includes('BEARER_SECRET_CANARY'), false, 'authorization value must not enter proxy logs');
+  assert.equal(logs.includes('COOKIE_SECRET_CANARY'), false, 'cookie value must not enter proxy logs');
+  assert.equal(logs.includes('signature='), false);
+  assert.equal(logs.includes('X-Amz-Signature='), false);
+  assert.equal(logs.includes('?'), false);
 });
