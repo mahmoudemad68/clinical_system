@@ -32,7 +32,8 @@ it.
 - **Integrity follow-up base (independently reviewed):** `eff3d4e2fbeba2cee68ebde03f0bf0273aec3852`
 - **GitHub live-provider proof HEAD (prior):** `c5ee8d63a4252269002e223e4186f50c2c3992d7`
 - **GitHub `pull-request` run (prior live providers):** [35495868880](https://github.com/mahmoudemad68/clinical_system/actions/runs/35495868880) **SUCCESS**
-- **GitHub `pull-request` run (this integrity follow-up):** pending on the follow-up HEAD; local gates below do not replace it
+- **Integrity follow-up implementation HEAD:** `e8badefc60ac5721428bf821dc670e3bff327e64`
+- **GitHub `pull-request` run (this integrity follow-up):** [35497558673](https://github.com/mahmoudemad68/clinical_system/actions/runs/35497558673) **SUCCESS** on `e8badef`
 
 ## Trust flow
 
@@ -312,49 +313,42 @@ Metric `clinic_secure_file_results_total` labels: `result`, `detected_type`,
 
 ## Commands actually executed
 
-### Integrity follow-up (this HEAD, local)
+### Integrity follow-up GitHub CI (authoritative)
 
-Local host PHP is supplementary. Live MinIO/clamd were not reachable on this
-agent VM (no Docker). GitHub `secure-file-providers` on the follow-up HEAD
-is the live-provider proof still required.
+GitHub `pull-request` run
+[35497558673](https://github.com/mahmoudemad68/clinical_system/actions/runs/35497558673)
+on `e8badefc60ac5721428bf821dc670e3bff327e64` **SUCCESS**. Local host PHP is
+supplementary and does not replace this run.
 
 | Gate | Result |
 | --- | --- |
-| Pint `--dirty` | PASS |
-| PHPStan `analyse --memory-limit=1G` | `[OK] No errors` |
-| Deptrac `--fail-on-uncovered` | PASS (0 violations) |
-| Core API Pest `./vendor/bin/pest` | **636 passed**, 17 skipped, 653 tests (11098 assertions) |
-| Focused upload/seal/cleanup/Clamd/constraint | PASS |
+| Pint `--test` (Core API job) | PASS, 565 files |
+| PHPStan (Core API job) | `[OK] No errors` |
+| Deptrac `--fail-on-uncovered` (Core API job) | PASS (job succeeded) |
+| Core API Pest `./vendor/bin/pest` | **641 passed**, 12 skipped, 653 tests (11114 assertions) |
+| Secure-file providers Pest | **40 passed** (394 assertions), 0 skipped |
+| Live MinIO | bucket `clinic-local-private` created; anonymous access `private`; S3 contract tests passed |
+| Live clamd | `clamd is ready`; `it scans a live clamd when one is reachable` passed |
+| Provider-backed upload → scan → AVAILABLE | `it promotes a real provider-backed upload and ignores later ingress overwrite` passed |
 | OpenAPI lint | valid |
 | Event schemas | **19** checked |
-| Breaking contracts vs `origin/main` | none (`npm run contracts:breaking`) |
+| Breaking contracts vs `origin/main` | none (rule-of-record `npm run contracts:breaking`) |
 | ISR-015 | Supply-chain policy PASS |
+| Gitleaks + Semgrep | Security scans PASS (Semgrep 0 findings) |
+| Trivy image `clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200` | **0** HIGH/CRITICAL (alpine 3.24.1) |
+| ClamAV scanner SPDX SBOM | artifact `clamav-scanner.sbom.spdx.json` id `10601501981` (6707 bytes) |
+| Runtime image scan core-api / ai-service | SUCCESS |
 
-The extra local skips versus GitHub Core API's prior 12 are the live MinIO /
-clamd / provider-backed tests on a host without `:9000` / `:3310`.
+Core API's 12 skips are pre-existing Auth Redis/Reverb/Octane/two-connection
+opt-in (that job does not start MinIO/clamd). Live provider tests ran in
+`secure-file-providers` with `CLINIC_REQUIRE_OBJECT_STORE=1` /
+`CLINIC_REQUIRE_CLAMAV=1`.
 
 In-process coverage added: crash-safe seal (locator durable before copy,
 post-copy audit failure, retry reuses the same `/c/` locator, one outbox),
 AVAILABLE ingress recreate-then-post-expiry delete, submitted canonical
 preservation, and exact clamd grammar (`stream: OK` / `WAT OK` /
 `stream: ERROR OK` / `garbageOK` / multi-line / FOUND / ERROR).
-
-### Prior live-provider GitHub proof (unchanged images)
-
-GitHub `pull-request` run
-[35495868880](https://github.com/mahmoudemad68/clinical_system/actions/runs/35495868880)
-on `c5ee8d63a4252269002e223e4186f50c2c3992d7` remains the last recorded live
-MinIO / clamd / ClamAV Trivy execution. A new run on the integrity
-follow-up HEAD must succeed before this follow-up is treated as CI-complete.
-
-| Gate | Result |
-| --- | --- |
-| Secure-file providers Pest (run 35495868880) | **32 passed** (337 assertions), 0 skipped |
-| Live MinIO | bucket `clinic-local-private` created; anonymous access `private`; S3 contract tests passed |
-| Live clamd | `clamd is ready`; `it scans a live clamd when one is reachable` passed |
-| Provider-backed upload → scan → AVAILABLE | `it promotes a real provider-backed upload and ignores later ingress overwrite` passed |
-| Trivy image `clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200` | **0** HIGH/CRITICAL |
-| ClamAV scanner SPDX SBOM | artifact `clamav-scanner.sbom.spdx.json` id `10600364304` (6708 bytes) |
 
 This chunk is **not** production-promotable: SF-001 remains MERGE_ONLY.
 
@@ -373,7 +367,7 @@ approval or READY_TO_MERGE.
   verification cases or quarantine objects in this slice.
 - Staging remains unprovisioned; post-merge deploy stays fail-closed.
 - SF-001 remains MERGE_ONLY / `promotion_allowed=false`.
-- ClamAV image Trivy on run 35495868880 reported **0** HIGH/CRITICAL. That
+- ClamAV image Trivy on run 35497558673 reported **0** HIGH/CRITICAL. That
   does not make the chunk production-promotable while SF-001 is MERGE_ONLY.
 - oasdiff cross-check remains `continue-on-error` (pre-existing); the
   rule-of-record is `npm run contracts:breaking`.
