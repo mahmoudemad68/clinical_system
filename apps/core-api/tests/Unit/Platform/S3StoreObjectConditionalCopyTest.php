@@ -47,6 +47,23 @@ function s3ConditionalRefs(): array
     ];
 }
 
+it('treats an AWS SDK-style magic copyObject client as native capability', function () {
+    $disk = new FakeS3Filesystem;
+    expect(method_exists($disk->client, 'copyObject'))->toBeFalse()
+        ->and(is_callable([$disk->client, 'copyObject']))->toBeTrue();
+
+    $store = s3ConditionalStore($disk);
+    [$source, $destination] = s3ConditionalRefs();
+    $bytes = verificationMinimalPdf();
+    $store->writeAt($source, 'application/pdf', $bytes);
+
+    $store->copyExact($source, $destination);
+
+    expect($disk->client->copyObjectCalls)->toBe(1)
+        ->and($disk->copyCalls)->toBe(0)
+        ->and($store->observe($destination, 20_971_520)->sha256)->toBe(hash('sha256', $bytes));
+});
+
 it('creates the destination with a successful conditional CopyObject through getAdapter', function () {
     $disk = new FakeS3Filesystem;
     $store = s3ConditionalStore($disk);

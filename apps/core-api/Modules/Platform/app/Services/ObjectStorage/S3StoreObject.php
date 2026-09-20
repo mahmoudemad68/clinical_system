@@ -215,7 +215,7 @@ final class S3StoreObject implements StoreObject
             $client = $this->disk->getClient();
             $config = method_exists($this->disk, 'getConfig') ? $this->disk->getConfig() : [];
             $bucket = is_array($config) ? (string) ($config['bucket'] ?? '') : '';
-            if ($bucket === '' || ! is_object($client) || ! method_exists($client, 'headObject')) {
+            if ($bucket === '' || ! is_object($client) || ! is_callable([$client, 'headObject'])) {
                 return null;
             }
 
@@ -368,7 +368,9 @@ final class S3StoreObject implements StoreObject
             $bucket = is_array($config) ? (string) ($config['bucket'] ?? '') : '';
         }
 
-        if ($bucket === '' || $client === null || ! method_exists($client, 'copyObject')) {
+        // Aws\S3\S3Client implements CopyObject via __call, so method_exists()
+        // is false on a real client. is_callable() is the native-capability check.
+        if ($bucket === '' || $client === null || ! is_callable([$client, 'copyObject'])) {
             return null;
         }
 
