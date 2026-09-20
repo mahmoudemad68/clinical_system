@@ -244,6 +244,10 @@ final class PostgresVerificationStore
                     $rejected->where('state', VerificationUploadState::Rejected->value)
                         ->whereNotNull('cleanup_eligible_at')
                         ->where('cleanup_eligible_at', '<=', $now);
+                })->orWhere(function ($available) use ($now): void {
+                    $available->where('state', VerificationUploadState::Available->value)
+                        ->where('expires_at', '<', $now)
+                        ->whereNull('cleanup_eligible_at');
                 });
             })
             ->orderBy('created_at')

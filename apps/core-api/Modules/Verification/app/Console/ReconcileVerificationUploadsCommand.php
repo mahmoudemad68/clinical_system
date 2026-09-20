@@ -17,14 +17,15 @@ use Modules\Verification\Support\VerificationPolicy;
 use Modules\Verification\Support\VerificationUploadIntentRecord;
 
 /**
- * Bounded, idempotent cleanup of expired or rejected quarantine objects.
- * Never deletes AVAILABLE or submitted evidence.
+ * Bounded, idempotent cleanup of expired or rejected quarantine objects
+ * and of client-writable ingress after an AVAILABLE grant expires.
+ * Never deletes AVAILABLE or submitted canonical evidence.
  */
 final class ReconcileVerificationUploadsCommand extends Command
 {
     protected $signature = 'verification:reconcile-uploads {--limit=50}';
 
-    protected $description = 'Mark expired upload intents and delete eligible rejected quarantine objects.';
+    protected $description = 'Expire upload intents, delete rejected objects, and delete expired AVAILABLE ingress only.';
 
     public function handle(
         TransactionRunner $transactions,
@@ -47,7 +48,36 @@ final class ReconcileVerificationUploadsCommand extends Command
                 if (! $fresh instanceof VerificationUploadIntentRecord) {
                     return;
                 }
+
                 if ($fresh->state === VerificationUploadState::Available) {
+                    if ($fresh->expiresAt > $now || $fresh->cleanupEligibleAt !== null) {
+                        return;
+                    }
+
+                    $affected = $store->updateUpload($fresh->id, $fresh->version, [
+                        'cleanup_eligible_at' => $stamp,
+                        'version' => $fresh->version + 1,
+                        'updated_at' => $stamp,
+                    ]);
+                    if ($affected !== 1) {
+                        return;
+                    }
+
+                    $toDelete[] = $fresh->storedRef();
+                    $audit->append(
+                        $tx,
+                        'verification.upload_cleanup',
+                        'verification_upload_intent',
+                        $fresh->id,
+                        [
+                            'reason_code' => 'available_ingress_removed',
+                            'requirement_code' => $fresh->requirementCode,
+                            'state' => VerificationUploadState::Available->value,
+                        ],
+                        null,
+                        'system',
+                    );
+
                     return;
                 }
 

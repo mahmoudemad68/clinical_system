@@ -136,11 +136,13 @@ final class InMemoryStoreObject implements StoreObject
 
     public function copyExact(StoredObjectRef $source, StoredObjectRef $destination): void
     {
-        $stored = $this->read($source);
         if ($this->exists($destination)) {
-            throw new InvalidValueObject('Canonical locator is already occupied.');
+            $this->assertOccupiedCanonical($destination);
+
+            return;
         }
 
+        $stored = $this->read($source);
         $this->writeAt($destination, $stored['content_type'], $stored['bytes']);
     }
 
@@ -244,6 +246,14 @@ final class InMemoryStoreObject implements StoreObject
         }
 
         return $this->persistDirectory.DIRECTORY_SEPARATOR.hash('sha256', $ref->key());
+    }
+
+    private function assertOccupiedCanonical(StoredObjectRef $destination): void
+    {
+        $existing = $this->read($destination);
+        if (strlen($existing['bytes']) < 1) {
+            throw new InvalidValueObject('Canonical locator is occupied by an empty object.');
+        }
     }
 
     /**

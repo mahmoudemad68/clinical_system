@@ -55,6 +55,8 @@ final class S3StoreObjectContractTest extends TestCase
         $this->assertTrue($store->exists($canonical));
         $store->writeAt($ref, 'text/plain', 'synthetic-bytes-overwritten');
         $this->assertSame(hash('sha256', 'synthetic-bytes'), $store->observe($canonical, 20_971_520)->sha256);
+        $store->copyExact($ref, $canonical);
+        $this->assertSame(hash('sha256', 'synthetic-bytes'), $store->observe($canonical, 20_971_520)->sha256);
         $this->assertNotSame(hash('sha256', 'synthetic-bytes'), $store->providerVersionId($canonical) ?? '');
 
         $this->expectException(InvalidValueObject::class);

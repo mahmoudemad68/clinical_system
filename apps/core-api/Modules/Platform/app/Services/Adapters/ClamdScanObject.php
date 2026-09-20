@@ -96,21 +96,55 @@ final class ClamdScanObject implements ScanObject
         }
     }
 
+    /**
+     * clamd INSTREAM reply grammar for this adapter:
+     * - CLEAN: exactly `stream: OK` (optional single terminating newline)
+     * - INFECTED: exactly `stream: <signature> FOUND`
+     * - UNAVAILABLE: exactly `stream: <reason> ERROR`, or the documented
+     *   INSTREAM size-limit line
+     * Anything else, including prefix/suffix text, `OK` without the stream
+     * prefix, `WAT OK`, `garbageOK`, `stream: ERROR OK`, or multiple lines,
+     * is invalid and never CLEAN.
+     */
     private function interpret(string $reply): ScanVerdict
     {
-        $line = trim($reply);
-        if ($line === 'OK' || str_ends_with($line, 'OK')) {
+        $line = $this->singleInstreamLine($reply);
+        if ($line === null) {
+            return ScanVerdict::invalid('clamd', $this->scannerVersion);
+        }
+
+        if ($line === 'stream: OK') {
             return ScanVerdict::clean('clamd', $this->scannerVersion);
         }
 
-        if (str_contains($line, 'FOUND')) {
+        if (preg_match('/^stream: .+ FOUND$/', $line) === 1) {
             return ScanVerdict::infected('clamd', $this->scannerVersion);
         }
 
-        if (str_contains($line, 'ERROR') || str_contains($line, 'INSTREAM size limit exceeded')) {
+        if (preg_match('/^stream: .+ ERROR$/', $line) === 1 || $line === 'INSTREAM size limit exceeded') {
             return ScanVerdict::unavailable('clamd', $this->scannerVersion);
         }
 
         return ScanVerdict::invalid('clamd', $this->scannerVersion);
+    }
+
+    private function singleInstreamLine(string $reply): ?string
+    {
+        if (str_contains($reply, "\0")) {
+            return null;
+        }
+
+        $line = $reply;
+        if (str_ends_with($line, "\r\n")) {
+            $line = substr($line, 0, -2);
+        } elseif (str_ends_with($line, "\n") || str_ends_with($line, "\r")) {
+            $line = substr($line, 0, -1);
+        }
+
+        if ($line === '' || str_contains($line, "\n") || str_contains($line, "\r")) {
+            return null;
+        }
+
+        return $line;
     }
 }

@@ -163,17 +163,33 @@ final class S3StoreObject implements StoreObject
         return new StoredObjectRef($namespace, $objectId, $namespace.'/c/'.bin2hex(random_bytes(16)));
     }
 
+    /**
+     * Server-only seal copy. S3 CopyObject is treated as atomic at the
+     * destination key: the provider either materializes the complete object
+     * or leaves the key absent. An existing destination is never overwritten,
+     * so a crash/retry cannot replace sealed canonical bytes with later
+     * ingress contents. CopyObject is issued with If-None-Match: * when the
+     * client supports it; 412 is reconciled as "already sealed".
+     */
     public function copyExact(StoredObjectRef $source, StoredObjectRef $destination): void
     {
+        if ($this->exists($destination)) {
+            $this->assertOccupiedCanonical($destination);
+
+            return;
+        }
+
         if (! $this->exists($source)) {
             throw new RuntimeException('Object does not exist.');
         }
-        if ($this->exists($destination)) {
-            throw new InvalidValueObject('Canonical locator is already occupied.');
-        }
 
-        $copied = $this->disk->copy($source->key(), $destination->key());
-        if ($copied === false) {
+        if (! $this->copyOnceUnlessExists($source, $destination)) {
+            if ($this->exists($destination)) {
+                $this->assertOccupiedCanonical($destination);
+
+                return;
+            }
+
             throw new RuntimeException('Object seal copy failed.');
         }
 
@@ -272,5 +288,59 @@ final class S3StoreObject implements StoreObject
         if ($this->disk->exists($ref->key())) {
             $this->disk->delete($ref->key());
         }
+    }
+
+    /**
+     * Copy source onto destination only when the destination key is absent.
+     * Returns true when this call created the destination.
+     */
+    private function copyOnceUnlessExists(StoredObjectRef $source, StoredObjectRef $destination): bool
+    {
+        if (method_exists($this->disk, 'getClient') && method_exists($this->disk, 'getConfig')) {
+            $client = $this->disk->getClient();
+            $config = $this->disk->getConfig();
+            $bucket = is_array($config) ? (string) ($config['bucket'] ?? '') : '';
+            if ($bucket !== '' && is_object($client) && method_exists($client, 'copyObject')) {
+                try {
+                    $client->copyObject([
+                        'Bucket' => $bucket,
+                        'Key' => $destination->key(),
+                        'CopySource' => $bucket.'/'.$source->key(),
+                        'IfNoneMatch' => '*',
+                        'ACL' => 'private',
+                    ]);
+
+                    return true;
+                } catch (Throwable $e) {
+                    if ($this->isPreconditionFailed($e)) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        if ($this->exists($destination)) {
+            return false;
+        }
+
+        return $this->disk->copy($source->key(), $destination->key()) === true;
+    }
+
+    private function assertOccupiedCanonical(StoredObjectRef $destination): void
+    {
+        $meta = $this->metadata($destination);
+        if ($meta['size_bytes'] < 1) {
+            throw new InvalidValueObject('Canonical locator is occupied by an empty object.');
+        }
+    }
+
+    private function isPreconditionFailed(Throwable $e): bool
+    {
+        $status = method_exists($e, 'getStatusCode') ? (int) $e->getStatusCode() : 0;
+        $awsCode = method_exists($e, 'getAwsErrorCode') ? (string) $e->getAwsErrorCode() : '';
+
+        return $status === 412
+            || $awsCode === 'PreconditionFailed'
+            || str_contains($e->getMessage(), 'PreconditionFailed');
     }
 }

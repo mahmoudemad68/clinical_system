@@ -5,18 +5,23 @@ declare(strict_types=1);
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Modules\Audit\Contracts\AppendAuditEvent;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\ScanObject;
 use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Exceptions\StateConflict;
 use Modules\Platform\Exceptions\TransientProviderFailure;
 use Modules\Platform\Services\Adapters\DisabledScanObject;
+use Modules\Platform\Support\Identifier;
 use Modules\Platform\Support\ScanVerdict;
 use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Contracts\TrustedDocumentEvidenceIssuer;
 use Modules\Verification\Services\Adapters\DisabledTrustedDocumentEvidenceIssuer;
 use Modules\Verification\Services\Adapters\ProcessingTrustedDocumentEvidenceIssuer;
+use Modules\Verification\Services\VerificationUploadService;
+use Tests\Support\FailOnceAppendAuditEvent;
 use Tests\Support\FixtureScanObject;
+use Tests\Support\RecordingStoreObject;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -445,7 +450,31 @@ describe('completion, validation, scan, and promotion', function () {
             ->and(DB::table('verification_documents')->where('upload_intent_id', $stale['upload_id'])->count())->toBe(0);
     });
 
-    it('cleans expired uploading objects and never deletes available evidence', function () {
+    it('ignores ingress overwrite after seal while promoting canonical bytes', function () {
+        verificationBindCleanScanner();
+        $onboarded = verificationOnboardDoctor('up-seal');
+        $opened = verificationOpenCase($onboarded['actor']);
+        $created = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-seal-c');
+        $originalHash = hash('sha256', $created['bytes']);
+        verificationPutUploadBytes($created['upload_id'], $created['bytes'], 'application/pdf');
+        test()->postJson(
+            '/api/v1/verification-uploads/'.$created['upload_id'].'/complete',
+            [],
+            doctorsAuth($onboarded['session']['token']) + doctorsIdem('up-seal-done'),
+        )->assertOk()->assertJsonPath('data.state', 'quarantined');
+
+        $ingress = verificationStoredRef($created['upload_id']);
+        app(StoreObject::class)->writeAt($ingress, 'application/pdf', verificationAlternatePdf());
+        verificationProcessUpload($created['upload_id']);
+
+        $canonical = verificationCanonicalRef($created['upload_id']);
+        expect((string) DB::table('verification_upload_intents')->where('id', $created['upload_id'])->value('state'))->toBe('available')
+            ->and((string) DB::table('verification_upload_intents')->where('id', $created['upload_id'])->value('observed_sha256'))->toBe($originalHash)
+            ->and(app(StoreObject::class)->observe($canonical, 20_971_520)->sha256)->toBe($originalHash)
+            ->and((string) DB::table('verification_documents')->where('upload_intent_id', $created['upload_id'])->value('sha256'))->toBe($originalHash);
+    });
+
+    it('cleans expired uploading objects and expired AVAILABLE ingress without deleting canonical evidence', function () {
         verificationBindCleanScanner();
         $onboarded = verificationOnboardDoctor('up-clean');
         $opened = verificationOpenCase($onboarded['actor']);
@@ -457,6 +486,7 @@ describe('completion, validation, scan, and promotion', function () {
         verificationPutUploadBytes($expired['upload_id'], $expired['bytes'], 'application/pdf');
 
         $kept = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-clean-keep');
+        $originalHash = hash('sha256', $kept['bytes']);
         verificationPutUploadBytes($kept['upload_id'], $kept['bytes'], 'application/pdf');
         test()->postJson(
             '/api/v1/verification-uploads/'.$kept['upload_id'].'/complete',
@@ -465,48 +495,105 @@ describe('completion, validation, scan, and promotion', function () {
         )->assertOk();
         verificationProcessUpload($kept['upload_id']);
 
+        $canonical = verificationCanonicalRef($kept['upload_id']);
+        $ingress = verificationStoredRef($kept['upload_id']);
+        expect((string) DB::table('verification_upload_intents')->where('id', $kept['upload_id'])->value('state'))->toBe('available')
+            ->and(app(StoreObject::class)->exists($canonical))->toBeTrue()
+            ->and(app(StoreObject::class)->observe($canonical, 20_971_520)->sha256)->toBe($originalHash);
+
+        app(StoreObject::class)->writeAt($ingress, 'application/pdf', verificationAlternatePdf());
+        expect(app(StoreObject::class)->exists($ingress))->toBeTrue()
+            ->and(app(StoreObject::class)->observe($canonical, 20_971_520)->sha256)->toBe($originalHash);
+
         Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
 
         expect((string) DB::table('verification_upload_intents')->where('id', $expired['upload_id'])->value('state'))->toBe('rejected')
             ->and(app(StoreObject::class)->exists(verificationStoredRef($expired['upload_id'])))->toBeFalse()
+            ->and(app(StoreObject::class)->exists($ingress))->toBeTrue()
+            ->and(app(StoreObject::class)->exists($canonical))->toBeTrue();
+
+        DB::table('verification_upload_intents')->where('id', $kept['upload_id'])->update([
+            'expires_at' => now('UTC')->subMinute()->format('Y-m-d H:i:s.uP'),
+        ]);
+        Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+        Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+
+        $document = DB::table('verification_documents')->where('upload_intent_id', $kept['upload_id'])->first();
+        expect(app(StoreObject::class)->exists($ingress))->toBeFalse()
+            ->and(app(StoreObject::class)->exists($canonical))->toBeTrue()
+            ->and(app(StoreObject::class)->observe($canonical, 20_971_520)->sha256)->toBe($originalHash)
+            ->and((string) $document->sha256)->toBe($originalHash)
             ->and((string) DB::table('verification_upload_intents')->where('id', $kept['upload_id'])->value('state'))->toBe('available')
-            ->and(app(StoreObject::class)->exists(verificationStoredRef($kept['upload_id'])))->toBeTrue()
-            ->and(app(StoreObject::class)->exists(verificationCanonicalRef($kept['upload_id'])))->toBeTrue();
+            ->and(DB::table('audit_events')->where('event_name', 'verification.upload_cleanup')->where('object_id', $kept['upload_id'])->count())->toBe(1);
+
+        $caseVersion = (int) DB::table('verification_cases')->where('id', (string) $opened->caseId)->value('version');
+        test()->postJson(
+            '/api/v1/doctors/me/verification-submissions',
+            verificationSubmitBody($caseVersion, $opened->profileVersion),
+            doctorsAuth($onboarded['session']['token']) + doctorsIdem('up-clean-submit'),
+        )->assertOk();
+
+        Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+        expect(app(StoreObject::class)->exists($canonical))->toBeTrue()
+            ->and(app(StoreObject::class)->observe($canonical, 20_971_520)->sha256)->toBe($originalHash)
+            ->and(DB::table('verification_documents')->where('upload_intent_id', $kept['upload_id'])->count())->toBe(1)
+            ->and((string) DB::table('verification_documents')->where('upload_intent_id', $kept['upload_id'])->value('sha256'))->toBe($originalHash);
     });
 
-    it('keeps canonical AVAILABLE bytes when the client-writable ingress object is overwritten', function () {
-        verificationBindCleanScanner();
-        $onboarded = verificationOnboardDoctor('up-seal');
+    it('recovers a crash after canonical copy without allocating a second locator', function () {
+        $onboarded = verificationOnboardDoctor('up-seal-crash');
         $opened = verificationOpenCase($onboarded['actor']);
-        $created = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-seal-c');
-        $original = $created['bytes'];
-        $originalHash = hash('sha256', $original);
-        verificationPutUploadBytes($created['upload_id'], $original, 'application/pdf');
-        test()->postJson(
-            '/api/v1/verification-uploads/'.$created['upload_id'].'/complete',
-            [],
-            doctorsAuth($onboarded['session']['token']) + doctorsIdem('up-seal-done'),
-        )->assertOk()->assertJsonPath('data.state', 'quarantined');
+        $created = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-seal-crash-c');
+        verificationPutUploadBytes($created['upload_id'], $created['bytes'], 'application/pdf');
 
-        $ingress = verificationStoredRef($created['upload_id']);
-        app(StoreObject::class)->writeAt($ingress, 'application/pdf', verificationAlternatePdf());
-        verificationProcessUpload($created['upload_id']);
+        $innerStore = app(StoreObject::class);
+        $recording = new RecordingStoreObject($innerStore);
+        app()->instance(StoreObject::class, $recording);
+        $originalAudit = app(AppendAuditEvent::class);
+        app()->instance(AppendAuditEvent::class, new FailOnceAppendAuditEvent(
+            $originalAudit,
+            'verification.upload_completion_accepted',
+        ));
 
-        $row = DB::table('verification_upload_intents')->where('id', $created['upload_id'])->first();
-        $canonical = verificationCanonicalRef($created['upload_id']);
-        $canonicalObserved = app(StoreObject::class)->observe($canonical, 20_971_520);
-        $ingressObserved = app(StoreObject::class)->observe($ingress, 20_971_520);
-        $document = DB::table('verification_documents')->where('upload_intent_id', $created['upload_id'])->first();
+        try {
+            expect(fn () => app(VerificationUploadService::class)->completeDoctorUpload(
+                $onboarded['actor'],
+                Identifier::fromTrusted($created['upload_id']),
+            ))->toThrow(TransientProviderFailure::class);
 
-        expect((string) $row->state)->toBe('available')
-            ->and((string) $row->observed_sha256)->toBe($originalHash)
-            ->and($canonicalObserved->sha256)->toBe($originalHash)
-            ->and($ingressObserved->sha256)->toBe(hash('sha256', verificationAlternatePdf()))
-            ->and((string) $document->sha256)->toBe($originalHash);
+            $row = DB::table('verification_upload_intents')->where('id', $created['upload_id'])->first();
+            $locator = (string) $row->canonical_storage_locator;
+            $canonical = new StoredObjectRef('verification', $created['object_id'], $locator);
+            expect((string) $row->state)->toBe('uploading')
+                ->and($locator)->toStartWith('verification/c/')
+                ->and($recording->locatorWasDurableBeforeCopy)->toBeTrue()
+                ->and($recording->allocateCount)->toBe(1)
+                ->and($recording->allocatedLocators)->toBe([$locator])
+                ->and($recording->copiedLocators)->toBe([$locator])
+                ->and($innerStore->exists($canonical))->toBeTrue()
+                ->and(DB::table('outbox_events')->where('event_type', 'verification.upload_completed')->count())->toBe(0)
+                ->and(DB::table('audit_events')->where('event_name', 'verification.upload_completion_accepted')->count())->toBe(0);
 
-        app(StoreObject::class)->writeAt($ingress, 'application/pdf', verificationZipBytes());
-        $afterAvailable = app(StoreObject::class)->observe($canonical, 20_971_520);
-        expect($afterAvailable->sha256)->toBe($originalHash)
-            ->and((string) DB::table('verification_documents')->where('upload_intent_id', $created['upload_id'])->value('sha256'))->toBe($originalHash);
+            $retry = app(VerificationUploadService::class)->completeDoctorUpload(
+                $onboarded['actor'],
+                Identifier::fromTrusted($created['upload_id']),
+            );
+            expect($retry->state)->toBe('quarantined')
+                ->and($recording->allocateCount)->toBe(1)
+                ->and((string) DB::table('verification_upload_intents')->where('id', $created['upload_id'])->value('canonical_storage_locator'))->toBe($locator)
+                ->and($innerStore->exists($canonical))->toBeTrue()
+                ->and(DB::table('outbox_events')->where('event_type', 'verification.upload_completed')->count())->toBe(1);
+
+            app(VerificationUploadService::class)->completeDoctorUpload(
+                $onboarded['actor'],
+                Identifier::fromTrusted($created['upload_id']),
+            );
+            expect($recording->allocateCount)->toBe(1)
+                ->and(DB::table('outbox_events')->where('event_type', 'verification.upload_completed')->count())->toBe(1)
+                ->and((string) DB::table('verification_upload_intents')->where('id', $created['upload_id'])->value('canonical_storage_locator'))->toBe($locator);
+        } finally {
+            app()->instance(StoreObject::class, $innerStore);
+            app()->instance(AppendAuditEvent::class, $originalAudit);
+        }
     });
 });

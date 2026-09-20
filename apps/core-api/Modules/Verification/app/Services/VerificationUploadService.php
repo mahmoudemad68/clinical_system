@@ -25,6 +25,7 @@ use Modules\Platform\Exceptions\StateConflict;
 use Modules\Platform\Exceptions\TransientProviderFailure;
 use Modules\Platform\Support\Identifier;
 use Modules\Platform\Support\ObjectUploadGrant;
+use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Enums\VerificationCaseStatus;
 use Modules\Verification\Enums\VerificationCaseType;
 use Modules\Verification\Enums\VerificationUploadState;
@@ -34,6 +35,8 @@ use Modules\Verification\Support\VerificationCaseRecord;
 use Modules\Verification\Support\VerificationPolicy;
 use Modules\Verification\Support\VerificationUploadIntentRecord;
 use Modules\Verification\Support\VerificationUploadProjection;
+use RuntimeException;
+use Throwable;
 
 /**
  * Doctor verification upload intents. Platform storage stays generic.
@@ -237,7 +240,8 @@ final class VerificationUploadService
         }
 
         $failure = null;
-        $projection = $this->transactions->run(function (TransactionContext $tx) use ($actor, $uploadId, &$failure): VerificationUploadProjection {
+        /** @var array{outcome: 'replay'|'seal'|'rejected', projection: VerificationUploadProjection, ingress: StoredObjectRef|null, canonical: StoredObjectRef|null} $prepared */
+        $prepared = $this->transactions->run(function (TransactionContext $tx) use ($actor, $uploadId, &$failure): array {
             $doctor = $this->requireDoctor($actor->userId);
             $this->store->lockUpload($uploadId);
             $upload = $this->store->findUploadById($uploadId, true);
@@ -256,7 +260,12 @@ final class VerificationUploadService
 
             $now = $this->clock->now();
             if ($upload->state->isProcessable() || $upload->state === VerificationUploadState::Available) {
-                return $this->project($upload);
+                return [
+                    'outcome' => 'replay',
+                    'projection' => $this->project($upload),
+                    'ingress' => $upload->storedRef(),
+                    'canonical' => $upload->canonicalRef(),
+                ];
             }
             if ($upload->state === VerificationUploadState::Rejected) {
                 throw new StateConflict;
@@ -270,37 +279,116 @@ final class VerificationUploadService
                 $fresh = $this->store->findUploadById($upload->id, false);
                 assert($fresh instanceof VerificationUploadIntentRecord);
 
-                return $this->project($fresh);
+                return [
+                    'outcome' => 'rejected',
+                    'projection' => $this->project($fresh),
+                    'ingress' => null,
+                    'canonical' => null,
+                ];
             }
 
-            $ref = $upload->storedRef();
-            if (! $this->objects->exists($ref)) {
-                $this->rejectLocked($tx, $upload, 'object_missing', $now);
-                $failure = new InvalidValueObject('Uploaded object was not found.');
-                $fresh = $this->store->findUploadById($upload->id, false);
-                assert($fresh instanceof VerificationUploadIntentRecord);
+            $canonical = $upload->canonicalRef();
+            if (! $canonical instanceof StoredObjectRef) {
+                $ref = $upload->storedRef();
+                if (! $this->objects->exists($ref)) {
+                    $this->rejectLocked($tx, $upload, 'object_missing', $now);
+                    $failure = new InvalidValueObject('Uploaded object was not found.');
+                    $fresh = $this->store->findUploadById($upload->id, false);
+                    assert($fresh instanceof VerificationUploadIntentRecord);
 
-                return $this->project($fresh);
-            }
+                    return [
+                        'outcome' => 'rejected',
+                        'projection' => $this->project($fresh),
+                        'ingress' => null,
+                        'canonical' => null,
+                    ];
+                }
 
-            try {
                 $canonical = $this->objects->allocateCanonicalRef(
                     $this->policy->objectNamespace(),
                     $upload->objectId->value,
                 );
-                $this->objects->copyExact($ref, $canonical);
-            } catch (\Throwable) {
-                $failure = new TransientProviderFailure('Object seal failed.');
-                $fresh = $this->store->findUploadById($upload->id, false);
-                assert($fresh instanceof VerificationUploadIntentRecord);
-
-                return $this->project($fresh);
+                $stamp = $now->format('Y-m-d H:i:s.uP');
+                $affected = $this->store->updateUpload($upload->id, $upload->version, [
+                    'canonical_storage_locator' => $canonical->storageLocator,
+                    'version' => $upload->version + 1,
+                    'updated_at' => $stamp,
+                ]);
+                if ($affected !== 1) {
+                    throw new StateConflict;
+                }
             }
 
+            return [
+                'outcome' => 'seal',
+                'projection' => $this->project($upload),
+                'ingress' => $upload->storedRef(),
+                'canonical' => $canonical,
+            ];
+        });
+
+        if ($failure instanceof Throwable) {
+            throw $failure;
+        }
+
+        if ($prepared['outcome'] === 'replay') {
+            if ($prepared['ingress'] instanceof StoredObjectRef) {
+                $this->deleteIngressQuietly($prepared['ingress']);
+            }
+
+            return $prepared['projection'];
+        }
+
+        $ingress = $prepared['ingress'];
+        $canonical = $prepared['canonical'];
+        assert($ingress instanceof StoredObjectRef);
+        assert($canonical instanceof StoredObjectRef);
+
+        if ($this->transactions->inTransaction()) {
+            throw new RuntimeException('Canonical seal copy must not run inside a database transaction.');
+        }
+
+        try {
+            $this->objects->copyExact($ingress, $canonical);
+        } catch (Throwable) {
+            throw new TransientProviderFailure('Object seal failed.');
+        }
+
+        $projection = $this->transactions->run(function (TransactionContext $tx) use ($actor, $uploadId, $canonical): VerificationUploadProjection {
+            $this->store->lockUpload($uploadId);
+            $upload = $this->store->findUploadById($uploadId, true);
+            if (! $upload instanceof VerificationUploadIntentRecord) {
+                throw new AuthorizationDenied;
+            }
+
+            $this->store->lockCase($upload->caseId);
+            $case = $this->store->findCaseById($upload->caseId, true);
+            if (! $case instanceof VerificationCaseRecord) {
+                throw new AuthorizationDenied;
+            }
+            if ($case->status !== VerificationCaseStatus::Draft) {
+                throw new StateConflict;
+            }
+
+            if ($upload->state->isProcessable() || $upload->state === VerificationUploadState::Available) {
+                return $this->project($upload);
+            }
+            if ($upload->state !== VerificationUploadState::Uploading) {
+                throw new StateConflict;
+            }
+
+            $persisted = $upload->canonicalRef();
+            if (! $persisted instanceof StoredObjectRef || $persisted->key() !== $canonical->key()) {
+                throw new StateConflict;
+            }
+            if (! $this->objects->exists($persisted)) {
+                throw new TransientProviderFailure('Object seal failed.');
+            }
+
+            $now = $this->clock->now();
             $stamp = $now->format('Y-m-d H:i:s.uP');
             $affected = $this->store->updateUpload($upload->id, $upload->version, [
                 'state' => VerificationUploadState::Quarantined->value,
-                'canonical_storage_locator' => $canonical->storageLocator,
                 'completed_at' => $stamp,
                 'version' => $upload->version + 1,
                 'updated_at' => $stamp,
@@ -330,9 +418,7 @@ final class VerificationUploadService
             return $this->project($fresh);
         });
 
-        if ($failure instanceof \Throwable) {
-            throw $failure;
-        }
+        $this->deleteIngressQuietly($ingress);
 
         return $projection;
     }
@@ -357,6 +443,14 @@ final class VerificationUploadService
         }
 
         return $this->project($upload);
+    }
+
+    private function deleteIngressQuietly(StoredObjectRef $ingress): void
+    {
+        try {
+            $this->objects->deleteIfPresent($ingress);
+        } catch (Throwable) {
+        }
     }
 
     private function rejectLocked(

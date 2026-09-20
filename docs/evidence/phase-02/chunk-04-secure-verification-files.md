@@ -37,7 +37,8 @@ it.
 ```
 REQUESTED
   -> UPLOADING          (persisted on intent create; REQUESTED is not a wait state)
-  -> QUARANTINED        (client complete accepted; ingress copied to canonical)
+  -> UPLOADING          (canonical locator persisted; still non-terminal)
+  -> QUARANTINED        (server copy to that locator verified; completion outbox once)
   -> VALIDATING         (server observes canonical bytes)
   -> SCANNING           (clamd INSTREAM of canonical bytes, or fail-closed miss)
   -> AVAILABLE          (only after exact canonical object + hash + magic + structure + clean scan)
@@ -49,12 +50,24 @@ No path jumps from client upload completion to AVAILABLE.
 `CLIENT CLAIM != SERVER OBSERVATION != SCANNER VERDICT`.
 
 Create persists `uploading` and issues a PUT grant **only** for the ingress
-locator (`verification/q/...`). Complete means: the client claims it
-finished; the server copies the exact observed ingress bytes to a
-server-only canonical locator (`verification/c/...`) and may now inspect
-that copy. Duplicate complete is safe. Inspection, malware scanning,
-re-observation, promotion, and later trusted access use the canonical
-locator only.
+locator (`verification/q/...`). Complete is a crash-safe two-phase seal:
+
+1. Under DB lock: allocate a canonical locator if absent, persist
+   `canonical_storage_locator`, stay `uploading`.
+2. After that transaction commits, and without holding row/advisory locks:
+   `copyExact` ingress → the **same** persisted locator. S3 CopyObject is
+   treated as atomic at the destination key. An existing destination is
+   inspected and never overwritten (retry/crash).
+3. Re-enter a DB transaction: lock, verify the canonical object exists,
+   move to `quarantined`, write completion audit + `verification.upload_completed`
+   outbox **once**. Then best-effort delete ingress.
+
+A crash after copy and before the second commit leaves a **tracked**
+canonical object (locator already in PostgreSQL). Retry reuses that
+locator and does not allocate a second `/c/` key. Duplicate complete is
+safe. Inspection, malware scanning, re-observation, promotion, and later
+trusted access use the canonical locator only. After seal, no processing
+step reads ingress.
 
 ## Upload purpose and policy (`ENGINEERING_DEFAULT`)
 
@@ -90,7 +103,7 @@ client PUT grant
 | `storage_locator` is not client-selectable | server-generated; identity trigger makes it immutable |
 | Canonical locator is immutable once set | PostgreSQL protect trigger |
 | AVAILABLE requires canonical locator | state-consistency CHECK |
-| Ingress overwrite after seal cannot change trusted bytes | processor uses `trustedRef()` / `canonicalRef()` |
+| Ingress overwrite after seal cannot change trusted bytes | processor uses `trustedRef()` / `canonicalRef()`; ingress is deleted after seal and again after grant expiry |
 | Provider version-id | `StoreObject::providerVersionId()` stores a real S3 `VersionId` when present; otherwise NULL. Immutability is the server-only canonical locator plus SHA-256 |
 
 `object_version` is **not** populated with SHA-256.
@@ -134,7 +147,7 @@ bytes, PNG+trailing payload, and valid PDF/JPEG/PNG.
 | Digest source | Docker Hub tag `clamav/clamav:1.4.6` index digest, verified 2026-09-19 |
 | Network | Compose publishes `127.0.0.1:3310` only; port 7357 unpublished; no secrets; no host filesystem |
 | Timeouts | `CLAMAV_TIMEOUT_MS` default 10_000; bounded max bytes 20_971_520 |
-| Verdicts | `clean` / `infected` / `unavailable` (retryable) / `invalid` |
+| Verdicts | `clean` only for the exact INSTREAM line `stream: OK`; `infected` for `stream: <signature> FOUND`; `unavailable` for `stream: <reason> ERROR` / size-limit / timeout; anything else (`WAT OK`, `garbageOK`, `stream: ERROR OK`, multi-line) is `invalid`. Never CLEAN via suffix matching. |
 | Test fixtures | clean PDF/JPEG/PNG; EICAR *string* inside an otherwise valid PDF; no live malware committed |
 
 Unavailable/timeout/malformed scanner responses leave the intent
@@ -260,11 +273,14 @@ INSERT/UPDATE/DELETE on `verification_documents` is rejected.
 
 `verification:reconcile-uploads` (hourly):
 
-- expired `requested`/`uploading` intents → `rejected`/`expired` and object delete
+- expired `requested`/`uploading` intents → `rejected`/`expired` and delete tracked objects (ingress and any persisted canonical locator)
 - `rejected` rows past `cleanup_eligible_at` → delete ingress and canonical objects
-- never deletes `AVAILABLE` or submitted evidence
+- after seal, ingress is deleted best-effort; a still-valid PUT may recreate it until `expires_at`
+- `AVAILABLE` with `expires_at` in the past and `cleanup_eligible_at` null → delete **ingress only**, set `cleanup_eligible_at`, audit `available_ingress_removed`
+- never deletes `AVAILABLE` or submitted **canonical** evidence
 - never accepts a user-supplied path
 - object I/O runs after the DB commit
+- repeated AVAILABLE ingress cleanup is idempotent (row drops out after `cleanup_eligible_at` is set)
 
 Legal retention of rejected objects: **OPEN_LEGAL_DECISION**.
 

@@ -68,7 +68,12 @@ interface StoreObject
 
     /**
      * Copy the exact bytes currently stored at $source onto $destination.
-     * Destination must not already exist. This is a server-only path.
+     * Server-only. Never overwrite an existing destination: a crash/retry
+     * must reuse the persisted canonical locator and leave sealed bytes
+     * unchanged. S3 CopyObject is treated as atomic at the destination key
+     * (the object is fully present or absent). If the destination already
+     * exists, inspect it and no-op, or fail closed when it is unreadable
+     * or empty.
      */
     public function copyExact(StoredObjectRef $source, StoredObjectRef $destination): void;
 

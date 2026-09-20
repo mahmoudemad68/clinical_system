@@ -303,6 +303,15 @@ it('rejects illegal upload-intent states, hashes, and available-from-rejected tr
         'expected_sha256' => 'not-a-hash',
     ])))->toThrow(QueryException::class);
 
+    $sealedUploading = verificationInsertUpload($case['id'], 'uploading');
+    $firstLocator = 'verification/c/'.bin2hex(random_bytes(16));
+    expect(DB::table('verification_upload_intents')->where('id', $sealedUploading['id'])->update([
+        'canonical_storage_locator' => $firstLocator,
+    ]))->toBe(1);
+    expect(fn () => DB::table('verification_upload_intents')->where('id', $sealedUploading['id'])->update([
+        'canonical_storage_locator' => 'verification/c/'.bin2hex(random_bytes(16)),
+    ]))->toThrow(QueryException::class, 'verification_upload_intents canonical locator is immutable');
+
     $rejected = verificationInsertUpload($case['id'], 'rejected');
     expect(fn () => DB::transaction(fn () => DB::table('verification_upload_intents')->where('id', $rejected['id'])->update([
         'state' => 'available',

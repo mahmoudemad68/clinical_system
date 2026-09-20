@@ -62,19 +62,24 @@ function clamdScan(ClamdScanObject $scanner, string $bytes): ScanVerdict
     return $verdict;
 }
 
-it('treats a clean stub reply as clean and a FOUND reply as infected', function () {
-    $cleanStub = clamdStub("stream: OK\n");
-    $clean = new ClamdScanObject('127.0.0.1', $cleanStub['port'], 2000, 20_971_520, 'stub');
-    $cleanVerdict = clamdScan($clean, verificationMinimalPdf());
-    clamdStubStop($cleanStub);
-    expect($cleanVerdict->outcome)->toBe(ScanOutcome::Clean);
+it('accepts only the exact clamd INSTREAM reply grammar', function (string $reply, ScanOutcome $outcome) {
+    $stub = clamdStub($reply);
+    $scanner = new ClamdScanObject('127.0.0.1', $stub['port'], 2000, 20_971_520, 'stub');
+    $verdict = clamdScan($scanner, verificationMinimalPdf());
+    clamdStubStop($stub);
 
-    $infectedStub = clamdStub("stream: Eicar-Test-Signature FOUND\n");
-    $infected = new ClamdScanObject('127.0.0.1', $infectedStub['port'], 2000, 20_971_520, 'stub');
-    $infectedVerdict = clamdScan($infected, FixtureScanObject::EICAR);
-    clamdStubStop($infectedStub);
-    expect($infectedVerdict->outcome)->toBe(ScanOutcome::Infected)->and($infectedVerdict->isClean())->toBeFalse();
-});
+    expect($verdict->outcome)->toBe($outcome)
+        ->and($verdict->isClean())->toBe($outcome === ScanOutcome::Clean);
+})->with([
+    'stream OK is clean' => ["stream: OK\n", ScanOutcome::Clean],
+    'WAT OK is not clean' => ["WAT OK\n", ScanOutcome::Invalid],
+    'stream ERROR OK is not clean' => ["stream: ERROR OK\n", ScanOutcome::Invalid],
+    'garbageOK is not clean' => ["garbageOK\n", ScanOutcome::Invalid],
+    'bare OK is not clean' => ["OK\n", ScanOutcome::Invalid],
+    'multiple lines are not clean' => ["stream: OK\nstream: OK\n", ScanOutcome::Invalid],
+    'FOUND is infected' => ["stream: Eicar-Test-Signature FOUND\n", ScanOutcome::Infected],
+    'ERROR is unavailable' => ["stream: UNKNOWN ERROR\n", ScanOutcome::Unavailable],
+]);
 
 it('fails closed on unavailable, timeout, and malformed replies', function () {
     $down = new ClamdScanObject('127.0.0.1', 1, 500, 20_971_520, 'stub');

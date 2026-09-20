@@ -101,6 +101,8 @@ final class ProviderPortContractTest extends TestCase
         $store->copyExact($ingress, $canonical);
         $store->writeAt($ingress, 'text/plain', 'overwritten-ingress');
         $this->assertSame(hash('sha256', 'canonical-source-bytes'), $store->observe($canonical, 20_971_520)->sha256);
+        $store->copyExact($ingress, $canonical);
+        $this->assertSame(hash('sha256', 'canonical-source-bytes'), $store->observe($canonical, 20_971_520)->sha256);
         $this->assertNull($store->providerVersionId($canonical));
 
         try {

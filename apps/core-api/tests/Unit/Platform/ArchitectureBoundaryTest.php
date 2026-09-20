@@ -472,6 +472,9 @@ final class ArchitectureBoundaryTest extends TestCase
             $this->modulesRoot().DIRECTORY_SEPARATOR.'Platform/app/Services/Adapters/ClamdScanObject.php',
         );
         $this->assertStringContainsString('nINSTREAM', $clamd);
+        $this->assertStringContainsString("'stream: OK'", $clamd);
+        $this->assertStringNotContainsString("\$line === 'OK'", $clamd);
+        $this->assertStringNotContainsString("str_ends_with(\$line, 'OK')", $clamd);
         $this->assertStringNotContainsString('Modules\\Doctors', $clamd);
         $this->assertStringNotContainsString('Modules\\Patients', $clamd);
         $this->assertStringNotContainsString('Modules\\Verification', $clamd);
