@@ -174,8 +174,10 @@ are absent from queue/detail HTML. Feature code cannot call raw `fetch`
 - Admin Vitest: 44 passing (session, queue, claim/detail, document access,
   decision pairs/idempotency/conflicts, canaries, axe, prohibited routes).
 - Playwright: existing CSRF project preserved (`--project=csrf` on Core API).
-  New `--project=admin-verification` against Vite preview + Laravel, seeded
-  with synthetic data only. The unauthorized actor is an active secretary
+  New `--project=admin-verification` against the Admin production build hosted
+  by `tests/e2e/admin-web-server.mjs` (static `dist/` plus `/api` proxy that
+  preserves Cookie / Set-Cookie on POST) and Laravel, seeded with synthetic
+  data only. The unauthorized actor is an active secretary
   (`admin_web` cookie session, `/me` allowed, no `verification.case.review`).
   A `password_must_change` admin cannot bootstrap `/me` (existing
   DenyPendingBusinessAccess 404) and is not used for the unauthorized panel.

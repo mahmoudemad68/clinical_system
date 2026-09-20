@@ -32,18 +32,43 @@ function resolveBaseUrl(): string {
   return typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
 }
 
+/**
+ * Cookie session fetch. `include` keeps the admin cookie on same-site
+ * loopback ports (preview 4173 → API 8080) as well as same-origin proxy
+ * requests. Signed reviewer downloads use a separate helper with
+ * `credentials: 'omit'`.
+ */
+function adminFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  if (input instanceof Request) {
+    return globalThis.fetch(
+      new Request(input, {
+        credentials: 'include',
+        cache: 'no-store',
+      }),
+    );
+  }
+
+  return globalThis.fetch(input, {
+    ...init,
+    credentials: 'include',
+    cache: init?.cache ?? 'no-store',
+  });
+}
+
 export const apiClient = createClient<paths>({
   baseUrl: resolveBaseUrl(),
-  credentials: 'same-origin',
+  credentials: 'include',
   headers: {
     Accept: 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
   },
-  fetch: (...args: Parameters<typeof globalThis.fetch>) => globalThis.fetch(...args),
+  fetch: adminFetch,
 });
 
 apiClient.use({
   onRequest({ request }) {
     request.headers.set('Accept-Language', clientLocale());
+    request.headers.set('X-Requested-With', 'XMLHttpRequest');
     if (!request.headers.has('X-Request-Id')) {
       request.headers.set('X-Request-Id', uuidV7());
     }
@@ -53,6 +78,8 @@ apiClient.use({
         request.headers.set(header, value);
       }
     }
+
+    return request;
   },
 });
 

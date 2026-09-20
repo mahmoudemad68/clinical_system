@@ -94,12 +94,21 @@ test.describe('admin verification review', () => {
     expect(accessPosts).toEqual([]);
 
     const claimWait = page.waitForResponse(
-      (response) => response.request().method() === 'POST' && response.url().includes('/claim'),
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/v1\/admin\/verification-cases\/[^/]+\/claim$/.test(new URL(response.url()).pathname),
       { timeout: 20_000 },
     );
     await page.getByRole('button', { name: /Claim case|ادّعاء الحالة/ }).click();
     const claimResponse = await claimWait;
-    expect(claimResponse.ok(), `claim HTTP ${String(claimResponse.status())}`).toBeTruthy();
+    const claimHeaders = claimResponse.request().headers();
+    const claimPayload = (await claimResponse.json().catch(() => null)) as {
+      errors?: { code?: string }[];
+    } | null;
+    expect(
+      claimResponse.ok(),
+      `claim HTTP ${String(claimResponse.status())} code=${claimPayload?.errors?.[0]?.code ?? 'unknown'} cookie=${claimHeaders.cookie ? '1' : '0'} xsrf=${claimHeaders['x-xsrf-token'] ? '1' : '0'} authorization=${claimHeaders.authorization ? '1' : '0'}`,
+    ).toBeTruthy();
     const viewButton = page.getByRole('button', { name: /View \/ download document|عرض \/ تنزيل المستند/ });
     await expect(viewButton).toBeVisible({ timeout: 20_000 });
     expect(accessPosts).toEqual([]);

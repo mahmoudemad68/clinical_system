@@ -28,6 +28,7 @@ function reviewerWithDocument(
   return stubApi({
     'GET /api/v1/me': () => jsonResponse(meBody()),
     'GET /api/v1/me/capabilities': () => jsonResponse(capabilitiesBody([REVIEW_CAPABILITY])),
+    'GET /api/v1/auth/csrf': () => jsonResponse(envelope({ csrf: true })),
     'GET /api/v1/health': () =>
       jsonResponse(
         envelope({
@@ -126,6 +127,9 @@ describe('document access', () => {
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input instanceof Request ? input : new Request(String(input), init);
+      if (request.url.includes('/api/v1/auth/csrf')) {
+        return jsonResponse(envelope({ csrf: true }));
+      }
       if (request.method === 'POST') {
         return jsonResponse(
           envelope({

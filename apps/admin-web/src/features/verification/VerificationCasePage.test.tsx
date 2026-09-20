@@ -23,6 +23,7 @@ function baseRoutes(extra: Record<string, (request: Request) => Response | Promi
   return stubApi({
     'GET /api/v1/me': () => jsonResponse(meBody()),
     'GET /api/v1/me/capabilities': () => jsonResponse(capabilitiesBody([REVIEW_CAPABILITY])),
+    'GET /api/v1/auth/csrf': () => jsonResponse(envelope({ csrf: true })),
     'GET /api/v1/health': () =>
       jsonResponse(
         envelope({
@@ -114,6 +115,8 @@ describe('verification case detail and claim', () => {
     expect(await screen.findByRole('button', { name: 'View / download document' })).toBeInTheDocument();
     const claimCall = fetchMock.mock.calls.find((call) => requestUrl(call).includes('/claim'));
     expect(claimCall).toBeTruthy();
+    const claimInput = Array.isArray(claimCall) ? claimCall[0] : undefined;
+    expect(claimInput instanceof Request ? claimInput.credentials : '').toBe('include');
   });
 
   it('shows a foreign-assigned case as read-only', async () => {

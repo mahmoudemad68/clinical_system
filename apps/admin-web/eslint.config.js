@@ -77,6 +77,15 @@ export default tseslint.config(
   },
 
   {
+    // Transport wrapper: the one module allowed to call fetch for cookie/CSRF
+    // session requests. Feature code still cannot.
+    files: ['src/api/client.ts'],
+    rules: {
+      'no-restricted-globals': 'off',
+    },
+  },
+
+  {
     // The reviewer download helper is the one approved raw-fetch site: it
     // consumes a short-lived application HMAC URL with no-store / no-referrer
     // and must not go through the cookie CSRF client.

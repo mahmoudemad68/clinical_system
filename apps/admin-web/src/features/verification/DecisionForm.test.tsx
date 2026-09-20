@@ -24,6 +24,7 @@ function reviewerCase(status: 'pending_review' | 'approved' = 'pending_review') 
   return stubApi({
     'GET /api/v1/me': () => jsonResponse(meBody()),
     'GET /api/v1/me/capabilities': () => jsonResponse(capabilitiesBody([REVIEW_CAPABILITY])),
+    'GET /api/v1/auth/csrf': () => jsonResponse(envelope({ csrf: true })),
     'GET /api/v1/health': () =>
       jsonResponse(
         envelope({

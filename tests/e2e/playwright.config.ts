@@ -26,9 +26,6 @@ export default defineConfig({
       timeout: 90_000,
       use: {
         baseURL: adminWebBaseURL,
-        extraHTTPHeaders: {
-          Accept: 'text/html,application/json',
-        },
       },
     },
   ],
