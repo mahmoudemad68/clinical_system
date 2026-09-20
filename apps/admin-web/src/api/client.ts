@@ -74,6 +74,9 @@ apiClient.use({
     }
 
     if (request.method !== 'GET' && request.method !== 'HEAD' && request.method !== 'OPTIONS') {
+      if (!request.headers.has('Content-Type')) {
+        request.headers.set('Content-Type', 'application/json');
+      }
       for (const [header, value] of Object.entries(csrfHeader())) {
         request.headers.set(header, value);
       }

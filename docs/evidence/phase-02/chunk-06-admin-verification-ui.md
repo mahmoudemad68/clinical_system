@@ -176,8 +176,10 @@ are absent from queue/detail HTML. Feature code cannot call raw `fetch`
 - Playwright: existing CSRF project preserved (`--project=csrf` on Core API).
   New `--project=admin-verification` against the Admin production build hosted
   by `tests/e2e/admin-web-server.mjs` (static `dist/` plus `/api` proxy that
-  preserves Cookie / Set-Cookie on POST) and Laravel, seeded with synthetic
-  data only. The unauthorized actor is an active secretary
+  forwards Cookie and Set-Cookie arrays on POST without collapsing them) and
+  Laravel, seeded with synthetic data only. Empty POST bodies such as logout
+  send `Content-Type: application/json` so EnforceRequestBounds does not
+  return 415. The unauthorized actor is an active secretary
   (`admin_web` cookie session, `/me` allowed, no `verification.case.review`).
   A `password_must_change` admin cannot bootstrap `/me` (existing
   DenyPendingBusinessAccess 404) and is not used for the unauthorized panel.

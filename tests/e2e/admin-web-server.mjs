@@ -60,6 +60,24 @@ function incomingHeaders(req) {
   return headers;
 }
 
+function writeProxyHead(proxyRes, res) {
+  const headers = {};
+  for (const [name, value] of Object.entries(proxyRes.headers)) {
+    const lower = name.toLowerCase();
+    if (hopByHop.has(lower) || lower === 'set-cookie' || value === undefined) {
+      continue;
+    }
+    headers[name] = value;
+  }
+  res.writeHead(proxyRes.statusCode ?? 502, headers);
+  const cookies = proxyRes.headers['set-cookie'];
+  if (Array.isArray(cookies)) {
+    res.setHeader('Set-Cookie', cookies);
+  } else if (typeof cookies === 'string' && cookies !== '') {
+    res.setHeader('Set-Cookie', cookies);
+  }
+}
+
 function proxyApi(req, res) {
   const hasCookie = typeof req.headers.cookie === 'string' && req.headers.cookie !== '';
   const proxyReq = http.request(
@@ -75,7 +93,7 @@ function proxyApi(req, res) {
       process.stderr.write(
         `${req.method ?? 'GET'} ${req.url ?? ''} cookie=${hasCookie ? '1' : '0'} -> ${String(status)}\n`,
       );
-      res.writeHead(status, proxyRes.headers);
+      writeProxyHead(proxyRes, res);
       proxyRes.pipe(res);
     },
   );

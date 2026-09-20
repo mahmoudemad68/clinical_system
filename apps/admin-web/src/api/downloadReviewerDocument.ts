@@ -168,7 +168,6 @@ export async function grantAndDownloadReviewerDocument(input: {
   documentId: string;
   onGranted?: () => void;
 }): Promise<void> {
-  await apiClient.GET('/api/v1/auth/csrf');
   const { data, error, response } = await apiClient.POST(
     '/api/v1/admin/verification-cases/{case_id}/documents/{document_id}/access',
     {

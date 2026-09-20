@@ -25,8 +25,17 @@ async function ensureSignedOut(page: Page): Promise<void> {
   await waitForSessionReady(page);
   const signOut = page.getByRole('button', { name: /Sign out|خروج/ });
   if (await signOut.isVisible().catch(() => false)) {
+    const logoutWait = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && response.url().includes('/api/v1/auth/logout'),
+      { timeout: 20_000 },
+    );
     await signOut.click();
+    const logoutResponse = await logoutWait;
+    expect(logoutResponse.ok(), `logout HTTP ${String(logoutResponse.status())}`).toBeTruthy();
   }
+  await page.context().clearCookies();
+  await page.goto('/');
+  await waitForSessionReady(page);
   await page.getByRole('heading', { name: /Admin sign in|دخول المسؤول/ }).waitFor({ timeout: 20_000 });
   await page.getByRole('textbox', { name: /Mobile number|رقم الجوال/ }).waitFor({ timeout: 20_000 });
 }

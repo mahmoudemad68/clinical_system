@@ -48,7 +48,6 @@ export function useClaimVerificationCase(caseId: string) {
   return useMutation({
     retry: false,
     mutationFn: async (expectedCaseVersion: number) => {
-      await apiClient.GET('/api/v1/auth/csrf');
       const { data, error, response } = await apiClient.POST(
         '/api/v1/admin/verification-cases/{case_id}/claim',
         {
@@ -97,7 +96,6 @@ export function useDecideVerificationCase(caseId: string) {
               notes: input.payload.notes,
             };
 
-      await apiClient.GET('/api/v1/auth/csrf');
       const { data, error, response } = await apiClient.POST(
         '/api/v1/admin/verification-cases/{case_id}/decisions',
         {

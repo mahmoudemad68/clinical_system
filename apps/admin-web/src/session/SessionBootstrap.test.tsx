@@ -184,6 +184,11 @@ describe('session bootstrap', () => {
       expect(screen.getByRole('heading', { name: 'Admin sign in' })).toBeInTheDocument();
     });
     expect(view.queryClient.getQueryData(['verification', 'queue', 'unassigned', null])).toBeUndefined();
-    expect(fetchMock.mock.calls.some((call) => requestUrl(call).includes('/auth/logout'))).toBe(true);
+    const logoutCall = fetchMock.mock.calls.find((call) => requestUrl(call).includes('/auth/logout'));
+    expect(logoutCall).toBeTruthy();
+    const logoutRequest = Array.isArray(logoutCall) ? logoutCall[0] : undefined;
+    expect(logoutRequest instanceof Request ? logoutRequest.headers.get('Content-Type') : '').toContain(
+      'application/json',
+    );
   });
 });
