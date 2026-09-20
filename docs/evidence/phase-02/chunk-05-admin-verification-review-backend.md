@@ -29,11 +29,9 @@ remains fail-closed. This chunk does not bypass those controls.
 - **Branch:** `cursor/admin-verification-review-backend-cc7f`
 - **Draft PR:** [#11](https://github.com/mahmoudemad68/clinical_system/pull/11) (kept Draft; not merged)
 - **Base (GitHub `main`):** `722bca7e76f6e9565086da0c9709aad4ba57eaed`
-- **Document-access remediation HEAD:** `ab5c92b5d6f99639d487e7ee5d8fefdcc67abc5b`
 - **Prior independently reviewed HEAD:** `c1375248348590a945085f480ca96d52ef515864`
-- **Reviewer-download integrity remediation:** this revision (canonical
-  hash/size observe-before-serve, exact-length `Content-Length` streaming,
-  fail-closed truncation and canonical drift)
+- **Reviewer-download integrity implementation:** `9c21e1360170ec59544683e74fc6de6f2cc638ef`
+- **GitHub `pull-request` run:** [35508964339](https://github.com/mahmoudemad68/clinical_system/actions/runs/35508964339) **SUCCESS**
 - **Recorded:** 2026-09-20
 
 ## Boundaries
@@ -266,43 +264,27 @@ and missing records are indistinguishable `404`.
 
 ## Commands actually executed
 
-### Reviewer-download integrity (this revision)
-
-Local gates on the integrity remediation (observe-before-serve, exact-length
-stream, canonical drift, truncated provider stream):
-
-| Gate | Result |
-| --- | --- |
-| Focused download + architecture Pest | **26 passed** (2514 assertions) |
-| Document access + live MinIO skip + grant race + review HTTP | **15 passed**, 1 skipped live MinIO |
-| Claim race + decision rollback | **5 passed** |
-| Pint `--test --dirty` | PASS |
-| PHPStan (changed Verification download files) | `[OK] No errors` |
-| Deptrac `--fail-on-uncovered` | PASS (0 uncovered) |
-
-Full Core API Pest, secure-file providers, ISR-015, and GitHub
-`pull-request` CI are recorded against the exact HEAD after push.
-
-### GitHub CI (authoritative, prior document-access HEAD)
+### GitHub CI (authoritative, integrity HEAD)
 
 GitHub `pull-request` run
-[35507430702](https://github.com/mahmoudemad68/clinical_system/actions/runs/35507430702)
-on `ab5c92b5d6f99639d487e7ee5d8fefdcc67abc5b` **SUCCESS**. Independently
-reviewed HEAD `c1375248348590a945085f480ca96d52ef515864` recorded that
-SUCCESS. Local host PHP is supplementary and does not replace GitHub CI.
-This file does not claim production approval.
+[35508964339](https://github.com/mahmoudemad68/clinical_system/actions/runs/35508964339)
+on `9c21e1360170ec59544683e74fc6de6f2cc638ef` **SUCCESS**. This is the
+reviewer-download integrity remediation (canonical hash/size before serve,
+exact-length `Content-Length` streaming, fail-closed truncation and
+canonical drift). Local host PHP is supplementary and does not replace
+this run. This file does not claim production approval.
 
 | Gate | Result |
 | --- | --- |
-| Pint `--test` (Core API job) | PASS, 595 files |
+| Pint `--test` (Core API job) | PASS |
 | PHPStan (Core API job) | `[OK] No errors` |
 | Deptrac `--fail-on-uncovered` (Core API job) | PASS (0 uncovered) |
-| Core API Pest `./vendor/bin/pest` | **676 passed**, 13 skipped (12061 assertions) |
+| Core API Pest `./vendor/bin/pest` | **680 passed**, 13 skipped (12178 assertions) |
 | Browser CSRF Playwright | 4 passed |
-| Secure-file providers Pest | **43 passed** (507 assertions), 0 skipped |
-| Live MinIO reviewer download | `it issues a live MinIO reviewer grant against the canonical object only` passed (application-signed GET; canonical SHA-256 matched; URL did not contain locators) |
+| Secure-file providers Pest | **43 passed** (512 assertions), 0 skipped |
+| Live MinIO reviewer download | `it issues a live MinIO reviewer grant against the canonical object only` passed (application-signed GET; observed SHA/size equal persisted document identity; HTTP `Content-Length` and body length/SHA equal persisted size/SHA; URL did not contain locators) |
 | Live clamd | `it scans a live clamd when one is reachable` passed |
-| OpenAPI lint / event schemas / TS freshness / breaking vs `main` | Contracts job SUCCESS (additive GET `/api/v1/verification-review-files/{case_id}/{document_id}`) |
+| OpenAPI lint / event schemas / TS freshness / breaking vs `main` | Contracts job SUCCESS (no OpenAPI change in this integrity revision) |
 | ISR-015 / Supply-chain policy | SUCCESS (SF-001 remains MERGE_ONLY / fail-closed) |
 | Gitleaks + Semgrep + Trivy FS | Security scans SUCCESS |
 | Runtime image scan core-api / ai-service | SUCCESS |
@@ -314,11 +296,11 @@ live-provider tests that job does not start (Redis rate-limit tests run).
 Live MinIO/clamd and the Admin reviewer download ran in `secure-file-providers`
 with `CLINIC_REQUIRE_OBJECT_STORE=1` / `CLINIC_REQUIRE_CLAMAV=1`.
 
-Local supplement (no Docker/scanners/MinIO here): Pint, PHPStan, clean-cache
-Deptrac, focused Admin document-access/download/race/audit/architecture Pest
-(38 passed, 1 skipped live MinIO), Admin HTTP+rollback 14 passed, full Core
-API Pest **671 passed** / 18 skipped, OpenAPI lint, generated TS, breaking
-vs `main`, ISR-015.
+Local supplement (no Docker/scanners/MinIO here): Pint, PHPStan, Deptrac,
+ISR-015 validators, focused download/architecture Pest **26 passed**,
+document-access/grant-race/review HTTP **15 passed** (1 skipped live MinIO),
+claim race + rollback **5 passed**, full Core API Pest **675 passed** /
+18 skipped.
 
 Authorization matrix for this slice is the Admin HTTP Pest file
 (`unauthenticated` / patient / doctor / low-assurance / missing capability /
