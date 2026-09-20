@@ -41,6 +41,7 @@ return new class extends Migration
             $table->timestampTz('completed_at', 6)->nullable();
             $table->timestampTz('available_at', 6)->nullable();
             $table->timestampTz('cleanup_eligible_at', 6)->nullable();
+            $table->timestampTz('cleanup_completed_at', 6)->nullable();
             $table->unsignedInteger('processing_attempts')->default(0);
             $table->unsignedBigInteger('version')->default(1);
             $table->timestampTz('created_at', 6);
@@ -118,6 +119,7 @@ return new class extends Migration
                     expires_at > created_at
                     AND (completed_at IS NULL OR completed_at >= created_at)
                     AND (available_at IS NULL OR (completed_at IS NOT NULL AND available_at >= completed_at))
+                    AND (cleanup_completed_at IS NULL OR cleanup_completed_at >= created_at)
                     AND version >= 1
                     AND processing_attempts <= 64
                 )
@@ -205,6 +207,18 @@ return new class extends Migration
         SQL);
 
         DB::statement(<<<'SQL'
+            CREATE INDEX verification_upload_intents_available_cleanup_index
+                ON verification_upload_intents (expires_at)
+                WHERE state = 'available' AND cleanup_completed_at IS NULL
+        SQL);
+
+        DB::statement(<<<'SQL'
+            CREATE INDEX verification_upload_intents_rejected_cleanup_index
+                ON verification_upload_intents (cleanup_eligible_at)
+                WHERE state = 'rejected' AND cleanup_completed_at IS NULL
+        SQL);
+
+        DB::statement(<<<'SQL'
             CREATE OR REPLACE FUNCTION clinic_verification_upload_intents_protect()
             RETURNS trigger
             LANGUAGE plpgsql
@@ -224,6 +238,12 @@ return new class extends Migration
                         AND NEW.canonical_storage_locator IS DISTINCT FROM OLD.canonical_storage_locator
                     THEN
                         RAISE EXCEPTION 'verification_upload_intents canonical locator is immutable';
+                    END IF;
+
+                    IF OLD.cleanup_completed_at IS NOT NULL
+                        AND NEW.cleanup_completed_at IS DISTINCT FROM OLD.cleanup_completed_at
+                    THEN
+                        RAISE EXCEPTION 'verification_upload_intents cleanup completion is immutable';
                     END IF;
 
                     IF OLD.state = 'available' AND NEW.state IS DISTINCT FROM 'available' THEN

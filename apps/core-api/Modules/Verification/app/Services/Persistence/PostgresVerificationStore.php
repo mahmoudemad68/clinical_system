@@ -243,11 +243,12 @@ final class PostgresVerificationStore
                 })->orWhere(function ($rejected) use ($now): void {
                     $rejected->where('state', VerificationUploadState::Rejected->value)
                         ->whereNotNull('cleanup_eligible_at')
-                        ->where('cleanup_eligible_at', '<=', $now);
+                        ->where('cleanup_eligible_at', '<=', $now)
+                        ->whereNull('cleanup_completed_at');
                 })->orWhere(function ($available) use ($now): void {
                     $available->where('state', VerificationUploadState::Available->value)
                         ->where('expires_at', '<', $now)
-                        ->whereNull('cleanup_eligible_at');
+                        ->whereNull('cleanup_completed_at');
                 });
             })
             ->orderBy('created_at')
@@ -383,6 +384,7 @@ final class PostgresVerificationStore
             self::timestamp($row->completed_at ?? null),
             self::timestamp($row->available_at ?? null),
             self::timestamp($row->cleanup_eligible_at ?? null),
+            self::timestamp($row->cleanup_completed_at ?? null),
             (int) $row->processing_attempts,
             (int) $row->version,
             new DateTimeImmutable((string) $row->created_at),

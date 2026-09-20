@@ -147,6 +147,7 @@ final class VerificationUploadService
                 'completed_at' => null,
                 'available_at' => null,
                 'cleanup_eligible_at' => null,
+                'cleanup_completed_at' => null,
                 'processing_attempts' => 0,
                 'version' => 1,
                 'created_at' => $stamp,

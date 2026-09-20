@@ -34,6 +34,7 @@ final readonly class VerificationUploadIntentRecord
         public ?DateTimeImmutable $completedAt,
         public ?DateTimeImmutable $availableAt,
         public ?DateTimeImmutable $cleanupEligibleAt,
+        public ?DateTimeImmutable $cleanupCompletedAt,
         public int $processingAttempts,
         public int $version,
         public DateTimeImmutable $createdAt,

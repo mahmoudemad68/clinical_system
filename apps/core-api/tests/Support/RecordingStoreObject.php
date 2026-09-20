@@ -35,6 +35,10 @@ final class RecordingStoreObject implements StoreObject
     /** @var list<string> */
     public array $copiedLocators = [];
 
+    public int $deleteAttempts = 0;
+
+    public int $failNextDeletes = 0;
+
     public function __construct(private readonly StoreObject $inner) {}
 
     public function put(string $namespace, string $objectId, string $contentType, string $bytes): StoredObjectRef
@@ -141,6 +145,13 @@ final class RecordingStoreObject implements StoreObject
 
     public function deleteIfPresent(StoredObjectRef $ref): void
     {
+        $this->deleteAttempts++;
+        if ($this->failNextDeletes > 0) {
+            $this->failNextDeletes--;
+
+            throw new TransientProviderFailure('simulated object delete failure');
+        }
+
         $this->inner->deleteIfPresent($ref);
     }
 }

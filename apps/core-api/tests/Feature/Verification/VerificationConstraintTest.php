@@ -322,4 +322,12 @@ it('rejects illegal upload-intent states, hashes, and available-from-rejected tr
         'completed_at' => now('UTC')->format('Y-m-d H:i:s.uP'),
         'rejection_reason' => null,
     ])))->toThrow(QueryException::class, 'verification_upload_intents rejected state cannot become available');
+
+    $completedCleanup = verificationInsertUpload($case['id'], 'rejected');
+    expect(DB::table('verification_upload_intents')->where('id', $completedCleanup['id'])->update([
+        'cleanup_completed_at' => now('UTC')->format('Y-m-d H:i:s.uP'),
+    ]))->toBe(1);
+    expect(fn () => DB::transaction(fn () => DB::table('verification_upload_intents')->where('id', $completedCleanup['id'])->update([
+        'cleanup_completed_at' => now('UTC')->addMinute()->format('Y-m-d H:i:s.uP'),
+    ])))->toThrow(QueryException::class, 'verification_upload_intents cleanup completion is immutable');
 });

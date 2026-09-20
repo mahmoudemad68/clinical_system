@@ -276,14 +276,15 @@ INSERT/UPDATE/DELETE on `verification_documents` is rejected.
 
 `verification:reconcile-uploads` (hourly):
 
-- expired `requested`/`uploading` intents → `rejected`/`expired` and delete tracked objects (ingress and any persisted canonical locator)
-- `rejected` rows past `cleanup_eligible_at` → delete ingress and canonical objects
+- expired `requested`/`uploading` intents → `rejected`/`expired`, then delete tracked objects only after provider-confirmed absence and set `cleanup_completed_at`
+- `rejected` rows past `cleanup_eligible_at` with `cleanup_completed_at` null → delete ingress and canonical objects, then mark completion and audit `rejected_object_removed` once
 - after seal, ingress is deleted best-effort; a still-valid PUT may recreate it until `expires_at`
-- `AVAILABLE` with `expires_at` in the past and `cleanup_eligible_at` null → delete **ingress only**, set `cleanup_eligible_at`, audit `available_ingress_removed`
+- `AVAILABLE` with `expires_at` in the past and `cleanup_completed_at` null → delete **ingress only**, confirm absence, then set `cleanup_completed_at` and audit `available_ingress_removed`
 - never deletes `AVAILABLE` or submitted **canonical** evidence
 - never accepts a user-supplied path
-- object I/O runs after the DB commit
-- repeated AVAILABLE ingress cleanup is idempotent (row drops out after `cleanup_eligible_at` is set)
+- object I/O runs outside the DB transaction; the completion marker is written only after confirmed absence
+- a failed delete leaves `cleanup_completed_at` null so the next reconcile retries
+- repeated AVAILABLE ingress cleanup is idempotent (row drops out after `cleanup_completed_at` is set)
 
 Legal retention of rejected objects: **OPEN_LEGAL_DECISION**.
 
@@ -371,10 +372,14 @@ approval or READY_TO_MERGE.
   does not make the chunk production-promotable while SF-001 is MERGE_ONLY.
 - oasdiff cross-check remains `continue-on-error` (pre-existing); the
   rule-of-record is `npm run contracts:breaking`.
-- Concurrent `copyExact` after both callers passed a dest-missing check is
-  mitigated by S3 `If-None-Match: *` when the client supports it; a provider
-  that ignores that condition could theoretically overwrite dest if ingress
-  changed between the two copies. Retry never overwrites a dest that already
-  exists. Unique `/c/` locators make foreign-key collision vanishingly unlikely.
+- Concurrent `copyExact` after both callers passed a dest-missing check uses
+  S3 `If-None-Match: *`. 412 inspects the occupied destination and never
+  overwrites it. 409 retries the same conditional CopyObject a bounded number
+  of times, then fails transiently. Native-client errors never fall through to
+  an unconditional copy. Unique `/c/` locators make foreign-key collision
+  vanishingly unlikely.
 - A still-valid PUT can recreate ingress until `expires_at`; post-expiry
-  reconciliation deletes it. Immediate post-seal delete is best-effort.
+  reconciliation deletes it and marks `cleanup_completed_at` only after
+  confirmed absence. Immediate post-seal delete is best-effort.
+- `cleanup_eligible_at` remains the rejected-object retention/eligibility
+  timestamp. `cleanup_completed_at` is the post-delete completion marker.

@@ -485,6 +485,9 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertStringNotContainsString('Modules\\Doctors', $s3);
         $this->assertStringNotContainsString('professional_id', $s3);
+        $this->assertStringContainsString("'IfNoneMatch' => '*'", $s3);
+        $this->assertStringContainsString('isConditionalConflict', $s3);
+        $this->assertStringNotContainsString('$this->disk->copy(', $s3);
 
         $issuerPath = dirname(__DIR__, 2).DIRECTORY_SEPARATOR.'Support/TestingTrustedDocumentEvidenceIssuer.php';
         $this->assertFileExists($issuerPath);

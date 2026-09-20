@@ -525,6 +525,7 @@ describe('completion, validation, scan, and promotion', function () {
             ->and(app(StoreObject::class)->observe($canonical, 20_971_520)->sha256)->toBe($originalHash)
             ->and((string) $document->sha256)->toBe($originalHash)
             ->and((string) DB::table('verification_upload_intents')->where('id', $kept['upload_id'])->value('state'))->toBe('available')
+            ->and(DB::table('verification_upload_intents')->where('id', $kept['upload_id'])->value('cleanup_completed_at'))->not->toBeNull()
             ->and(DB::table('audit_events')->where('event_name', 'verification.upload_cleanup')->where('object_id', $kept['upload_id'])->count())->toBe(1);
 
         $caseVersion = (int) DB::table('verification_cases')->where('id', (string) $opened->caseId)->value('version');
@@ -595,6 +596,62 @@ describe('completion, validation, scan, and promotion', function () {
         } finally {
             app()->instance(StoreObject::class, $innerStore);
             app()->instance(AppendAuditEvent::class, $originalAudit);
+        }
+    });
+
+    it('retries AVAILABLE ingress cleanup after a failed deletion and audits success once', function () {
+        verificationBindCleanScanner();
+        $onboarded = verificationOnboardDoctor('up-clean-retry');
+        $opened = verificationOpenCase($onboarded['actor']);
+        $created = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-clean-retry-c');
+        $originalHash = hash('sha256', $created['bytes']);
+        verificationPutUploadBytes($created['upload_id'], $created['bytes'], 'application/pdf');
+        test()->postJson(
+            '/api/v1/verification-uploads/'.$created['upload_id'].'/complete',
+            [],
+            doctorsAuth($onboarded['session']['token']) + doctorsIdem('up-clean-retry-done'),
+        )->assertOk();
+        verificationProcessUpload($created['upload_id']);
+
+        $canonical = verificationCanonicalRef($created['upload_id']);
+        $ingress = verificationStoredRef($created['upload_id']);
+        app(StoreObject::class)->writeAt($ingress, 'application/pdf', verificationAlternatePdf());
+        DB::table('verification_upload_intents')->where('id', $created['upload_id'])->update([
+            'created_at' => now('UTC')->subMinutes(20)->format('Y-m-d H:i:s.uP'),
+            'expires_at' => now('UTC')->subMinute()->format('Y-m-d H:i:s.uP'),
+        ]);
+
+        $innerStore = app(StoreObject::class);
+        $recording = new RecordingStoreObject($innerStore);
+        $recording->failNextDeletes = 1;
+        app()->instance(StoreObject::class, $recording);
+
+        try {
+            Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+            expect(app(StoreObject::class)->exists($ingress))->toBeTrue()
+                ->and(app(StoreObject::class)->exists($canonical))->toBeTrue()
+                ->and(app(StoreObject::class)->observe($canonical, 20_971_520)->sha256)->toBe($originalHash)
+                ->and(DB::table('verification_upload_intents')->where('id', $created['upload_id'])->value('cleanup_completed_at'))->toBeNull()
+                ->and(DB::table('audit_events')->where('event_name', 'verification.upload_cleanup')->where('object_id', $created['upload_id'])->count())->toBe(0)
+                ->and($recording->deleteAttempts)->toBe(1)
+                ->and($recording->failNextDeletes)->toBe(0);
+
+            Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+            expect(app(StoreObject::class)->exists($ingress))->toBeFalse()
+                ->and(app(StoreObject::class)->exists($canonical))->toBeTrue()
+                ->and(app(StoreObject::class)->observe($canonical, 20_971_520)->sha256)->toBe($originalHash)
+                ->and((string) DB::table('verification_documents')->where('upload_intent_id', $created['upload_id'])->value('sha256'))->toBe($originalHash)
+                ->and(DB::table('verification_upload_intents')->where('id', $created['upload_id'])->value('cleanup_completed_at'))->not->toBeNull()
+                ->and(DB::table('audit_events')->where('event_name', 'verification.upload_cleanup')->where('object_id', $created['upload_id'])->count())->toBe(1)
+                ->and($recording->deleteAttempts)->toBe(2);
+
+            Artisan::call('verification:reconcile-uploads', ['--limit' => 50]);
+            expect(app(StoreObject::class)->exists($ingress))->toBeFalse()
+                ->and(app(StoreObject::class)->exists($canonical))->toBeTrue()
+                ->and(DB::table('audit_events')->where('event_name', 'verification.upload_cleanup')->where('object_id', $created['upload_id'])->count())->toBe(1)
+                ->and($recording->deleteAttempts)->toBe(2);
+        } finally {
+            app()->instance(StoreObject::class, $innerStore);
         }
     });
 });

@@ -916,6 +916,7 @@ evidence is never deleted by reconcile. Legal retention: **OPEN_LEGAL_DECISION**
 | `requirement_code` | internal | Allowlisted requirement slot | app / applicant | as row | at rest | Mahmoud | n/a |
 | `object_id` | sensitive | Opaque object identifier; never in events, logs, URLs, or public DTOs | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `storage_locator` | sensitive | Classified internal object key; never authorization | storage adapter only | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `canonical_storage_locator` | sensitive | Server-only sealed object key; never a client write grant | storage adapter only | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `state` | internal | Trust flow state | app / applicant (safe) | as row | at rest | Mahmoud | n/a |
 | `expected_size_bytes` | internal | Client-declared bound; not observation | app | as row | at rest | Mahmoud | n/a |
 | `declared_media_type` | internal | Client-declared MIME; untrusted | app | as row | at rest | Mahmoud | n/a |
@@ -930,7 +931,8 @@ evidence is never deleted by reconcile. Legal retention: **OPEN_LEGAL_DECISION**
 | `expires_at` | internal | Upload grant / intent expiry | app / applicant | as row | at rest | Mahmoud | n/a |
 | `completed_at` | internal | Client completion accepted | app / applicant | as row | at rest | Mahmoud | n/a |
 | `available_at` | internal | Trusted promotion time | app | as row | at rest | Mahmoud | n/a |
-| `cleanup_eligible_at` | internal | Rejected-object cleanup eligibility | app | as row | at rest | Mahmoud | n/a |
+| `cleanup_eligible_at` | internal | Rejected-object cleanup eligibility (when deletion may start) | app | as row | at rest | Mahmoud | n/a |
+| `cleanup_completed_at` | internal | Object-store deletion confirmed; never means "eligible to delete" | app | as row | at rest | Mahmoud | n/a |
 | `processing_attempts` | internal | Bounded processor attempts | app | as row | at rest | Mahmoud | n/a |
 | `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
 | `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |

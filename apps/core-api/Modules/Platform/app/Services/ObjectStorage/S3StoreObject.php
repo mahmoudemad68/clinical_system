@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Exceptions\TransientProviderFailure;
 use Modules\Platform\Support\BoundedDocumentInspector;
 use Modules\Platform\Support\ObjectUploadGrant;
 use Modules\Platform\Support\ObservedObject;
@@ -23,6 +24,8 @@ use Throwable;
  */
 final class S3StoreObject implements StoreObject
 {
+    private const CONDITIONAL_COPY_ATTEMPTS = 3;
+
     public function __construct(
         private readonly Filesystem $disk,
         private readonly int $maxBytes = 20_971_520,
@@ -169,7 +172,10 @@ final class S3StoreObject implements StoreObject
      * or leaves the key absent. An existing destination is never overwritten,
      * so a crash/retry cannot replace sealed canonical bytes with later
      * ingress contents. CopyObject is issued with If-None-Match: * when the
-     * client supports it; 412 is reconciled as "already sealed".
+     * client supports it; 412 is reconciled as "already sealed". A 409
+     * ConditionalRequestConflict retries the same conditional CopyObject a
+     * bounded number of times, then fails transiently. Native-client errors
+     * never fall through to an unconditional copy.
      */
     public function copyExact(StoredObjectRef $source, StoredObjectRef $destination): void
     {
@@ -292,38 +298,68 @@ final class S3StoreObject implements StoreObject
 
     /**
      * Copy source onto destination only when the destination key is absent.
+     * Native S3 CopyObject uses If-None-Match: *. 412 means occupied.
+     * 409 retries the same conditional operation a bounded number of times.
+     * Any other native-client failure fails closed and never falls through
+     * to an unconditional copy.
      * Returns true when this call created the destination.
      */
     private function copyOnceUnlessExists(StoredObjectRef $source, StoredObjectRef $destination): bool
     {
-        if (method_exists($this->disk, 'getClient') && method_exists($this->disk, 'getConfig')) {
-            $client = $this->disk->getClient();
-            $config = $this->disk->getConfig();
-            $bucket = is_array($config) ? (string) ($config['bucket'] ?? '') : '';
-            if ($bucket !== '' && is_object($client) && method_exists($client, 'copyObject')) {
-                try {
-                    $client->copyObject([
-                        'Bucket' => $bucket,
-                        'Key' => $destination->key(),
-                        'CopySource' => $bucket.'/'.$source->key(),
-                        'IfNoneMatch' => '*',
-                        'ACL' => 'private',
-                    ]);
+        $native = $this->nativeCopyClient();
+        if ($native === null) {
+            throw new TransientProviderFailure('Object store cannot perform a conditional canonical copy.');
+        }
 
-                    return true;
-                } catch (Throwable $e) {
-                    if ($this->isPreconditionFailed($e)) {
-                        return false;
-                    }
+        [$client, $bucket] = $native;
+        $attempts = 0;
+        while ($attempts < self::CONDITIONAL_COPY_ATTEMPTS) {
+            $attempts++;
+            try {
+                $client->copyObject([
+                    'Bucket' => $bucket,
+                    'Key' => $destination->key(),
+                    'CopySource' => $bucket.'/'.$source->key(),
+                    'IfNoneMatch' => '*',
+                    'ACL' => 'private',
+                ]);
+
+                return true;
+            } catch (Throwable $e) {
+                if ($this->isPreconditionFailed($e)) {
+                    return false;
                 }
+                if ($this->isConditionalConflict($e) && $attempts < self::CONDITIONAL_COPY_ATTEMPTS) {
+                    continue;
+                }
+                if ($this->isConditionalConflict($e)) {
+                    throw new TransientProviderFailure('Object seal copy conflicted.');
+                }
+
+                throw new TransientProviderFailure('Object seal copy failed.');
             }
         }
 
-        if ($this->exists($destination)) {
-            return false;
+        throw new TransientProviderFailure('Object seal copy conflicted.');
+    }
+
+    /**
+     * @return array{0: object, 1: string}|null
+     */
+    private function nativeCopyClient(): ?array
+    {
+        if (! method_exists($this->disk, 'getClient') || ! method_exists($this->disk, 'getConfig')) {
+            return null;
         }
 
-        return $this->disk->copy($source->key(), $destination->key()) === true;
+        $client = $this->disk->getClient();
+        $config = $this->disk->getConfig();
+        $bucket = is_array($config) ? (string) ($config['bucket'] ?? '') : '';
+        if ($bucket === '' || ! is_object($client) || ! method_exists($client, 'copyObject')) {
+            return null;
+        }
+
+        return [$client, $bucket];
     }
 
     private function assertOccupiedCanonical(StoredObjectRef $destination): void
@@ -342,5 +378,15 @@ final class S3StoreObject implements StoreObject
         return $status === 412
             || $awsCode === 'PreconditionFailed'
             || str_contains($e->getMessage(), 'PreconditionFailed');
+    }
+
+    private function isConditionalConflict(Throwable $e): bool
+    {
+        $status = method_exists($e, 'getStatusCode') ? (int) $e->getStatusCode() : 0;
+        $awsCode = method_exists($e, 'getAwsErrorCode') ? (string) $e->getAwsErrorCode() : '';
+
+        return $status === 409
+            || $awsCode === 'ConditionalRequestConflict'
+            || str_contains($e->getMessage(), 'ConditionalRequestConflict');
     }
 }
