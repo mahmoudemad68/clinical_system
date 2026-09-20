@@ -166,7 +166,11 @@ identity).
 Admin-web: compile-safe type guards
 (`isDoctorVerificationQueueItem` / `isDoctorVerificationCase`) so the
 existing React Admin workspace still requests and renders
-`doctor_verification` only. No pharmacy filters, screens, or rendering.
+`doctor_verification` only. Guards apply to queue items, GET case detail,
+and claim responses. They must **not** wrap the compact decision HTTP
+outcome (`AdminVerificationDecisionResult` has no `case_type`); GitHub
+run 35541145448 Admin Playwright failed for that reason and was fixed
+without adding pharmacy UI. No pharmacy filters, screens, or rendering.
 
 ## Transaction / rollback / concurrency
 

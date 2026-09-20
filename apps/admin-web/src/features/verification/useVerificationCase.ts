@@ -124,7 +124,7 @@ export function useDecideVerificationCase(caseId: string) {
         throw new ApiError(toApiFailure(error, response.status));
       }
 
-      return requireDoctorVerificationCase(data.data);
+      return data.data;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: verificationKeys.case(caseId) });
