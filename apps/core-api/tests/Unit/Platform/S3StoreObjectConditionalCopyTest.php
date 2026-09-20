@@ -47,7 +47,7 @@ function s3ConditionalRefs(): array
     ];
 }
 
-it('creates the destination with a successful conditional CopyObject', function () {
+it('creates the destination with a successful conditional CopyObject through getAdapter', function () {
     $disk = new FakeS3Filesystem;
     $store = s3ConditionalStore($disk);
     [$source, $destination] = s3ConditionalRefs();

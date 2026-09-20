@@ -348,14 +348,27 @@ final class S3StoreObject implements StoreObject
      */
     private function nativeCopyClient(): ?array
     {
-        if (! method_exists($this->disk, 'getClient') || ! method_exists($this->disk, 'getConfig')) {
-            return null;
+        $client = null;
+        if (method_exists($this->disk, 'getClient')) {
+            $resolved = $this->disk->getClient();
+            $client = is_object($resolved) ? $resolved : null;
         }
 
-        $client = $this->disk->getClient();
-        $config = $this->disk->getConfig();
-        $bucket = is_array($config) ? (string) ($config['bucket'] ?? '') : '';
-        if ($bucket === '' || ! is_object($client) || ! method_exists($client, 'copyObject')) {
+        if ($client === null && method_exists($this->disk, 'getAdapter')) {
+            $adapter = $this->disk->getAdapter();
+            if (is_object($adapter) && method_exists($adapter, 'getClient')) {
+                $resolved = $adapter->getClient();
+                $client = is_object($resolved) ? $resolved : null;
+            }
+        }
+
+        $bucket = '';
+        if (method_exists($this->disk, 'getConfig')) {
+            $config = $this->disk->getConfig();
+            $bucket = is_array($config) ? (string) ($config['bucket'] ?? '') : '';
+        }
+
+        if ($bucket === '' || $client === null || ! method_exists($client, 'copyObject')) {
             return null;
         }
 

@@ -26,9 +26,17 @@ final class FakeS3Filesystem implements Filesystem
         $this->client = new FakeS3CopyClient($this);
     }
 
-    public function getClient(): FakeS3CopyClient
+    public function getAdapter(): object
     {
-        return $this->client;
+        return new class($this)
+        {
+            public function __construct(private FakeS3Filesystem $disk) {}
+
+            public function getClient(): FakeS3CopyClient
+            {
+                return $this->disk->client;
+            }
+        };
     }
 
     /**
