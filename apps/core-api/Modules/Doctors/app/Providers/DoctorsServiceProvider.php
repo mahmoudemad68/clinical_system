@@ -9,6 +9,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\Doctors\Http\Controllers\DoctorProfileController;
 use Modules\Doctors\Services\Adapters\PostgresDoctorSubjectPrivacy;
 use Modules\Doctors\Services\DoctorApplicantService;
+use Modules\Doctors\Services\DoctorReviewerService;
 use Modules\Doctors\Services\GetDoctorProfile;
 use Modules\Doctors\Services\ListSpecialties;
 use Modules\Doctors\Services\Persistence\PostgresDoctorProfileStore;
@@ -39,6 +40,7 @@ final class DoctorsServiceProvider extends ServiceProvider
         $this->app->bind(GetDoctorProfile::class);
         $this->app->bind(ListSpecialties::class);
         $this->app->bind(DoctorApplicantService::class);
+        $this->app->bind(DoctorReviewerService::class);
         $this->app->bind(DoctorProfileController::class);
     }
 }

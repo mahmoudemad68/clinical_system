@@ -83,11 +83,10 @@ final class ExceptionRenderer
 
             $e instanceof VersionConflict => ErrorEnvelope::of(ErrorCode::VersionConflict, $requestId),
 
-            // A value object rejecting input is a client-side validation
-            // failure. Its message is written to be safe to surface: it names
-            // the expectation and never echoes the offending value.
             $e instanceof InvalidValueObject => ErrorEnvelope::of(
-                ErrorCode::ValidationFailed,
+                str_contains(strtolower($e->getMessage()), 'cursor')
+                    ? ErrorCode::CursorInvalid
+                    : ErrorCode::ValidationFailed,
                 $requestId,
                 message: $e->getMessage(),
             ),

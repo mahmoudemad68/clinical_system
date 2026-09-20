@@ -123,7 +123,7 @@ if ($op === 'refresh') {
     if (isset($payload['idempotency_key'])) {
         $headers['HTTP_IDEMPOTENCY_KEY'] = (string) $payload['idempotency_key'];
     }
-} elseif ($op === 'verification_decide') {
+} elseif ($op === 'verification_decide' || $op === 'verification_claim') {
     $uri = '';
 } elseif ($op === 'verification_process') {
     $uri = '';
@@ -138,7 +138,7 @@ $error = null;
 $status = 0;
 $json = null;
 
-if ($op === 'verification_decide') {
+if ($op === 'verification_decide' || $op === 'verification_claim') {
     try {
         $reviewerId = Identifier::fromTrusted((string) ($payload['reviewer_user_id'] ?? ''));
         $reviewer = new ActorContext(
@@ -153,14 +153,23 @@ if ($op === 'verification_decide') {
             [],
             Capabilities::forActor('admin', true),
         );
-        $projection = $app->make(VerificationService::class)->recordDecision(
-            $reviewer,
-            Identifier::fromTrusted((string) ($payload['case_id'] ?? '')),
-            (string) ($payload['decision'] ?? ''),
-            (string) ($payload['reason_code'] ?? ''),
-            (int) ($payload['expected_version'] ?? 0),
-            isset($payload['notes']) ? (string) $payload['notes'] : null,
-        );
+        $service = $app->make(VerificationService::class);
+        if ($op === 'verification_claim') {
+            $projection = $service->claimCase(
+                $reviewer,
+                Identifier::fromTrusted((string) ($payload['case_id'] ?? '')),
+                (int) ($payload['expected_version'] ?? 0),
+            );
+        } else {
+            $projection = $service->recordDecision(
+                $reviewer,
+                Identifier::fromTrusted((string) ($payload['case_id'] ?? '')),
+                (string) ($payload['decision'] ?? ''),
+                (string) ($payload['reason_code'] ?? ''),
+                (int) ($payload['expected_version'] ?? 0),
+                isset($payload['notes']) ? (string) $payload['notes'] : null,
+            );
+        }
         $status = 200;
         $json = ['data' => $projection->toArray()];
     } catch (AuthorizationDenied|FeatureUnavailable) {

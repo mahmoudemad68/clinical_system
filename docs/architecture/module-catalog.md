@@ -172,6 +172,9 @@ are Access-gated and default-denied. `FEATURE_IDENTITY_PROFILE_CLAIM` remains of
 **Public services:** `RegisterDoctor`, `GetDoctorProfile`, `ListSpecialties`,
 `DoctorApplicantService` (narrow Verification-facing applicant projection and
 status transition; no National ID/HMAC/key-version fields),
+`DoctorReviewerService` (narrow reviewer-facing professional display, specialty
+labels, and verification/public status; no National ID/HMAC/key-version/phone
+fields),
 `DoctorSubjectPrivacy` (Identity erasure/export adapter).
 **Events:** `doctor.profile_created` (personal identifier-only).
 `doctor.verification_submitted` and `doctor.verification_decided` are owned by
@@ -194,16 +197,18 @@ public service in this slice (no HTTP catalogue endpoint).
 
 ## `Verification` — cases, documents, decisions, and secure upload intents
 
-**Built in:** 02 (chunk 03 foundation, chunk 04 secure verification files). **Owner:** backend + security.
+**Built in:** 02 (chunk 03 foundation, chunk 04 secure verification files,
+chunk 05 Admin verification review backend). **Owner:** backend + security.
 **Public services:** `VerificationService`, `VerificationDocumentService`,
 `VerificationUploadService`, `VerificationUploadProcessor`.
 Platform owns generic `StoreObject` / `ScanObject` adapters. Verification owns
-doctor-verification upload workflow, requirement codes, and case linkage.
+doctor-verification upload workflow, requirement codes, case linkage, reviewer
+queue, claim, decision, and canonical document-access grants.
 `ProcessingTrustedDocumentEvidenceIssuer` is bound as a concrete class and is
 reachable only from the trusted processing path. The default
 `TrustedDocumentEvidenceIssuer` remains `DisabledTrustedDocumentEvidenceIssuer`.
-Admin HTTP/UI is deferred; when added, Admin controllers must call
-`VerificationService` rather than writing these tables.
+Admin HTTP controllers call `VerificationService` / `VerificationDocumentService`
+rather than writing these tables. React Admin verification UI remains deferred.
 **Events:** `doctor.verification_submitted`, `doctor.verification_decided`,
 `verification.upload_completed` (`upload_id` only).
 `pharmacy.verification_decided` is not implemented in this slice.
@@ -224,12 +229,13 @@ max 3 active uploads per requirement). Unknown case types, requirement codes,
 decisions, and reason codes deny. This is not an approved product/security
 catalogue.
 **Prohibited:** querying Doctors/Patients/Pharmacies/clinical tables directly
-(Doctors is reached only through `DoctorApplicantService`); exposing object keys
+(Doctors is reached only through `DoctorApplicantService` and
+`DoctorReviewerService`); exposing object keys
 or document bodies on public URLs, events, logs, or DTOs; letting Doctors or
 Pharmacies own the verification pipeline; granting clinical capabilities or
 auto-listing a doctor on approval; public APIs that mark documents scanned or
 `AVAILABLE`. Admin work-queue UI calls `VerificationService` rather than writing
-these tables. Submit HTTP is compact (`status`, `doctor_id`, `case_id`,
+these tables. Admin review HTTP is a thin facade over those services. Submit HTTP is compact (`status`, `doctor_id`, `case_id`,
 `case_status`, `case_version`, `profile_version`, `profile_verification_status`);
 `GET /doctors/me/verification-status` is the canonical projection.
 Production HTTP cannot mint `TrustedDocumentEvidence`.
@@ -442,17 +448,25 @@ retrieval leakage.
 
 ## `Admin`
 
-**Built in:** 02 and 20. **Owner:** backend.
-**Public ports:** `ListVerificationQueue`, `DecideVerification` (deferred HTTP;
-must call `VerificationService` when implemented),
-`GetSystemHealthProjection`.
-**Events:** `admin.verification_decided`.
-**Tables:** admin action records; most reads are projections owned elsewhere.
+**Built in:** 02 (chunk 05 verification review HTTP) and 20. **Owner:** backend.
+**Public services:** `AdminVerificationReviewService` (HTTP facade for the
+verification queue, case detail, claim, decision, and document-access grant).
+Controllers map transport input/output only and call `VerificationService` and
+`VerificationDocumentService`. Safe professional fields come from
+`DoctorReviewerService` through Verification; Admin does not query Doctors or
+Verification persistence.
+**Events:** none. Admin does not emit `admin.verification_decided`. The
+authoritative business event remains Verification-owned
+`doctor.verification_decided`.
+**Tables:** none in this slice. Queue reads and decisions are owned by
+Verification.
 **Classification:** internal.
 **Prohibited:** any clinical-record read path. "Admin" never implies PHI access;
 verification, catalog approval, support, security, and operations capabilities
 stay separate internally even if V1 presents one admin persona
-(`docs/phases/README.md` open decisions).
+(`docs/phases/README.md` open decisions). Admin verification must not import
+Clinical, Appointments, Prescriptions, Labs, Patients, or Doctors persistence.
+React Admin verification UI remains deferred.
 
 ## `Audit`
 

@@ -35,6 +35,9 @@ final class RecordingStoreObject implements StoreObject
     /** @var list<string> */
     public array $copiedLocators = [];
 
+    /** @var list<StoredObjectRef> */
+    public array $temporaryUrlRefs = [];
+
     public int $deleteAttempts = 0;
 
     public int $failNextDeletes = 0;
@@ -53,6 +56,8 @@ final class RecordingStoreObject implements StoreObject
 
     public function temporaryUrl(StoredObjectRef $ref, DateTimeImmutable $expiresAt): string
     {
+        $this->temporaryUrlRefs[] = $ref;
+
         return $this->inner->temporaryUrl($ref, $expiresAt);
     }
 

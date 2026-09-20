@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Verification\Services;
 
+use DateTimeImmutable;
 use DateTimeZone;
 use Modules\Access\Contracts\Authorize;
 use Modules\Access\Support\Capabilities;
@@ -14,16 +15,21 @@ use Modules\Doctors\Support\DoctorApplicantProjection;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
 use Modules\Platform\Exceptions\AuthorizationDenied;
 use Modules\Platform\Exceptions\DuplicateIdentity;
 use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\StateConflict;
+use Modules\Platform\Services\Telemetry\PlatformMetrics;
 use Modules\Platform\Support\Identifier;
+use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Enums\VerificationCaseStatus;
+use Modules\Verification\Enums\VerificationUploadState;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
 use Modules\Verification\Support\DocumentMetadataProjection;
+use Modules\Verification\Support\ReviewerDocumentAccessGrant;
 use Modules\Verification\Support\TrustedDocumentEvidence;
 use Modules\Verification\Support\VerificationCaseRecord;
 use Modules\Verification\Support\VerificationDocumentRecord;
@@ -48,6 +54,8 @@ final class VerificationDocumentService
         private readonly IdentityGenerator $ids,
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
+        private readonly StoreObject $objects,
+        private readonly PlatformMetrics $metrics,
     ) {}
 
     public function registerValidatedMetadata(TrustedDocumentEvidence $evidence): DocumentMetadataProjection
@@ -201,6 +209,98 @@ final class VerificationDocumentService
 
             return $this->project($row);
         });
+    }
+
+    public function issueReviewerReadGrant(
+        ActorContext $reviewer,
+        Identifier $caseId,
+        Identifier $documentId,
+    ): ReviewerDocumentAccessGrant {
+        $this->assertPrivilegedReviewer($reviewer, $documentId);
+
+        /** @var array{document: VerificationDocumentRecord, expires_at: DateTimeImmutable, ref: StoredObjectRef} $prepared */
+        $prepared = $this->transactions->run(function () use ($reviewer, $caseId, $documentId): array {
+            $this->store->lockCase($caseId);
+            $case = $this->store->findCaseById($caseId, true);
+            if (! $case instanceof VerificationCaseRecord) {
+                throw new AuthorizationDenied;
+            }
+            if ($case->status !== VerificationCaseStatus::PendingReview) {
+                throw new AuthorizationDenied;
+            }
+
+            $this->assertNotSelfReview($reviewer, $case);
+            $this->assertAssignedReviewer($reviewer, $case);
+
+            $row = $this->store->findDocumentById($documentId);
+            if (! $row instanceof VerificationDocumentRecord || ! $row->caseId->equals($case->id)) {
+                throw new AuthorizationDenied;
+            }
+            if (! $row->isReviewable() || ! $row->uploadIntentId instanceof Identifier) {
+                throw new AuthorizationDenied;
+            }
+
+            $upload = $this->store->findUploadById($row->uploadIntentId, true);
+            if (! $upload instanceof VerificationUploadIntentRecord) {
+                throw new AuthorizationDenied;
+            }
+            if (! $upload->caseId->equals($case->id) || $upload->state !== VerificationUploadState::Available) {
+                throw new AuthorizationDenied;
+            }
+
+            $canonical = $upload->canonicalRef();
+            if (! $canonical instanceof StoredObjectRef) {
+                throw new AuthorizationDenied;
+            }
+
+            $ttl = $this->policy->reviewerDocumentAccessTtlSeconds();
+            if ($ttl < 1 || $ttl > 300) {
+                throw new InvalidValueObject('Reviewer document access TTL is not allowed.');
+            }
+
+            return [
+                'document' => $row,
+                'expires_at' => $this->clock->now()->modify('+'.$ttl.' seconds'),
+                'ref' => $canonical,
+            ];
+        });
+
+        $url = $this->objects->temporaryUrl($prepared['ref'], $prepared['expires_at']);
+        $expiresAt = $prepared['expires_at']->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
+
+        $this->transactions->run(function (TransactionContext $tx) use ($reviewer, $caseId, $prepared): void {
+            $this->audit->append(
+                $tx,
+                'verification.document_access_granted',
+                'verification_case',
+                $caseId,
+                [
+                    'reason_code' => 'verification_review_access',
+                    'document_id' => $prepared['document']->id->value,
+                    'requirement_code' => $prepared['document']->requirementCode,
+                    'assurance_level' => $reviewer->assuranceLevel->value,
+                ],
+                $reviewer->userId,
+                'user',
+            );
+        });
+
+        try {
+            $this->metrics->increment('clinic_verification_review_results_total', [
+                'result' => 'granted',
+                'case_type' => 'doctor_verification',
+                'reason_code' => 'verification_review_access',
+            ]);
+        } catch (\Throwable) {
+        }
+
+        return new ReviewerDocumentAccessGrant(
+            $prepared['document']->id->value,
+            $url,
+            $expiresAt,
+            $prepared['document']->detectedMime,
+            $prepared['document']->sizeBytes,
+        );
     }
 
     private function assertPrivilegedReviewer(ActorContext $reviewer, Identifier $objectId): void

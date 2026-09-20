@@ -6,5 +6,6 @@
     "Access": true,
     "Patients": true,
     "Doctors": true,
-    "Verification": true
+    "Verification": true,
+    "Admin": true
 }

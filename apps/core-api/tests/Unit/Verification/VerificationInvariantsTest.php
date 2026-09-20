@@ -6,6 +6,8 @@ use Modules\Verification\Enums\VerificationCaseStatus;
 use Modules\Verification\Enums\VerificationDecision;
 use Modules\Verification\Enums\VerificationDocumentScanStatus;
 use Modules\Verification\Enums\VerificationDocumentStatus;
+use Modules\Verification\Support\ReviewerDocumentAccessGrant;
+use Modules\Verification\Support\VerificationDecisionOutcome;
 use Modules\Verification\Support\VerificationPolicy;
 use Modules\Verification\Support\VerificationSubmissionOutcome;
 use Tests\TestCase;
@@ -41,6 +43,36 @@ it('maps decisions onto case statuses without inventing extra states', function 
             'approved',
             'rejected',
         ]);
+});
+
+it('keeps the decision HTTP outcome inside the Platform idempotency pointer', function () {
+    $encoded = json_encode((new VerificationDecisionOutcome(
+        '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a10',
+        'approved',
+        3,
+        'approved',
+        'approved',
+    ))->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    expect($encoded)->toBeString()
+        ->and(strlen((string) $encoded))->toBeLessThanOrEqual(255)
+        ->and($encoded)->not->toContain('notes')
+        ->and($encoded)->not->toContain('documents');
+});
+
+it('omits the signed URL from reviewer grant debug output', function () {
+    $grant = new ReviewerDocumentAccessGrant(
+        '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a12',
+        'https://objects.invalid/read/secret-grant?expires=1',
+        '2026-09-20T00:00:02.000000Z',
+        'application/pdf',
+        2048,
+    );
+
+    $debug = json_encode($grant->__debugInfo(), JSON_THROW_ON_ERROR);
+    expect($debug)->not->toContain('secret-grant')
+        ->and($debug)->not->toContain('url')
+        ->and($grant->toArray()['url'])->toContain('secret-grant');
 });
 
 it('keeps the submit HTTP outcome inside the Platform idempotency pointer', function () {

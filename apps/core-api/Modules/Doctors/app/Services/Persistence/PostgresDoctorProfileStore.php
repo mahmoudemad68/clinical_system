@@ -71,6 +71,27 @@ final class PostgresDoctorProfileStore
     }
 
     /**
+     * @param  list<string>  $ids
+     * @return list<DoctorProfileRecord>
+     */
+    public function findByIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->connection->table('doctor_profiles')->whereIn('id', $ids)->get();
+        $out = [];
+        foreach ($rows as $row) {
+            if ($row instanceof stdClass) {
+                $out[] = $this->map($row);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @param  array<string, mixed>  $attributes
      */
     public function insert(array $attributes): void

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Admin\Http\Controllers\AdminVerificationController;
 use Modules\Auth\Http\Controllers\AuthController;
 use Modules\Doctors\Http\Controllers\DoctorProfileController;
 use Modules\Patients\Http\Controllers\PatientProfileController;
@@ -142,5 +143,21 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/verification-uploads/{uploadId}', [DoctorVerificationUploadController::class, 'show'])
             ->name('api.v1.verification-uploads.show');
+
+        Route::get('/admin/verification-cases', [AdminVerificationController::class, 'index'])
+            ->name('api.v1.admin.verification-cases.index');
+
+        Route::get('/admin/verification-cases/{caseId}', [AdminVerificationController::class, 'show'])
+            ->name('api.v1.admin.verification-cases.show');
+
+        Route::post('/admin/verification-cases/{caseId}/claim', [AdminVerificationController::class, 'claim'])
+            ->name('api.v1.admin.verification-cases.claim');
+
+        Route::middleware('platform.idempotency')
+            ->post('/admin/verification-cases/{caseId}/decisions', [AdminVerificationController::class, 'decide'])
+            ->name('api.v1.admin.verification-cases.decisions');
+
+        Route::post('/admin/verification-cases/{caseId}/documents/{documentId}/access', [AdminVerificationController::class, 'documentAccess'])
+            ->name('api.v1.admin.verification-cases.documents.access');
     });
 });

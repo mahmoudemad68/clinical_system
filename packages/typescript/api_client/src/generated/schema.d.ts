@@ -766,6 +766,129 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/verification-cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Privileged pending-review verification queue
+         * @description Purpose-specific reviewer queue. Default filters are
+         *     `case_type=doctor_verification`, `status=pending_review`, and
+         *     `assignment=unassigned`. Ordering is `submitted_at ASC`, `case_id ASC`.
+         *     Cursors are HMAC-signed and bound to operation, reviewer, filters, and
+         *     ordering. Offset pagination and total counts are not used. Arbitrary
+         *     column filters are rejected. National ID, syndicate identifiers, object
+         *     keys, hashes, reviewer notes, and clinical fields are never included.
+         */
+        get: operations["listAdminVerificationCases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/verification-cases/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reviewer-safe verification case detail
+         * @description Privileged reviewers may receive a minimum safe professional summary
+         *     before claim. Document evidence is returned only after the case is
+         *     assigned to the current reviewer and only for AVAILABLE+CLEAN rows.
+         *     Another reviewer's documents are omitted. Guessed identifiers are
+         *     indistinguishable from missing. Signed URLs are never included.
+         */
+        get: operations["getAdminVerificationCase"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/verification-cases/{case_id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Claim a pending verification case
+         * @description Assigns the current privileged reviewer. Reviewer identity is
+         *     server-derived and must not be supplied. Only `pending_review` may be
+         *     claimed. Self-review is denied. Same-reviewer replay is safe and does
+         *     not emit a second claim audit. Another reviewer's assignment conflicts.
+         *     Claim does not change applicant verification status.
+         */
+        post: operations["claimAdminVerificationCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/verification-cases/{case_id}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a verification decision
+         * @description Append-only decision owned by Verification. Compact result is sized for
+         *     the Platform 255-byte idempotency pointer. GET case detail is the
+         *     canonical projection. Approval does not list the doctor or grant
+         *     clinical capability. Reviewer notes are optional, encrypted, never
+         *     returned to the applicant, and never copied into events or logs.
+         */
+        post: operations["decideAdminVerificationCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/verification-cases/{case_id}/documents/{document_id}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a short-lived canonical document read grant
+         * @description Purpose-bound reviewer access to an AVAILABLE+CLEAN document that
+         *     belongs to this exact case after assignment. Resolves the canonical
+         *     trusted object only; ingress is never used. The signed GET URL is
+         *     bearer-style while valid, is not actor-bound after issuance, and is
+         *     never stored in audit, logs, metrics, events, the database, or
+         *     idempotency replay. This endpoint is not idempotency-stored.
+         */
+        post: operations["grantAdminVerificationDocumentAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1336,6 +1459,130 @@ export interface components {
                 };
                 expires_at: components["schemas"]["Instant"];
             };
+        };
+        AdminVerificationSpecialty: {
+            specialty_id: components["schemas"]["Uuid"];
+            code: string;
+            label_ar: string;
+            label_en: string;
+        };
+        /**
+         * @description Reviewer queue row used to choose a case. No National ID, syndicate
+         *     identifiers, phone, email, address, document identifiers, hashes,
+         *     reviewer notes, or clinical fields.
+         */
+        AdminVerificationQueueItem: {
+            case_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            case_type: "doctor_verification";
+            /** @enum {string} */
+            case_status: "pending_review";
+            case_version: number;
+            /** Format: date-time */
+            submitted_at: string | null;
+            /** @enum {string} */
+            assignment: "unassigned" | "mine" | "other";
+            assigned_to_me: boolean;
+            doctor_id: components["schemas"]["Uuid"];
+            professional_display_name: string;
+            specialty: components["schemas"]["AdminVerificationSpecialty"];
+            doctor_verification_status: components["schemas"]["DoctorVerificationStatus"];
+            doctor_public_status: components["schemas"]["DoctorPublicStatus"];
+            profile_version: number;
+        };
+        /**
+         * @description Assignment-gated AVAILABLE+CLEAN document metadata. Object locators,
+         *     signed URLs, original filenames, and scanner payloads are omitted.
+         */
+        AdminVerificationReviewDocument: {
+            document_id: components["schemas"]["Uuid"];
+            requirement_code: string;
+            sha256: string;
+            detected_mime: string;
+            size_bytes: number;
+            /** @enum {string} */
+            scan_status: "clean";
+            /** @enum {string} */
+            status: "available";
+            uploaded_at: components["schemas"]["Instant"];
+        };
+        /**
+         * @description Reviewer-safe case detail. Documents are empty until the current
+         *     reviewer is assigned. Never includes National ID, object locators,
+         *     signed URLs, reviewer note plaintext, or assigned_reviewer_id.
+         */
+        AdminVerificationCase: {
+            case_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            case_type: "doctor_verification";
+            /** @enum {string} */
+            case_status: "draft" | "pending_review" | "changes_requested" | "approved" | "rejected";
+            case_version: number;
+            /** Format: date-time */
+            submitted_at: string | null;
+            /** @enum {string} */
+            assignment: "unassigned" | "mine" | "other";
+            assigned_to_me: boolean;
+            /** Format: date-time */
+            decided_at: string | null;
+            /** @enum {string|null} */
+            decision: "approved" | "rejected" | "changes_requested" | null;
+            reason_code: string | null;
+            doctor_id: components["schemas"]["Uuid"];
+            professional_display_name: string;
+            specialty: components["schemas"]["AdminVerificationSpecialty"];
+            doctor_verification_status: components["schemas"]["DoctorVerificationStatus"];
+            doctor_public_status: components["schemas"]["DoctorPublicStatus"];
+            profile_version: number;
+            documents: components["schemas"]["AdminVerificationReviewDocument"][];
+        };
+        AdminVerificationClaimRequest: {
+            /** @description Optimistic case version. Reviewer identity is server-derived. */
+            expected_case_version: number;
+        };
+        AdminVerificationDecisionRequest: {
+            /** @enum {string} */
+            decision: "approved" | "rejected" | "changes_requested";
+            /**
+             * @description Must be accepted by VerificationPolicy for the chosen decision.
+             *     Unknown codes and invalid pairings deny.
+             */
+            reason_code: string;
+            expected_case_version: number;
+            /**
+             * @description Optional reviewer notes. Encrypted at rest. Never returned to the
+             *     applicant and never written to events, logs, or metrics.
+             */
+            notes?: string | null;
+        };
+        /**
+         * @description Compact decision outcome sized for the Platform 255-byte idempotency
+         *     pointer. GET case detail is the canonical projection. Never includes
+         *     notes, documents, National ID, or object locators.
+         */
+        AdminVerificationDecisionResult: {
+            case_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            case_status: "approved" | "rejected" | "changes_requested";
+            case_version: number;
+            /** @enum {string} */
+            decision: "approved" | "rejected" | "changes_requested";
+            reason_code: string;
+        };
+        /** @description Closed empty body. Unknown fields are rejected. */
+        AdminVerificationDocumentAccessRequest: Record<string, never>;
+        /**
+         * @description Short-lived signed GET. The URL is bearer-style until expires_at and
+         *     is not actor-bound after issuance. Storage locator, bucket, and
+         *     object key are never included.
+         */
+        AdminVerificationDocumentAccessGrant: {
+            document_id: components["schemas"]["Uuid"];
+            /** Format: uri */
+            url: string;
+            expires_at: components["schemas"]["Instant"];
+            detected_mime: string;
+            size_bytes: number;
         };
     };
     responses: {
@@ -2733,6 +2980,218 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listAdminVerificationCases: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Opaque forward cursor from a previous response's `meta.pagination.next`.
+                 *     Cursors are signed when they carry state, size-bounded, and scoped to the
+                 *     filter, ordering, and actor that produced them. A cursor from a different
+                 *     filter, ordering, or actor is rejected with `422 CURSOR_INVALID`.
+                 */
+                cursor?: components["parameters"]["CursorParam"];
+                /** @description Maximum items per page. */
+                limit?: components["parameters"]["LimitParam"];
+                /** @description Queue assignment filter. Default `unassigned`. */
+                assignment?: "unassigned" | "mine" | "all";
+                case_type?: "doctor_verification";
+                status?: "pending_review";
+            };
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reviewer-safe queue page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["AdminVerificationQueueItem"][];
+                        meta?: components["schemas"]["Meta"] & {
+                            pagination?: components["schemas"]["CursorPagination"];
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getAdminVerificationCase: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                case_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reviewer-safe case projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["AdminVerificationCase"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    claimAdminVerificationCase: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                case_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminVerificationClaimRequest"];
+            };
+        };
+        responses: {
+            /** @description Case claimed or same-reviewer replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["AdminVerificationCase"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    decideAdminVerificationCase: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                case_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminVerificationDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Decision recorded or identical idempotent replay. */
+            200: {
+                headers: {
+                    "Idempotent-Replay": components["headers"]["IdempotentReplay"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["AdminVerificationDecisionResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    grantAdminVerificationDocumentAccess: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                case_id: components["schemas"]["Uuid"];
+                document_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminVerificationDocumentAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description Short-lived signed GET grant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["AdminVerificationDocumentAccessGrant"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["UnprocessableEntity"];
         };
     };
 }

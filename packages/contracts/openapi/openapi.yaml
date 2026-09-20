@@ -18,8 +18,15 @@ info:
     doctor verification secure-upload pipeline
     (`POST /api/v1/verification-uploads`,
     `POST /api/v1/verification-uploads/{upload_id}/complete`,
-    `GET /api/v1/verification-uploads/{upload_id}`). Admin UI, pharmacy, clinic,
-    and AI capabilities remain absent.
+    `GET /api/v1/verification-uploads/{upload_id}`). Phase 02 chunk 05 adds
+    privileged Admin verification review
+    (`GET /api/v1/admin/verification-cases`,
+    `GET /api/v1/admin/verification-cases/{case_id}`,
+    `POST /api/v1/admin/verification-cases/{case_id}/claim`,
+    `POST /api/v1/admin/verification-cases/{case_id}/decisions`,
+    `POST /api/v1/admin/verification-cases/{case_id}/documents/{document_id}/access`).
+    React Admin verification UI, pharmacy, clinic, and AI capabilities remain
+    absent.
 
     Compatibility rules (ADR 0003):
       * Additive optional fields are compatible within a version.
@@ -71,7 +78,13 @@ tags:
       and doctor-only secure verification-document upload. Own-profile and
       own-case only. Creating a draft doctor profile does not approve, list, or
       grant clinical capability. National ID and syndicate number are write-only
-      and never returned. Reviewer download URLs and Admin verification UI are
+      and never returned. Admin verification review HTTP lives under `/api/v1/admin`.
+  - name: admin
+    description: |
+      Phase 02 chunk 05 privileged Admin verification review. Requires an
+      `admin_cookie` session, CSRF on state-changing requests, privileged MFA
+      assurance, and `verification.case.review`. Device bearer actors are
+      denied. Reviewer identity is server-derived. React verification UI is
       not part of this slice.
 
 paths:
@@ -1355,6 +1368,266 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/verification-cases:
+    get:
+      tags: [admin]
+      operationId: listAdminVerificationCases
+      summary: Privileged pending-review verification queue
+      description: |
+        Purpose-specific reviewer queue. Default filters are
+        `case_type=doctor_verification`, `status=pending_review`, and
+        `assignment=unassigned`. Ordering is `submitted_at ASC`, `case_id ASC`.
+        Cursors are HMAC-signed and bound to operation, reviewer, filters, and
+        ordering. Offset pagination and total counts are not used. Arbitrary
+        column filters are rejected. National ID, syndicate identifiers, object
+        keys, hashes, reviewer notes, and clinical fields are never included.
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/CursorParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: assignment
+          in: query
+          required: false
+          description: Queue assignment filter. Default `unassigned`.
+          schema:
+            type: string
+            enum: [unassigned, mine, all]
+            default: unassigned
+        - name: case_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [doctor_verification]
+            default: doctor_verification
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending_review]
+            default: pending_review
+      responses:
+        '200':
+          description: Reviewer-safe queue page.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AdminVerificationQueueItem'
+                      meta:
+                        allOf:
+                          - $ref: '#/components/schemas/Meta'
+                          - type: object
+                            properties:
+                              pagination:
+                                $ref: '#/components/schemas/CursorPagination'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/admin/verification-cases/{case_id}:
+    get:
+      tags: [admin]
+      operationId: getAdminVerificationCase
+      summary: Reviewer-safe verification case detail
+      description: |
+        Privileged reviewers may receive a minimum safe professional summary
+        before claim. Document evidence is returned only after the case is
+        assigned to the current reviewer and only for AVAILABLE+CLEAN rows.
+        Another reviewer's documents are omitted. Guessed identifiers are
+        indistinguishable from missing. Signed URLs are never included.
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Reviewer-safe case projection.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminVerificationCase'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/verification-cases/{case_id}/claim:
+    post:
+      tags: [admin]
+      operationId: claimAdminVerificationCase
+      summary: Claim a pending verification case
+      description: |
+        Assigns the current privileged reviewer. Reviewer identity is
+        server-derived and must not be supplied. Only `pending_review` may be
+        claimed. Self-review is denied. Same-reviewer replay is safe and does
+        not emit a second claim audit. Another reviewer's assignment conflicts.
+        Claim does not change applicant verification status.
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminVerificationClaimRequest'
+      responses:
+        '200':
+          description: Case claimed or same-reviewer replay.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminVerificationCase'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/admin/verification-cases/{case_id}/decisions:
+    post:
+      tags: [admin]
+      operationId: decideAdminVerificationCase
+      summary: Record a verification decision
+      description: |
+        Append-only decision owned by Verification. Compact result is sized for
+        the Platform 255-byte idempotency pointer. GET case detail is the
+        canonical projection. Approval does not list the doctor or grant
+        clinical capability. Reviewer notes are optional, encrypted, never
+        returned to the applicant, and never copied into events or logs.
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminVerificationDecisionRequest'
+      responses:
+        '200':
+          description: Decision recorded or identical idempotent replay.
+          headers:
+            Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminVerificationDecisionResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/admin/verification-cases/{case_id}/documents/{document_id}/access:
+    post:
+      tags: [admin]
+      operationId: grantAdminVerificationDocumentAccess
+      summary: Issue a short-lived canonical document read grant
+      description: |
+        Purpose-bound reviewer access to an AVAILABLE+CLEAN document that
+        belongs to this exact case after assignment. Resolves the canonical
+        trusted object only; ingress is never used. The signed GET URL is
+        bearer-style while valid, is not actor-bound after issuance, and is
+        never stored in audit, logs, metrics, events, the database, or
+        idempotency replay. This endpoint is not idempotency-stored.
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminVerificationDocumentAccessRequest'
+      responses:
+        '200':
+          description: Short-lived signed GET grant.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminVerificationDocumentAccessGrant'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
 components:
 
@@ -2696,6 +2969,294 @@ components:
                 type: string
             expires_at:
               $ref: '#/components/schemas/Instant'
+
+    AdminVerificationSpecialty:
+      type: object
+      additionalProperties: false
+      required: [specialty_id, code, label_ar, label_en]
+      properties:
+        specialty_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+          maxLength: 64
+        label_ar:
+          type: string
+          maxLength: 200
+        label_en:
+          type: string
+          maxLength: 200
+
+    AdminVerificationQueueItem:
+      type: object
+      additionalProperties: false
+      description: |
+        Reviewer queue row used to choose a case. No National ID, syndicate
+        identifiers, phone, email, address, document identifiers, hashes,
+        reviewer notes, or clinical fields.
+      required:
+        - case_id
+        - case_type
+        - case_status
+        - case_version
+        - submitted_at
+        - assignment
+        - assigned_to_me
+        - doctor_id
+        - professional_display_name
+        - specialty
+        - doctor_verification_status
+        - doctor_public_status
+        - profile_version
+      properties:
+        case_id:
+          $ref: '#/components/schemas/Uuid'
+        case_type:
+          type: string
+          enum: [doctor_verification]
+        case_status:
+          type: string
+          enum: [pending_review]
+        case_version:
+          type: integer
+          minimum: 1
+        submitted_at:
+          type: [string, 'null']
+          format: date-time
+        assignment:
+          type: string
+          enum: [unassigned, mine, other]
+        assigned_to_me:
+          type: boolean
+        doctor_id:
+          $ref: '#/components/schemas/Uuid'
+        professional_display_name:
+          type: string
+          maxLength: 200
+        specialty:
+          $ref: '#/components/schemas/AdminVerificationSpecialty'
+        doctor_verification_status:
+          $ref: '#/components/schemas/DoctorVerificationStatus'
+        doctor_public_status:
+          $ref: '#/components/schemas/DoctorPublicStatus'
+        profile_version:
+          type: integer
+          minimum: 1
+
+    AdminVerificationReviewDocument:
+      type: object
+      additionalProperties: false
+      description: |
+        Assignment-gated AVAILABLE+CLEAN document metadata. Object locators,
+        signed URLs, original filenames, and scanner payloads are omitted.
+      required:
+        - document_id
+        - requirement_code
+        - sha256
+        - detected_mime
+        - size_bytes
+        - scan_status
+        - status
+        - uploaded_at
+      properties:
+        document_id:
+          $ref: '#/components/schemas/Uuid'
+        requirement_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9_]+$'
+        sha256:
+          type: string
+          minLength: 64
+          maxLength: 64
+          pattern: '^[a-f0-9]{64}$'
+        detected_mime:
+          type: string
+          maxLength: 100
+        size_bytes:
+          type: integer
+          minimum: 1
+        scan_status:
+          type: string
+          enum: [clean]
+        status:
+          type: string
+          enum: [available]
+        uploaded_at:
+          $ref: '#/components/schemas/Instant'
+
+    AdminVerificationCase:
+      type: object
+      additionalProperties: false
+      description: |
+        Reviewer-safe case detail. Documents are empty until the current
+        reviewer is assigned. Never includes National ID, object locators,
+        signed URLs, reviewer note plaintext, or assigned_reviewer_id.
+      required:
+        - case_id
+        - case_type
+        - case_status
+        - case_version
+        - submitted_at
+        - assignment
+        - assigned_to_me
+        - decided_at
+        - decision
+        - reason_code
+        - doctor_id
+        - professional_display_name
+        - specialty
+        - doctor_verification_status
+        - doctor_public_status
+        - profile_version
+        - documents
+      properties:
+        case_id:
+          $ref: '#/components/schemas/Uuid'
+        case_type:
+          type: string
+          enum: [doctor_verification]
+        case_status:
+          type: string
+          enum: [draft, pending_review, changes_requested, approved, rejected]
+        case_version:
+          type: integer
+          minimum: 1
+        submitted_at:
+          type: [string, 'null']
+          format: date-time
+        assignment:
+          type: string
+          enum: [unassigned, mine, other]
+        assigned_to_me:
+          type: boolean
+        decided_at:
+          type: [string, 'null']
+          format: date-time
+        decision:
+          type: [string, 'null']
+          enum: [approved, rejected, changes_requested, null]
+        reason_code:
+          type: [string, 'null']
+          maxLength: 64
+        doctor_id:
+          $ref: '#/components/schemas/Uuid'
+        professional_display_name:
+          type: string
+          maxLength: 200
+        specialty:
+          $ref: '#/components/schemas/AdminVerificationSpecialty'
+        doctor_verification_status:
+          $ref: '#/components/schemas/DoctorVerificationStatus'
+        doctor_public_status:
+          $ref: '#/components/schemas/DoctorPublicStatus'
+        profile_version:
+          type: integer
+          minimum: 1
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminVerificationReviewDocument'
+
+    AdminVerificationClaimRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_case_version]
+      properties:
+        expected_case_version:
+          type: integer
+          minimum: 1
+          description: Optimistic case version. Reviewer identity is server-derived.
+
+    AdminVerificationDecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [decision, reason_code, expected_case_version]
+      properties:
+        decision:
+          type: string
+          enum: [approved, rejected, changes_requested]
+        reason_code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[a-z0-9_]+$'
+          description: |
+            Must be accepted by VerificationPolicy for the chosen decision.
+            Unknown codes and invalid pairings deny.
+        expected_case_version:
+          type: integer
+          minimum: 1
+        notes:
+          type: [string, 'null']
+          maxLength: 2000
+          description: |
+            Optional reviewer notes. Encrypted at rest. Never returned to the
+            applicant and never written to events, logs, or metrics.
+
+    AdminVerificationDecisionResult:
+      type: object
+      additionalProperties: false
+      description: |
+        Compact decision outcome sized for the Platform 255-byte idempotency
+        pointer. GET case detail is the canonical projection. Never includes
+        notes, documents, National ID, or object locators.
+      required:
+        - case_id
+        - case_status
+        - case_version
+        - decision
+        - reason_code
+      properties:
+        case_id:
+          $ref: '#/components/schemas/Uuid'
+        case_status:
+          type: string
+          enum: [approved, rejected, changes_requested]
+        case_version:
+          type: integer
+          minimum: 1
+        decision:
+          type: string
+          enum: [approved, rejected, changes_requested]
+        reason_code:
+          type: string
+          maxLength: 64
+
+    AdminVerificationDocumentAccessRequest:
+      type: object
+      additionalProperties: false
+      description: Closed empty body. Unknown fields are rejected.
+      properties: {}
+
+    AdminVerificationDocumentAccessGrant:
+      type: object
+      additionalProperties: false
+      description: |
+        Short-lived signed GET. The URL is bearer-style until expires_at and
+        is not actor-bound after issuance. Storage locator, bucket, and
+        object key are never included.
+      required:
+        - document_id
+        - url
+        - expires_at
+        - detected_mime
+        - size_bytes
+      properties:
+        document_id:
+          $ref: '#/components/schemas/Uuid'
+        url:
+          type: string
+          format: uri
+        expires_at:
+          $ref: '#/components/schemas/Instant'
+        detected_mime:
+          type: string
+          maxLength: 100
+        size_bytes:
+          type: integer
+          minimum: 1
 
   responses:
 

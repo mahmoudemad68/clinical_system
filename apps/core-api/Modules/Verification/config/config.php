@@ -32,4 +32,7 @@ return [
     'max_active_uploads_per_requirement' => 3,
     'cleanup_rejected_after_seconds' => 86_400,
     'max_processing_attempts' => 8,
+    'reviewer_document_access_ttl_seconds' => 120,
+    'queue_default_limit' => 25,
+    'queue_max_limit' => 100,
 ];

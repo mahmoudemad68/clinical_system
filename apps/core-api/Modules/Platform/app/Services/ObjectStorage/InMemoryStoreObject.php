@@ -60,7 +60,7 @@ final class InMemoryStoreObject implements StoreObject
             throw new RuntimeException('Object does not exist.');
         }
 
-        return 'https://objects.invalid/'.$ref->objectId.'?expires='.$expiresAt->getTimestamp();
+        return 'https://objects.invalid/read/'.hash('sha256', $ref->key()).'?expires='.$expiresAt->getTimestamp();
     }
 
     public function metadata(StoredObjectRef $ref): array

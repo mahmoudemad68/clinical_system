@@ -133,4 +133,19 @@ final class VerificationPolicy
     {
         return 'verification';
     }
+
+    public function reviewerDocumentAccessTtlSeconds(): int
+    {
+        return (int) config('verification_module.reviewer_document_access_ttl_seconds', 120);
+    }
+
+    public function queueDefaultLimit(): int
+    {
+        return (int) config('verification_module.queue_default_limit', 25);
+    }
+
+    public function queueMaxLimit(): int
+    {
+        return (int) config('verification_module.queue_max_limit', 100);
+    }
 }
