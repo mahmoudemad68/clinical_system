@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+use Modules\Platform\Support\Identifier;
 use Modules\Verification\Enums\VerificationCaseStatus;
 use Modules\Verification\Enums\VerificationDecision;
 use Modules\Verification\Enums\VerificationDocumentScanStatus;
 use Modules\Verification\Enums\VerificationDocumentStatus;
+use Modules\Verification\Services\ReviewerDocumentUrlSigner;
+use Modules\Verification\Support\ReviewerDocumentAccessGrant;
+use Modules\Verification\Support\VerificationDecisionOutcome;
 use Modules\Verification\Support\VerificationPolicy;
 use Modules\Verification\Support\VerificationSubmissionOutcome;
 use Tests\TestCase;
@@ -43,6 +47,36 @@ it('maps decisions onto case statuses without inventing extra states', function 
         ]);
 });
 
+it('keeps the decision HTTP outcome inside the Platform idempotency pointer', function () {
+    $encoded = json_encode((new VerificationDecisionOutcome(
+        '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a10',
+        'approved',
+        3,
+        'approved',
+        'approved',
+    ))->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    expect($encoded)->toBeString()
+        ->and(strlen((string) $encoded))->toBeLessThanOrEqual(255)
+        ->and($encoded)->not->toContain('notes')
+        ->and($encoded)->not->toContain('documents');
+});
+
+it('omits the signed URL from reviewer grant debug output', function () {
+    $grant = new ReviewerDocumentAccessGrant(
+        '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a12',
+        'https://objects.invalid/read/secret-grant?expires=1',
+        '2026-09-20T00:00:02.000000Z',
+        'application/pdf',
+        2048,
+    );
+
+    $debug = json_encode($grant->__debugInfo(), JSON_THROW_ON_ERROR);
+    expect($debug)->not->toContain('secret-grant')
+        ->and($debug)->not->toContain('url')
+        ->and($grant->toArray()['url'])->toContain('secret-grant');
+});
+
 it('keeps the submit HTTP outcome inside the Platform idempotency pointer', function () {
     $encoded = json_encode((new VerificationSubmissionOutcome(
         '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a10',
@@ -57,6 +91,34 @@ it('keeps the submit HTTP outcome inside the Platform idempotency pointer', func
         ->and(strlen((string) $encoded))->toBeLessThanOrEqual(255)
         ->and($encoded)->not->toContain('documents')
         ->and($encoded)->not->toContain('object_id');
+});
+
+it('uses generic server-owned filenames for reviewer downloads', function () {
+    $policy = app(VerificationPolicy::class);
+
+    expect($policy->reviewerDownloadFilename('application/pdf'))->toBe('verification-document.pdf')
+        ->and($policy->reviewerDownloadFilename('image/jpeg'))->toBe('verification-document.jpg')
+        ->and($policy->reviewerDownloadFilename('image/png'))->toBe('verification-document.png')
+        ->and($policy->reviewerDownloadFilename('application/octet-stream'))->toBe('verification-document.bin')
+        ->and($policy->reviewerDownloadChunkBytes())->toBe(65_536);
+});
+
+it('signs reviewer download URLs without storage locators', function () {
+    $signer = app(ReviewerDocumentUrlSigner::class);
+    $caseId = Identifier::fromTrusted('0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a10');
+    $documentId = Identifier::fromTrusted('0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7a12');
+    $expires = new DateTimeImmutable('+120 seconds', new DateTimeZone('UTC'));
+    $url = $signer->sign($caseId, $documentId, $expires);
+    $parts = parse_url($url);
+    parse_str((string) ($parts['query'] ?? ''), $query);
+
+    expect($url)->toContain('/api/v1/verification-review-files/'.$caseId->value.'/'.$documentId->value)
+        ->and($url)->not->toContain('verification/c/')
+        ->and($url)->not->toContain('verification/q/')
+        ->and($url)->not->toContain('X-Amz-')
+        ->and($signer->isValid($caseId->value, $documentId->value, (string) $query['expires'], (string) $query['signature'], new DateTimeImmutable('now', new DateTimeZone('UTC'))))->toBeTrue()
+        ->and($signer->isValid($caseId->value, $documentId->value, (string) $query['expires'], 'tampered', new DateTimeImmutable('now', new DateTimeZone('UTC'))))->toBeFalse()
+        ->and($signer->isValid($caseId->value, $documentId->value, (string) $query['expires'], (string) $query['signature'], $expires->modify('+1 second')))->toBeFalse();
 });
 
 it('denies unknown case types, requirements, and reason codes', function () {

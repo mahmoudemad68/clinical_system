@@ -24,6 +24,7 @@ final readonly class VerificationDocumentRecord
         public DateTimeImmutable $uploadedAt,
         public DateTimeImmutable $createdAt,
         public DateTimeImmutable $updatedAt,
+        public ?Identifier $uploadIntentId = null,
     ) {}
 
     public function isReviewable(): bool

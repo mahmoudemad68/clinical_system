@@ -1,0 +1,22 @@
+{
+    "name": "clinic/admin",
+    "description": "Clinic Admin module",
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Admin\\": "app/",
+            "Modules\\Admin\\Database\\Factories\\": "database/factories/",
+            "Modules\\Admin\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Admin\\Tests\\": "tests/"
+        }
+    }
+}

@@ -21,6 +21,7 @@ final class PlatformMetrics
         'check', 'queue', 'error_class', 'connection', 'rule', 'le',
         'result', 'actor_class', 'purpose', 'client_class', 'action_group',
         'reason_code', 'assurance_level', 'detected_type', 'requirement_code',
+        'case_type', 'decision',
     ];
 
     /** @var list<string> */
@@ -29,6 +30,7 @@ final class PlatformMetrics
     /** @var list<string> */
     private const FORBIDDEN_LABELS = [
         'patient_id', 'doctor_id', 'appointment_id', 'prescription_id', 'file_id', 'user_id',
+        'case_id', 'document_id',
     ];
 
     /** @var array<string, array{help: string, type: string, samples: array<string, array{labels: array<string, string>, value: float}>}> */
@@ -195,6 +197,11 @@ final class PlatformMetrics
         ];
         $this->families['clinic_secure_file_results_total'] = [
             'help' => 'Secure-file pipeline results by bounded result, detected type, and requirement code',
+            'type' => 'counter',
+            'samples' => [],
+        ];
+        $this->families['clinic_verification_review_results_total'] = [
+            'help' => 'Verification review outcomes by bounded result, case type, reason, and decision',
             'type' => 'counter',
             'samples' => [],
         ];

@@ -465,8 +465,14 @@ Registered on `PlatformMetrics`. Call sites inspected 2026-08-28.
 | --- | --- | --- | --- | --- |
 | `clinic_secure_file_results_total` | counter | `result` (bounded reason/outcome), `detected_type` (MIME or `unknown`), `requirement_code` (allowlisted) | `VerificationUploadProcessor` | No. IDs, locators, hashes, and scanner payloads are forbidden labels |
 
+### Phase 02 verification-review families
+
+| Family | Type | Labels / values actually emitted | Callers | Personal/sensitive values? |
+| --- | --- | --- | --- | --- |
+| `clinic_verification_review_results_total` | counter | `result`, `case_type`, `reason_code`, optional `decision` | `VerificationService`, `VerificationDocumentService` | No. `user_id`, `doctor_id`, `case_id`, and `document_id` are forbidden labels |
+
 **No metric may be labelled** with a patient, doctor, appointment, file,
-prescription, user, or free-text value. `Classification::allowedAsMetricLabel()`
+prescription, user, case, document, or free-text value. `Classification::allowedAsMetricLabel()`
 encodes the rule; `PlatformMetrics::assertLabels()` enforces the allowlist.
 
 ## Caches
@@ -838,7 +844,12 @@ SELECT only.
 
 **PII / sensitive.** This table is the case workflow record for professional
 identity verification. It does not store National ID, syndicate numbers, or
-document bytes. HTTP applicant projections are own-case only.
+document bytes. HTTP applicant projections are own-case only. Privileged
+Admin review HTTP (`GET /api/v1/admin/verification-cases`) reads cases only
+through `VerificationService`; Admin never queries this table. The reviewer
+queue is a keyset over `(case_type, status, submitted_at, id)` using
+`verification_cases_reviewer_queue_keyset_index` (forward migration
+`2026_09_20_120000_add_verification_cases_reviewer_queue_keyset_index.php`).
 
 **Retention / deletion.** Engineering default: retain with the applicant
 history. Legal retention: **OPEN_LEGAL_DECISION**. Subject erasure of the
@@ -863,7 +874,17 @@ Foundation metadata/reference only. `object_id` is an opaque UUIDv7, never a
 storage key. A row cannot be `available` unless `scan_status` is `clean`
 (database CHECK plus service). Clients cannot mark a document scanned or
 available over HTTP in this slice; only a trusted in-process registrar writes
-rows. Object keys, signed URLs, and file bytes are out of scope.
+rows. Object keys and file bytes never appear on public DTOs. Assigned
+reviewers may receive SHA-256 plus MIME/size metadata after claim. Short-lived
+signed GET URLs for `AVAILABLE`+`CLEAN` canonical objects are issued at
+runtime by `VerificationDocumentService::issueReviewerReadGrant` as
+**application-owned** HMAC URLs (`GET /api/v1/verification-review-files/{case_id}/{document_id}`).
+They are **never** direct S3/MinIO presigned URLs and **never persisted** in
+PostgreSQL, audit metadata, idempotency replay, events, logs, or metrics.
+The signed URL is bearer-style until `expires_at` (ENGINEERING_DEFAULT 120
+seconds; hard-capped at 300). Canonical locators are resolved server-side
+on GET via `trustedRef()`; ingress locators are never used for reviewer
+reads and never appear in reviewer HTTP.
 
 **Writer.** Verification module via `clinic_app`. `clinic_worker` has
 `SELECT, INSERT` so the trusted processor can persist AVAILABLE metadata;
@@ -954,6 +975,21 @@ client. `notes_ciphertext` is never returned to applicants or placed in events.
 | `reviewer_assurance_level` | internal | Copied from actor; privileged review requires AAL2 | app | as row | at rest | Mahmoud | n/a |
 | `notes_ciphertext` | sensitive | Optional reviewer notes; never in events or applicant DTOs | app (audited decrypt later) | as row | envelope | Mahmoud | owner_approved_2026-08-27 |
 | `created_at` | internal | Append time | app | as row | at rest | Mahmoud | n/a |
+
+### Admin verification review HTTP (ephemeral)
+
+Phase 02 chunk 05. Not tables. Privileged Admin cookie + CSRF + AAL2 +
+`verification.case.review`. Admin module maps transport only.
+
+| Holding | Class | Purpose | Persisted? |
+| --- | --- | --- | --- |
+| Queue/case professional projection | personal | Display name, specialty labels, doctor id, verification/public status | No; assembled from `DoctorReviewerService` |
+| Reviewer document metadata | sensitive | Assignment-gated AVAILABLE+CLEAN SHA-256, MIME, size | No; read from Verification then discarded |
+| Signed reviewer GET URL | sensitive | Bearer-style canonical object grant; TTL ENGINEERING_DEFAULT 120s (cap 300s) | **Never.** Not in DB, audit, events, logs, metrics, or idempotency replay |
+| Reviewer notes plaintext | sensitive | Optional decision notes | Only as `verification_decisions.notes_ciphertext`; never HTTP/events/logs |
+
+Applicant `GET /doctors/me/verification-status` continues to expose only the
+safe decision/reason, never notes or document URLs.
 
 ### `auth_refresh_consumptions`
 

@@ -13,3 +13,4 @@ require_once __DIR__.'/Support/patientHttpHelpers.php';
 require_once __DIR__.'/Support/doctorHttpHelpers.php';
 require_once __DIR__.'/Support/verificationHttpHelpers.php';
 require_once __DIR__.'/Support/verificationMediaFixtures.php';
+require_once __DIR__.'/Support/adminVerificationHttpHelpers.php';

@@ -13,7 +13,9 @@ use Modules\Audit\Contracts\AppendAuditEvent;
 use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Doctors\Enums\DoctorVerificationStatus;
 use Modules\Doctors\Services\DoctorApplicantService;
+use Modules\Doctors\Services\DoctorReviewerService;
 use Modules\Doctors\Support\DoctorApplicantProjection;
+use Modules\Doctors\Support\DoctorReviewerProjection;
 use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
@@ -28,6 +30,7 @@ use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\StateConflict;
 use Modules\Platform\Exceptions\VersionConflict;
 use Modules\Platform\Services\Persistence\BinaryColumn;
+use Modules\Platform\Services\Telemetry\PlatformMetrics;
 use Modules\Platform\Support\Identifier;
 use Modules\Verification\Enums\ApplicantType;
 use Modules\Verification\Enums\VerificationCaseStatus;
@@ -38,6 +41,9 @@ use Modules\Verification\Events\DoctorVerificationSubmitted;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
 use Modules\Verification\Support\ApplicantCaseProjection;
 use Modules\Verification\Support\ReviewerCaseProjection;
+use Modules\Verification\Support\ReviewerQueueFilters;
+use Modules\Verification\Support\ReviewerQueueItemProjection;
+use Modules\Verification\Support\ReviewerQueuePage;
 use Modules\Verification\Support\VerificationCaseRecord;
 use Modules\Verification\Support\VerificationDecisionRecord;
 use Modules\Verification\Support\VerificationPolicy;
@@ -53,6 +59,7 @@ final class VerificationService
         private readonly TransactionRunner $transactions,
         private readonly PostgresVerificationStore $store,
         private readonly DoctorApplicantService $doctors,
+        private readonly DoctorReviewerService $reviewers,
         private readonly VerificationPolicy $policy,
         private readonly Authorize $authorize,
         private readonly AppendAuditEvent $audit,
@@ -60,6 +67,7 @@ final class VerificationService
         private readonly FieldEncryptor $encryptor,
         private readonly IdentityGenerator $ids,
         private readonly Clock $clock,
+        private readonly PlatformMetrics $metrics,
     ) {}
 
     public function openDoctorCase(ActorContext $actor): ApplicantCaseProjection
@@ -249,11 +257,14 @@ final class VerificationService
             $this->store->lockCase($caseId);
             $case = $this->requirePendingCase($caseId);
             $this->assertNotSelfReview($reviewer, $case);
+            if ($case->assignedReviewerId instanceof Identifier && $case->assignedReviewerId->equals($reviewer->userId)) {
+                return $this->reviewerProjection($reviewer, $case);
+            }
+            if ($case->assignedReviewerId instanceof Identifier) {
+                throw new StateConflict;
+            }
             if ($case->version !== $expectedVersion) {
                 throw new VersionConflict;
-            }
-            if ($case->assignedReviewerId instanceof Identifier && ! $case->assignedReviewerId->equals($reviewer->userId)) {
-                throw new StateConflict;
             }
 
             $now = $this->clock->now();
@@ -279,6 +290,7 @@ final class VerificationService
 
             $fresh = $this->store->findCaseById($case->id, false);
             assert($fresh instanceof VerificationCaseRecord);
+            $this->countReview('claimed', $fresh->caseType->value, 'claimed');
 
             return $this->reviewerProjection($reviewer, $fresh);
         });
@@ -431,8 +443,89 @@ final class VerificationService
             assert($fresh instanceof VerificationCaseRecord);
             $recorded = $this->store->findDecisionByCaseId($case->id);
             assert($recorded instanceof VerificationDecisionRecord);
+            $this->countReview('recorded', $fresh->caseType->value, $reasonCode, $decision->value);
 
             return $this->reviewerProjection($reviewer, $fresh, $recorded);
+        });
+    }
+
+    /**
+     * @param  array{submitted_at: string, case_id: string}|null  $after
+     */
+    public function listReviewQueue(ActorContext $reviewer, ReviewerQueueFilters $filters, ?array $after): ReviewerQueuePage
+    {
+        $this->assertPrivilegedReviewer($reviewer, $reviewer->userId, 'verification_review_queue');
+        if ($filters->limit > $this->policy->queueMaxLimit()) {
+            throw new InvalidValueObject('Queue page size is not allowed.');
+        }
+
+        return $this->transactions->run(function (TransactionContext $tx) use ($reviewer, $filters, $after): ReviewerQueuePage {
+            $rows = $this->store->listReviewerQueue(
+                $filters->caseType,
+                $filters->status,
+                $filters->assignment,
+                $reviewer->userId,
+                $after,
+                $filters->limit + 1,
+            );
+            $hasMore = count($rows) > $filters->limit;
+            if ($hasMore) {
+                $rows = array_slice($rows, 0, $filters->limit);
+            }
+
+            $doctorIds = [];
+            foreach ($rows as $row) {
+                $doctorIds[] = $row->applicantId;
+            }
+            $doctors = $this->reviewers->findByIds($doctorIds);
+
+            $items = [];
+            foreach ($rows as $row) {
+                $doctor = $doctors[$row->applicantId->value] ?? null;
+                if (! $doctor instanceof DoctorReviewerProjection) {
+                    continue;
+                }
+                $assignedToMe = $row->assignedReviewerId instanceof Identifier
+                    && $row->assignedReviewerId->equals($reviewer->userId);
+                $items[] = new ReviewerQueueItemProjection(
+                    $row->id->value,
+                    $row->caseType->value,
+                    $row->status->value,
+                    $row->version,
+                    $this->isoOrNull($row->submittedAt),
+                    $this->assignmentFor($reviewer, $row),
+                    $assignedToMe,
+                    $doctor,
+                );
+            }
+
+            $next = null;
+            if ($hasMore && $items !== []) {
+                $tail = $items[array_key_last($items)];
+                if ($tail->submittedAt !== null) {
+                    $next = [
+                        'submitted_at' => $tail->submittedAt,
+                        'case_id' => $tail->caseId,
+                    ];
+                }
+            }
+
+            $this->audit->append(
+                $tx,
+                'verification.review_queue_listed',
+                'verification_review_queue',
+                $reviewer->userId,
+                [
+                    'reason_code' => 'review_queue',
+                    'assignment' => $filters->assignment,
+                    'case_type' => $filters->caseType->value,
+                    'status' => $filters->status->value,
+                ],
+                $reviewer->userId,
+                'user',
+            );
+
+            return new ReviewerQueuePage($items, $hasMore, $next, $filters->limit);
         });
     }
 
@@ -445,7 +538,23 @@ final class VerificationService
         }
         $this->assertNotSelfReview($reviewer, $case);
 
-        return $this->reviewerProjection($reviewer, $case);
+        return $this->transactions->run(function (TransactionContext $tx) use ($reviewer, $case): ReviewerCaseProjection {
+            $projection = $this->reviewerProjection($reviewer, $case);
+            $this->audit->append(
+                $tx,
+                'verification.case_viewed',
+                'verification_case',
+                $case->id,
+                [
+                    'reason_code' => 'reviewer_read',
+                    'assigned_to_me' => $projection->assignedToMe,
+                ],
+                $reviewer->userId,
+                'user',
+            );
+
+            return $projection;
+        });
     }
 
     private function assertKnownDoctorCaseType(): void
@@ -462,7 +571,7 @@ final class VerificationService
         }
     }
 
-    private function assertPrivilegedReviewer(ActorContext $reviewer, Identifier $objectId): void
+    private function assertPrivilegedReviewer(ActorContext $reviewer, Identifier $objectId, string $objectType = 'verification_case'): void
     {
         $decision = $this->authorize->decide($reviewer, Capabilities::VERIFICATION_REVIEW);
         if ($decision->allowed) {
@@ -476,7 +585,7 @@ final class VerificationService
             Capabilities::VERIFICATION_REVIEW,
             $decision->reasonCode,
             $objectId,
-            'verification_case',
+            $objectType,
         );
         throw new AuthorizationDenied;
     }
@@ -611,6 +720,11 @@ final class VerificationService
             }
         }
 
+        $doctor = $this->reviewers->findById($case->applicantId);
+        if (! $doctor instanceof DoctorReviewerProjection) {
+            throw new AuthorizationDenied;
+        }
+
         return new ReviewerCaseProjection(
             $case->id->value,
             $case->caseType->value,
@@ -623,7 +737,37 @@ final class VerificationService
             $decision?->decision->value,
             $decision?->reasonCode,
             $documents,
+            $assigned,
+            $this->assignmentFor($reviewer, $case),
+            $doctor,
         );
+    }
+
+    private function assignmentFor(ActorContext $reviewer, VerificationCaseRecord $case): string
+    {
+        if (! $case->assignedReviewerId instanceof Identifier) {
+            return ReviewerQueueFilters::ASSIGNMENT_UNASSIGNED;
+        }
+
+        return $case->assignedReviewerId->equals($reviewer->userId)
+            ? ReviewerQueueFilters::ASSIGNMENT_MINE
+            : 'other';
+    }
+
+    private function countReview(string $result, string $caseType, string $reasonCode, ?string $decision = null): void
+    {
+        try {
+            $labels = [
+                'result' => $result,
+                'case_type' => $caseType,
+                'reason_code' => $reasonCode,
+            ];
+            if ($decision !== null) {
+                $labels['decision'] = $decision;
+            }
+            $this->metrics->increment('clinic_verification_review_results_total', $labels);
+        } catch (\Throwable) {
+        }
     }
 
     private function iso(DateTimeImmutable $value): string

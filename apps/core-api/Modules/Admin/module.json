@@ -1,0 +1,11 @@
+{
+    "name": "Admin",
+    "alias": "admin",
+    "description": "Clinic Admin HTTP facade for privileged workflows",
+    "keywords": [],
+    "priority": 56,
+    "providers": [
+        "Modules\\Admin\\Providers\\AdminServiceProvider"
+    ],
+    "files": []
+}

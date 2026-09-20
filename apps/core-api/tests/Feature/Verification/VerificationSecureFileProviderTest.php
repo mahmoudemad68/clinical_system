@@ -8,17 +8,10 @@ use Illuminate\Support\Facades\Http;
 use Modules\Platform\Contracts\ScanObject;
 use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Services\Adapters\ClamdScanObject;
-use Modules\Platform\Services\ObjectStorage\S3StoreObject;
 use Tests\Support\FixtureScanObject;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
-
-function verificationBindLiveObjectStore(): void
-{
-    $store = new S3StoreObject(app('filesystem')->disk('s3'));
-    app()->instance(StoreObject::class, $store);
-}
 
 it('promotes a real provider-backed upload and ignores later ingress overwrite', function () {
     $endpoint = (string) config('filesystems.disks.s3.endpoint', '');

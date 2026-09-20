@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Admin\Http\Controllers\AdminVerificationController;
 use Modules\Auth\Http\Controllers\AuthController;
 use Modules\Doctors\Http\Controllers\DoctorProfileController;
 use Modules\Patients\Http\Controllers\PatientProfileController;
@@ -10,6 +11,7 @@ use Modules\Platform\Http\Controllers\DiagnosticsController;
 use Modules\Platform\Http\Controllers\PlatformHealthController;
 use Modules\Verification\Http\Controllers\DoctorVerificationController;
 use Modules\Verification\Http\Controllers\DoctorVerificationUploadController;
+use Modules\Verification\Http\Controllers\ReviewerDocumentDownloadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,9 +19,11 @@ use Modules\Verification\Http\Controllers\DoctorVerificationUploadController;
 |--------------------------------------------------------------------------
 |
 | Every externally reachable route lives here and speaks the response
-| envelope. Operational probes (/live, /ready) are deliberately NOT here:
-| they are unversioned, unenveloped, and registered in routes/operational.php
-| so they can be excluded from the public gateway route.
+| envelope, except the purpose-bound reviewer document download which
+| streams canonical bytes. Operational probes (/live, /ready) are
+| deliberately NOT here: they are unversioned, unenveloped, and registered
+| in routes/operational.php so they can be excluded from the public
+| gateway route.
 |
 */
 
@@ -69,6 +73,9 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware('platform.idempotency')
         ->post('/auth/recovery/complete', [AuthController::class, 'recoveryComplete'])
         ->name('api.v1.auth.recovery.complete');
+
+    Route::get('/verification-review-files/{caseId}/{documentId}', [ReviewerDocumentDownloadController::class, 'show'])
+        ->name('api.v1.verification-review-files.show');
 
     Route::middleware(['identity.session', 'auth.actor', 'auth.pending'])->group(function (): void {
         Route::post('/auth/logout', [AuthController::class, 'logout'])
@@ -142,5 +149,21 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/verification-uploads/{uploadId}', [DoctorVerificationUploadController::class, 'show'])
             ->name('api.v1.verification-uploads.show');
+
+        Route::get('/admin/verification-cases', [AdminVerificationController::class, 'index'])
+            ->name('api.v1.admin.verification-cases.index');
+
+        Route::get('/admin/verification-cases/{caseId}', [AdminVerificationController::class, 'show'])
+            ->name('api.v1.admin.verification-cases.show');
+
+        Route::post('/admin/verification-cases/{caseId}/claim', [AdminVerificationController::class, 'claim'])
+            ->name('api.v1.admin.verification-cases.claim');
+
+        Route::middleware('platform.idempotency')
+            ->post('/admin/verification-cases/{caseId}/decisions', [AdminVerificationController::class, 'decide'])
+            ->name('api.v1.admin.verification-cases.decisions');
+
+        Route::post('/admin/verification-cases/{caseId}/documents/{documentId}/access', [AdminVerificationController::class, 'documentAccess'])
+            ->name('api.v1.admin.verification-cases.documents.access');
     });
 });

@@ -71,6 +71,56 @@ final class PostgresVerificationStore
         return $row instanceof stdClass ? $this->mapCase($row) : null;
     }
 
+    /**
+     * Deterministic reviewer keyset: submitted_at ASC, id ASC. Fetches $limit
+     * rows; the caller requests limit+1 to detect a following page.
+     *
+     * @param  array{submitted_at: string, case_id: string}|null  $after
+     * @return list<VerificationCaseRecord>
+     */
+    public function listReviewerQueue(
+        VerificationCaseType $caseType,
+        VerificationCaseStatus $status,
+        string $assignment,
+        Identifier $reviewerId,
+        ?array $after,
+        int $limit,
+    ): array {
+        $query = $this->connection->table('verification_cases')
+            ->where('case_type', $caseType->value)
+            ->where('status', $status->value);
+
+        if ($assignment === 'unassigned') {
+            $query->whereNull('assigned_reviewer_id');
+        } elseif ($assignment === 'mine') {
+            $query->where('assigned_reviewer_id', $reviewerId->value);
+        }
+
+        if (is_array($after)) {
+            $query->where(function ($inner) use ($after): void {
+                $inner->where('submitted_at', '>', $after['submitted_at'])
+                    ->orWhere(function ($tie) use ($after): void {
+                        $tie->where('submitted_at', '=', $after['submitted_at'])
+                            ->where('id', '>', $after['case_id']);
+                    });
+            });
+        }
+
+        $rows = $query->orderBy('submitted_at')
+            ->orderBy('id')
+            ->limit($limit)
+            ->get();
+
+        $out = [];
+        foreach ($rows as $row) {
+            if ($row instanceof stdClass) {
+                $out[] = $this->mapCase($row);
+            }
+        }
+
+        return $out;
+    }
+
     public function findLatestCase(ApplicantType $type, Identifier $applicantId, VerificationCaseType $caseType): ?VerificationCaseRecord
     {
         $row = $this->connection->table('verification_cases')
@@ -327,6 +377,10 @@ final class PostgresVerificationStore
 
     private function mapDocument(stdClass $row): VerificationDocumentRecord
     {
+        $intent = isset($row->upload_intent_id) && is_string($row->upload_intent_id) && $row->upload_intent_id !== ''
+            ? Identifier::fromTrusted($row->upload_intent_id)
+            : null;
+
         return new VerificationDocumentRecord(
             Identifier::fromTrusted((string) $row->id),
             Identifier::fromTrusted((string) $row->case_id),
@@ -340,6 +394,7 @@ final class PostgresVerificationStore
             new DateTimeImmutable((string) $row->uploaded_at),
             new DateTimeImmutable((string) $row->created_at),
             new DateTimeImmutable((string) $row->updated_at),
+            $intent,
         );
     }
 

@@ -22,6 +22,28 @@ final class PostgresSpecialtyStore
         return $row instanceof stdClass ? $this->map($row) : null;
     }
 
+    /**
+     * @param  list<string>  $ids
+     * @return array<string, SpecialtyRecord>
+     */
+    public function findByIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->connection->table('specialties')->whereIn('id', $ids)->get();
+        $out = [];
+        foreach ($rows as $row) {
+            if ($row instanceof stdClass) {
+                $mapped = $this->map($row);
+                $out[$mapped->id->value] = $mapped;
+            }
+        }
+
+        return $out;
+    }
+
     public function findActiveById(Identifier $id, bool $lock): ?SpecialtyRecord
     {
         $query = $this->connection->table('specialties')

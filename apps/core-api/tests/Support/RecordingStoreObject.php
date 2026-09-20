@@ -7,6 +7,7 @@ namespace Tests\Support;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Modules\Platform\Contracts\StoreObject;
+use Modules\Platform\Contracts\TransactionRunner;
 use Modules\Platform\Exceptions\TransientProviderFailure;
 use Modules\Platform\Support\ObjectUploadGrant;
 use Modules\Platform\Support\ObservedObject;
@@ -35,6 +36,21 @@ final class RecordingStoreObject implements StoreObject
     /** @var list<string> */
     public array $copiedLocators = [];
 
+    /** @var list<StoredObjectRef> */
+    public array $temporaryUrlRefs = [];
+
+    /** @var list<StoredObjectRef> */
+    public array $openStreamRefs = [];
+
+    /** @var list<StoredObjectRef> */
+    public array $observeRefs = [];
+
+    public int $observeWhileTransactionOpen = 0;
+
+    public ?int $truncateOpenStreamAfterBytes = null;
+
+    public bool $openStreamReadReturnsFalse = false;
+
     public int $deleteAttempts = 0;
 
     public int $failNextDeletes = 0;
@@ -53,6 +69,8 @@ final class RecordingStoreObject implements StoreObject
 
     public function temporaryUrl(StoredObjectRef $ref, DateTimeImmutable $expiresAt): string
     {
+        $this->temporaryUrlRefs[] = $ref;
+
         return $this->inner->temporaryUrl($ref, $expiresAt);
     }
 
@@ -132,6 +150,11 @@ final class RecordingStoreObject implements StoreObject
 
     public function observe(StoredObjectRef $ref, int $maxBytes): ObservedObject
     {
+        $this->observeRefs[] = $ref;
+        if (app(TransactionRunner::class)->inTransaction()) {
+            $this->observeWhileTransactionOpen++;
+        }
+
         return $this->inner->observe($ref, $maxBytes);
     }
 
@@ -140,7 +163,17 @@ final class RecordingStoreObject implements StoreObject
      */
     public function openStream(StoredObjectRef $ref)
     {
-        return $this->inner->openStream($ref);
+        $this->openStreamRefs[] = $ref;
+        $stream = $this->inner->openStream($ref);
+        if ($this->truncateOpenStreamAfterBytes === null) {
+            return $stream;
+        }
+
+        return ClinicTruncatingReadStreamWrapper::wrap(
+            $stream,
+            $this->truncateOpenStreamAfterBytes,
+            $this->openStreamReadReturnsFalse,
+        );
     }
 
     public function deleteIfPresent(StoredObjectRef $ref): void

@@ -13,6 +13,7 @@ use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\ScanObject;
 use Modules\Platform\Contracts\StoreObject;
+use Modules\Platform\Services\ObjectStorage\S3StoreObject;
 use Modules\Platform\Support\Identifier;
 use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Services\VerificationDocumentService;
@@ -306,4 +307,10 @@ function clinicSkipUnlessTcp(TestCase $test, string $host, int $port, string $fl
     }
 
     $test->markTestSkipped($label.' is not reachable.');
+}
+
+function verificationBindLiveObjectStore(): void
+{
+    $store = new S3StoreObject(app('filesystem')->disk('s3'));
+    app()->instance(StoreObject::class, $store);
 }

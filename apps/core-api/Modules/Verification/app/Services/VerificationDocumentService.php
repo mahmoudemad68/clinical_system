@@ -14,16 +14,23 @@ use Modules\Doctors\Support\DoctorApplicantProjection;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
 use Modules\Platform\Exceptions\AuthorizationDenied;
 use Modules\Platform\Exceptions\DuplicateIdentity;
 use Modules\Platform\Exceptions\InvalidValueObject;
 use Modules\Platform\Exceptions\StateConflict;
+use Modules\Platform\Services\Telemetry\PlatformMetrics;
 use Modules\Platform\Support\Identifier;
+use Modules\Platform\Support\ObservedObject;
+use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Enums\VerificationCaseStatus;
+use Modules\Verification\Enums\VerificationUploadState;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
 use Modules\Verification\Support\DocumentMetadataProjection;
+use Modules\Verification\Support\ReviewerDocumentAccessGrant;
+use Modules\Verification\Support\ReviewerDocumentStream;
 use Modules\Verification\Support\TrustedDocumentEvidence;
 use Modules\Verification\Support\VerificationCaseRecord;
 use Modules\Verification\Support\VerificationDocumentRecord;
@@ -48,6 +55,9 @@ final class VerificationDocumentService
         private readonly IdentityGenerator $ids,
         private readonly Clock $clock,
         private readonly AppendAuditEvent $audit,
+        private readonly StoreObject $objects,
+        private readonly ReviewerDocumentUrlSigner $urls,
+        private readonly PlatformMetrics $metrics,
     ) {}
 
     public function registerValidatedMetadata(TrustedDocumentEvidence $evidence): DocumentMetadataProjection
@@ -201,6 +211,231 @@ final class VerificationDocumentService
 
             return $this->project($row);
         });
+    }
+
+    public function issueReviewerReadGrant(
+        ActorContext $reviewer,
+        Identifier $caseId,
+        Identifier $documentId,
+    ): ReviewerDocumentAccessGrant {
+        $this->assertPrivilegedReviewer($reviewer, $documentId);
+
+        $grant = $this->transactions->run(function (TransactionContext $tx) use ($reviewer, $caseId, $documentId): ReviewerDocumentAccessGrant {
+            $this->store->lockCase($caseId);
+            $case = $this->store->findCaseById($caseId, true);
+            if (! $case instanceof VerificationCaseRecord) {
+                throw new AuthorizationDenied;
+            }
+            if ($case->status !== VerificationCaseStatus::PendingReview) {
+                throw new AuthorizationDenied;
+            }
+
+            $this->assertNotSelfReview($reviewer, $case);
+            $this->assertAssignedReviewer($reviewer, $case);
+
+            $target = $this->canonicalReviewTarget($case, $documentId);
+
+            $ttl = $this->policy->reviewerDocumentAccessTtlSeconds();
+            if ($ttl < 1 || $ttl > 300) {
+                throw new InvalidValueObject('Reviewer document access TTL is not allowed.');
+            }
+
+            $expiresAt = $this->clock->now()->modify('+'.$ttl.' seconds');
+            $url = $this->urls->sign($caseId, $documentId, $expiresAt);
+
+            $this->audit->append(
+                $tx,
+                'verification.document_access_granted',
+                'verification_case',
+                $caseId,
+                [
+                    'reason_code' => 'verification_review_access',
+                    'document_id' => $target['document']->id->value,
+                    'requirement_code' => $target['document']->requirementCode,
+                    'assurance_level' => $reviewer->assuranceLevel->value,
+                ],
+                $reviewer->userId,
+                'user',
+            );
+
+            return new ReviewerDocumentAccessGrant(
+                $target['document']->id->value,
+                $url,
+                $expiresAt->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z'),
+                $target['document']->detectedMime,
+                $target['document']->sizeBytes,
+            );
+        });
+
+        try {
+            $this->metrics->increment('clinic_verification_review_results_total', [
+                'result' => 'granted',
+                'case_type' => 'doctor_verification',
+                'reason_code' => 'verification_review_access',
+            ]);
+        } catch (\Throwable) {
+        }
+
+        return $grant;
+    }
+
+    public function openReviewerDownload(
+        string $caseId,
+        string $documentId,
+        string $expires,
+        string $signature,
+    ): ReviewerDocumentStream {
+        if (! $this->urls->isValid($caseId, $documentId, $expires, $signature, $this->clock->now())) {
+            throw new AuthorizationDenied;
+        }
+
+        try {
+            $caseIdentifier = Identifier::fromString($caseId);
+            $documentIdentifier = Identifier::fromString($documentId);
+        } catch (InvalidValueObject) {
+            throw new AuthorizationDenied;
+        }
+
+        $prepared = $this->resolveCanonicalDownloadTarget($caseIdentifier, $documentIdentifier);
+        $expectedSize = $prepared['document']->sizeBytes;
+        $expectedSha = $prepared['document']->sha256;
+        $ref = $prepared['ref'];
+        $recordedVersion = $prepared['object_version'];
+
+        try {
+            $observed = $this->objects->observe($ref, $this->policy->maxDocumentBytes());
+        } catch (\Throwable) {
+            $this->countDownloadResult('provider_read_failure');
+            throw new AuthorizationDenied;
+        }
+
+        if (! $this->canonicalObservationMatches($observed, $expectedSize, $expectedSha, $recordedVersion)) {
+            $this->countDownloadResult('integrity_mismatch');
+            throw new AuthorizationDenied;
+        }
+
+        $confirmed = $this->resolveCanonicalDownloadTarget($caseIdentifier, $documentIdentifier);
+        if ($confirmed['ref']->key() !== $ref->key()
+            || $confirmed['document']->sizeBytes !== $expectedSize
+            || ! hash_equals($confirmed['document']->sha256, $expectedSha)) {
+            $this->countDownloadResult('integrity_mismatch');
+            throw new AuthorizationDenied;
+        }
+
+        try {
+            $stream = $this->objects->openStream($ref);
+        } catch (\Throwable) {
+            $this->countDownloadResult('provider_read_failure');
+            throw new AuthorizationDenied;
+        }
+        if (! is_resource($stream)) {
+            $this->countDownloadResult('provider_read_failure');
+            throw new AuthorizationDenied;
+        }
+
+        return new ReviewerDocumentStream(
+            $stream,
+            $confirmed['document']->detectedMime,
+            $this->policy->reviewerDownloadFilename($confirmed['document']->detectedMime),
+            $expectedSize,
+            $this->policy->reviewerDownloadChunkBytes(),
+        );
+    }
+
+    /**
+     * @return array{document: VerificationDocumentRecord, ref: StoredObjectRef, object_version: ?string}
+     */
+    private function resolveCanonicalDownloadTarget(Identifier $caseId, Identifier $documentId): array
+    {
+        return $this->transactions->run(function () use ($caseId, $documentId): array {
+            $this->store->lockCase($caseId);
+            $case = $this->store->findCaseById($caseId, true);
+            if (! $case instanceof VerificationCaseRecord) {
+                throw new AuthorizationDenied;
+            }
+            if ($case->status !== VerificationCaseStatus::PendingReview) {
+                throw new AuthorizationDenied;
+            }
+
+            return $this->canonicalReviewTarget($case, $documentId);
+        });
+    }
+
+    /**
+     * @return array{document: VerificationDocumentRecord, ref: StoredObjectRef, object_version: ?string}
+     */
+    private function canonicalReviewTarget(VerificationCaseRecord $case, Identifier $documentId): array
+    {
+        $row = $this->store->findDocumentById($documentId);
+        if (! $row instanceof VerificationDocumentRecord || ! $row->caseId->equals($case->id)) {
+            throw new AuthorizationDenied;
+        }
+        if (! $row->isReviewable() || ! $row->uploadIntentId instanceof Identifier) {
+            throw new AuthorizationDenied;
+        }
+        if ($row->sizeBytes < 1 || $row->sizeBytes > $this->policy->maxDocumentBytes()) {
+            throw new AuthorizationDenied;
+        }
+        if (! $this->policy->isAllowedMime($row->detectedMime)) {
+            throw new AuthorizationDenied;
+        }
+
+        $upload = $this->store->findUploadById($row->uploadIntentId, true);
+        if (! $upload instanceof VerificationUploadIntentRecord) {
+            throw new AuthorizationDenied;
+        }
+        if (! $upload->caseId->equals($case->id) || $upload->state !== VerificationUploadState::Available) {
+            throw new AuthorizationDenied;
+        }
+
+        $canonical = $upload->canonicalRef();
+        if (! $canonical instanceof StoredObjectRef) {
+            throw new AuthorizationDenied;
+        }
+
+        $trusted = $upload->trustedRef();
+        if ($trusted->key() !== $canonical->key()) {
+            throw new AuthorizationDenied;
+        }
+
+        return [
+            'document' => $row,
+            'ref' => $trusted,
+            'object_version' => $upload->objectVersion,
+        ];
+    }
+
+    private function canonicalObservationMatches(
+        ObservedObject $observed,
+        int $expectedSize,
+        string $expectedSha,
+        ?string $recordedVersion,
+    ): bool {
+        if (! $observed->exists || $observed->sizeBytes !== $expectedSize) {
+            return false;
+        }
+        if ($expectedSha === '' || ! hash_equals($expectedSha, $observed->sha256)) {
+            return false;
+        }
+        if ($recordedVersion !== null && $recordedVersion !== '' && $observed->objectVersion !== '') {
+            if (! hash_equals($recordedVersion, $observed->objectVersion)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function countDownloadResult(string $result): void
+    {
+        try {
+            $this->metrics->increment('clinic_verification_review_results_total', [
+                'result' => $result,
+                'case_type' => 'doctor_verification',
+                'reason_code' => 'verification_review_download',
+            ]);
+        } catch (\Throwable) {
+        }
     }
 
     private function assertPrivilegedReviewer(ActorContext $reviewer, Identifier $objectId): void
