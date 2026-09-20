@@ -187,6 +187,14 @@ are absent from queue/detail HTML. Feature code cannot call raw `fetch`
   (`admin_web` cookie session, `/me` allowed, no `verification.case.review`).
   A `password_must_change` admin cannot bootstrap `/me` (existing
   DenyPendingBusinessAccess 404) and is not used for the unauthorized panel.
+  The `/api` proxy restores RFC `Cookie` casing from `rawHeaders` and sets
+  `Host` to the Laravel listener. PHP's built-in server matches `Cookie`
+  case-sensitively; Node's `IncomingMessage.headers` is lowercase. The Admin
+  web job uses `tests/e2e/php-built-in-router.php` so `$_COOKIE` is hydrated
+  from `getallheaders()` before Laravel boots. Cookie API auth is HMAC-primary
+  (`cookie:{laravelSessionId}`); `login_web_*` is not required. If Laravel
+  rotates the session id while the web guard still has a user, the latest
+  admin cookie row is rebound once.
 - Seeder command `e2e:seed-admin-verification` is local/testing only and
   writes credentials under `/tmp`.
 

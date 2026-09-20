@@ -517,7 +517,7 @@ jobs:
           # step would otherwise be replaced by .env.example defaults.
           (
             cd apps/core-api/public
-            php -S 127.0.0.1:8080 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
+            php -S 127.0.0.1:8080 -d variables_order=EGPCS ../../tests/e2e/php-built-in-router.php
           ) > /tmp/clinic-e2e-laravel.log 2>&1 &
           node tests/e2e/admin-web-server.mjs > /tmp/clinic-e2e-preview.log 2>&1 &
           for i in $(seq 1 40); do

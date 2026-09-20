@@ -52,14 +52,47 @@ function safeStaticPath(urlPath) {
   return join(distRoot, 'index.html');
 }
 
+function apiHostHeader() {
+  const port = api.port === '' ? (api.protocol === 'https:' ? '443' : '80') : api.port;
+
+  return `${api.hostname}:${port}`;
+}
+
+/**
+ * PHP's built-in server matches the Cookie header name case-sensitively
+ * (`Cookie`, not `cookie`). Node lowercases IncomingMessage.headers, so the
+ * proxy must restore RFC Cookie casing from rawHeaders and set Host to the
+ * Laravel listener — not the Admin preview origin.
+ */
 function incomingHeaders(req) {
   const headers = {};
-  for (const [name, value] of Object.entries(req.headers)) {
-    if (hopByHop.has(name.toLowerCase()) || value === undefined) {
+  const cookies = [];
+  const raw = req.rawHeaders ?? [];
+
+  for (let i = 0; i < raw.length; i += 2) {
+    const name = raw[i];
+    const value = raw[i + 1];
+    const lower = name.toLowerCase();
+    if (hopByHop.has(lower) || lower === 'host' || value === undefined) {
       continue;
     }
-    headers[name] = value;
+    if (lower === 'cookie') {
+      cookies.push(value);
+      continue;
+    }
+    const existing = Object.keys(headers).find((key) => key.toLowerCase() === lower);
+    if (existing === undefined) {
+      headers[name] = value;
+      continue;
+    }
+    const current = headers[existing];
+    headers[existing] = Array.isArray(current) ? [...current, value] : [current, value];
   }
+
+  if (cookies.length > 0) {
+    headers.Cookie = cookies.join('; ');
+  }
+  headers.Host = apiHostHeader();
 
   return headers;
 }
