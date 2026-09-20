@@ -31,6 +31,7 @@ gates.
 
 - **Branch:** `cursor/phase-02-pharmacy-organization-foundation-cc7f`
 - **Base (GitHub `main` after merged PR #12):** `832ae591ba2a982d18c61552de3c7e3b9f6741eb`
+- **Local candidate HEAD:** `504c2d12e14a54ef841518b16b4f3dacb0b4b32c`
 - **Recorded:** 2026-09-20
 - **Environment:** host PHP 8.3.6 with `pdo_pgsql`, apt PostgreSQL 16,
   `postgresql-16-postgis-3` 3.4.2, database `clinic_test`, role
