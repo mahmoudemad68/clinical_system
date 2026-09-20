@@ -190,7 +190,9 @@ are absent from queue/detail HTML. Feature code cannot call raw `fetch`
   The `/api` proxy restores RFC `Cookie` casing from `rawHeaders` and sets
   `Host` to the Laravel listener. PHP's built-in server matches `Cookie`
   case-sensitively; Node's `IncomingMessage.headers` is lowercase. The Admin
-  web job uses `tests/e2e/php-built-in-router.php` so `$_COOKIE` is hydrated
+  web job invokes `${GITHUB_WORKSPACE}/tests/e2e/php-built-in-router.php`
+  with cwd `apps/core-api/public` (a `../../tests/...` relative path from
+  public/ would resolve under `apps/`, not the repo root) so `$_COOKIE` is hydrated
   from `getallheaders()` before Laravel boots. Cookie API auth is HMAC-primary
   (`cookie:{laravelSessionId}`); `login_web_*` is not required. If Laravel
   rotates the session id while the web guard still has a user, the latest

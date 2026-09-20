@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 /**
- * php -S router for Admin browser E2E.
+ * php -S router for Admin browser E2E. Invoke with an absolute path while
+ * the process cwd is `apps/core-api/public` so Laravel's public/index.php
+ * remains getcwd(). Do not use `../../tests/e2e/...` from public/: that
+ * resolves under `apps/`, not the repository root.
  *
  * PHP's built-in server historically treats the Cookie header name as
  * case-sensitive and may leave $_COOKIE empty even when the header is
