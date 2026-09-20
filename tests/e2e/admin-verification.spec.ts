@@ -114,9 +114,10 @@ test.describe('admin verification review', () => {
     const claimPayload = (await claimResponse.json().catch(() => null)) as {
       errors?: { code?: string }[];
     } | null;
+    const cookieNames = (await page.context().cookies()).map((cookie) => cookie.name).sort().join(',');
     expect(
       claimResponse.ok(),
-      `claim HTTP ${String(claimResponse.status())} code=${claimPayload?.errors?.[0]?.code ?? 'unknown'} cookie=${claimHeaders.cookie ? '1' : '0'} xsrf=${claimHeaders['x-xsrf-token'] ? '1' : '0'} authorization=${claimHeaders.authorization ? '1' : '0'}`,
+      `claim HTTP ${String(claimResponse.status())} code=${claimPayload?.errors?.[0]?.code ?? 'unknown'} cookie=${claimHeaders.cookie ? '1' : '0'} xsrf=${claimHeaders['x-xsrf-token'] ? '1' : '0'} authorization=${claimHeaders.authorization ? '1' : '0'} names=${cookieNames}`,
     ).toBeTruthy();
     const viewButton = page.getByRole('button', { name: /View \/ download document|عرض \/ تنزيل المستند/ });
     await expect(viewButton).toBeVisible({ timeout: 20_000 });

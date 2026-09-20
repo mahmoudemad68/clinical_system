@@ -73,6 +73,19 @@ function setCookieCount(proxyRes) {
   return typeof cookies === 'string' && cookies !== '' ? 1 : 0;
 }
 
+function cookieNames(header) {
+  if (typeof header !== 'string' || header === '') {
+    return '-';
+  }
+
+  return header
+    .split(';')
+    .map((part) => part.split('=')[0]?.trim() ?? '')
+    .filter((name) => name !== '')
+    .sort()
+    .join(',');
+}
+
 function writeProxyHead(proxyRes, res) {
   for (const [name, value] of Object.entries(proxyRes.headers)) {
     const lower = name.toLowerCase();
@@ -96,8 +109,9 @@ function proxyApi(req, res) {
     },
     (proxyRes) => {
       const status = proxyRes.statusCode ?? 502;
+      const authorization = typeof req.headers.authorization === 'string' && req.headers.authorization !== '';
       process.stderr.write(
-        `${req.method ?? 'GET'} ${req.url ?? ''} cookie=${hasCookie ? '1' : '0'} set-cookie=${String(setCookieCount(proxyRes))} -> ${String(status)}\n`,
+        `${req.method ?? 'GET'} ${req.url ?? ''} cookie=${hasCookie ? '1' : '0'} names=${cookieNames(req.headers.cookie)} auth=${authorization ? '1' : '0'} xsrf=${req.headers['x-xsrf-token'] ? '1' : '0'} set-cookie=${String(setCookieCount(proxyRes))} -> ${String(status)}\n`,
       );
       try {
         writeProxyHead(proxyRes, res);

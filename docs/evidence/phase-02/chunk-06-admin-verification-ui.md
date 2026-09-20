@@ -181,7 +181,9 @@ are absent from queue/detail HTML. Feature code cannot call raw `fetch`
   `writeHead` throws `ERR_HTTP_HEADERS_SENT` on Node 22 and killed the host;
   `tests/e2e/admin-web-server.test.mjs` locks the ordering. Empty POST bodies
   such as logout send `Content-Type: application/json` so EnforceRequestBounds
-  does not return 415. The unauthorized actor is an active secretary
+  does not return 415. The Admin web Browser job starts Laravel with `php -S`
+  so the HTTP process inherits SESSION_DRIVER/DB_* from the job environment;
+  `php artisan serve` only forwards a short env whitelist to its child. The unauthorized actor is an active secretary
   (`admin_web` cookie session, `/me` allowed, no `verification.case.review`).
   A `password_must_change` admin cannot bootstrap `/me` (existing
   DenyPendingBusinessAccess 404) and is not used for the unauthorized panel.
