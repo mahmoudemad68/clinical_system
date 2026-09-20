@@ -30,9 +30,6 @@ final readonly class ReviewerQueueFilters
         if (! in_array($assignment, [self::ASSIGNMENT_UNASSIGNED, self::ASSIGNMENT_MINE, self::ASSIGNMENT_ALL], true)) {
             throw new InvalidValueObject('Queue assignment filter is not allowed.');
         }
-        if ($caseType !== VerificationCaseType::DoctorVerification) {
-            throw new InvalidValueObject('Queue case type is not allowed.');
-        }
         if ($status !== VerificationCaseStatus::PendingReview) {
             throw new InvalidValueObject('Queue status filter is not allowed.');
         }

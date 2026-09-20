@@ -10,6 +10,8 @@ use Modules\Doctors\Support\DoctorReviewerProjection;
  * Reviewer-safe case projection. No National ID, HMAC, object keys, or
  * reviewer notes plaintext.
  *
+ * @phpstan-import-type OutcomeArray from VerificationDecisionOutcome
+ *
  * @phpstan-type DocumentArray array{
  *     document_id: string,
  *     requirement_code: string,
@@ -91,7 +93,7 @@ final readonly class ReviewerCaseProjection
     }
 
     /**
-     * @return VerificationDecisionOutcome::OutcomeArray
+     * @return OutcomeArray
      */
     public function toDecisionOutcome(): array
     {

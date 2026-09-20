@@ -170,5 +170,41 @@ and missing records are indistinguishable `404`.
 
 ## Commands actually executed
 
-Filled after local gates and GitHub `pull-request` on the final HEAD.
-This implementer revision does not claim production approval.
+Local host results on this revision. GitHub `pull-request` on the same HEAD is
+the scanner-of-record for Gitleaks, Semgrep, Trivy FS, runtime image scans,
+and live MinIO/clamd. This implementer revision does not claim production
+approval.
+
+| Gate | Result |
+| --- | --- |
+| Pint `--test` | PASS |
+| PHPStan `--memory-limit=1G` | PASS (`[OK] No errors`) |
+| Deptrac `--fail-on-uncovered` | PASS (0 violations, 0 uncovered, 2187 allowed) |
+| Focused Admin + Verification race + architecture Pest | 45 passed, 1 skipped (live MinIO grant), 2807 assertions |
+| Full Core API `./vendor/bin/pest` | **664 passed**, 18 skipped, 682 tests, 11821 assertions |
+| OpenAPI lint | valid (`core@v1`) |
+| Event schemas | **19** checked |
+| Generated TypeScript freshness | PASS (`git diff --quiet` after `contracts:generate:ts`) |
+| Breaking contracts vs `origin/main` | none |
+| AI internal schemas | 1 schema checked |
+| ISR-015 | PASS (SF-001 remains MERGE_ONLY / fail-closed) |
+| Admin web lint / typecheck / vitest / build | PASS (5 tests) |
+| Desktop typecheck + vitest | PASS (doctor 83, pharmacy 83) |
+| Shared TypeScript package tests | PASS |
+| Gitleaks / Semgrep / Trivy FS / image scans | **not run locally** — this environment has no `docker`, `gitleaks`, `semgrep`, or `trivy` binaries. GitHub `security` / `image-scan` / `secure-file-providers` jobs are required on this HEAD. |
+| Live MinIO document-access grant | **skipped locally** (`CLINIC_REQUIRE_OBJECT_STORE` unset; TCP `:9000` closed). CI `secure-file-providers` now runs `tests/Feature/Admin/AdminVerificationDocumentAccessProviderTest.php` with `CLINIC_REQUIRE_OBJECT_STORE=1`. |
+
+Core API's 18 skips: one new live-MinIO reviewer grant, plus pre-existing
+Auth Redis/Reverb/Octane/two-connection and live-provider tests that this job
+does not start. Live provider proof is the `secure-file-providers` job.
+
+Authorization matrix for this slice is the Admin HTTP Pest file
+(`unauthenticated` / patient / doctor / low-assurance / missing capability /
+CSRF / password-change-required / foreign reviewer / guessed UUID) plus
+existing Verification `reviewer decisions` tests. No separate matrix document
+exists in-repo beyond `Capabilities::PRIVILEGED_OPERATOR`.
+
+This chunk is **not** production-promotable: SF-001 remains MERGE_ONLY.
+
+Phase 02 as a whole is **not** PASS. This file does not claim production
+approval or READY_TO_MERGE.

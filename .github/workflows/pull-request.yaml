@@ -369,6 +369,7 @@ jobs:
             tests/Unit/Platform/ClamdScanObjectTest.php \
             tests/Feature/Verification/VerificationSecureFileProviderTest.php \
             tests/Feature/Verification/VerificationUploadFlowsTest.php \
+            tests/Feature/Admin/AdminVerificationDocumentAccessProviderTest.php \
             tests/Unit/Platform/BoundedDocumentInspectorTest.php \
             tests/Unit/Platform/ProviderPortContractTest.php \
             tests/Feature/Verification/VerificationPostgresPrivilegeTest.php
