@@ -385,6 +385,100 @@ describe('own pharmacy organization', function () {
     });
 });
 
+describe('pharmacy membership organization/branch integrity', function () {
+    it('creates exactly one pending owner membership with a null branch_id', function () {
+        $session = pharmaciesActiveSession('tenant-owner');
+        $this->postJson(
+            '/api/v1/pharmacy-organizations/onboarding',
+            pharmaciesOnboardingBody($session['payload']['registration'], $session['payload']['phone']),
+            pharmaciesAuth($session['token']) + pharmaciesIdem('pon-tenant-owner'),
+        )->assertCreated();
+
+        expect(DB::table('pharmacy_organizations')->count())->toBe(1)
+            ->and(DB::table('pharmacy_branches')->count())->toBe(1)
+            ->and(DB::table('pharmacy_memberships')->count())->toBe(1);
+
+        $membership = DB::table('pharmacy_memberships')->first();
+        expect($membership)->not->toBeNull()
+            ->and((string) $membership->user_id)->toBe($session['user_id'])
+            ->and((string) $membership->role)->toBe(PharmacyMembershipRole::Owner->value)
+            ->and((string) $membership->status)->toBe(PharmacyMembershipStatus::Pending->value)
+            ->and($membership->branch_id)->toBeNull()
+            ->and((string) $membership->organization_id)->toBe((string) DB::table('pharmacy_organizations')->value('id'));
+    });
+
+    it('rejects a branch_operator whose branch belongs to another organization', function () {
+        $left = pharmaciesActiveSession('tenant-a');
+        $this->postJson(
+            '/api/v1/pharmacy-organizations/onboarding',
+            pharmaciesOnboardingBody($left['payload']['registration'], $left['payload']['phone']),
+            pharmaciesAuth($left['token']) + pharmaciesIdem('pon-tenant-a'),
+        )->assertCreated();
+        $right = pharmaciesActiveSession('tenant-b');
+        $this->postJson(
+            '/api/v1/pharmacy-organizations/onboarding',
+            pharmaciesOnboardingBody($right['payload']['registration'], $right['payload']['phone']),
+            pharmaciesAuth($right['token']) + pharmaciesIdem('pon-tenant-b'),
+        )->assertCreated();
+
+        $orgA = (string) DB::table('pharmacy_memberships')->where('user_id', $left['user_id'])->value('organization_id');
+        $orgB = (string) DB::table('pharmacy_memberships')->where('user_id', $right['user_id'])->value('organization_id');
+        $branchA = (string) DB::table('pharmacy_branches')->where('organization_id', $orgA)->value('id');
+        $branchB = (string) DB::table('pharmacy_branches')->where('organization_id', $orgB)->value('id');
+
+        expect($orgA)->not->toBe($orgB)
+            ->and($branchA)->not->toBe($branchB)
+            ->and(DB::table('pharmacy_organizations')->where('id', $orgA)->exists())->toBeTrue()
+            ->and(DB::table('pharmacy_branches')->where('id', $branchB)->exists())->toBeTrue();
+
+        $composite = DB::selectOne(
+            "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = 'pharmacy_memberships_organization_branch_fk'",
+        );
+        expect($composite)->not->toBeNull()
+            ->and((string) $composite->definition)->toContain('FOREIGN KEY (organization_id, branch_id)')
+            ->and((string) $composite->definition)->toContain('REFERENCES pharmacy_branches(organization_id, id)');
+        expect(DB::selectOne(
+            "SELECT 1 AS ok FROM pg_constraint WHERE conname = 'pharmacy_memberships_branch_fk'",
+        ))->toBeNull();
+        expect(DB::selectOne(
+            "SELECT 1 AS ok FROM pg_constraint WHERE conname = 'pharmacy_branches_organization_id_id_unique'",
+        ))->not->toBeNull();
+
+        $sameOrgOperator = User::factory()->create(['account_type' => AccountType::Pharmacy->value]);
+        DB::table('pharmacy_memberships')->insert(pharmaciesMembershipRow(
+            $orgA,
+            (string) $sameOrgOperator->id,
+            $branchA,
+            PharmacyMembershipRole::BranchOperator->value,
+        ));
+        expect(DB::table('pharmacy_memberships')->where('role', PharmacyMembershipRole::BranchOperator->value)->count())->toBe(1);
+
+        $crossOrgOperator = User::factory()->create(['account_type' => AccountType::Pharmacy->value]);
+        $crossRow = pharmaciesMembershipRow(
+            $orgA,
+            (string) $crossOrgOperator->id,
+            $branchB,
+            PharmacyMembershipRole::BranchOperator->value,
+        );
+
+        $sqlState = null;
+        try {
+            DB::transaction(function () use ($crossRow): void {
+                DB::table('pharmacy_memberships')->insert($crossRow);
+            });
+        } catch (QueryException $e) {
+            $sqlState = (string) ($e->errorInfo[0] ?? '');
+        }
+
+        expect($sqlState)->toBe('23503')
+            ->and(DB::table('pharmacy_memberships')->where('id', $crossRow['id'])->exists())->toBeFalse()
+            ->and(DB::table('pharmacy_memberships')->where('role', PharmacyMembershipRole::Owner->value)->count())->toBe(2)
+            ->and(DB::table('pharmacy_memberships')->where('role', PharmacyMembershipRole::BranchOperator->value)->count())->toBe(1)
+            ->and(DB::table('pharmacy_organizations')->count())->toBe(2)
+            ->and(DB::table('pharmacy_branches')->count())->toBe(2);
+    });
+});
+
 describe('pharmacy identity uniqueness', function () {
     it('rejects a second row for the same registration blind index', function () {
         $session = pharmaciesActiveSession('uniq');

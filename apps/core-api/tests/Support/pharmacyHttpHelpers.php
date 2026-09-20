@@ -76,6 +76,37 @@ function pharmaciesIdem(string $name): array
 }
 
 /**
+ * Direct membership row for PostgreSQL tenant-integrity tests. Not an HTTP API.
+ *
+ * @return array<string, mixed>
+ */
+function pharmaciesMembershipRow(
+    string $organizationId,
+    string $userId,
+    ?string $branchId,
+    string $role,
+): array {
+    $now = now('UTC');
+
+    return [
+        'id' => app(IdentityGenerator::class)->next()->value,
+        'organization_id' => $organizationId,
+        'user_id' => $userId,
+        'branch_id' => $branchId,
+        'role' => $role,
+        'status' => 'pending',
+        'invited_at' => $now,
+        'accepted_at' => $now,
+        'revoked_at' => null,
+        'inviter_user_id' => null,
+        'revoker_user_id' => null,
+        'version' => 1,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ];
+}
+
+/**
  * @return array{token: string, payload: array<string, string>, user_id: string, totp_secret: string}
  */
 function pharmaciesActiveSession(string $key, string $status = 'active'): array

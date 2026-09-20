@@ -31,7 +31,10 @@ gates.
 
 - **Branch:** `cursor/phase-02-pharmacy-organization-foundation-cc7f`
 - **Base (GitHub `main` after merged PR #12):** `832ae591ba2a982d18c61552de3c7e3b9f6741eb`
-- **Local candidate HEAD:** `504c2d12e14a54ef841518b16b4f3dacb0b4b32c`
+- **Independently reviewed HEAD:** `4fb7ccc004fc11ee77ae6e0ff8b632113b43498b`
+- **Tenant-integrity remediation:** recorded after local verification on this
+  branch (see git log). Independent review of the composite FK remains
+  outstanding.
 - **Recorded:** 2026-09-20
 - **Environment:** host PHP 8.3.6 with `pdo_pgsql`, apt PostgreSQL 16,
   `postgresql-16-postgis-3` 3.4.2, database `clinic_test`, role
@@ -61,12 +64,16 @@ Phase-02 / Phase-10 aggregate.
   `address_ciphertext`; ISO-2 `country_code` (schema country-ready; V1 app
   requires `EG`); `phone_ciphertext`; `geography(Point, 4326)` with legal
   lat/lng CHECK and GiST; status; version; timestamps.
-- `pharmacy_memberships` — UUIDv7 id; organization FK; user FK; nullable
-  branch FK; role `owner`/`branch_operator` (only `owner` is written);
-  status; invitation/revocation timestamps; version. Unique `(organization_id, user_id)`.
-  Partial unique founding owner per user and per organization where
-  `role = owner` and `status IN ('pending','active')`. Owner rows require
-  `branch_id IS NULL`.
+- `pharmacy_memberships` — UUIDv7 id; organization FK to `pharmacy_organizations`;
+  user FK; nullable `branch_id`. Owner rows require `branch_id IS NULL`.
+  `branch_operator` rows require a non-null `branch_id` that belongs to the
+  same organization: unique candidate key `pharmacy_branches (organization_id, id)`
+  plus composite FK `pharmacy_memberships (organization_id, branch_id)`
+  `MATCH SIMPLE` (so founding-owner NULL `branch_id` remains valid). The
+  earlier single-column `pharmacy_memberships_branch_fk` is dropped as
+  redundant. Unique `(organization_id, user_id)`. Partial unique founding
+  owner per user and per organization where `role = owner` and
+  `status IN ('pending','active')`. Only `owner` is written by onboarding.
 
 Least-privilege grants match Doctors: `clinic_app` DML; worker/reporter
 revoked; backup SELECT.
@@ -153,6 +160,41 @@ still distinguish `organization_ready` from `manual_review_required`. That
 outcome oracle is the same residual already accepted for Patients National
 ID and Doctors National ID / syndicate collisions.
 
+## Organization/branch membership referential integrity
+
+Independent FKs `membership.organization_id → pharmacy_organizations.id` and
+`membership.branch_id → pharmacy_branches.id` cannot prove the branch belongs
+to that organization. PostgreSQL could store `organization_id = A` with
+`branch_id` of a branch owned by B for `role = branch_operator`.
+
+Remediation (`2026_09_20_210000_enforce_pharmacy_membership_branch_organization.php`):
+
+- Unique candidate key `pharmacy_branches_organization_id_id_unique` on
+  `pharmacy_branches (organization_id, id)`. This is required for the composite
+  FK. It does not replace the primary key on `id` or
+  `pharmacy_branches_organization_status_index (organization_id, status)`.
+- Composite FK `pharmacy_memberships_organization_branch_fk`:
+  `(organization_id, branch_id) REFERENCES pharmacy_branches (organization_id, id)
+  MATCH SIMPLE`.
+- Dropped redundant `pharmacy_memberships_branch_fk`. No extra index was added
+  on `pharmacy_memberships (organization_id, branch_id)` (Phase 02 writes only
+  owner rows with NULL `branch_id`; `(organization_id, user_id)` remains the
+  membership lookup unique).
+
+MATCH SIMPLE: a founding owner row with `branch_id IS NULL` does not have to
+match a branch. A `branch_operator` row with a non-null `branch_id` must match
+a branch of the same organization. That write is schema-valid only; this chunk
+still has no branch-operator HTTP.
+
+PostgreSQL proof (direct table writes, not an HTTP validator):
+
+- Onboarding still inserts one organization, one branch, one pending owner
+  with `branch_id IS NULL`.
+- Inserting `branch_operator` for organization A and a branch of A succeeds.
+- Inserting `branch_operator` for organization A and a branch of B is rejected
+  with SQLSTATE `23503`. Both `organization_id = A` and `branch_id` of B exist,
+  so the independent FKs would have accepted the row.
+
 ## PostGIS evidence
 
 - Extension created in the pharmacy migration (`CREATE EXTENSION IF NOT EXISTS postgis`).
@@ -200,10 +242,10 @@ ID and Doctors National ID / syndicate collisions.
 | `./vendor/bin/pint --test` | `{"tool":"pint","result":"passed"}` |
 | `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | `{"tool":"phpstan","result":"passed","errors":0}` |
 | `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | 0 violations, 0 uncovered, **2375** allowed |
-| `php artisan migrate --database=pgsql_migrator --force` | applied `2026_09_20_180000_create_pharmacy_organization_tables` |
-| `./vendor/bin/pest tests/Feature/Pharmacies tests/Unit/Pharmacies` | **20 passed** (364 assertions) |
-| `./vendor/bin/pest tests/Feature/Pharmacies tests/Unit/Pharmacies tests/Unit/Platform/ArchitectureBoundaryTest.php tests/Unit/Identity/IdentityRulesTest.php tests/Feature/Identity` | **145 passed** (4339 assertions) |
-| `./vendor/bin/pest` (full Core suite) | **704 passed**, 18 skipped, 722 tests (13783 assertions) |
+| `php artisan migrate --database=pgsql_migrator --force` | applied `2026_09_20_180000_create_pharmacy_organization_tables` then `2026_09_20_210000_enforce_pharmacy_membership_branch_organization` |
+| `./vendor/bin/pest tests/Feature/Pharmacies tests/Unit/Pharmacies` | **22 passed** (407 assertions) |
+| `./vendor/bin/pest tests/Feature/Pharmacies tests/Unit/Pharmacies tests/Unit/Platform/ArchitectureBoundaryTest.php tests/Unit/Identity/IdentityRulesTest.php tests/Feature/Identity` | **147 passed** (4382 assertions) |
+| `./vendor/bin/pest` (full Core suite) | **706 passed**, 18 skipped, 724 tests (13826 assertions) |
 | `npm run contracts:lint` | OpenAPI valid |
 | `npm run contracts:events` | **20** event schemas checked |
 | `npm run contracts:generate:ts` | generated client matches this tree |
@@ -212,14 +254,16 @@ ID and Doctors National ID / syndicate collisions.
 | `npm run admin:typecheck` | tsc `--noEmit` passed |
 | `npm run desktop:typecheck` | doctor-desktop and pharmacy-desktop tsc `--noEmit` passed |
 
-Pharmacies-focused tests (20):
+Pharmacies-focused tests (22):
 
 - `PharmacyOrganizationFlowsTest` — onboarding, protected fields, PostGIS,
   events/audit/logs/metrics canaries, capability deny, applicant/reviewer
   projections, idempotent replay/conflict, owner retry, mass assignment,
   invalid coordinates/country, authz, collision non-disclosure, BOLA GET me
   and GET-by-id 404, uniqueness, active-without-approved, version 0,
-  erasure tombstone
+  erasure tombstone, founding owner `branch_id IS NULL`, same-org
+  `branch_operator` schema-valid write, cross-org `branch_operator` rejected
+  by PostgreSQL `23503`
 - `PharmacyOrganizationRaceTest` — same-user concurrent create; two-user
   same registration
 - `PharmacyPostgresPrivilegeTest` — worker/reporter denied; `clinic_app` DML;
@@ -238,7 +282,10 @@ Phase 02 as a whole is **not** PASS.
   commercial-registry checksum (none is specified in repository policy).
 - Egyptian National ID checksum remains ADR 0014 / synthetic-test policy.
 - Egypt service-area bounding box is `ENGINEERING_DEFAULT`.
-- `branch_operator` is reserved in the CHECK constraint and is not written.
+- `branch_operator` is reserved in the CHECK constraint and is not written
+  by onboarding HTTP. Direct PostgreSQL writes of a same-organization
+  `branch_operator` row are schema-valid; cross-organization branch
+  references are rejected.
 - `GET /pharmacy-organizations/{id}/verification-status` and additional-branch
   POST remain unimplemented (404).
 - `identity:rotate-keys` still rotates Identity/Auth protected columns;

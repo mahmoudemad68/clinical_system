@@ -901,6 +901,10 @@ Phase 02 chunk 07 founding owner membership, created atomically with the
 organization and initial branch. Scope, role, and status are server-derived.
 Only `owner` is written in this slice; `branch_operator` is reserved in the
 check constraint. This is not the Phase-10 business capability matrix.
+`branch_id` is nullable for founding owners. When set, PostgreSQL requires
+the branch to belong to the same `organization_id` via composite FK
+`pharmacy_memberships (organization_id, branch_id)` →
+`pharmacy_branches (organization_id, id)` (`MATCH SIMPLE`).
 
 **Writer.** Pharmacies module via `clinic_app`. `clinic_worker` and
 `clinic_reporter` are revoked.
@@ -910,7 +914,7 @@ check constraint. This is not the Phase-10 business capability matrix.
 | `id` | internal | UUIDv7 membership identity | app | until row deleted | at rest | Mahmoud | n/a |
 | `organization_id` | internal | FK to `pharmacy_organizations` | app | as row | at rest | Mahmoud | n/a |
 | `user_id` | personal | Founding pharmacy actor | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
-| `branch_id` | internal | Null for org-level owner; FK when branch-scoped | app | as row | at rest | Mahmoud | n/a |
+| `branch_id` | internal | Null for org-level owner; when set, composite FK to `pharmacy_branches (organization_id, id)` | app | as row | at rest | Mahmoud | n/a |
 | `role` | internal | `owner` / `branch_operator` | app | as row | at rest | Mahmoud | n/a |
 | `status` | internal | `pending` / `active` / `suspended` / `revoked` | app | as row | at rest | Mahmoud | n/a |
 | `invited_at`, `accepted_at`, `revoked_at` | internal | Membership lifecycle instants | app | as row | at rest | Mahmoud | n/a |
