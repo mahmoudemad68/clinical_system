@@ -219,7 +219,8 @@ decision, the same reviewer session returns to the queue, switches to
 Pharmacy verification, asserts canaries absent, claims, downloads, and
 approves the seeded `E2E Pharmacy Review` case. Pharmacy coverage stays in
 that one session so the reviewer TOTP is not replayed in the same 30s
-window (`last_used_counter`). The browser seeder still creates the pending
+window (`last_used_counter`). Return to the queue uses the MUI `RouterLink`
+control (accessible as a link). The browser seeder still creates the pending
 pharmacy case.
 
 ## Local tests and counts

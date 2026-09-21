@@ -150,7 +150,7 @@ test.describe('admin verification review', () => {
     expect(decisionPosts).toHaveLength(1);
     expect(decisionPosts[0]?.length ?? 0).toBeGreaterThan(16);
 
-    await page.getByRole('button', { name: /Back to queue|العودة إلى القائمة/ }).click();
+    await page.getByRole('link', { name: /Back to queue|العودة إلى القائمة/ }).click();
     await expect(page.getByRole('heading', { name: /Pending doctor verification|تحقق الأطباء المعلّق/ })).toBeVisible({
       timeout: 20_000,
     });

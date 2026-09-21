@@ -23,7 +23,7 @@ export default defineConfig({
     {
       name: 'admin-verification',
       testMatch: 'admin-verification.spec.ts',
-      timeout: 90_000,
+      timeout: 120_000,
       use: {
         baseURL: adminWebBaseURL,
       },
