@@ -12,6 +12,8 @@ use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Doctors\Services\DoctorApplicantService;
 use Modules\Doctors\Support\DoctorApplicantProjection;
 use Modules\Identity\Support\ActorContext;
+use Modules\Pharmacies\Services\PharmacyApplicantService;
+use Modules\Pharmacies\Support\PharmacyApplicantProjection;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\StoreObject;
@@ -25,6 +27,7 @@ use Modules\Platform\Services\Telemetry\PlatformMetrics;
 use Modules\Platform\Support\Identifier;
 use Modules\Platform\Support\ObservedObject;
 use Modules\Platform\Support\StoredObjectRef;
+use Modules\Verification\Enums\ApplicantType;
 use Modules\Verification\Enums\VerificationCaseStatus;
 use Modules\Verification\Enums\VerificationUploadState;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
@@ -49,6 +52,7 @@ final class VerificationDocumentService
         private readonly TransactionRunner $transactions,
         private readonly PostgresVerificationStore $store,
         private readonly DoctorApplicantService $doctors,
+        private readonly PharmacyApplicantService $pharmacies,
         private readonly VerificationPolicy $policy,
         private readonly Authorize $authorize,
         private readonly RecordPrivilegedFailure $privilegedFailures,
@@ -220,7 +224,8 @@ final class VerificationDocumentService
     ): ReviewerDocumentAccessGrant {
         $this->assertPrivilegedReviewer($reviewer, $documentId);
 
-        $grant = $this->transactions->run(function (TransactionContext $tx) use ($reviewer, $caseId, $documentId): ReviewerDocumentAccessGrant {
+        $caseType = null;
+        $grant = $this->transactions->run(function (TransactionContext $tx) use ($reviewer, $caseId, $documentId, &$caseType): ReviewerDocumentAccessGrant {
             $this->store->lockCase($caseId);
             $case = $this->store->findCaseById($caseId, true);
             if (! $case instanceof VerificationCaseRecord) {
@@ -258,6 +263,8 @@ final class VerificationDocumentService
                 'user',
             );
 
+            $caseType = $case->caseType->value;
+
             return new ReviewerDocumentAccessGrant(
                 $target['document']->id->value,
                 $url,
@@ -270,7 +277,7 @@ final class VerificationDocumentService
         try {
             $this->metrics->increment('clinic_verification_review_results_total', [
                 'result' => 'granted',
-                'case_type' => 'doctor_verification',
+                'case_type' => is_string($caseType) ? $caseType : 'unknown',
                 'reason_code' => 'verification_review_access',
             ]);
         } catch (\Throwable) {
@@ -301,16 +308,17 @@ final class VerificationDocumentService
         $expectedSha = $prepared['document']->sha256;
         $ref = $prepared['ref'];
         $recordedVersion = $prepared['object_version'];
+        $caseType = $prepared['case_type'];
 
         try {
             $observed = $this->objects->observe($ref, $this->policy->maxDocumentBytes());
         } catch (\Throwable) {
-            $this->countDownloadResult('provider_read_failure');
+            $this->countDownloadResult('provider_read_failure', $caseType);
             throw new AuthorizationDenied;
         }
 
         if (! $this->canonicalObservationMatches($observed, $expectedSize, $expectedSha, $recordedVersion)) {
-            $this->countDownloadResult('integrity_mismatch');
+            $this->countDownloadResult('integrity_mismatch', $caseType);
             throw new AuthorizationDenied;
         }
 
@@ -318,18 +326,18 @@ final class VerificationDocumentService
         if ($confirmed['ref']->key() !== $ref->key()
             || $confirmed['document']->sizeBytes !== $expectedSize
             || ! hash_equals($confirmed['document']->sha256, $expectedSha)) {
-            $this->countDownloadResult('integrity_mismatch');
+            $this->countDownloadResult('integrity_mismatch', $caseType);
             throw new AuthorizationDenied;
         }
 
         try {
             $stream = $this->objects->openStream($ref);
         } catch (\Throwable) {
-            $this->countDownloadResult('provider_read_failure');
+            $this->countDownloadResult('provider_read_failure', $caseType);
             throw new AuthorizationDenied;
         }
         if (! is_resource($stream)) {
-            $this->countDownloadResult('provider_read_failure');
+            $this->countDownloadResult('provider_read_failure', $caseType);
             throw new AuthorizationDenied;
         }
 
@@ -343,7 +351,7 @@ final class VerificationDocumentService
     }
 
     /**
-     * @return array{document: VerificationDocumentRecord, ref: StoredObjectRef, object_version: ?string}
+     * @return array{document: VerificationDocumentRecord, ref: StoredObjectRef, object_version: ?string, case_type: string}
      */
     private function resolveCanonicalDownloadTarget(Identifier $caseId, Identifier $documentId): array
     {
@@ -362,7 +370,7 @@ final class VerificationDocumentService
     }
 
     /**
-     * @return array{document: VerificationDocumentRecord, ref: StoredObjectRef, object_version: ?string}
+     * @return array{document: VerificationDocumentRecord, ref: StoredObjectRef, object_version: ?string, case_type: string}
      */
     private function canonicalReviewTarget(VerificationCaseRecord $case, Identifier $documentId): array
     {
@@ -402,6 +410,7 @@ final class VerificationDocumentService
             'document' => $row,
             'ref' => $trusted,
             'object_version' => $upload->objectVersion,
+            'case_type' => $case->caseType->value,
         ];
     }
 
@@ -426,12 +435,12 @@ final class VerificationDocumentService
         return true;
     }
 
-    private function countDownloadResult(string $result): void
+    private function countDownloadResult(string $result, string $caseType): void
     {
         try {
             $this->metrics->increment('clinic_verification_review_results_total', [
                 'result' => $result,
-                'case_type' => 'doctor_verification',
+                'case_type' => $caseType,
                 'reason_code' => 'verification_review_download',
             ]);
         } catch (\Throwable) {
@@ -466,6 +475,14 @@ final class VerificationDocumentService
             }
         }
 
+        return match ($case->applicantType) {
+            ApplicantType::Doctor => $this->doctorApplicantUserId($case),
+            ApplicantType::Pharmacy => $this->pharmacyApplicantUserId($case),
+        };
+    }
+
+    private function doctorApplicantUserId(VerificationCaseRecord $case): Identifier
+    {
         $doctor = $this->doctors->findById($case->applicantId, true);
         if (! $doctor instanceof DoctorApplicantProjection) {
             throw new AuthorizationDenied;
@@ -474,10 +491,24 @@ final class VerificationDocumentService
         return $doctor->userId;
     }
 
+    private function pharmacyApplicantUserId(VerificationCaseRecord $case): Identifier
+    {
+        $pharmacy = $this->pharmacies->findById($case->applicantId, true);
+        if (! $pharmacy instanceof PharmacyApplicantProjection) {
+            throw new AuthorizationDenied;
+        }
+
+        return $pharmacy->userId;
+    }
+
     private function assertNotSelfReview(ActorContext $reviewer, VerificationCaseRecord $case): void
     {
-        $doctor = $this->doctors->findById($case->applicantId, false);
-        if ($doctor instanceof DoctorApplicantProjection && $doctor->userId->equals($reviewer->userId)) {
+        $ownerUserId = match ($case->applicantType) {
+            ApplicantType::Doctor => $this->doctors->findById($case->applicantId, false)?->userId,
+            ApplicantType::Pharmacy => $this->pharmacies->findById($case->applicantId, false)?->userId,
+        };
+
+        if ($ownerUserId instanceof Identifier && $ownerUserId->equals($reviewer->userId)) {
             throw new AuthorizationDenied;
         }
     }

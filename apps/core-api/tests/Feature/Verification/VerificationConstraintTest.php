@@ -331,3 +331,155 @@ it('rejects illegal upload-intent states, hashes, and available-from-rejected tr
         'cleanup_completed_at' => now('UTC')->addMinute()->format('Y-m-d H:i:s.uP'),
     ])))->toThrow(QueryException::class, 'verification_upload_intents cleanup completion is immutable');
 });
+
+it('rejects mismatched applicant_type and case_type pairs', function () {
+    $ids = app(IdentityGenerator::class);
+    $now = now('UTC')->format('Y-m-d H:i:s.uP');
+
+    expect(fn () => DB::table('verification_cases')->insert([
+        'id' => $ids->next()->value,
+        'applicant_type' => 'doctor',
+        'applicant_id' => $ids->next()->value,
+        'case_type' => 'pharmacy_verification',
+        'status' => 'draft',
+        'submitted_at' => null,
+        'assigned_reviewer_id' => null,
+        'decided_at' => null,
+        'version' => 1,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]))->toThrow(QueryException::class);
+
+    expect(fn () => DB::table('verification_cases')->insert([
+        'id' => $ids->next()->value,
+        'applicant_type' => 'pharmacy',
+        'applicant_id' => $ids->next()->value,
+        'case_type' => 'doctor_verification',
+        'status' => 'draft',
+        'submitted_at' => null,
+        'assigned_reviewer_id' => null,
+        'decided_at' => null,
+        'version' => 1,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]))->toThrow(QueryException::class);
+
+    expect(fn () => DB::table('verification_cases')->insert([
+        'id' => $ids->next()->value,
+        'applicant_type' => 'clinic',
+        'applicant_id' => $ids->next()->value,
+        'case_type' => 'pharmacy_verification',
+        'status' => 'draft',
+        'submitted_at' => null,
+        'assigned_reviewer_id' => null,
+        'decided_at' => null,
+        'version' => 1,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]))->toThrow(QueryException::class);
+});
+
+it('rejects a second open pharmacy case for the same applicant', function () {
+    $ids = app(IdentityGenerator::class);
+    $now = now('UTC')->format('Y-m-d H:i:s.uP');
+    $applicant = $ids->next()->value;
+
+    DB::table('verification_cases')->insert([
+        'id' => $ids->next()->value,
+        'applicant_type' => 'pharmacy',
+        'applicant_id' => $applicant,
+        'case_type' => 'pharmacy_verification',
+        'status' => 'draft',
+        'submitted_at' => null,
+        'assigned_reviewer_id' => null,
+        'decided_at' => null,
+        'version' => 1,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    expect(fn () => DB::table('verification_cases')->insert([
+        'id' => $ids->next()->value,
+        'applicant_type' => 'pharmacy',
+        'applicant_id' => $applicant,
+        'case_type' => 'pharmacy_verification',
+        'status' => 'pending_review',
+        'submitted_at' => $now,
+        'assigned_reviewer_id' => null,
+        'decided_at' => null,
+        'version' => 1,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]))->toThrow(QueryException::class);
+});
+
+it('freezes pharmacy documents after submission', function () {
+    $ids = app(IdentityGenerator::class);
+    $now = now('UTC')->format('Y-m-d H:i:s.uP');
+    $caseId = $ids->next()->value;
+    $documentId = $ids->next()->value;
+
+    DB::table('verification_cases')->insert([
+        'id' => $caseId,
+        'applicant_type' => 'pharmacy',
+        'applicant_id' => $ids->next()->value,
+        'case_type' => 'pharmacy_verification',
+        'status' => 'draft',
+        'submitted_at' => null,
+        'assigned_reviewer_id' => null,
+        'decided_at' => null,
+        'version' => 1,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    DB::table('verification_documents')->insert([
+        'id' => $documentId,
+        'case_id' => $caseId,
+        'requirement_code' => 'organization_registration_evidence',
+        'object_id' => $ids->next()->value,
+        'sha256' => str_repeat('ab', 32),
+        'detected_mime' => 'application/pdf',
+        'size_bytes' => 12,
+        'scan_status' => 'clean',
+        'status' => 'available',
+        'uploaded_at' => $now,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    $submittedAt = now('UTC')->format('Y-m-d H:i:s.uP');
+    DB::table('verification_cases')->where('id', $caseId)->update([
+        'status' => 'pending_review',
+        'submitted_at' => $submittedAt,
+        'updated_at' => $submittedAt,
+    ]);
+
+    expect(fn () => DB::transaction(fn () => DB::table('verification_documents')->where('id', $documentId)->update([
+        'scan_status' => 'failed',
+        'status' => 'rejected',
+    ])))->toThrow(QueryException::class, 'verification_documents is frozen after submission');
+});
+
+it('accepts a pharmacy applicant with pharmacy_verification', function () {
+    $ids = app(IdentityGenerator::class);
+    $now = now('UTC')->format('Y-m-d H:i:s.uP');
+    $id = $ids->next()->value;
+
+    DB::table('verification_cases')->insert([
+        'id' => $id,
+        'applicant_type' => 'pharmacy',
+        'applicant_id' => $ids->next()->value,
+        'case_type' => 'pharmacy_verification',
+        'status' => 'draft',
+        'submitted_at' => null,
+        'assigned_reviewer_id' => null,
+        'decided_at' => null,
+        'version' => 1,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    expect((string) DB::table('verification_cases')->where('id', $id)->value('applicant_type'))->toBe('pharmacy')
+        ->and((string) DB::table('verification_cases')->where('id', $id)->value('case_type'))->toBe('pharmacy_verification');
+});

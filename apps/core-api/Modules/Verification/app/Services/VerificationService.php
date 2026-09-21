@@ -18,6 +18,11 @@ use Modules\Doctors\Support\DoctorApplicantProjection;
 use Modules\Doctors\Support\DoctorReviewerProjection;
 use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Support\ActorContext;
+use Modules\Pharmacies\Enums\PharmacyVerificationStatus;
+use Modules\Pharmacies\Services\PharmacyApplicantService;
+use Modules\Pharmacies\Services\PharmacyReviewerService;
+use Modules\Pharmacies\Support\PharmacyApplicantProjection;
+use Modules\Pharmacies\Support\PharmacyReviewerProjection;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\FieldEncryptor;
 use Modules\Platform\Contracts\IdentityGenerator;
@@ -38,8 +43,13 @@ use Modules\Verification\Enums\VerificationCaseType;
 use Modules\Verification\Enums\VerificationDecision;
 use Modules\Verification\Events\DoctorVerificationDecided;
 use Modules\Verification\Events\DoctorVerificationSubmitted;
+use Modules\Verification\Events\PharmacyVerificationDecided;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
 use Modules\Verification\Support\ApplicantCaseProjection;
+use Modules\Verification\Support\PharmacyApplicantCaseProjection;
+use Modules\Verification\Support\PharmacyVerificationCaseOutcome;
+use Modules\Verification\Support\PharmacyVerificationSubmissionOutcome;
+use Modules\Verification\Support\ReviewerApplicantProjection;
 use Modules\Verification\Support\ReviewerCaseProjection;
 use Modules\Verification\Support\ReviewerQueueFilters;
 use Modules\Verification\Support\ReviewerQueueItemProjection;
@@ -50,8 +60,8 @@ use Modules\Verification\Support\VerificationPolicy;
 use Modules\Verification\Support\VerificationSubmissionOutcome;
 
 /**
- * Doctor verification case lifecycle. Coordinates Verification writes with
- * Doctors applicant transitions inside one transaction.
+ * Verification case lifecycle. Coordinates Verification writes with Doctors
+ * or Pharmacies applicant transitions inside one transaction.
  */
 final class VerificationService
 {
@@ -60,6 +70,8 @@ final class VerificationService
         private readonly PostgresVerificationStore $store,
         private readonly DoctorApplicantService $doctors,
         private readonly DoctorReviewerService $reviewers,
+        private readonly PharmacyApplicantService $pharmacies,
+        private readonly PharmacyReviewerService $pharmacyReviewers,
         private readonly VerificationPolicy $policy,
         private readonly Authorize $authorize,
         private readonly AppendAuditEvent $audit,
@@ -79,7 +91,7 @@ final class VerificationService
         }
 
         return $this->transactions->run(function (TransactionContext $tx) use ($actor): ApplicantCaseProjection {
-            $this->assertKnownDoctorCaseType();
+            $this->assertKnownCaseType(VerificationCaseType::DoctorVerification);
             $doctor = $this->requireDoctor($actor->userId, true);
             $this->store->lockApplicant(ApplicantType::Doctor, $doctor->doctorId);
 
@@ -142,6 +154,78 @@ final class VerificationService
         });
     }
 
+    public function openPharmacyCase(ActorContext $actor): PharmacyVerificationCaseOutcome
+    {
+        $this->assertPharmacyActor($actor);
+        $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN);
+        if (! $decision->allowed) {
+            throw new AuthorizationDenied;
+        }
+
+        return $this->transactions->run(function (TransactionContext $tx) use ($actor): PharmacyVerificationCaseOutcome {
+            $this->assertKnownCaseType(VerificationCaseType::PharmacyVerification);
+            $pharmacy = $this->requirePharmacy($actor->userId, true);
+            $this->store->lockApplicant(ApplicantType::Pharmacy, $pharmacy->organizationId);
+
+            if (! $pharmacy->verificationStatus->allowsNewVerificationCase()) {
+                $open = $this->store->findOpenCase(ApplicantType::Pharmacy, $pharmacy->organizationId, VerificationCaseType::PharmacyVerification, true);
+                if ($open instanceof VerificationCaseRecord) {
+                    return $this->pharmacyCaseOutcome($pharmacy, $open);
+                }
+                throw new StateConflict;
+            }
+
+            $existing = $this->store->findOpenCase(ApplicantType::Pharmacy, $pharmacy->organizationId, VerificationCaseType::PharmacyVerification, true);
+            if ($existing instanceof VerificationCaseRecord) {
+                return $this->pharmacyCaseOutcome($pharmacy, $existing);
+            }
+
+            $now = $this->clock->now();
+            $stamp = $now->format('Y-m-d H:i:s.uP');
+            $caseId = $this->ids->next();
+
+            try {
+                $this->store->insertCase([
+                    'id' => $caseId->value,
+                    'applicant_type' => ApplicantType::Pharmacy->value,
+                    'applicant_id' => $pharmacy->organizationId->value,
+                    'case_type' => VerificationCaseType::PharmacyVerification->value,
+                    'status' => VerificationCaseStatus::Draft->value,
+                    'submitted_at' => null,
+                    'assigned_reviewer_id' => null,
+                    'decided_at' => null,
+                    'version' => 1,
+                    'created_at' => $stamp,
+                    'updated_at' => $stamp,
+                ]);
+            } catch (DuplicateIdentity) {
+                $retry = $this->store->findOpenCase(ApplicantType::Pharmacy, $pharmacy->organizationId, VerificationCaseType::PharmacyVerification, true);
+                if ($retry instanceof VerificationCaseRecord) {
+                    return $this->pharmacyCaseOutcome($pharmacy, $retry);
+                }
+                throw new StateConflict;
+            }
+
+            $this->audit->append(
+                $tx,
+                'verification.case_created',
+                'verification_case',
+                $caseId,
+                [
+                    'reason_code' => 'pharmacy_verification',
+                    'case_type' => VerificationCaseType::PharmacyVerification->value,
+                ],
+                $actor->userId,
+                'user',
+            );
+
+            $case = $this->store->findCaseById($caseId, false);
+            assert($case instanceof VerificationCaseRecord);
+
+            return $this->pharmacyCaseOutcome($pharmacy, $case);
+        });
+    }
+
     /**
      * @param  array{case_version: int, profile_version: int}  $input
      */
@@ -157,7 +241,7 @@ final class VerificationService
         $expectedProfileVersion = (int) $input['profile_version'];
 
         return $this->transactions->run(function (TransactionContext $tx) use ($actor, $expectedCaseVersion, $expectedProfileVersion): VerificationSubmissionOutcome {
-            $this->assertKnownDoctorCaseType();
+            $this->assertKnownCaseType(VerificationCaseType::DoctorVerification);
             $doctor = $this->requireDoctor($actor->userId, true);
             $this->store->lockApplicant(ApplicantType::Doctor, $doctor->doctorId);
             $case = $this->store->findOpenCase(ApplicantType::Doctor, $doctor->doctorId, VerificationCaseType::DoctorVerification, true);
@@ -235,6 +319,98 @@ final class VerificationService
         });
     }
 
+    /**
+     * @param  array{case_version: int, organization_version: int}  $input
+     */
+    public function submitPharmacyCase(ActorContext $actor, array $input): PharmacyVerificationSubmissionOutcome
+    {
+        $this->assertPharmacyActor($actor);
+        $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN);
+        if (! $decision->allowed) {
+            throw new AuthorizationDenied;
+        }
+
+        $expectedCaseVersion = (int) $input['case_version'];
+        $expectedOrganizationVersion = (int) $input['organization_version'];
+
+        return $this->transactions->run(function (TransactionContext $tx) use ($actor, $expectedCaseVersion, $expectedOrganizationVersion): PharmacyVerificationSubmissionOutcome {
+            $this->assertKnownCaseType(VerificationCaseType::PharmacyVerification);
+            $pharmacy = $this->requirePharmacy($actor->userId, true);
+            $this->store->lockApplicant(ApplicantType::Pharmacy, $pharmacy->organizationId);
+            $case = $this->store->findOpenCase(ApplicantType::Pharmacy, $pharmacy->organizationId, VerificationCaseType::PharmacyVerification, true);
+            if (! $case instanceof VerificationCaseRecord) {
+                throw new AuthorizationDenied;
+            }
+            if ($case->version !== $expectedCaseVersion) {
+                throw new VersionConflict;
+            }
+            if ($pharmacy->version !== $expectedOrganizationVersion) {
+                throw new VersionConflict;
+            }
+            if (! $case->status->canTransitionTo(VerificationCaseStatus::PendingReview)) {
+                throw new StateConflict;
+            }
+
+            $this->assertRequiredDocumentsAvailable($case);
+
+            $now = $this->clock->now();
+            $stamp = $now->format('Y-m-d H:i:s.uP');
+            $affected = $this->store->updateCase($case->id, $expectedCaseVersion, [
+                'status' => VerificationCaseStatus::PendingReview->value,
+                'submitted_at' => $stamp,
+                'version' => $expectedCaseVersion + 1,
+                'updated_at' => $stamp,
+            ]);
+            if ($affected !== 1) {
+                throw new VersionConflict;
+            }
+
+            $pharmacy = $this->pharmacies->transition(
+                $pharmacy->organizationId,
+                PharmacyVerificationStatus::PendingReview,
+                $expectedOrganizationVersion,
+                $now,
+            );
+
+            $this->audit->append(
+                $tx,
+                'verification.case_submitted',
+                'verification_case',
+                $case->id,
+                [
+                    'reason_code' => 'submitted',
+                    'case_type' => $case->caseType->value,
+                ],
+                $actor->userId,
+                'user',
+            );
+            $this->audit->append(
+                $tx,
+                'pharmacy.verification_status_changed',
+                'pharmacy_organization',
+                $pharmacy->organizationId,
+                [
+                    'reason_code' => 'submitted',
+                    'status' => PharmacyVerificationStatus::PendingReview->value,
+                ],
+                $actor->userId,
+                'user',
+            );
+
+            $fresh = $this->store->findCaseById($case->id, false);
+            assert($fresh instanceof VerificationCaseRecord);
+
+            return new PharmacyVerificationSubmissionOutcome(
+                $pharmacy->organizationId->value,
+                $fresh->id->value,
+                $fresh->status->value,
+                $fresh->version,
+                $pharmacy->version,
+                $pharmacy->verificationStatus->value,
+            );
+        });
+    }
+
     public function applicantStatus(ActorContext $actor): ApplicantCaseProjection
     {
         $this->assertDoctorActor($actor);
@@ -247,6 +423,20 @@ final class VerificationService
         $case = $this->store->findLatestCase(ApplicantType::Doctor, $doctor->doctorId, VerificationCaseType::DoctorVerification);
 
         return $this->applicantProjection($doctor, $case);
+    }
+
+    public function pharmacyApplicantStatus(ActorContext $actor): PharmacyApplicantCaseProjection
+    {
+        $this->assertPharmacyActor($actor);
+        $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_STATUS_READ_OWN);
+        if (! $decision->allowed) {
+            throw new AuthorizationDenied;
+        }
+
+        $pharmacy = $this->requirePharmacy($actor->userId, false);
+        $case = $this->store->findLatestCase(ApplicantType::Pharmacy, $pharmacy->organizationId, VerificationCaseType::PharmacyVerification);
+
+        return $this->pharmacyApplicantProjection($pharmacy, $case);
     }
 
     public function claimCase(ActorContext $reviewer, Identifier $caseId, int $expectedVersion): ReviewerCaseProjection
@@ -306,8 +496,6 @@ final class VerificationService
     ): ReviewerCaseProjection {
         $this->assertPrivilegedReviewer($reviewer, $caseId);
 
-        $this->assertKnownDoctorCaseType();
-
         try {
             $decision = VerificationDecision::from($decisionValue);
         } catch (\ValueError) {
@@ -335,6 +523,7 @@ final class VerificationService
             if (! $case instanceof VerificationCaseRecord) {
                 throw new AuthorizationDenied;
             }
+            $this->assertKnownCaseType($case->caseType);
 
             $existing = $this->store->findDecisionByCaseId($case->id);
             if ($existing instanceof VerificationDecisionRecord) {
@@ -356,11 +545,6 @@ final class VerificationService
             $this->assertNotSelfReview($reviewer, $case);
             $this->assertAssignedReviewer($reviewer, $case);
             $this->assertRequiredDocumentsAvailable($case);
-
-            $doctor = $this->doctors->findById($case->applicantId, true);
-            if (! $doctor instanceof DoctorApplicantProjection) {
-                throw new AuthorizationDenied;
-            }
 
             $now = $this->clock->now();
             $stamp = $now->format('Y-m-d H:i:s.uP');
@@ -399,12 +583,10 @@ final class VerificationService
                 throw new VersionConflict;
             }
 
-            $this->doctors->transition(
-                $doctor->doctorId,
-                $this->doctorStatusFor($decision),
-                $doctor->version,
-                $now,
-            );
+            match ($case->applicantType) {
+                ApplicantType::Doctor => $this->commitDoctorDecision($tx, $reviewer, $case, $decision, $reasonCode, $now),
+                ApplicantType::Pharmacy => $this->commitPharmacyDecision($tx, $reviewer, $case, $decision, $reasonCode, $now),
+            };
 
             $this->audit->append(
                 $tx,
@@ -419,25 +601,6 @@ final class VerificationService
                 $reviewer->userId,
                 'user',
             );
-            $this->audit->append(
-                $tx,
-                'doctor.verification_status_changed',
-                'doctor_profile',
-                $doctor->doctorId,
-                [
-                    'reason_code' => $reasonCode,
-                    'status' => $this->doctorStatusFor($decision)->value,
-                ],
-                $reviewer->userId,
-                'user',
-            );
-            $tx->recordEvent(new DoctorVerificationDecided(
-                $doctor->doctorId,
-                $case->id,
-                $decision->value,
-                $reasonCode,
-                $now,
-            ));
 
             $fresh = $this->store->findCaseById($case->id, false);
             assert($fresh instanceof VerificationCaseRecord);
@@ -474,15 +637,20 @@ final class VerificationService
             }
 
             $doctorIds = [];
+            $pharmacyIds = [];
             foreach ($rows as $row) {
-                $doctorIds[] = $row->applicantId;
+                match ($row->applicantType) {
+                    ApplicantType::Doctor => $doctorIds[] = $row->applicantId,
+                    ApplicantType::Pharmacy => $pharmacyIds[] = $row->applicantId,
+                };
             }
             $doctors = $this->reviewers->findByIds($doctorIds);
+            $pharmacies = $this->pharmacyReviewers->findByIds($pharmacyIds);
 
             $items = [];
             foreach ($rows as $row) {
-                $doctor = $doctors[$row->applicantId->value] ?? null;
-                if (! $doctor instanceof DoctorReviewerProjection) {
+                $applicant = $this->queueApplicant($row, $doctors, $pharmacies);
+                if (! $applicant instanceof ReviewerApplicantProjection) {
                     continue;
                 }
                 $assignedToMe = $row->assignedReviewerId instanceof Identifier
@@ -495,7 +663,7 @@ final class VerificationService
                     $this->isoOrNull($row->submittedAt),
                     $this->assignmentFor($reviewer, $row),
                     $assignedToMe,
-                    $doctor,
+                    $applicant,
                 );
             }
 
@@ -557,9 +725,92 @@ final class VerificationService
         });
     }
 
-    private function assertKnownDoctorCaseType(): void
+    private function commitDoctorDecision(
+        TransactionContext $tx,
+        ActorContext $reviewer,
+        VerificationCaseRecord $case,
+        VerificationDecision $decision,
+        string $reasonCode,
+        DateTimeImmutable $now,
+    ): void {
+        $doctor = $this->doctors->findById($case->applicantId, true);
+        if (! $doctor instanceof DoctorApplicantProjection) {
+            throw new AuthorizationDenied;
+        }
+
+        $this->doctors->transition(
+            $doctor->doctorId,
+            $this->doctorStatusFor($decision),
+            $doctor->version,
+            $now,
+        );
+
+        $this->audit->append(
+            $tx,
+            'doctor.verification_status_changed',
+            'doctor_profile',
+            $doctor->doctorId,
+            [
+                'reason_code' => $reasonCode,
+                'status' => $this->doctorStatusFor($decision)->value,
+            ],
+            $reviewer->userId,
+            'user',
+        );
+        $tx->recordEvent(new DoctorVerificationDecided(
+            $doctor->doctorId,
+            $case->id,
+            $decision->value,
+            $reasonCode,
+            $now,
+        ));
+    }
+
+    private function commitPharmacyDecision(
+        TransactionContext $tx,
+        ActorContext $reviewer,
+        VerificationCaseRecord $case,
+        VerificationDecision $decision,
+        string $reasonCode,
+        DateTimeImmutable $now,
+    ): void {
+        $pharmacy = $this->pharmacies->findById($case->applicantId, true);
+        if (! $pharmacy instanceof PharmacyApplicantProjection) {
+            throw new AuthorizationDenied;
+        }
+
+        $pharmacy = $this->pharmacies->transition(
+            $pharmacy->organizationId,
+            $this->pharmacyStatusFor($decision),
+            $pharmacy->version,
+            $now,
+        );
+
+        $this->audit->append(
+            $tx,
+            'pharmacy.verification_status_changed',
+            'pharmacy_organization',
+            $pharmacy->organizationId,
+            [
+                'reason_code' => $reasonCode,
+                'status' => $this->pharmacyStatusFor($decision)->value,
+            ],
+            $reviewer->userId,
+            'user',
+        );
+        $tx->recordEvent(new PharmacyVerificationDecided(
+            $pharmacy->organizationId,
+            [$pharmacy->branchId->value],
+            $case->id,
+            $decision->value,
+            $reasonCode,
+            $now,
+        ));
+    }
+
+    private function assertKnownCaseType(VerificationCaseType $caseType): void
     {
-        if (! $this->policy->isKnownCaseType(VerificationCaseType::DoctorVerification->value)) {
+        if (! $this->policy->isKnownCaseType($caseType->value)) {
             throw new InvalidValueObject('Case type is not allowed.');
         }
     }
@@ -567,6 +818,13 @@ final class VerificationService
     private function assertDoctorActor(ActorContext $actor): void
     {
         if ($actor->accountType !== AccountType::Doctor || ! $actor->status->canAccessBusinessEndpoints()) {
+            throw new FeatureUnavailable;
+        }
+    }
+
+    private function assertPharmacyActor(ActorContext $actor): void
+    {
+        if ($actor->accountType !== AccountType::Pharmacy || ! $actor->status->canAccessBusinessEndpoints()) {
             throw new FeatureUnavailable;
         }
     }
@@ -592,8 +850,12 @@ final class VerificationService
 
     private function assertNotSelfReview(ActorContext $reviewer, VerificationCaseRecord $case): void
     {
-        $doctor = $this->doctors->findById($case->applicantId, false);
-        if ($doctor instanceof DoctorApplicantProjection && $doctor->userId->equals($reviewer->userId)) {
+        $ownerUserId = match ($case->applicantType) {
+            ApplicantType::Doctor => $this->doctors->findById($case->applicantId, false)?->userId,
+            ApplicantType::Pharmacy => $this->pharmacies->findById($case->applicantId, false)?->userId,
+        };
+
+        if ($ownerUserId instanceof Identifier && $ownerUserId->equals($reviewer->userId)) {
             throw new AuthorizationDenied;
         }
     }
@@ -613,6 +875,16 @@ final class VerificationService
         }
 
         return $doctor;
+    }
+
+    private function requirePharmacy(Identifier $userId, bool $lock): PharmacyApplicantProjection
+    {
+        $pharmacy = $this->pharmacies->findByUserId($userId, $lock);
+        if (! $pharmacy instanceof PharmacyApplicantProjection) {
+            throw new AuthorizationDenied;
+        }
+
+        return $pharmacy;
     }
 
     private function requirePendingCase(Identifier $caseId): VerificationCaseRecord
@@ -661,29 +933,85 @@ final class VerificationService
         };
     }
 
+    private function pharmacyStatusFor(VerificationDecision $decision): PharmacyVerificationStatus
+    {
+        return match ($decision) {
+            VerificationDecision::Approved => PharmacyVerificationStatus::Approved,
+            VerificationDecision::Rejected => PharmacyVerificationStatus::Rejected,
+            VerificationDecision::ChangesRequested => PharmacyVerificationStatus::ChangesRequested,
+        };
+    }
+
+    private function pharmacyCaseOutcome(
+        PharmacyApplicantProjection $pharmacy,
+        VerificationCaseRecord $case,
+    ): PharmacyVerificationCaseOutcome {
+        return new PharmacyVerificationCaseOutcome(
+            $pharmacy->organizationId->value,
+            $case->id->value,
+            $case->status->value,
+            $case->version,
+            $pharmacy->version,
+        );
+    }
+
+    /**
+     * @return list<array{document_id: string, requirement_code: string, scan_status: string, status: string, uploaded_at: string}>
+     */
+    private function applicantDocuments(VerificationCaseRecord $case): array
+    {
+        $documents = [];
+        foreach ($this->store->documentsForCase($case->id) as $document) {
+            $documents[] = [
+                'document_id' => $document->id->value,
+                'requirement_code' => $document->requirementCode,
+                'scan_status' => $document->scanStatus->value,
+                'status' => $document->status->value,
+                'uploaded_at' => $this->iso($document->uploadedAt),
+            ];
+        }
+
+        return $documents;
+    }
+
     private function applicantProjection(DoctorApplicantProjection $doctor, ?VerificationCaseRecord $case): ApplicantCaseProjection
     {
         $decision = $case instanceof VerificationCaseRecord
             ? $this->store->findDecisionByCaseId($case->id)
             : null;
-        $documents = [];
-        if ($case instanceof VerificationCaseRecord) {
-            foreach ($this->store->documentsForCase($case->id) as $document) {
-                $documents[] = [
-                    'document_id' => $document->id->value,
-                    'requirement_code' => $document->requirementCode,
-                    'scan_status' => $document->scanStatus->value,
-                    'status' => $document->status->value,
-                    'uploaded_at' => $this->iso($document->uploadedAt),
-                ];
-            }
-        }
+        $documents = $case instanceof VerificationCaseRecord ? $this->applicantDocuments($case) : [];
 
         return new ApplicantCaseProjection(
             $doctor->doctorId->value,
             $doctor->verificationStatus->value,
             $doctor->publicStatus->value,
             $doctor->version,
+            $case?->id->value,
+            $case?->status->value,
+            $case?->version,
+            $case?->caseType->value,
+            $case instanceof VerificationCaseRecord ? $this->isoOrNull($case->submittedAt) : null,
+            $case instanceof VerificationCaseRecord ? $this->isoOrNull($case->decidedAt) : null,
+            $decision?->decision->value,
+            $decision?->reasonCode,
+            $documents,
+        );
+    }
+
+    private function pharmacyApplicantProjection(
+        PharmacyApplicantProjection $pharmacy,
+        ?VerificationCaseRecord $case,
+    ): PharmacyApplicantCaseProjection {
+        $decision = $case instanceof VerificationCaseRecord
+            ? $this->store->findDecisionByCaseId($case->id)
+            : null;
+        $documents = $case instanceof VerificationCaseRecord ? $this->applicantDocuments($case) : [];
+
+        return new PharmacyApplicantCaseProjection(
+            $pharmacy->organizationId->value,
+            $pharmacy->verificationStatus->value,
+            $pharmacy->status->value,
+            $pharmacy->version,
             $case?->id->value,
             $case?->status->value,
             $case?->version,
@@ -720,11 +1048,6 @@ final class VerificationService
             }
         }
 
-        $doctor = $this->reviewers->findById($case->applicantId);
-        if (! $doctor instanceof DoctorReviewerProjection) {
-            throw new AuthorizationDenied;
-        }
-
         return new ReviewerCaseProjection(
             $case->id->value,
             $case->caseType->value,
@@ -739,8 +1062,55 @@ final class VerificationService
             $documents,
             $assigned,
             $this->assignmentFor($reviewer, $case),
-            $doctor,
+            $this->reviewerApplicant($case),
         );
+    }
+
+    private function reviewerApplicant(VerificationCaseRecord $case): ReviewerApplicantProjection
+    {
+        return match ($case->applicantType) {
+            ApplicantType::Doctor => $this->doctorReviewerApplicant($case),
+            ApplicantType::Pharmacy => $this->pharmacyReviewerApplicant($case),
+        };
+    }
+
+    private function doctorReviewerApplicant(VerificationCaseRecord $case): ReviewerApplicantProjection
+    {
+        $doctor = $this->reviewers->findById($case->applicantId);
+        if (! $doctor instanceof DoctorReviewerProjection) {
+            throw new AuthorizationDenied;
+        }
+
+        return ReviewerApplicantProjection::doctor($doctor);
+    }
+
+    private function pharmacyReviewerApplicant(VerificationCaseRecord $case): ReviewerApplicantProjection
+    {
+        $pharmacy = $this->pharmacyReviewers->findById($case->applicantId);
+        if (! $pharmacy instanceof PharmacyReviewerProjection) {
+            throw new AuthorizationDenied;
+        }
+
+        return ReviewerApplicantProjection::pharmacy($pharmacy);
+    }
+
+    /**
+     * @param  array<string, DoctorReviewerProjection>  $doctors
+     * @param  array<string, PharmacyReviewerProjection>  $pharmacies
+     */
+    private function queueApplicant(
+        VerificationCaseRecord $row,
+        array $doctors,
+        array $pharmacies,
+    ): ?ReviewerApplicantProjection {
+        return match ($row->applicantType) {
+            ApplicantType::Doctor => isset($doctors[$row->applicantId->value])
+                ? ReviewerApplicantProjection::doctor($doctors[$row->applicantId->value])
+                : null,
+            ApplicantType::Pharmacy => isset($pharmacies[$row->applicantId->value])
+                ? ReviewerApplicantProjection::pharmacy($pharmacies[$row->applicantId->value])
+                : null,
+        };
     }
 
     private function assignmentFor(ActorContext $reviewer, VerificationCaseRecord $case): string

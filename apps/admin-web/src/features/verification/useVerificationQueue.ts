@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, apiClient, toApiFailure } from '@/api/client';
+import { isDoctorVerificationQueueItem } from '@/features/verification/doctorVerification';
 import { verificationKeys, type QueueAssignmentFilter } from '@/session/keys';
 import { useSession } from '@/session/useSession';
 
@@ -39,7 +40,7 @@ export function useVerificationQueue(assignment: QueueAssignmentFilter, cursor: 
       }
 
       return {
-        items: data.data,
+        items: data.data.filter(isDoctorVerificationQueueItem),
         pagination: data.meta.pagination,
         requestId: data.request_id,
       };

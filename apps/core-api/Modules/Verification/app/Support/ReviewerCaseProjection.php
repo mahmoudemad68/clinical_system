@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Verification\Support;
 
-use Modules\Doctors\Support\DoctorReviewerProjection;
-
 /**
  * Reviewer-safe case projection. No National ID, HMAC, object keys, or
- * reviewer notes plaintext.
+ * reviewer notes plaintext. Applicant fields are discriminated by
+ * applicant_type.
  *
  * @phpstan-type DocumentArray array{
  *     document_id: string,
@@ -19,30 +18,6 @@ use Modules\Doctors\Support\DoctorReviewerProjection;
  *     scan_status: string,
  *     status: string,
  *     uploaded_at: string
- * }
- * @phpstan-type ProjectionArray array{
- *     case_id: string,
- *     case_type: string,
- *     case_status: string,
- *     case_version: int,
- *     submitted_at: string|null,
- *     assignment: string,
- *     assigned_to_me: bool,
- *     decided_at: string|null,
- *     decision: string|null,
- *     reason_code: string|null,
- *     doctor_id: string,
- *     professional_display_name: string,
- *     specialty: array{
- *         specialty_id: string,
- *         code: string,
- *         label_ar: string,
- *         label_en: string
- *     },
- *     doctor_verification_status: string,
- *     doctor_public_status: string,
- *     profile_version: int,
- *     documents: list<DocumentArray>
  * }
  */
 final readonly class ReviewerCaseProjection
@@ -55,7 +30,7 @@ final readonly class ReviewerCaseProjection
         public string $caseType,
         public string $status,
         public int $version,
-        public string $doctorId,
+        public string $applicantId,
         public ?string $submittedAt,
         public ?string $assignedReviewerId,
         public ?string $decidedAt,
@@ -64,13 +39,13 @@ final readonly class ReviewerCaseProjection
         public array $documents,
         public bool $assignedToMe,
         public string $assignment,
-        public DoctorReviewerProjection $doctor,
+        public ReviewerApplicantProjection $applicant,
     ) {}
 
     /**
      * HTTP-safe reviewer detail. Omits assigned_reviewer_id.
      *
-     * @return ProjectionArray
+     * @return array<string, mixed>
      */
     public function toArray(): array
     {
@@ -85,7 +60,7 @@ final readonly class ReviewerCaseProjection
             'decided_at' => $this->decidedAt,
             'decision' => $this->decision,
             'reason_code' => $this->reasonCode,
-            ...$this->doctor->toArray(),
+            ...$this->applicant->toArray(),
             'documents' => $this->documents,
         ];
     }

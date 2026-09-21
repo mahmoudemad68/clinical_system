@@ -400,6 +400,7 @@ Phase 00 status pages share only process liveness. No actor, tenant, host, check
 | `doctor.profile_created` | 1 | personal | `doctor_id`, `linked_user_id`, `source_type` | later projections | 7 days |
 | `doctor.verification_submitted` | 1 | internal | `doctor_id`, `case_id` | later projections | 7 days |
 | `doctor.verification_decided` | 1 | internal | `doctor_id`, `case_id`, `decision`, `reason_code` | later projections | 7 days |
+| `pharmacy.verification_decided` | 1 | internal | `organization_id`, `branch_ids` (max 1), `case_id`, `decision`, `reason_code` | later projections | 7 days |
 | `verification.upload_completed` | 1 | internal | `upload_id` | `verification.upload_processor` | 7 days |
 
 ---
@@ -928,8 +929,8 @@ Phase 02 chunk 03 Verification foundation
 (`2026_09_19_180000_create_verification_tables.php`). One row per verification
 attempt. Re-submission creates a new case; decided rows are not rewritten.
 Applicant identity is an opaque `(applicant_type, applicant_id)` pair. There is
-no foreign key to `doctor_profiles` (Verification must not take a persistence
-dependency on Doctors).
+no foreign key to `doctor_profiles` or `pharmacy_organizations` (Verification
+must not take a persistence dependency on Doctors or Pharmacies).
 
 **Writer.** Verification module via `clinic_app`. `clinic_worker` has `SELECT`
 so the outbox processor can confirm the case is still `draft`; it cannot
@@ -952,9 +953,9 @@ linked doctor profile does not automatically delete cases in this slice.
 | Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `id` | internal | UUIDv7 case identity | app | until row deleted | at rest | Mahmoud | n/a |
-| `applicant_type` | internal | Constrained; this slice is `doctor` | app | as row | at rest | Mahmoud | n/a |
+| `applicant_type` | internal | Constrained; `doctor` or `pharmacy`. Pairing CHECK requires `doctor`/`doctor_verification` or `pharmacy`/`pharmacy_verification` (forward migration `2026_09_20_220000_expand_verification_applicant_and_case_types.php`) | app | as row | at rest | Mahmoud | n/a |
 | `applicant_id` | personal | Opaque applicant profile id | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
-| `case_type` | internal | Constrained; this slice is `doctor_verification` | app | as row | at rest | Mahmoud | n/a |
+| `case_type` | internal | Constrained; `doctor_verification` or `pharmacy_verification` with the applicant-type pairing CHECK | app | as row | at rest | Mahmoud | n/a |
 | `status` | internal | `draft` / `pending_review` / `changes_requested` / `approved` / `rejected` | app | as row | at rest | Mahmoud | n/a |
 | `submitted_at` | internal | Set on submit; null while draft | app | as row | at rest | Mahmoud | n/a |
 | `assigned_reviewer_id` | personal | FK to `users`; server-derived | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
@@ -1170,6 +1171,7 @@ Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
 | `doctor.profile_created` | 1 | personal | doctor_id, linked_user_id, source_type | later projections | 7 days |
 | `doctor.verification_submitted` | 1 | internal | doctor_id, case_id | later projections | 7 days |
 | `doctor.verification_decided` | 1 | internal | doctor_id, case_id, decision, reason_code | later projections | 7 days |
+| `pharmacy.verification_decided` | 1 | internal | organization_id, branch_ids (max 1), case_id, decision, reason_code | later projections | 7 days |
 | `verification.upload_completed` | 1 | internal | upload_id | verification.upload_processor | 7 days |
 
 `credential` classification is rejected by the outbox CHECK. Event retention

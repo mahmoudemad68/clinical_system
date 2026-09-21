@@ -72,7 +72,7 @@ final class AdminVerificationRules
 
         $validated = $request->validate([
             'assignment' => ['sometimes', 'string', 'in:unassigned,mine,all'],
-            'case_type' => ['sometimes', 'string', 'in:doctor_verification'],
+            'case_type' => ['sometimes', 'string', 'in:doctor_verification,pharmacy_verification'],
             'status' => ['sometimes', 'string', 'in:pending_review'],
             'cursor' => ['sometimes', 'nullable', 'string', 'max:512'],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:'.$policy->queueMaxLimit()],

@@ -703,10 +703,82 @@ export interface paths {
          *     membership. Never returns ciphertext, HMAC, key versions, legal
          *     registration, legal name, address, phone, coordinates, or another
          *     organization's data. There is no GET-by-id pharmacy organization API
-         *     and no public lookup in this slice. Verification case status is a
-         *     later endpoint.
+         *     and no public lookup in this slice. Verification case status is
+         *     `GET /api/v1/pharmacy-organizations/me/verification-status`.
          */
         get: operations["getOwnPharmacyOrganization"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy-organizations/me/verification-cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open or resume the current pharmacy owner's verification case
+         * @description Opens or resumes the authenticated founding owner's draft
+         *     `pharmacy_verification` case. Applicant, organization, case type,
+         *     verification status, reviewer, membership role, and lifecycle status
+         *     are server-derived. Concurrent duplicate opens resolve to one open
+         *     case. Idempotency-Key is required. Compact write body fits the
+         *     Platform 255-byte idempotency pointer.
+         */
+        post: operations["openOwnPharmacyVerificationCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy-organizations/me/verification-submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit the current pharmacy owner's verification case
+         * @description Moves a draft pharmacy verification case to `pending_review` when the
+         *     ENGINEERING_DEFAULT `organization_registration_evidence` document is
+         *     `available` with a clean scan. Server-derived actor, organization,
+         *     initial branch, and membership only. Requires expected case version
+         *     and expected organization version. Idempotency-Key is required.
+         */
+        post: operations["submitOwnPharmacyVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy-organizations/me/verification-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current user's pharmacy verification status
+         * @description Own-case projection only. Never returns legal name, legal registration,
+         *     address, phone, coordinates, ciphertext, HMAC, key versions, reviewer
+         *     notes, scanner internals, storage locators, or document hashes.
+         *     Another pharmacy's case is not enumerable through this endpoint.
+         */
+        get: operations["getOwnPharmacyVerificationStatus"];
         put?: never;
         post?: never;
         delete?: never;
@@ -772,11 +844,14 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create a doctor verification upload intent
-         * @description Doctor-only. Creates an opaque upload intent for the caller's own draft
-         *     `doctor_verification` case and a known requirement code. Returns a
-         *     short-lived private upload grant. The client cannot choose object keys,
-         *     scanner results, or lifecycle states. Idempotency-Key is required.
+         * Create a verification upload intent
+         * @description Creates an opaque upload intent for the caller's own draft
+         *     verification case and a known requirement code. Doctor actors use
+         *     `professional_id` on `doctor_verification`. Pharmacy founding owners
+         *     use `organization_registration_evidence` on `pharmacy_verification`.
+         *     Applicant type and case type are server-derived. Returns a short-lived
+         *     private upload grant. The client cannot choose object keys, scanner
+         *     results, or lifecycle states. Idempotency-Key is required.
          */
         post: operations["createOwnDoctorVerificationUpload"];
         delete?: never;
@@ -1509,6 +1584,96 @@ export interface components {
                 status: "pending" | "active" | "suspended" | "revoked";
             };
         };
+        /**
+         * @description Empty closed body. Applicant ID, organization ID, case type,
+         *     verification status, reviewer, membership role, and lifecycle status
+         *     cannot be assigned by the client.
+         */
+        PharmacyVerificationCaseOpenRequest: Record<string, never>;
+        /**
+         * @description Compact open/resume outcome sized for the Platform 255-byte
+         *     idempotency pointer. GET verification-status is the canonical
+         *     projection. Never includes legal name, registration, address, phone,
+         *     coordinates, documents, or reviewer notes.
+         */
+        PharmacyVerificationCaseOpenResult: {
+            /** @enum {string} */
+            status: "ready";
+            organization_id: components["schemas"]["Uuid"];
+            case_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            case_status: "draft" | "pending_review";
+            case_version: number;
+            organization_version: number;
+        };
+        PharmacyVerificationSubmissionRequest: {
+            /** @description Optimistic verification-case version. Not a reviewer identity. */
+            case_version: number;
+            /** @description Optimistic pharmacy-organization version. Not an access grant. */
+            organization_version: number;
+        };
+        /**
+         * @description Compact submit outcome sized for the Platform 255-byte idempotency
+         *     pointer. GET /pharmacy-organizations/me/verification-status is the
+         *     canonical projection. Never includes documents, legal name, legal
+         *     registration, address, phone, coordinates, HMAC, object keys, or
+         *     reviewer notes.
+         */
+        PharmacyVerificationSubmissionResult: {
+            /** @enum {string} */
+            status: "submitted";
+            organization_id: components["schemas"]["Uuid"];
+            case_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            case_status: "pending_review";
+            case_version: number;
+            organization_version: number;
+            /** @enum {string} */
+            organization_verification_status: "pending_review";
+        };
+        /**
+         * @description Applicant-visible document metadata. Object storage identifiers, raw
+         *     keys, and file bytes are never included.
+         */
+        PharmacyVerificationDocumentStatus: {
+            document_id: components["schemas"]["Uuid"];
+            requirement_code: string;
+            /** @enum {string} */
+            scan_status: "pending" | "clean" | "failed";
+            /** @enum {string} */
+            status: "quarantined" | "available" | "rejected" | "retired";
+            uploaded_at: components["schemas"]["Instant"];
+        };
+        /**
+         * @description Own-case pharmacy verification projection. Never includes legal name,
+         *     legal registration, address, phone, coordinates, ciphertext, HMAC,
+         *     key versions, object storage keys, reviewer notes, or scanner internals.
+         */
+        PharmacyVerificationStatusResult: {
+            /** @enum {string} */
+            applicant_type: "pharmacy";
+            organization_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            organization_verification_status: "draft" | "pending_review" | "changes_requested" | "approved" | "rejected" | "suspended";
+            /** @enum {string} */
+            organization_status: "draft" | "pending" | "active" | "suspended" | "closed";
+            organization_version: number;
+            /** Format: uuid */
+            case_id: string | null;
+            /** @enum {string|null} */
+            case_status: "draft" | "pending_review" | "changes_requested" | "approved" | "rejected" | null;
+            case_version: number | null;
+            /** @enum {string|null} */
+            case_type: "pharmacy_verification" | null;
+            /** Format: date-time */
+            submitted_at: string | null;
+            /** Format: date-time */
+            decided_at: string | null;
+            /** @enum {string|null} */
+            decision: "approved" | "rejected" | "changes_requested" | null;
+            reason_code: string | null;
+            documents: components["schemas"]["PharmacyVerificationDocumentStatus"][];
+        };
         DoctorVerificationSubmissionRequest: {
             /** @description Optimistic verification-case version. Not a reviewer identity. */
             case_version: number;
@@ -1635,7 +1800,10 @@ export interface components {
          */
         AdminVerificationQueueItem: {
             case_id: components["schemas"]["Uuid"];
-            /** @enum {string} */
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
             case_type: "doctor_verification";
             /** @enum {string} */
             case_status: "pending_review";
@@ -1645,6 +1813,8 @@ export interface components {
             /** @enum {string} */
             assignment: "unassigned" | "mine" | "other";
             assigned_to_me: boolean;
+            /** @enum {string} */
+            applicant_type?: "doctor";
             doctor_id: components["schemas"]["Uuid"];
             professional_display_name: string;
             specialty: components["schemas"]["AdminVerificationSpecialty"];
@@ -1675,7 +1845,10 @@ export interface components {
          */
         AdminVerificationCase: {
             case_id: components["schemas"]["Uuid"];
-            /** @enum {string} */
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
             case_type: "doctor_verification";
             /** @enum {string} */
             case_status: "draft" | "pending_review" | "changes_requested" | "approved" | "rejected";
@@ -1690,12 +1863,96 @@ export interface components {
             /** @enum {string|null} */
             decision: "approved" | "rejected" | "changes_requested" | null;
             reason_code: string | null;
+            /** @enum {string} */
+            applicant_type?: "doctor";
             doctor_id: components["schemas"]["Uuid"];
             professional_display_name: string;
             specialty: components["schemas"]["AdminVerificationSpecialty"];
             doctor_verification_status: components["schemas"]["DoctorVerificationStatus"];
             doctor_public_status: components["schemas"]["DoctorPublicStatus"];
             profile_version: number;
+            documents: components["schemas"]["AdminVerificationReviewDocument"][];
+        };
+        /**
+         * @description Reviewer queue row for a pharmacy verification case. Public
+         *     organization and initial-branch fields only. No legal registration,
+         *     legal name, address, phone, coordinates, ciphertext, HMAC, or key
+         *     versions.
+         */
+        AdminPharmacyVerificationQueueItem: {
+            case_id: components["schemas"]["Uuid"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            case_type: "pharmacy_verification";
+            /** @enum {string} */
+            case_status: "pending_review";
+            case_version: number;
+            /** Format: date-time */
+            submitted_at: string | null;
+            /** @enum {string} */
+            assignment: "unassigned" | "mine" | "other";
+            assigned_to_me: boolean;
+            /** @enum {string} */
+            applicant_type: "pharmacy";
+            organization_id: components["schemas"]["Uuid"];
+            public_name: string;
+            /** @enum {string} */
+            verification_status: "draft" | "pending_review" | "changes_requested" | "approved" | "rejected" | "suspended";
+            /** @enum {string} */
+            status: "draft" | "pending" | "active" | "suspended" | "closed";
+            version: number;
+            initial_branch: {
+                branch_id: components["schemas"]["Uuid"];
+                public_name: string;
+                country_code: components["schemas"]["CountryCode"];
+                /** @enum {string} */
+                status: "draft" | "pending" | "active" | "suspended" | "closed";
+            };
+        };
+        /**
+         * @description Reviewer-safe pharmacy case detail. Documents are empty until the
+         *     current reviewer is assigned. Never includes legal registration, legal
+         *     name, address, phone, coordinates, object locators, signed URLs,
+         *     reviewer note plaintext, or assigned_reviewer_id.
+         */
+        AdminPharmacyVerificationCase: {
+            case_id: components["schemas"]["Uuid"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            case_type: "pharmacy_verification";
+            /** @enum {string} */
+            case_status: "draft" | "pending_review" | "changes_requested" | "approved" | "rejected";
+            case_version: number;
+            /** Format: date-time */
+            submitted_at: string | null;
+            /** @enum {string} */
+            assignment: "unassigned" | "mine" | "other";
+            assigned_to_me: boolean;
+            /** Format: date-time */
+            decided_at: string | null;
+            /** @enum {string|null} */
+            decision: "approved" | "rejected" | "changes_requested" | null;
+            reason_code: string | null;
+            /** @enum {string} */
+            applicant_type: "pharmacy";
+            organization_id: components["schemas"]["Uuid"];
+            public_name: string;
+            /** @enum {string} */
+            verification_status: "draft" | "pending_review" | "changes_requested" | "approved" | "rejected" | "suspended";
+            /** @enum {string} */
+            status: "draft" | "pending" | "active" | "suspended" | "closed";
+            version: number;
+            initial_branch: {
+                branch_id: components["schemas"]["Uuid"];
+                public_name: string;
+                country_code: components["schemas"]["CountryCode"];
+                /** @enum {string} */
+                status: "draft" | "pending" | "active" | "suspended" | "closed";
+            };
             documents: components["schemas"]["AdminVerificationReviewDocument"][];
         };
         AdminVerificationClaimRequest: {
@@ -3035,6 +3292,128 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    openOwnPharmacyVerificationCase: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PharmacyVerificationCaseOpenRequest"];
+            };
+        };
+        responses: {
+            /** @description Own draft case opened or resumed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyVerificationCaseOpenResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    submitOwnPharmacyVerification: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PharmacyVerificationSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Case submitted; pending review. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyVerificationSubmissionResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getOwnPharmacyVerificationStatus: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Own pharmacy verification status projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyVerificationStatusResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     submitOwnDoctorVerification: {
         parameters: {
             query?: never;
@@ -3252,7 +3631,7 @@ export interface operations {
                 limit?: components["parameters"]["LimitParam"];
                 /** @description Queue assignment filter. Default `unassigned`. */
                 assignment?: "unassigned" | "mine" | "all";
-                case_type?: "doctor_verification";
+                case_type?: "doctor_verification" | "pharmacy_verification";
                 status?: "pending_review";
             };
             header?: {
@@ -3276,7 +3655,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope"] & {
-                        data?: components["schemas"]["AdminVerificationQueueItem"][];
+                        data?: (components["schemas"]["AdminVerificationQueueItem"] | components["schemas"]["AdminPharmacyVerificationQueueItem"])[];
                         meta?: components["schemas"]["Meta"] & {
                             pagination?: components["schemas"]["CursorPagination"];
                         };
@@ -3314,7 +3693,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope"] & {
-                        data?: components["schemas"]["AdminVerificationCase"];
+                        data?: components["schemas"]["AdminVerificationCase"] | components["schemas"]["AdminPharmacyVerificationCase"];
                     };
                 };
             };
@@ -3352,7 +3731,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope"] & {
-                        data?: components["schemas"]["AdminVerificationCase"];
+                        data?: components["schemas"]["AdminVerificationCase"] | components["schemas"]["AdminPharmacyVerificationCase"];
                     };
                 };
             };

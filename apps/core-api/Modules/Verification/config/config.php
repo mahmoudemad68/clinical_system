@@ -8,7 +8,7 @@ declare(strict_types=1);
  */
 return [
     'name' => 'Verification',
-    'case_types' => ['doctor_verification'],
+    'case_types' => ['doctor_verification', 'pharmacy_verification'],
     'max_document_bytes' => 20_971_520,
     'allowed_mime_types' => [
         'application/pdf',
@@ -18,6 +18,13 @@ return [
     'document_requirements' => [
         'professional_id' => [
             'case_type' => 'doctor_verification',
+            'required' => true,
+        ],
+        // ENGINEERING_DEFAULT synthetic requirement. Not government
+        // verification, pharmacy licensing sufficiency, commercial-registry
+        // validity, or legal approval.
+        'organization_registration_evidence' => [
+            'case_type' => 'pharmacy_verification',
             'required' => true,
         ],
     ],

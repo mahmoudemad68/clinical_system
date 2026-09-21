@@ -8,6 +8,8 @@ enum VerificationCaseType: string
 {
     case DoctorVerification = 'doctor_verification';
 
+    case PharmacyVerification = 'pharmacy_verification';
+
     /**
      * @return list<string>
      */

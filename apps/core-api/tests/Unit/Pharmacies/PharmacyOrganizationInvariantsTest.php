@@ -41,6 +41,18 @@ it('allows a new verification case only from draft, changes requested, or reject
         ->and(PharmacyVerificationStatus::Suspended->allowsNewVerificationCase())->toBeFalse();
 });
 
+it('allows only the documented pharmacy verification status transitions', function () {
+    expect(PharmacyVerificationStatus::Draft->canTransitionTo(PharmacyVerificationStatus::PendingReview))->toBeTrue()
+        ->and(PharmacyVerificationStatus::PendingReview->canTransitionTo(PharmacyVerificationStatus::Approved))->toBeTrue()
+        ->and(PharmacyVerificationStatus::PendingReview->canTransitionTo(PharmacyVerificationStatus::Rejected))->toBeTrue()
+        ->and(PharmacyVerificationStatus::PendingReview->canTransitionTo(PharmacyVerificationStatus::ChangesRequested))->toBeTrue()
+        ->and(PharmacyVerificationStatus::ChangesRequested->canTransitionTo(PharmacyVerificationStatus::PendingReview))->toBeTrue()
+        ->and(PharmacyVerificationStatus::Rejected->canTransitionTo(PharmacyVerificationStatus::PendingReview))->toBeTrue()
+        ->and(PharmacyVerificationStatus::Draft->canTransitionTo(PharmacyVerificationStatus::Approved))->toBeFalse()
+        ->and(PharmacyVerificationStatus::Approved->canTransitionTo(PharmacyVerificationStatus::PendingReview))->toBeFalse()
+        ->and(PharmacyVerificationStatus::Suspended->canTransitionTo(PharmacyVerificationStatus::PendingReview))->toBeFalse();
+});
+
 it('canonicalizes legal registration without inventing a checksum', function () {
     expect(LegalRegistration::canonical('  cr 12-ab  '))->toBe('CR12-AB');
 

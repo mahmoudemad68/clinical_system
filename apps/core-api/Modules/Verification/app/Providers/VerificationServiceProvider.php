@@ -14,6 +14,7 @@ use Modules\Verification\Console\ReconcileVerificationUploadsCommand;
 use Modules\Verification\Contracts\TrustedDocumentEvidenceIssuer;
 use Modules\Verification\Http\Controllers\DoctorVerificationController;
 use Modules\Verification\Http\Controllers\DoctorVerificationUploadController;
+use Modules\Verification\Http\Controllers\PharmacyVerificationController;
 use Modules\Verification\Http\Controllers\ReviewerDocumentDownloadController;
 use Modules\Verification\Services\Adapters\DisabledTrustedDocumentEvidenceIssuer;
 use Modules\Verification\Services\Adapters\ProcessingTrustedDocumentEvidenceIssuer;
@@ -50,6 +51,7 @@ final class VerificationServiceProvider extends ServiceProvider
         $this->app->singleton(IdempotencyReplayHydrator::class, VerificationUploadIdempotencyReplayHydrator::class);
         $this->app->bind(VerificationUploadProcessor::class);
         $this->app->bind(DoctorVerificationController::class);
+        $this->app->bind(PharmacyVerificationController::class);
         $this->app->bind(DoctorVerificationUploadController::class);
         $this->app->bind(ReviewerDocumentDownloadController::class);
     }
