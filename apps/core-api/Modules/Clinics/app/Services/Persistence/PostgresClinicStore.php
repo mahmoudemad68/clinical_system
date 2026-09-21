@@ -298,16 +298,45 @@ final class PostgresClinicStore
 
     public function findPendingInvitation(Identifier $locationId, string $phoneHmac, bool $lock): ?ClinicStaffInvitationRecord
     {
+        $found = $this->findPendingInvitationsForHmacs($locationId, [$phoneHmac], $lock);
+
+        return $found[0] ?? null;
+    }
+
+    /**
+     * Pending invitations at one location whose target HMAC matches any
+     * Identity lookup candidate for the same canonical phone.
+     *
+     * @param  list<string>  $hmacs
+     * @return list<ClinicStaffInvitationRecord>
+     */
+    public function findPendingInvitationsForHmacs(Identifier $locationId, array $hmacs, bool $lock): array
+    {
+        if ($hmacs === []) {
+            return [];
+        }
+
         $query = $this->connection->table('clinic_staff_invitations')
             ->where('location_id', $locationId->value)
-            ->where('target_phone_lookup_hmac', BinaryColumn::bind($phoneHmac))
-            ->where('status', ClinicInvitationStatus::Pending->value);
+            ->where('status', ClinicInvitationStatus::Pending->value)
+            ->where(function ($inner) use ($hmacs): void {
+                foreach ($hmacs as $hmac) {
+                    $inner->orWhere('target_phone_lookup_hmac', BinaryColumn::bind($hmac));
+                }
+            })
+            ->orderBy('id');
         if ($lock) {
             $query->lockForUpdate();
         }
-        $row = $query->first();
 
-        return $row instanceof stdClass ? $this->mapInvitation($row) : null;
+        $out = [];
+        foreach ($query->get() as $row) {
+            if ($row instanceof stdClass) {
+                $out[] = $this->mapInvitation($row);
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -336,7 +365,11 @@ final class PostgresClinicStore
      * Staff-side holdings for a user. Owner-side location counts are added by
      * the privacy adapter using Doctors public eligibility (doctor_id list).
      *
-     * @return array<string, int>
+     * @return array{
+     *     clinic_locations_via_membership: int,
+     *     clinic_staff_profiles: int,
+     *     clinic_staff_memberships: int
+     * }
      */
     public function countStaffHoldingsForUser(Identifier $userId): array
     {
@@ -353,16 +386,36 @@ final class PostgresClinicStore
                 ->count('location_id');
         }
 
-        $inviterInvites = $this->connection->table('clinic_staff_invitations')
-            ->where('inviter_user_id', $userId->value)
-            ->count();
-
         return [
             'clinic_locations_via_membership' => $staffLocations,
             'clinic_staff_profiles' => $staff instanceof ClinicStaffProfileRecord ? 1 : 0,
             'clinic_staff_memberships' => $memberships,
-            'clinic_staff_invitations' => $inviterInvites,
         ];
+    }
+
+    /**
+     * Distinct invitation rows where the subject is the inviter and/or the
+     * invitation target HMAC matches any configured lookup HMAC for the
+     * subject. Does not return phone, HMAC, or invitation secret material.
+     *
+     * @param  list<string>  $hmacs
+     */
+    public function countInvitationsLinkedToSubject(Identifier $userId, array $hmacs): int
+    {
+        return (int) $this->connection->table('clinic_staff_invitations')
+            ->where(function ($outer) use ($userId, $hmacs): void {
+                $outer->where('inviter_user_id', $userId->value);
+                if ($hmacs === []) {
+                    return;
+                }
+                $outer->orWhere(function ($targets) use ($hmacs): void {
+                    foreach ($hmacs as $hmac) {
+                        $targets->orWhere('target_phone_lookup_hmac', BinaryColumn::bind($hmac));
+                    }
+                });
+            })
+            ->distinct()
+            ->count('id');
     }
 
     /**

@@ -190,17 +190,54 @@ Only the approved owning doctor of that exact location may invite. Inviteable
 role is **secretary only**. Clients cannot submit clinic scope, doctor id,
 membership status, user id, inviter id, capabilities, or role.
 
-Identity binding: `InvitationRecipientService` canonicalizes the phone and
-returns HMAC + key version. Clinics never queries `users`. Existence of
-another account is not distinguishable (unknown phones receive the same
-created shape as known secretaries). Phone is not in URLs. HMAC/token
-material is not in events/logs/metrics/audit metadata.
+Identity binding: `InvitationRecipientService::bindPhone()` canonicalizes
+the submitted phone without consulting the user directory and returns:
+
+- current `phoneLookupHmac` + `hmacVersion` for **storage** of a new row
+- every configured lookup HMAC for that canonical phone, exposed only as
+  `InvitationPhoneBinding::orderedLookupHmacs()` (stable `strcmp(bin2hex)`
+  order, unique)
+
+Clinics never queries `users` and never learns whether an account exists.
+Unknown phones receive the same created shape as known secretaries. Phone
+is not in URLs. HMAC/token material is not in events, logs, metrics, audit
+metadata, or HTTP projections (`ClinicInvitationOutcome` is IDs/status/
+`expires_at` only).
 
 **Invitation TTL:** `clinics_module.invitation_ttl_hours = 72`
 **ENGINEERING_DEFAULT**. No SMS/email in this chunk (Phase 09).
 
-Pending invitations are single-use. Duplicate pending target at the same
-location is unique-constrained; concurrent invites collapse to one row.
+Pending uniqueness remains `(location_id, target_phone_lookup_hmac) WHERE
+status = 'pending'`. Expiration is **not** part of the unique index.
+`InviteClinicStaff` therefore:
+
+1. Acquires `pg_advisory_xact_lock` for `invite:{locationId}:{hex(hmac)}`
+   for **every** ordered lookup candidate (so v1 and v2 of the same phone
+   serialize in one lock order).
+2. Loads pending rows at that location whose target HMAC matches any
+   candidate (`findPendingInvitationsForHmacs`).
+3. If an unexpired pending row exists, replay it (HTTP 200, `created=false`,
+   same invitation id). Extra matching pending rows are transitioned to
+   `expired` so at most one current pending grant remains.
+4. If matching pending rows are expired (`expires_at <= now`), transition
+   them to authoritative `status=expired` **in place** (history preserved;
+   no delete). Then insert a **new** pending row with a new UUIDv7, new
+   TTL, and **only** the current HMAC + current key version (HTTP 201).
+5. Acceptance of the expired id continues to fail closed (`AuthorizationDenied`
+   / HTTP 404). The replacement can be accepted.
+
+A still-valid pending invite is replay-safe. An expired pending invite is
+not a grant candidate and cannot permanently block re-invitation.
+
+HMAC key rotation: creating with the current digest while a previous-key
+pending row still exists must **not** insert a second logical pending
+invite. Lookup/dedup uses all configured lookup HMAC candidates. The unique
+index is not weakened. Acceptance already matched via
+`subjectPhoneLookupHmacs` / `actorMatchesInvitationHmac`.
+
+Concurrent expire-then-replace collapses to one new pending row plus the
+preserved expired history row. Concurrent first-invite still collapses to
+one pending row.
 
 ## Invitation acceptance semantics
 
@@ -245,8 +282,19 @@ Identity-owned `ClinicSubjectPrivacy` contract with default
 implementations or query clinic tables. Clinics does not query Auth tables.
 
 **Secretary erased/closed:** active/pending memberships revoked; pending
-invitations for that subject's HMAC cancelled (tombstoned HMAC). Acceptance
-after erasure fails closed.
+invitations for that subject's lookup HMACs cancelled (tombstoned HMAC).
+Acceptance after erasure fails closed.
+
+**Subject export vs erasure:** `exportCounts()` counts **distinct**
+`clinic_staff_invitations` rows where the subject is the inviter **and/or**
+the target HMAC matches any configured lookup HMAC for the subject
+(`countInvitationsLinkedToSubject`). A secretary who is only the target of
+a pending invitation (no membership yet) therefore exports
+`clinic_staff_invitations = 1`. Doctor-owner export still counts invitations
+they sent plus owned `clinic_locations`. Phone, HMAC values, invitation
+secrets, and other users' identities are not in the export payload. Erasure
+already discovered target invitations through
+`InvitationRecipientService::subjectPhoneLookupHmacs`.
 
 **Owning doctor erased/closed:** owned locations transition to `closed`,
 public name tombstoned to `erased`, address ciphertext replaced with random
@@ -330,6 +378,8 @@ insufficient without `ClinicOwnerGuard`.
   one 200 + one 409; version = 2.
 - Concurrent accept → one active membership.
 - Concurrent invite → one pending invitation.
+- Concurrent re-invite of an expired pending invitation → one `expired`
+  history row + one new `pending` row (new id).
 - Unique active grant constraint proven.
 - Audit-append failure rolls back create and accept.
 
@@ -376,6 +426,79 @@ The first run on `64034b5f19bbc383fd13e444fda1fc26c28743e4`
 was fixed in `84cfc48` and re-run successfully.
 
 Chunk-only evidence. Phase 02 is **NOT PASS**.
+
+## Invitation lifecycle / privacy follow-up (Draft PR #16)
+
+Independently reviewed HEAD `fbb0594aa6fc8d6730a96d25a588d000cd4cfe7d`
+had GitHub CI `pull-request` **35574600596** SUCCESS. Three invitation
+blockers were then fixed on the same Draft PR without starting a new chunk.
+
+### Expired pending → replacement
+
+Regression
+`expires a stale pending invitation and lets the same doctor invite again`
+(`ClinicStaffInvitationFlowsTest`):
+
+- valid pending invite is replayed (same id, still one row)
+- after `expires_at` is in the past, re-invite marks the old row `expired`
+- same doctor creates a new invitation (new id, new TTL, HTTP 201)
+- old invitation cannot be accepted (404)
+- new invitation can be accepted
+- exactly one current `pending` row exists (history row retained)
+
+### Current/previous HMAC dedup
+
+Regressions:
+
+- `dedups a pending invitation stored under a previous HMAC after key rotation`
+- `replaces an expired previous-HMAC invitation with a current-HMAC row`
+- `orders unique lookup HMAC candidates deterministically`
+  (`InvitationPhoneBindingTest`)
+
+After switching `identity.hmac.current_version` to 2 and rebinding
+`HmacHasher` / `NationalIdProtector`, inviting the same canonical phone
+finds the v1 pending row, does not insert a second pending row, and
+acceptance still succeeds. Once that v1 row is expired, it is marked
+`expired` and a replacement under the current HMAC/key version is created.
+Clinics public projections still omit phone/HMAC.
+
+### Deterministic concurrency locking
+
+`InviteClinicStaff` locks every `orderedLookupHmacs()` candidate in
+hex-sorted order before pending lookup. Concurrent expire-and-replace is
+covered by
+`replaces an expired pending invitation once when re-invited concurrently`.
+Existing concurrent first-invite still yields one pending row; that path
+now also locks every configured lookup candidate for the canonical phone,
+so a v1/v2 key-transition pair cannot create two logical pendings.
+
+### Target-invitation subject export
+
+Regression
+`exports a secretary-targeted pending invitation and erasure blocks acceptance`:
+
+- Secretary has no membership yet, receives a pending clinic invitation
+- `ExportSubjectDataService` → `clinic_staff_invitations` count is 1
+- Doctor-owner export still counts the invitation they sent and the owned
+  location
+- Export JSON has no phone, HMAC hex, or the other user's id
+- `EraseSubjectService` cancels/tombstones the target binding
+- subsequent accept fails closed
+
+### Exact regression tests added
+
+| Test | File |
+| --- | --- |
+| expires a stale pending invitation and lets the same doctor invite again | `tests/Feature/Clinics/ClinicStaffInvitationFlowsTest.php` |
+| dedups a pending invitation stored under a previous HMAC after key rotation | same |
+| replaces an expired previous-HMAC invitation with a current-HMAC row | same |
+| exports a secretary-targeted pending invitation and erasure blocks acceptance | same |
+| replaces an expired pending invitation once when re-invited concurrently | `tests/Feature/Clinics/ClinicConcurrencyTest.php` |
+| orders unique lookup HMAC candidates deterministically | `tests/Unit/Identity/InvitationPhoneBindingTest.php` |
+
+Accepted Chunk-10 architecture, PostGIS, Doctor ownership, optimistic
+concurrency, secretary acceptance, membership revoke, and subject-erasure
+behavior are unchanged.
 
 ## Residuals (keep visible)
 

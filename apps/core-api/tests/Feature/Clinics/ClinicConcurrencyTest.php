@@ -84,6 +84,60 @@ it('creates one pending invitation when the same secretary is invited concurrent
     }
 });
 
+it('replaces an expired pending invitation once when re-invited concurrently', function () {
+    $doctor = clinicApprovedDoctor('race-invite-exp');
+    $locationId = test()->postJson(
+        '/api/v1/clinic-locations',
+        clinicLocationBody(),
+        doctorsAuth($doctor['token']) + clinicIdem('cl-race-exp-loc'),
+    )->json('data.location_id');
+    $secretary = clinicInsertSecretary('race-invite-exp');
+    $invitationId = test()->postJson(
+        '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+        ['phone' => $secretary['phone']],
+        doctorsAuth($doctor['token']) + clinicIdem('cl-race-exp-inv'),
+    )->json('data.invitation_id');
+
+    DB::table('clinic_staff_invitations')->where('id', $invitationId)->update([
+        'expires_at' => now('UTC')->subHour(),
+    ]);
+
+    $body = ['phone' => $secretary['phone']];
+    $pair = ConcurrentHttpPair::run(
+        [
+            'op' => 'http',
+            'method' => 'POST',
+            'uri' => '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+            'body' => $body,
+            'access_token' => $doctor['token'],
+            'idempotency_key' => 'clinic-test-idem-cl-race-exp-L',
+        ],
+        [
+            'op' => 'http',
+            'method' => 'POST',
+            'uri' => '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+            'body' => $body,
+            'access_token' => $doctor['token'],
+            'idempotency_key' => 'clinic-test-idem-cl-race-exp-R',
+        ],
+    );
+
+    $statuses = [$pair['left']['status'], $pair['right']['status']];
+    expect($statuses)->toContain(201)
+        ->and(DB::table('clinic_staff_invitations')->count())->toBe(2)
+        ->and(DB::table('clinic_staff_invitations')->where('status', 'pending')->count())->toBe(1)
+        ->and(DB::table('clinic_staff_invitations')->where('status', 'expired')->count())->toBe(1)
+        ->and((string) DB::table('clinic_staff_invitations')->where('id', $invitationId)->value('status'))->toBe('expired')
+        ->and((string) DB::table('clinic_staff_invitations')->where('status', 'pending')->value('id'))->not->toBe($invitationId);
+
+    foreach ($statuses as $status) {
+        expect(in_array($status, [200, 201], true))->toBeTrue();
+    }
+    foreach ([$pair['left']['error_code'], $pair['right']['error_code']] as $code) {
+        expect($code)->not->toBe('INTERNAL_ERROR');
+    }
+});
+
 it('rejects a concurrent stale location patch', function () {
     $doctor = clinicApprovedDoctor('race-patch');
     $locationId = test()->postJson(

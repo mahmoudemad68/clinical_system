@@ -51,7 +51,10 @@ final class PostgresClinicSubjectPrivacy implements ClinicSubjectPrivacy
             'clinic_locations' => $owned + $staff['clinic_locations_via_membership'],
             'clinic_staff_profiles' => $staff['clinic_staff_profiles'],
             'clinic_staff_memberships' => $staff['clinic_staff_memberships'],
-            'clinic_staff_invitations' => $staff['clinic_staff_invitations'],
+            'clinic_staff_invitations' => $this->store->countInvitationsLinkedToSubject(
+                $userId,
+                $this->recipients->subjectPhoneLookupHmacs($userId),
+            ),
         ];
     }
 

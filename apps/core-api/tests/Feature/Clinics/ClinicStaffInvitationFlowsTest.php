@@ -7,15 +7,24 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Modules\Clinics\Enums\ClinicMembershipStatus;
 use Modules\Clinics\Enums\ClinicStaffRole;
+use Modules\Clinics\Services\AcceptClinicStaffInvitation;
 use Modules\Clinics\Services\ResolveActiveClinicMembership;
 use Modules\Identity\Services\EraseSubjectService;
+use Modules\Identity\Services\ExportSubjectDataService;
 use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Exceptions\AuthorizationDenied;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Services\Testing\SyntheticEgyptianData;
 use Modules\Platform\Support\Identifier;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
+
+afterEach(function (): void {
+    if ((int) config('identity.hmac.current_version') !== 1) {
+        clinicUseHmacCurrentVersion(1);
+    }
+});
 
 describe('clinic staff invitation and membership', function () {
     it('invites a secretary, accepts once, lists, and revokes without leaking phone', function () {
@@ -408,5 +417,232 @@ describe('clinic staff invitation and membership', function () {
                 Identifier::fromTrusted($locationId),
             ))->toBeNull()
             ->and((string) DB::table('clinic_staff_invitations')->value('status'))->not->toBe('pending');
+    });
+
+    it('expires a stale pending invitation and lets the same doctor invite again', function () {
+        $doctor = clinicApprovedDoctor('invite-replace');
+        $locationId = $this->postJson(
+            '/api/v1/clinic-locations',
+            clinicLocationBody(),
+            doctorsAuth($doctor['token']) + clinicIdem('csi-rep-loc'),
+        )->json('data.location_id');
+        $secretary = clinicInsertSecretary('invite-replace');
+        $phoneCanary = $secretary['phone'];
+
+        $first = $this->postJson(
+            '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+            ['phone' => $phoneCanary],
+            doctorsAuth($doctor['token']) + clinicIdem('csi-rep-first'),
+        )->assertCreated();
+        $firstId = $first->json('data.invitation_id');
+
+        $replay = $this->postJson(
+            '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+            ['phone' => $phoneCanary],
+            doctorsAuth($doctor['token']) + clinicIdem('csi-rep-replay'),
+        );
+        $replay->assertOk()->assertJsonPath('data.invitation_id', $firstId);
+        expect(DB::table('clinic_staff_invitations')->count())->toBe(1)
+            ->and((string) DB::table('clinic_staff_invitations')->value('status'))->toBe('pending');
+
+        DB::table('clinic_staff_invitations')->where('id', $firstId)->update([
+            'expires_at' => now('UTC')->subHour(),
+        ]);
+
+        $replacement = $this->postJson(
+            '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+            ['phone' => $phoneCanary],
+            doctorsAuth($doctor['token']) + clinicIdem('csi-rep-new'),
+        );
+        $replacement->assertCreated()
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonMissingPath('data.phone')
+            ->assertJsonMissingPath('data.target_phone_lookup_hmac');
+        expect($replacement->getContent())->not->toContain($phoneCanary)
+            ->and($replacement->getContent())->not->toContain('hmac')
+            ->and($replacement->json('data.invitation_id'))->not->toBe($firstId)
+            ->and((string) DB::table('clinic_staff_invitations')->where('id', $firstId)->value('status'))->toBe('expired')
+            ->and(DB::table('clinic_staff_invitations')->count())->toBe(2)
+            ->and(DB::table('clinic_staff_invitations')->where('status', 'pending')->count())->toBe(1)
+            ->and(DB::table('clinic_staff_invitations')->where('status', 'expired')->count())->toBe(1);
+
+        $newId = $replacement->json('data.invitation_id');
+        clinicSecretaryLogin($secretary);
+        clinicSecretaryPostJson(
+            '/api/v1/clinic-staff-invitations/'.$firstId.'/accept',
+            [],
+            clinicIdem('csi-rep-old-accept'),
+        )->assertNotFound();
+        clinicSecretaryPostJson(
+            '/api/v1/clinic-staff-invitations/'.$newId.'/accept',
+            [],
+            clinicIdem('csi-rep-new-accept'),
+        )->assertOk()->assertJsonPath('data.status', ClinicMembershipStatus::Active->value);
+        expect(DB::table('clinic_staff_memberships')->where('status', 'active')->count())->toBe(1);
+    });
+
+    it('dedups a pending invitation stored under a previous HMAC after key rotation', function () {
+        $doctor = clinicApprovedDoctor('invite-hmac');
+        $locationId = $this->postJson(
+            '/api/v1/clinic-locations',
+            clinicLocationBody(),
+            doctorsAuth($doctor['token']) + clinicIdem('csi-hmac-loc'),
+        )->json('data.location_id');
+        $secretary = clinicInsertSecretary('invite-hmac');
+        $phoneCanary = $secretary['phone'];
+
+        $first = $this->postJson(
+            '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+            ['phone' => $phoneCanary],
+            doctorsAuth($doctor['token']) + clinicIdem('csi-hmac-first'),
+        )->assertCreated();
+        $firstId = $first->json('data.invitation_id');
+        $storedV1 = BinaryColumn::asString(
+            DB::table('clinic_staff_invitations')->where('id', $firstId)->value('target_phone_lookup_hmac'),
+        );
+        expect((int) DB::table('clinic_staff_invitations')->where('id', $firstId)->value('target_phone_key_version'))->toBe(1);
+
+        clinicUseHmacCurrentVersion(2);
+
+        $replay = $this->postJson(
+            '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+            ['phone' => $phoneCanary],
+            doctorsAuth($doctor['token']) + clinicIdem('csi-hmac-replay'),
+        );
+        $replay->assertOk()
+            ->assertJsonPath('data.invitation_id', $firstId)
+            ->assertJsonMissingPath('data.phone')
+            ->assertJsonMissingPath('data.target_phone_lookup_hmac');
+        expect($replay->getContent())->not->toContain($phoneCanary)
+            ->and($replay->getContent())->not->toContain('hmac')
+            ->and(DB::table('clinic_staff_invitations')->count())->toBe(1)
+            ->and(DB::table('clinic_staff_invitations')->where('status', 'pending')->count())->toBe(1)
+            ->and(hash_equals($storedV1, BinaryColumn::asString(
+                DB::table('clinic_staff_invitations')->where('id', $firstId)->value('target_phone_lookup_hmac'),
+            )))->toBeTrue();
+
+        clinicSecretaryLogin($secretary);
+        clinicSecretaryPostJson(
+            '/api/v1/clinic-staff-invitations/'.$firstId.'/accept',
+            [],
+            clinicIdem('csi-hmac-accept'),
+        )->assertOk()->assertJsonPath('data.status', ClinicMembershipStatus::Active->value);
+        clinicClearBrowserSession();
+    });
+
+    it('replaces an expired previous-HMAC invitation with a current-HMAC row', function () {
+        $doctor = clinicApprovedDoctor('invite-hmac-exp');
+        $locationId = $this->postJson(
+            '/api/v1/clinic-locations',
+            clinicLocationBody(),
+            doctorsAuth($doctor['token']) + clinicIdem('csi-hmac-exp-loc'),
+        )->json('data.location_id');
+        $secretary = clinicInsertSecretary('invite-hmac-exp');
+        $phoneCanary = $secretary['phone'];
+
+        $first = $this->postJson(
+            '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+            ['phone' => $phoneCanary],
+            doctorsAuth($doctor['token']) + clinicIdem('csi-hmac-exp-first'),
+        )->assertCreated();
+        $firstId = $first->json('data.invitation_id');
+        $storedV1 = BinaryColumn::asString(
+            DB::table('clinic_staff_invitations')->where('id', $firstId)->value('target_phone_lookup_hmac'),
+        );
+
+        clinicUseHmacCurrentVersion(2);
+        DB::table('clinic_staff_invitations')->where('id', $firstId)->update([
+            'expires_at' => now('UTC')->subHour(),
+        ]);
+
+        $replacement = $this->postJson(
+            '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+            ['phone' => $phoneCanary],
+            doctorsAuth($doctor['token']) + clinicIdem('csi-hmac-exp-new'),
+        );
+        $newId = $replacement->json('data.invitation_id');
+        $storedV2 = BinaryColumn::asString(
+            DB::table('clinic_staff_invitations')->where('id', $newId)->value('target_phone_lookup_hmac'),
+        );
+        $replacement->assertCreated();
+        expect($newId)->not->toBe($firstId)
+            ->and((string) DB::table('clinic_staff_invitations')->where('id', $firstId)->value('status'))->toBe('expired')
+            ->and((int) DB::table('clinic_staff_invitations')->where('id', $newId)->value('target_phone_key_version'))->toBe(2)
+            ->and(hash_equals($storedV1, $storedV2))->toBeFalse()
+            ->and(DB::table('clinic_staff_invitations')->where('status', 'pending')->count())->toBe(1)
+            ->and($replacement->getContent())->not->toContain($phoneCanary)
+            ->and($replacement->getContent())->not->toContain('hmac');
+
+        clinicSecretaryLogin($secretary);
+        clinicSecretaryPostJson(
+            '/api/v1/clinic-staff-invitations/'.$firstId.'/accept',
+            [],
+            clinicIdem('csi-hmac-exp-old'),
+        )->assertNotFound();
+        clinicSecretaryPostJson(
+            '/api/v1/clinic-staff-invitations/'.$newId.'/accept',
+            [],
+            clinicIdem('csi-hmac-exp-accept'),
+        )->assertOk();
+        clinicClearBrowserSession();
+    });
+
+    it('exports a secretary-targeted pending invitation and erasure blocks acceptance', function () {
+        $doctor = clinicApprovedDoctor('export-target');
+        $locationId = $this->postJson(
+            '/api/v1/clinic-locations',
+            clinicLocationBody(),
+            doctorsAuth($doctor['token']) + clinicIdem('csi-exp-loc'),
+        )->json('data.location_id');
+        $secretary = clinicInsertSecretary('export-target');
+        $phoneCanary = $secretary['phone'];
+        $invitationId = $this->postJson(
+            '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+            ['phone' => $phoneCanary],
+            doctorsAuth($doctor['token']) + clinicIdem('csi-exp-inv'),
+        )->json('data.invitation_id');
+        $hmacBefore = BinaryColumn::asString(
+            DB::table('clinic_staff_invitations')->where('id', $invitationId)->value('target_phone_lookup_hmac'),
+        );
+
+        $secretaryExport = app(ExportSubjectDataService::class)->handle(
+            clinicEraseOperator(),
+            Identifier::fromTrusted($secretary['user_id']),
+        );
+        $doctorExport = app(ExportSubjectDataService::class)->handle(
+            clinicEraseOperator(),
+            Identifier::fromTrusted($doctor['user_id']),
+        );
+        $secretaryJson = json_encode($secretaryExport->toArray(), JSON_THROW_ON_ERROR);
+        $doctorJson = json_encode($doctorExport->toArray(), JSON_THROW_ON_ERROR);
+
+        expect(clinicHoldingCount($secretaryExport->holdings, 'clinic_staff_invitations'))->toBe(1)
+            ->and(clinicHoldingCount($secretaryExport->holdings, 'clinic_staff_memberships'))->toBe(0)
+            ->and(clinicHoldingCount($secretaryExport->holdings, 'clinic_staff_profiles'))->toBe(0)
+            ->and(clinicHoldingCount($doctorExport->holdings, 'clinic_staff_invitations'))->toBe(1)
+            ->and(clinicHoldingCount($doctorExport->holdings, 'clinic_locations'))->toBe(1)
+            ->and($secretaryJson)->not->toContain($phoneCanary)
+            ->and($secretaryJson)->not->toContain($doctor['user_id'])
+            ->and($secretaryJson)->not->toContain('hmac')
+            ->and($secretaryJson)->not->toContain(bin2hex($hmacBefore))
+            ->and($doctorJson)->not->toContain($phoneCanary)
+            ->and($doctorJson)->not->toContain($secretary['user_id'])
+            ->and($doctorJson)->not->toContain('hmac');
+
+        app(EraseSubjectService::class)->handle(
+            clinicEraseOperator(),
+            Identifier::fromTrusted($secretary['user_id']),
+            'subject_erasure',
+        );
+
+        $hmacAfter = BinaryColumn::asString(
+            DB::table('clinic_staff_invitations')->where('id', $invitationId)->value('target_phone_lookup_hmac'),
+        );
+        expect((string) DB::table('clinic_staff_invitations')->where('id', $invitationId)->value('status'))->toBe('cancelled')
+            ->and(hash_equals($hmacBefore, $hmacAfter))->toBeFalse();
+        expect(fn () => app(AcceptClinicStaffInvitation::class)->handle(
+            clinicSecretaryActor($secretary['user_id']),
+            Identifier::fromTrusted($invitationId),
+        ))->toThrow(AuthorizationDenied::class);
     });
 });

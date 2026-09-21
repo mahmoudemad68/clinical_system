@@ -22,6 +22,11 @@ final class InvitationRecipientService
         private readonly FieldEncryptor $encryptor,
     ) {}
 
+    /**
+     * Canonicalize a submitted phone for invitation create/dedup.
+     * Returns the current HMAC for storage plus every configured lookup HMAC
+     * for the same canonical phone. Does not consult the user directory.
+     */
     public function bindPhone(string $rawPhone): InvitationPhoneBinding
     {
         $phone = $this->protector->phone($rawPhone);
@@ -29,6 +34,7 @@ final class InvitationRecipientService
         return new InvitationPhoneBinding(
             $this->protector->phoneHmac($phone),
             $this->protector->hmacVersion(),
+            $this->protector->phoneLookupHmacs($phone),
         );
     }
 

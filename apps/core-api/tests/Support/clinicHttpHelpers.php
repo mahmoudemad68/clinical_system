@@ -12,8 +12,11 @@ use Modules\Identity\Enums\AccountStatus;
 use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Enums\AssuranceLevel;
 use Modules\Identity\Enums\LanguagePreference;
+use Modules\Identity\Services\AuditedSensitiveDecryptor;
 use Modules\Identity\Services\NationalIdProtector;
 use Modules\Identity\Support\ActorContext;
+use Modules\Platform\Contracts\FieldEncryptor;
+use Modules\Platform\Contracts\HmacHasher;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Services\Testing\SyntheticEgyptianData;
@@ -212,6 +215,34 @@ function clinicSecretaryActor(string $userId): ActorContext
         [],
         Capabilities::AUTHENTICATED_SELF,
     );
+}
+
+function clinicRebindIdentityCrypto(): void
+{
+    app()->forgetInstance(FieldEncryptor::class);
+    app()->forgetInstance(HmacHasher::class);
+    app()->forgetInstance(NationalIdProtector::class);
+    app()->forgetInstance(AuditedSensitiveDecryptor::class);
+}
+
+function clinicUseHmacCurrentVersion(int $version): void
+{
+    config(['identity.hmac.current_version' => $version]);
+    clinicRebindIdentityCrypto();
+}
+
+/**
+ * @param  list<array{holding: string, count: int|null}>  $holdings
+ */
+function clinicHoldingCount(array $holdings, string $holding): int
+{
+    foreach ($holdings as $row) {
+        if (($row['holding'] ?? null) === $holding) {
+            return (int) ($row['count'] ?? 0);
+        }
+    }
+
+    return 0;
 }
 
 function clinicEraseOperator(): ActorContext
