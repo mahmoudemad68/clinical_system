@@ -14,10 +14,10 @@ It does **not** itself close Chunk 11.
 Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 
 - **Branch:** `cursor/phase-02-chunk-11-worker-audit-identity-cc7f`
-- **Draft PR:** _pending GitHub URL after open_
+- **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/20
 - **Baseline (GitHub `main`):** `a438aba2d141ee41e59318c76b3f956998faf718`
-- **Implementation HEAD:** _pending commit SHA_
-- **GitHub CI:** _pending final-head run_
+- **Implementation HEAD:** `ac44350a6fc983acdf713638a7563aeb60be1c50`
+- **GitHub CI:** pending on this head; this note will be updated with the exact `pull-request` run
 - **Recorded:** 2026-09-21
 
 ## QA failure reproduced
