@@ -25,13 +25,15 @@ provisioning, Pharmacy envelope-key rotation, Pharmacy subject-erasure
 residual.
 
 - **Branch:** `cursor/phase-02-doctor-onboarding-verification-ui-cc7f`
+- **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/17
 - **Base (GitHub `main`):** `fbed5f3fd93f0d717821d7158256dc4e8051bcd7`
-- **CI-verified HEAD:** _recorded after exact-HEAD GitHub CI_
-- **GitHub CI:** _pending exact-HEAD wait_
+- **CI-verified HEAD:** `6e8d9fe6c517875d64c146110ba8615647015d63`
+- **GitHub CI:** `pull-request` run **35586368278** SUCCESS on that exact HEAD
+  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35586368278)
 - **Recorded:** 2026-09-21
 - **Environment:** host Node 22 workspace, PHP 8.3 Core Pest against local
-  PostgreSQL `clinic_test`. Packaged Electron E2E is GitHub
-  `desktop-packaged-e2e`.
+  PostgreSQL `clinic_test`. Packaged Electron E2E ran in GitHub
+  `desktop-packaged-e2e` on ubuntu-latest, macos-latest, and windows-latest.
 
 ## What was implemented
 
@@ -235,11 +237,27 @@ protected identifiers remain out of Admin projections by existing tests.
 ## Packaged Doctor binary / ASAR provenance
 
 Packaged proof is GitHub `desktop-packaged-e2e` (real packaged binary, not
-Forge/Vitest). Spec now asserts Doctor bridge methods exist, Pharmacy
+Forge/Vitest) on `6e8d9fe6c517875d64c146110ba8615647015d63`, run
+**35586368278**. Spec asserts `window.clinic.doctor` methods exist, Pharmacy
 surface is absent, Node globals are absent, no generic `invoke`, custom
-packaged origin, and Doctor boot UI. Full synthetic Phase-02 Doctor flow in
-a packaged binary is not a local unsigned-in fixture; the authoritative
-state-machine flow is Pest `DoctorVerificationSyntheticE2ETest`.
+origin `clinic-doctor-app://-`, and Doctor boot UI. Doctor WebdriverIO:
+5 passing / 0 failing on linux, darwin, and win32.
+
+Doctor `app.asar` SHA-256 is identical across the three CI OS runners:
+
+`9ebc2f9769acdd316ec0cee021719024f5d1755a1626ff94f8bb16b1bb973df3`
+
+| OS | Doctor binary SHA-256 |
+| --- | --- |
+| linux x64 | `199529b21d6f5cb8bb5d3425952ffd11413df9336dafa54ae9ceb8ef3bc2cc92` |
+| darwin arm64 | `59f028a611f1d52e7821528280ddd7aa9d9a8cbd9c502dee3070bfea6014c795` |
+| win32 x64 | `2c7587ed8a2a377ecc79b035bfbb780a7b185684d9a37d35bafe685ad9f1ae9e` |
+
+Fuses observed on all three: RunAsNode DISABLE, EnableNodeOptionsEnvironmentVariable DISABLE, EnableNodeCliInspectArguments DISABLE, EnableEmbeddedAsarIntegrityValidation ENABLE, OnlyLoadAppFromAsar ENABLE.
+
+Full synthetic Phase-02 Doctor flow against the real backend state machine is
+Pest `DoctorVerificationSyntheticE2ETest` (not the unsigned packaged boot
+fixture).
 
 ## OpenAPI / generated clients
 
@@ -265,7 +283,14 @@ changes against origin/main.**
 | `./vendor/bin/deptrac analyse` | 0 violations, 2828 allowed |
 | Pest `tests/Feature/Doctors` + `tests/Feature/Verification` + `tests/Feature/Admin` + `IdentityRulesTest` + `ArchitectureBoundaryTest` | **186 tests, 184 passed, 2 skipped**, 7884 assertions |
 
-GitHub CI exact run ID is recorded after the wait on **final HEAD**.
+GitHub CI exact run on this HEAD: **35586368278** SUCCESS
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35586368278).
+
+Jobs SUCCESS: Contracts, Detect changed areas, Security scans, Supply-chain
+policy, Electron desktops, Secure-file providers, Admin web, Core API,
+Packaged Electron E2E (ubuntu-latest, macos-latest, windows-latest),
+Runtime image scan (core-api), Runtime image scan (ai-service). Flutter and
+AI service skipped (path filters).
 
 ## Residuals (Phase 02 remains NOT PASS)
 
