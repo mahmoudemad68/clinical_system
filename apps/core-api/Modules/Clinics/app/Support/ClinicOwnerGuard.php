@@ -53,6 +53,9 @@ final class ClinicOwnerGuard
         return $owner;
     }
 
+    /**
+     * @return array{owner: PracticeOwnerEligibility, location: ClinicLocationRecord}
+     */
     public function requireOwnedLocation(
         ActorContext $actor,
         Identifier $locationId,
@@ -82,6 +85,9 @@ final class ClinicOwnerGuard
         }
     }
 
+    /**
+     * @return array{mode: 'owner', location: ClinicLocationRecord, owner: PracticeOwnerEligibility}|array{mode: 'staff', location: ClinicLocationRecord, membership: ClinicStaffMembershipRecord}
+     */
     public function requireLocationRead(ActorContext $actor, Identifier $locationId): array
     {
         $decision = $this->authorize->decide($actor, Capabilities::CLINICS_LOCATION_READ_OWN);

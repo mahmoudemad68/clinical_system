@@ -6,6 +6,7 @@ namespace Modules\Clinics\Services\Persistence;
 
 use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Modules\Clinics\Enums\ClinicInvitationStatus;
 use Modules\Clinics\Enums\ClinicLocationStatus;
@@ -44,6 +45,7 @@ final class PostgresClinicStore
     }
 
     /**
+     * @param  array{created_at: string, id: string}|null  $after
      * @return list<ClinicLocationRecord>
      */
     public function listLocationsForDoctor(
@@ -78,6 +80,7 @@ final class PostgresClinicStore
     }
 
     /**
+     * @param  array{created_at: string, id: string}|null  $after
      * @return list<ClinicLocationRecord>
      */
     public function listLocationsForActiveStaff(
@@ -538,7 +541,7 @@ final class PostgresClinicStore
         return is_object($row) ? (int) $row->matching : 0;
     }
 
-    private function locationQuery()
+    private function locationQuery(): Builder
     {
         return $this->connection->table('clinic_locations')
             ->select('clinic_locations.*')
