@@ -9,10 +9,12 @@ verification GUI journey is successfully re-run on a merged main SHA after
 independent review of this change.
 
 - **Branch:** `cursor/phase-02-chunk-11-doctor-qa-unblock-cc7f`
+- **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/18
 - **Baseline (GitHub `main`):** `64d4ca6b533b146855a3bcb2f1d915aeb7105d46`
   (merge of PR #17). This work does **not** reopen or continue PR #17.
-- **Final HEAD:** _recorded after exact-HEAD GitHub CI_
-- **GitHub CI:** _pending exact-HEAD wait_
+- **CI-verified HEAD:** `2fb6d91de2021ca53a417036bee1862ca3f45836`
+- **GitHub CI:** `pull-request` run **35592651540** SUCCESS on that exact HEAD
+  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35592651540)
 - **Recorded:** 2026-09-21
 
 ## Why Forge development was blank
@@ -105,7 +107,10 @@ absent, no Node globals, no generic `invoke`, hostile navigation refused,
 Arabic RTL. Doctor `app.asar` SHA-256
 `552885edc51bc88c49649ecc0484fc401530c313146647f216ad9ab37c0a97a9`.
 
-Cross-OS packaged proof is GitHub `desktop-packaged-e2e` on final HEAD.
+Cross-OS packaged proof is GitHub `desktop-packaged-e2e` on
+`2fb6d91de2021ca53a417036bee1862ca3f45836`, run **35592651540**: ubuntu-latest,
+macos-latest, and windows-latest all SUCCESS. Electron desktops (including
+Forge Doctor smoke) SUCCESS on that run.
 
 Packaged HTTP rejection remains unit-tested:
 
@@ -126,7 +131,14 @@ Packaged HTTP rejection remains unit-tested:
 | `node --test scripts/desktop/forge-doctor-smoke.test.mjs` | **3 passed** |
 | `npm run desktop:forge-doctor-smoke` | pass (see above) |
 
-GitHub CI exact run ID is recorded after the wait on **final HEAD**.
+GitHub CI exact run on this HEAD: **35592651540** SUCCESS
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35592651540).
+
+Jobs SUCCESS: Detect changed areas, Contracts, Supply-chain policy, Security
+scans, Electron desktops (includes Forge Doctor smoke), Secure-file providers,
+Admin web, Flutter, Packaged Electron E2E (ubuntu-latest, macos-latest,
+windows-latest), Runtime image scan (core-api), Runtime image scan
+(ai-service). Core API and AI service skipped (path filters).
 
 ## Residuals
 
