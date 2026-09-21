@@ -213,11 +213,14 @@ packaged artifacts via `scripts/desktop/run-packaged-e2e.mjs`, not
 
 ## Admin browser E2E
 
-Existing doctor Playwright flow is unchanged (default heading “Pending
-doctor verification”, claim, document access, decision). A second test signs
-in the same reviewer, switches to Pharmacy verification, asserts canaries
-absent, claims, downloads, and approves the seeded `E2E Pharmacy Review`
-case. The browser seeder now also creates that pending pharmacy case.
+Existing doctor Playwright assertions remain (default heading “Pending
+doctor verification”, claim, document access, decision). After that doctor
+decision, the same reviewer session returns to the queue, switches to
+Pharmacy verification, asserts canaries absent, claims, downloads, and
+approves the seeded `E2E Pharmacy Review` case. Pharmacy coverage stays in
+that one session so the reviewer TOTP is not replayed in the same 30s
+window (`last_used_counter`). The browser seeder still creates the pending
+pharmacy case.
 
 ## Local tests and counts
 
