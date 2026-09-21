@@ -48,7 +48,14 @@ final class S3StoreObjectContractTest extends TestCase
         $this->assertSame('PUT', $grant->method);
         $this->assertNotSame('', $grant->url);
         $this->assertStringStartsWith('phase00/q/', $grant->storageLocator);
-        $this->assertStringNotContainsString($grant->storageLocator, json_encode($grant->__debugInfo(), JSON_THROW_ON_ERROR));
+        $grantHeaderNames = array_map('strtolower', array_keys($grant->headers));
+        $this->assertNotContains('host', $grantHeaderNames);
+        $this->assertNotContains('connection', $grantHeaderNames);
+        $this->assertNotContains('transfer-encoding', $grantHeaderNames);
+        $this->assertContains('content-type', $grantHeaderNames);
+        $debug = json_encode($grant->__debugInfo(), JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString($grant->storageLocator, $debug);
+        $this->assertStringNotContainsString($grant->url, $debug);
 
         $canonical = $store->allocateCanonicalRef('phase00', 'live-object-1');
         $store->copyExact($ref, $canonical);

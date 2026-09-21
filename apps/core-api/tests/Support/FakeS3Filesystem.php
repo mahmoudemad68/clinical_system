@@ -21,6 +21,16 @@ final class FakeS3Filesystem implements Filesystem
 
     public FakeS3CopyClient $client;
 
+    /**
+     * @var array<string, mixed>
+     */
+    public array $temporaryUploadHeaders = [
+        'Host' => '127.0.0.1:19000',
+        'Content-Type' => 'application/pdf',
+    ];
+
+    public string $signedUploadUrl = 'https://objects.example/upload?X-Amz-Signature=synthetic-signature';
+
     public function __construct()
     {
         $this->client = new FakeS3CopyClient($this);
@@ -50,6 +60,22 @@ final class FakeS3Filesystem implements Filesystem
     public function getConfig(): array
     {
         return ['bucket' => 'clinic-test'];
+    }
+
+    /**
+     * @param  mixed  $path
+     * @param  mixed  $expiration
+     * @param  array<string, mixed>  $options
+     * @return array{url: string, headers: array<string, mixed>}
+     */
+    public function temporaryUploadUrl($path, $expiration, array $options = []): array
+    {
+        unset($path, $expiration, $options);
+
+        return [
+            'url' => $this->signedUploadUrl,
+            'headers' => $this->temporaryUploadHeaders,
+        ];
     }
 
     public function mimeType(string $path): string

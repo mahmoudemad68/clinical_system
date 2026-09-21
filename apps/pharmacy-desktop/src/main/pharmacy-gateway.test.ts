@@ -29,7 +29,7 @@ vi.mock('./packaged-api-allowlist', () => ({
   PACKAGED_API_ALLOWED_ORIGINS: ['https://pharmacy.example.com'],
 }));
 
-import { resetPlatformGatewaySession } from './platform-gateway';
+import { platformGateway, resetPlatformGatewaySession } from './platform-gateway';
 import {
   ONBOARD_INTENT,
   OPEN_CASE_INTENT,
@@ -40,6 +40,7 @@ import {
   pharmacyIntentKeys,
   resetPharmacyGatewayState,
 } from './pharmacy-gateway';
+import { UploadTargetError } from './upload-target';
 import {
   pharmacyOnboardResponseSchema,
   pharmacyUploadStatusResponseSchema,
@@ -196,8 +197,18 @@ describe('pharmacy gateway safe projections', () => {
     expect(serialized).not.toContain(CANARIES.locator);
     expect(serialized).not.toContain(CANARIES.objectId);
     expect(String(fetchMock.mock.calls[3]?.[0])).toBe(CANARIES.signedUrl);
-    expect((fetchMock.mock.calls[3]?.[1] as { method?: string; redirect?: string }).method).toBe('PUT');
+    expect((fetchMock.mock.calls[3]?.[1] as { method?: string; redirect?: string; credentials?: string }).method).toBe('PUT');
     expect((fetchMock.mock.calls[3]?.[1] as { redirect?: string }).redirect).toBe('error');
+    expect((fetchMock.mock.calls[3]?.[1] as { credentials?: string }).credentials).toBe('omit');
+    expect((fetchMock.mock.calls[3]?.[1] as { headers?: Record<string, string> }).headers?.['Authorization']).toBeUndefined();
+    for (const call of fetchMock.mock.calls) {
+      expect((call[1] as { credentials?: string }).credentials).toBe('omit');
+      const names = Object.keys((call[1] as { headers?: Record<string, string> }).headers ?? {}).map((name) =>
+        name.toLowerCase(),
+      );
+      expect(names).not.toContain('cookie');
+      expect(names).not.toContain('x-xsrf-token');
+    }
   });
 
   it('treats a missing own organization as present:false', async () => {
@@ -810,5 +821,176 @@ describe('pharmacy gateway safe projections', () => {
     expect(completeKeys[0]).toBe(completeKey);
     expect(completeKeys[1]).toBe(completeKey);
     rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('fail-closes a Core-issued Host header before PUT', async () => {
+    fetchMock.mockResolvedValueOnce(
+      envelope(201, {
+        upload_id: '0199a5c8-0000-7000-8000-000000000021',
+        requirement_code: 'organization_registration_evidence',
+        state: 'uploading',
+        rejection_reason: null,
+        expires_at: '2026-09-21T00:10:00Z',
+        completed_at: null,
+        upload_target: {
+          method: 'PUT',
+          url: CANARIES.signedUrl,
+          headers: { Host: '127.0.0.1:19000', 'Content-Type': 'application/pdf' },
+          expires_at: '2026-09-21T00:10:00Z',
+        },
+      }),
+    );
+
+    await expect(
+      pharmacyGateway.uploadEvidence('en', {
+        caseId: '0199a5c8-0000-7000-8000-000000000030',
+        bytes: Buffer.from('%PDF-1.4\n%%EOF\n'),
+        sizeBytes: 14,
+        candidateMediaType: 'application/pdf',
+      }),
+    ).rejects.toBeInstanceOf(UploadTargetError);
+    const putCalls = fetchMock.mock.calls.filter(
+      (call) => (call[1] as { method?: string } | undefined)?.method === 'PUT',
+    );
+    expect(putCalls).toHaveLength(0);
+  });
+});
+
+describe('pharmacy verification transport without cookie or Host workarounds', () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    appState.isPackaged = false;
+    resetPlatformGatewaySession();
+    resetPharmacyGatewayState();
+    process.env['CLINIC_API_BASE_URL'] = 'http://localhost:8080';
+  });
+
+  afterEach(() => {
+    delete process.env['CLINIC_API_BASE_URL'];
+  });
+
+  it('runs login, MFA, organization, onboard, case, and upload on cookieless main transport', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        envelope(200, {
+          status: 'mfa_required',
+          mfa_required: true,
+          challenge_id: '0199a5c8-0000-7000-8000-0000000000aa',
+          session_kind: 'device',
+          account_type: 'pharmacy',
+        }),
+      )
+      .mockResolvedValueOnce(
+        envelope(200, {
+          status: 'active',
+          mfa_required: false,
+          session_kind: 'device',
+          user_id: '0199a5c8-0000-7000-8000-000000000001',
+          account_type: 'pharmacy',
+          access_token: 'issued-access',
+          refresh_token: 'issued-refresh',
+        }),
+      )
+      .mockResolvedValueOnce({
+        status: 404,
+        json: async () => ({
+          data: null,
+          meta: {},
+          errors: [{ code: 'NOT_FOUND', message: 'missing' }],
+          request_id: '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c01',
+        }),
+      })
+      .mockResolvedValueOnce(
+        envelope(201, {
+          status: 'organization_ready',
+          organization_id: '0199a5c8-0000-7000-8000-000000000010',
+          branch_id: '0199a5c8-0000-7000-8000-000000000011',
+          membership_id: '0199a5c8-0000-7000-8000-000000000012',
+          version: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        envelope(200, {
+          status: 'ready',
+          organization_id: '0199a5c8-0000-7000-8000-000000000010',
+          case_id: '0199a5c8-0000-7000-8000-000000000030',
+          case_status: 'draft',
+          case_version: 1,
+          organization_version: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        envelope(201, {
+          upload_id: '0199a5c8-0000-7000-8000-000000000021',
+          requirement_code: 'organization_registration_evidence',
+          state: 'uploading',
+          rejection_reason: null,
+          expires_at: '2026-09-21T00:10:00Z',
+          completed_at: null,
+          upload_target: {
+            method: 'PUT',
+            url: 'https://objects.example/upload',
+            headers: { 'Content-Type': 'application/pdf' },
+            expires_at: '2026-09-21T00:10:00Z',
+          },
+        }),
+      )
+      .mockResolvedValueOnce({ status: 200 })
+      .mockResolvedValueOnce(
+        envelope(200, {
+          upload_id: '0199a5c8-0000-7000-8000-000000000021',
+          requirement_code: 'organization_registration_evidence',
+          state: 'available',
+          rejection_reason: null,
+          expires_at: '2026-09-21T00:10:00Z',
+          completed_at: '2026-09-21T00:01:00Z',
+        }),
+      );
+
+    await platformGateway.login('en', {
+      phone: '01000000000',
+      password: 'password-value',
+      deviceLabel: 'synthetic',
+    });
+    await platformGateway.verifyMfa('en', {
+      challengeId: '0199a5c8-0000-7000-8000-0000000000aa',
+      code: '123456',
+    });
+    const organization = await pharmacyGateway.getOwnOrganization('en');
+    expect(organization.present).toBe(false);
+    const onboarded = await pharmacyGateway.onboard('en', {
+      legalName: 'Synthetic Pharmacy LLC',
+      publicName: 'Synthetic Pharmacy',
+      legalRegistrationIdentifier: 'CR-1',
+      branchPublicName: 'Main',
+      address: '12 Test Street',
+      countryCode: 'EG' as const,
+      latitude: 30.0444,
+      longitude: 31.2357,
+      phone: '01011112222',
+    });
+    expect(onboarded.status).toBe('organization_ready');
+    const opened = await pharmacyGateway.openVerificationCase('en');
+    expect(opened.caseId).toBe('0199a5c8-0000-7000-8000-000000000030');
+    const uploaded = await pharmacyGateway.uploadEvidence('en', {
+      caseId: opened.caseId,
+      bytes: Buffer.from('%PDF-1.4\n%%EOF\n'),
+      sizeBytes: 14,
+      candidateMediaType: 'application/pdf',
+    });
+    expect(uploaded.state).toBe('available');
+
+    for (const call of fetchMock.mock.calls) {
+      const init = call[1] as { credentials?: string; headers?: Record<string, string>; method?: string };
+      expect(init.credentials).toBe('omit');
+      const names = Object.keys(init.headers ?? {}).map((name) => name.toLowerCase());
+      expect(names).not.toContain('cookie');
+      expect(names).not.toContain('x-xsrf-token');
+    }
+    const put = fetchMock.mock.calls.find((call) => (call[1] as { method?: string }).method === 'PUT');
+    expect(put).toBeDefined();
+    expect((put?.[1] as { headers?: Record<string, string> }).headers?.['Authorization']).toBeUndefined();
+    expect((put?.[1] as { redirect?: string }).redirect).toBe('error');
+    expect(JSON.stringify(uploaded)).not.toContain(CANARIES.signedUrl);
   });
 });
