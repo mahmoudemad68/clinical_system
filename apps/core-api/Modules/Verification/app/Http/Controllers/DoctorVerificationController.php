@@ -12,10 +12,24 @@ use Modules\Platform\Http\Responses\Envelope;
 use Modules\Platform\Http\Support\ClosedJsonValidator;
 use Modules\Platform\Support\Identifier;
 use Modules\Verification\Services\VerificationService;
+use Modules\Verification\Support\DoctorVerificationCaseOutcome;
+use Modules\Verification\Support\DoctorVerificationRules;
 use Modules\Verification\Support\VerificationSubmissionRules;
 
 final class DoctorVerificationController
 {
+    public function open(Request $request, VerificationService $handler): JsonResponse
+    {
+        ClosedJsonValidator::validate($request, DoctorVerificationRules::open());
+
+        return Envelope::ok(
+            DoctorVerificationCaseOutcome::fromApplicantProjection(
+                $handler->openDoctorCase($this->actor($request)),
+            )->toArray(),
+            $this->requestId($request),
+        );
+    }
+
     public function submit(Request $request, VerificationService $handler): JsonResponse
     {
         $data = ClosedJsonValidator::validate($request, VerificationSubmissionRules::submit());

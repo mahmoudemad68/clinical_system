@@ -11,6 +11,7 @@ use Modules\Doctors\Services\Adapters\PostgresDoctorSubjectPrivacy;
 use Modules\Doctors\Services\DoctorApplicantService;
 use Modules\Doctors\Services\DoctorReviewerService;
 use Modules\Doctors\Services\GetDoctorProfile;
+use Modules\Doctors\Services\ListDoctorSpecialties;
 use Modules\Doctors\Services\ListSpecialties;
 use Modules\Doctors\Services\Persistence\PostgresDoctorProfileStore;
 use Modules\Doctors\Services\Persistence\PostgresSpecialtyStore;
@@ -40,6 +41,7 @@ final class DoctorsServiceProvider extends ServiceProvider
         $this->app->bind(RegisterDoctor::class);
         $this->app->bind(GetDoctorProfile::class);
         $this->app->bind(ListSpecialties::class);
+        $this->app->bind(ListDoctorSpecialties::class);
         $this->app->bind(DoctorApplicantService::class);
         $this->app->bind(PracticeOwnerEligibilityService::class);
         $this->app->bind(DoctorReviewerService::class);

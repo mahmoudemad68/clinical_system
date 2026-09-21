@@ -136,6 +136,7 @@ describe('doctor onboarding', function () {
         $caps->assertOk()->assertJsonMissing(['clinical.record.read', 'clinical.encounter.write']);
         expect($caps->json('data.capabilities'))->toContain(Capabilities::DOCTORS_ONBOARDING)
             ->and($caps->json('data.capabilities'))->toContain(Capabilities::DOCTORS_PROFILE_READ_OWN)
+            ->and($caps->json('data.capabilities'))->toContain(Capabilities::DOCTORS_SPECIALTIES_READ)
             ->and($caps->json('data.capabilities'))->toContain(Capabilities::VERIFICATION_SUBMIT_OWN)
             ->and($caps->json('data.capabilities'))->toContain(Capabilities::VERIFICATION_STATUS_READ_OWN)
             ->and($caps->json('data.capabilities'))->not->toContain(Capabilities::VERIFICATION_REVIEW)
@@ -383,6 +384,11 @@ describe('own doctor profile', function () {
             ->assertStatus(422);
         $this->getJson('/api/v1/specialties', doctorsAuth($session['token']))
             ->assertNotFound();
+        $catalogue = $this->getJson('/api/v1/doctors/specialties', doctorsAuth($session['token']));
+        $catalogue->assertOk()
+            ->assertJsonPath('data.specialties.0.specialty_id', $specialty['id'])
+            ->assertJsonMissingPath('data.specialties.0.created_at')
+            ->assertJsonMissingPath('data.specialties.0.active');
     });
 });
 
@@ -400,6 +406,44 @@ describe('specialty catalogue', function () {
         $blob = json_encode(array_map(static fn ($row) => $row->toArray(), $listed), JSON_THROW_ON_ERROR);
         expect($blob)->not->toContain('zzz_inactive')
             ->and($blob)->not->toContain('Hidden');
+    });
+
+    it('projects the active catalogue over HTTP for doctor actors only', function () {
+        doctorsSeedSpecialty('alpha_http', ['sort_order' => 20, 'label_en' => 'Alpha HTTP']);
+        $beta = doctorsSeedSpecialty('beta_http', ['sort_order' => 10, 'label_en' => 'Beta HTTP', 'label_ar' => 'قلب']);
+        doctorsSeedSpecialty('zzz_http_inactive', ['active' => false, 'sort_order' => 1, 'label_en' => 'Hidden HTTP']);
+
+        $this->getJson('/api/v1/doctors/specialties')->assertUnauthorized();
+
+        $session = doctorsActiveSession('spec-http');
+        $response = $this->getJson('/api/v1/doctors/specialties', doctorsAuth($session['token']));
+        $response->assertOk()
+            ->assertJsonPath('data.specialties.0.code', 'beta_http')
+            ->assertJsonPath('data.specialties.0.specialty_id', $beta['id'])
+            ->assertJsonPath('data.specialties.0.label_en', 'Beta HTTP')
+            ->assertJsonPath('data.specialties.1.code', 'alpha_http')
+            ->assertJsonMissingPath('data.specialties.0.created_at')
+            ->assertJsonMissingPath('data.specialties.0.updated_at')
+            ->assertJsonMissingPath('data.specialties.0.active')
+            ->assertJsonMissingPath('data.specialties.0.id');
+
+        expect($response->json('data.specialties'))->toHaveCount(2)
+            ->and($response->getContent())->not->toContain('zzz_http_inactive')
+            ->and($response->getContent())->not->toContain('Hidden HTTP')
+            ->and($response->getContent())->not->toContain('hmac');
+
+        $pending = doctorsActiveSession('spec-pend', 'pending_phone');
+        $this->getJson('/api/v1/doctors/specialties', doctorsAuth($pending['token']))->assertNotFound();
+
+        $patient = patientsActiveSession('spec-patient');
+        $this->getJson('/api/v1/doctors/specialties', patientsAuth($patient['token']))->assertNotFound();
+
+        $pharmacy = pharmaciesActiveSession('spec-pharmacy');
+        $this->getJson('/api/v1/doctors/specialties', pharmaciesAuth($pharmacy['token']))->assertNotFound();
+
+        $secretary = clinicInsertSecretary('spec-secretary');
+        clinicSecretaryLogin($secretary);
+        clinicSecretaryGetJson('/api/v1/doctors/specialties')->assertNotFound();
     });
 });
 

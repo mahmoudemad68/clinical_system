@@ -49,6 +49,68 @@ describe('doctor verification HTTP foundation', function () {
             ->and($status->getContent())->not->toContain('hmac');
     });
 
+    it('opens or resumes the caller draft case without client-supplied identity', function () {
+        $onboarded = verificationOnboardDoctor('open-own');
+        $opened = verificationOpenHttp($onboarded, 'ver-open-own');
+        $opened->assertOk()
+            ->assertJsonPath('data.status', 'ready')
+            ->assertJsonPath('data.doctor_id', $onboarded['doctor_id'])
+            ->assertJsonPath('data.case_status', 'draft')
+            ->assertJsonMissingPath('data.national_id')
+            ->assertJsonMissingPath('data.reviewer_id')
+            ->assertJsonMissingPath('data.applicant_id')
+            ->assertJsonMissingPath('data.case_type')
+            ->assertJsonMissingPath('data.documents')
+            ->assertJsonMissingPath('data.notes')
+            ->assertJsonMissingPath('data.object_id');
+
+        expect($opened->getContent())->not->toContain($onboarded['national_id'])
+            ->and($opened->getContent())->not->toContain('hmac')
+            ->and(strlen((string) DB::table('idempotency_keys')->orderByDesc('created_at')->value('response_reference')))->toBeLessThanOrEqual(255);
+
+        $resume = verificationOpenHttp($onboarded, 'ver-open-own-2');
+        $resume->assertOk()
+            ->assertJsonPath('data.case_id', $opened->json('data.case_id'))
+            ->assertJsonPath('data.case_status', 'draft')
+            ->assertJsonPath('data.profile_version', $opened->json('data.profile_version'));
+
+        expect(DB::table('verification_cases')->count())->toBe(1)
+            ->and((string) DB::table('verification_cases')->value('applicant_type'))->toBe('doctor')
+            ->and((string) DB::table('verification_cases')->value('case_type'))->toBe('doctor_verification')
+            ->and((string) DB::table('verification_cases')->value('applicant_id'))->toBe($onboarded['doctor_id']);
+    });
+
+    it('rejects mass assignment on case open and returns 401/404 for other actors', function () {
+        $this->postJson('/api/v1/doctors/me/verification-cases', [], doctorsIdem('ver-open-unauth'))
+            ->assertUnauthorized();
+
+        $onboarded = verificationOnboardDoctor('open-mass');
+        $this->postJson('/api/v1/doctors/me/verification-cases', [
+            'doctor_id' => $onboarded['doctor_id'],
+            'applicant_id' => $onboarded['session']['user_id'],
+            'case_type' => 'doctor_verification',
+            'status' => 'approved',
+            'reviewer_id' => $onboarded['session']['user_id'],
+            'verification_status' => 'approved',
+            'public_status' => 'listed',
+        ], doctorsAuth($onboarded['session']['token']) + doctorsIdem('ver-open-mass'))
+            ->assertStatus(422);
+
+        $patient = patientsActiveSession('ver-open-patient');
+        $this->postJson(
+            '/api/v1/doctors/me/verification-cases',
+            [],
+            patientsAuth($patient['token']) + doctorsIdem('ver-open-patient'),
+        )->assertNotFound();
+
+        $pharmacy = pharmaciesActiveSession('ver-open-pharmacy');
+        $this->postJson(
+            '/api/v1/doctors/me/verification-cases',
+            [],
+            pharmaciesAuth($pharmacy['token']) + doctorsIdem('ver-open-pharmacy'),
+        )->assertNotFound();
+    });
+
     it('returns 401 without a session and 404 for a patient actor', function () {
         $this->getJson('/api/v1/doctors/me/verification-status')->assertUnauthorized();
         $this->postJson('/api/v1/doctors/me/verification-submissions', [

@@ -3,39 +3,32 @@ import {
   BRIDGE_CONTRACT_VERSION,
   CAPABILITY_REGISTRY,
   CHANNELS,
+  DOCTOR_CAPABILITY_REGISTRY,
+  DOCTOR_CHANNELS,
   MAX_IPC_PAYLOAD_BYTES,
   withinSizeBound,
   type BridgeResult,
-  type ChannelName,
-  type ClinicBridge,
+  type DoctorClinicBridge,
+  type DoctorRegisteredChannelName,
 } from '@clinic/desktop-bridge-contracts';
 
 /**
  * The bridge. Deliberately tiny.
  *
- * This file runs with Node access in an isolated world alongside a renderer we
- * treat as hostile. Every line added here widens the attack surface, so it does
- * exactly two things: map an intent-named method to a constant channel, and
- * shape-check what comes back.
- *
- * What is never exposed, and why:
- *
- *   ipcRenderer      would let the renderer name any channel, reaching every
- *                    main-process handler. This is the single most common
- *                    Electron vulnerability.
- *   a generic invoke same problem wearing a different hat.
- *   Node globals     process, require, Buffer, __dirname all give a compromised
- *                    renderer a path to the filesystem.
- *   raw URLs/paths   the renderer must not choose what main talks to.
- *
- * The renderer calls `window.clinic.platform.health()`. It cannot express
- * anything else.
+ * Doctor domain methods are listed explicitly. There is no generic invoke,
+ * no channel string parameter, and no way to name a Pharmacy-only or unknown
+ * channel from this renderer.
  */
 
-async function call<T>(channel: ChannelName, payload: unknown = {}): Promise<BridgeResult<T>> {
-  // Bound outbound size here too. This is a convenience, not the control — the
-  // main process checks again, because a compromised renderer can bypass this
-  // whole file by talking to the isolated world directly.
+const DOCTOR_BRIDGE_REGISTRY = {
+  ...CAPABILITY_REGISTRY,
+  ...DOCTOR_CAPABILITY_REGISTRY,
+} as const;
+
+async function call<T>(
+  channel: DoctorRegisteredChannelName,
+  payload: unknown = {},
+): Promise<BridgeResult<T>> {
   if (!withinSizeBound(payload, MAX_IPC_PAYLOAD_BYTES)) {
     return {
       ok: false,
@@ -43,7 +36,7 @@ async function call<T>(channel: ChannelName, payload: unknown = {}): Promise<Bri
     };
   }
 
-  const contract = CAPABILITY_REGISTRY[channel];
+  const contract = DOCTOR_BRIDGE_REGISTRY[channel];
   const outbound = contract.request.safeParse(payload);
 
   if (!outbound.success) {
@@ -56,16 +49,12 @@ async function call<T>(channel: ChannelName, payload: unknown = {}): Promise<Bri
   try {
     const result: unknown = await ipcRenderer.invoke(channel, outbound.data);
 
-    // Shape-check the response before handing it to renderer code, so a main
-    // process bug cannot put an unexpected object into the React tree.
     if (typeof result !== 'object' || result === null || !('ok' in result)) {
       return { ok: false, error: { code: 'INTERNAL_ERROR', message: 'Malformed capability response.' } };
     }
 
     return result as BridgeResult<T>;
   } catch {
-    // An IPC rejection means no handler, or main threw before the handler
-    // could answer. Either way the renderer learns nothing about why.
     return {
       ok: false,
       error: { code: 'CAPABILITY_NOT_AVAILABLE', message: 'The capability is not available.' },
@@ -73,7 +62,7 @@ async function call<T>(channel: ChannelName, payload: unknown = {}): Promise<Bri
   }
 }
 
-const bridge: ClinicBridge = {
+const bridge: DoctorClinicBridge = {
   contractVersion: BRIDGE_CONTRACT_VERSION,
   app: {
     metadata: () => call(CHANNELS.appMetadata),
@@ -95,9 +84,18 @@ const bridge: ClinicBridge = {
     sessions: () => call(CHANNELS.authSessions),
     revokeSession: (sessionId) => call(CHANNELS.authRevokeSession, { sessionId }),
   },
+  doctor: {
+    getOwnProfile: () => call(DOCTOR_CHANNELS.profileGetOwn),
+    listSpecialties: () => call(DOCTOR_CHANNELS.specialtiesList),
+    onboard: (input) => call(DOCTOR_CHANNELS.profileOnboard, input),
+    openVerificationCase: () => call(DOCTOR_CHANNELS.verificationOpenCase),
+    verificationStatus: () => call(DOCTOR_CHANNELS.verificationStatus),
+    submitVerification: (input) => call(DOCTOR_CHANNELS.verificationSubmit, input),
+    selectEvidence: () => call(DOCTOR_CHANNELS.evidenceSelect),
+    clearEvidence: (handleId) => call(DOCTOR_CHANNELS.evidenceClear, { handleId }),
+    uploadEvidence: (input) => call(DOCTOR_CHANNELS.evidenceUpload, input),
+    uploadStatus: (uploadId) => call(DOCTOR_CHANNELS.uploadStatus, { uploadId }),
+  },
 };
 
-// contextBridge, not window assignment: the object is deep-frozen and copied
-// across the isolated-world boundary, so renderer code cannot monkey-patch a
-// method and cannot reach this file's scope.
 contextBridge.exposeInMainWorld('clinic', bridge);

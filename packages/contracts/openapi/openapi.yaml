@@ -47,6 +47,11 @@ info:
     These are private owner/staff projections. There is no public clinic
     directory, radius search, schedule, or booking contract in this slice.
     Doctor Electron clinic screens remain absent.
+    Phase 02 chunk 11 adds the Doctor specialty catalogue
+    (`GET /api/v1/doctors/specialties`) and doctor verification-case
+    open/resume (`POST /api/v1/doctors/me/verification-cases`) required by
+    the Doctor Electron onboarding and verification UX. These are additive.
+    Doctor clinic-location UI remains absent.
 
     Compatibility rules (ADR 0003):
       * Additive optional fields are compatible within a version.
@@ -1200,6 +1205,41 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/doctors/specialties:
+    get:
+      tags: [doctors]
+      operationId: listDoctorSpecialties
+      summary: Active specialty catalogue for doctor onboarding
+      description: |
+        Authenticated doctor-only projection of the Doctors-owned active
+        specialty catalogue, ordered by the authoritative in-process service.
+        Labels only. Inactive rows, encryption metadata, and internal database
+        columns are never returned. Patient, pharmacy, and secretary actors
+        cannot obtain Doctor business privileges through this read. Creating
+        a profile still requires a subsequent onboarding write.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: Active specialties in server order.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorSpecialtyCatalogue'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/v1/pharmacy-organizations/onboarding:
     post:
       tags: [pharmacies]
@@ -1784,6 +1824,54 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/ClinicMembership'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/doctors/me/verification-cases:
+    post:
+      tags: [doctors]
+      operationId: openOwnDoctorVerificationCase
+      summary: Open or resume the current doctor's verification case
+      description: |
+        Opens or resumes the authenticated doctor's draft `doctor_verification`
+        case. Applicant, doctor identity, case type, verification status,
+        reviewer, and public status are server-derived. Concurrent duplicate
+        opens resolve to one open case. A new case is created only where
+        existing Doctor/Verification policy allows it. Idempotency-Key is
+        required. Compact write body fits the Platform 255-byte idempotency
+        pointer. GET /api/v1/doctors/me/verification-status is the canonical
+        applicant-safe projection.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorVerificationCaseOpenRequest'
+      responses:
+        '200':
+          description: Own draft case opened or resumed.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorVerificationCaseOpenResult'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -3433,6 +3521,39 @@ components:
         updated_at:
           $ref: '#/components/schemas/Instant'
 
+    DoctorSpecialty:
+      type: object
+      additionalProperties: false
+      description: |
+        Active specialty catalogue row. Public labels only. Internal database
+        metadata is never included.
+      required: [specialty_id, code, label_ar, label_en, sort_order]
+      properties:
+        specialty_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+          maxLength: 64
+        label_ar:
+          type: string
+          maxLength: 200
+        label_en:
+          type: string
+          maxLength: 200
+        sort_order:
+          type: integer
+          minimum: 0
+
+    DoctorSpecialtyCatalogue:
+      type: object
+      additionalProperties: false
+      required: [specialties]
+      properties:
+        specialties:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoctorSpecialty'
+
     PharmacyOnboardingRequest:
       type: object
       required:
@@ -3954,6 +4075,47 @@ components:
         revoked_at:
           type: ['string', 'null']
           format: date-time
+
+    DoctorVerificationCaseOpenRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        Empty closed body. Applicant ID, doctor ID, case type, verification
+        status, reviewer, and public status cannot be assigned by the client.
+      properties: {}
+
+    DoctorVerificationCaseOpenResult:
+      type: object
+      additionalProperties: false
+      description: |
+        Compact open/resume outcome sized for the Platform 255-byte
+        idempotency pointer. GET /doctors/me/verification-status is the
+        canonical projection. Never includes National ID, syndicate number,
+        documents, reviewer notes, object keys, or HMAC.
+      required:
+        - status
+        - doctor_id
+        - case_id
+        - case_status
+        - case_version
+        - profile_version
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        doctor_id:
+          $ref: '#/components/schemas/Uuid'
+        case_id:
+          $ref: '#/components/schemas/Uuid'
+        case_status:
+          type: string
+          enum: [draft, pending_review]
+        case_version:
+          type: integer
+          minimum: 1
+        profile_version:
+          type: integer
+          minimum: 1
 
     DoctorVerificationSubmissionRequest:
       type: object

@@ -33,8 +33,16 @@ import { TokenRefreshSession } from './token-refresh';
  * list; it cannot add a host.
  */
 
+export class GatewayError extends Error {
+  constructor(readonly failureCode: string) {
+    super(failureCode);
+    this.name = 'GatewayError';
+  }
+}
+
 let memoryAccess: string | null = null;
 let memoryRefresh: string | null = null;
+let memoryAccountType: string | null = null;
 const tokenRefresh = new TokenRefreshSession();
 
 function restoreFromDisk(): void {
@@ -116,10 +124,50 @@ async function requestJson<T>(
   const result = unwrapEnvelope<T>(json, response.status);
 
   if (!result.ok) {
-    throw new Error(result.failure.code);
+    throw new GatewayError(result.failure.code);
   }
 
   return result.data;
+}
+
+export async function coreJsonRequest<T>(
+  method: string,
+  path: string,
+  locale: string,
+  body?: Record<string, unknown>,
+  extraHeaders: Record<string, string> = {},
+  allowRefresh = true,
+): Promise<T> {
+  return requestJson<T>(method, path, locale, body, extraHeaders, allowRefresh);
+}
+
+export async function putIssuedUploadBytes(
+  url: string,
+  headers: Record<string, string>,
+  body: Uint8Array,
+): Promise<void> {
+  const payload = Buffer.from(body);
+  const response = await net.fetch(url, {
+    method: 'PUT',
+    headers,
+    body: payload,
+    redirect: 'error',
+  });
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new GatewayError('UPSTREAM_FAILED');
+  }
+}
+
+export function currentAccountType(): string | null {
+  restoreFromDisk();
+  return memoryAccountType;
+}
+
+export function rememberAccountType(accountType: string | undefined): void {
+  if (typeof accountType === 'string' && accountType.length > 0) {
+    memoryAccountType = accountType;
+  }
 }
 
 async function refreshTokens(locale: string): Promise<boolean> {
@@ -246,6 +294,7 @@ export const platformGateway = {
     });
 
     persistIssued(data);
+    rememberAccountType(data.account_type);
     return toSessionView(data);
   },
 
@@ -268,6 +317,7 @@ export const platformGateway = {
     });
 
     persistIssued(data);
+    rememberAccountType(data.account_type);
     return toSessionView(data);
   },
 
@@ -276,6 +326,7 @@ export const platformGateway = {
     clearDeviceTokens();
     memoryAccess = null;
     memoryRefresh = null;
+    memoryAccountType = null;
     tokenRefresh.clear();
     return { revoked: true };
   },
@@ -283,7 +334,7 @@ export const platformGateway = {
   async me(locale: string): Promise<AuthMe> {
     restoreFromDisk();
     if (memoryAccess === null) {
-      throw new Error('UNAUTHENTICATED');
+      throw new GatewayError('UNAUTHENTICATED');
     }
 
     const data = await requestJson<{
@@ -297,6 +348,7 @@ export const platformGateway = {
 
     const caps = await requestJson<{ capabilities: string[] }>('GET', '/api/v1/me/capabilities', locale);
 
+    rememberAccountType(data.account_type);
     return {
       userId: data.user_id,
       accountType: data.account_type,
@@ -352,5 +404,6 @@ export { SecureStorageUnavailableError };
 export function resetPlatformGatewaySession(): void {
   memoryAccess = null;
   memoryRefresh = null;
+  memoryAccountType = null;
   tokenRefresh.clear();
 }

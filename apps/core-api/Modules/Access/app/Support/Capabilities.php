@@ -36,6 +36,8 @@ final class Capabilities
 
     public const DOCTORS_PROFILE_READ_OWN = 'doctors.profile.read_own';
 
+    public const DOCTORS_SPECIALTIES_READ = 'doctors.specialties.read';
+
     public const PHARMACIES_ONBOARDING = 'pharmacies.onboarding.submit';
 
     public const PHARMACIES_ORGANIZATION_READ_OWN = 'pharmacies.organization.read_own';
@@ -91,6 +93,7 @@ final class Capabilities
         self::PATIENTS_PROFILE_UPDATE_OWN,
         self::DOCTORS_ONBOARDING,
         self::DOCTORS_PROFILE_READ_OWN,
+        self::DOCTORS_SPECIALTIES_READ,
         self::PHARMACIES_ONBOARDING,
         self::PHARMACIES_ORGANIZATION_READ_OWN,
         self::CLINICS_LOCATION_WRITE,

@@ -9,7 +9,7 @@ use Modules\Doctors\Support\SpecialtyProjection;
 
 /**
  * Doctors-owned specialty catalog query. Active specialties only, ordered by
- * sort_order then code. No HTTP surface in this slice.
+ * sort_order then code. HTTP projection is ListDoctorSpecialties.
  */
 final class ListSpecialties
 {
