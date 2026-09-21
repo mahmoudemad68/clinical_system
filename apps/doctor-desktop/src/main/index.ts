@@ -2,6 +2,7 @@ import { app, BrowserWindow, session, shell, protocol } from 'electron';
 import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { APP_CONFIG } from '../shared/app-config';
+import { rendererResponseSecurityHeaders } from '../shared/content-security-policy';
 import { registerCapabilities, trustWindow } from './capabilities';
 import { assessLocalEncryption } from './local-encryption';
 import { resolvePackagedAsset } from './packaged-assets';
@@ -56,28 +57,6 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true },
   },
 ]);
-
-/** Content Security Policy for packaged renderer content. */
-function contentSecurityPolicy(): string {
-  const scheme = `${APP_CONFIG.assetProtocolScheme}:`;
-
-  return [
-    `default-src 'none'`,
-    `script-src 'self' ${scheme}`,
-    // MUI/Emotion inject styles at runtime; script stays strict, which is the
-    // half that matters for code execution.
-    `style-src 'self' ${scheme} 'unsafe-inline'`,
-    `img-src 'self' ${scheme} data:`,
-    `font-src 'self' ${scheme} data:`,
-    // The renderer never connects anywhere. All I/O goes through IPC to main.
-    `connect-src 'none'`,
-    `object-src 'none'`,
-    `frame-src 'none'`,
-    `frame-ancestors 'none'`,
-    `base-uri 'none'`,
-    `form-action 'none'`,
-  ].join('; ');
-}
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -169,13 +148,15 @@ function applyWindowPolicies(window: BrowserWindow): void {
     }
   });
 
-  // 7. Strip any Origin the renderer might assert and enforce CSP on responses.
+  // 7. Packaged responses get the strict custom-scheme CSP. Forge development
+  //    already sets `devContentSecurityPolicy` on the webpack-dev-server;
+  //    overwriting it with the packaged policy blanks the renderer (eval-based
+  //    webpack maps vs script-src without 'unsafe-eval'). Always nosniff.
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [contentSecurityPolicy()],
-        'X-Content-Type-Options': ['nosniff'],
+        ...rendererResponseSecurityHeaders(!isDevelopment),
       },
     });
   });

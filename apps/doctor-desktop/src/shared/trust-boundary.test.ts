@@ -234,10 +234,34 @@ describe('Clinic Doctor — window security configuration', () => {
   });
 
   it('declares a CSP that forbids remote script and any renderer connection', () => {
-    expect(main).toContain("default-src 'none'");
-    expect(main).toContain("connect-src 'none'");
-    expect(main).toContain("frame-ancestors 'none'");
-    expect(main).not.toContain("script-src 'unsafe-inline'");
+    const csp = read('src/shared/content-security-policy.ts');
+
+    expect(csp).toContain("default-src 'none'");
+    expect(csp).toContain("connect-src 'none'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).not.toContain("script-src 'unsafe-inline'");
+    expect(main).toContain('rendererResponseSecurityHeaders(!isDevelopment)');
+  });
+
+  it('does not overwrite Forge development CSP with the packaged policy', () => {
+    const mainCode = readCode('src/main/index.ts');
+    const forge = readCode('forge.config.ts');
+    const html = read('src/renderer/index.html');
+    const webpackRenderer = readCode('webpack.renderer.config.ts');
+
+    expect(forge).toContain('DEVELOPMENT_CONTENT_SECURITY_POLICY');
+    expect(forge).not.toContain('unsafe-eval');
+    expect(forge).not.toMatch(/connect-src 'self' ws:/);
+
+    expect(mainCode).toContain('rendererResponseSecurityHeaders(!isDevelopment)');
+    expect(mainCode).not.toMatch(/Content-Security-Policy['":\s]*\[contentSecurityPolicy/);
+
+    expect(webpackRenderer).toContain("devtool: 'source-map'");
+    expect(webpackRenderer).not.toMatch(/eval-source-map|eval-cheap-module-source-map/);
+    expect(webpackRenderer).not.toMatch(/devtool:\s*'eval'/);
+
+    expect(html).toContain("webpackConfig.mode === 'production'");
+    expect(html).toContain("connect-src 'none'");
   });
 });
 
@@ -498,10 +522,13 @@ describe('Clinic Doctor — packaged API origin trust boundary', () => {
 
     expect(gateway).toContain('PACKAGED_API_ALLOWED_ORIGINS');
     expect(gateway).toContain("process.env['CLINIC_API_BASE_URL']");
+    expect(gateway).toContain('isPackaged: app.isPackaged');
     expect(gateway).not.toContain('CLINIC_DOCTOR_PACKAGED_API_ALLOWED_ORIGINS');
     expect(gateway).not.toContain('CLINIC_API_ALLOWED_ORIGINS');
 
     expect(origin).toContain('url.origin');
+    expect(origin).toContain('if (!input.isPackaged)');
+    expect(origin).toContain('DEVELOPMENT_API_BASE_URL');
     expect(origin).not.toContain('endsWith(');
     expect(origin).not.toMatch(/hostname\s*\.\s*includes\(/);
   });
