@@ -1,10 +1,11 @@
 /**
  * Main-owned idempotency keys for pharmacy mutations.
  *
- * One logical mutation keeps one key until a caller-visible success (or a
- * delivered terminal 4xx) acknowledges it. A TIMEOUT or other uncertain
- * result leaves the key in place so a retry cannot mint a second server
- * intent. Late completion of the original promise must not retire that key.
+ * One logical mutation keeps one key until a caller-deliverable success
+ * (response schema accepted) or a delivered terminal 4xx acknowledges it.
+ * A TIMEOUT, a response-schema failure, or another uncertain result leaves
+ * the key in place so a retry cannot mint a second server intent. Late
+ * completion of the original promise must not retire that key.
  * Production code never logs the payload.
  */
 

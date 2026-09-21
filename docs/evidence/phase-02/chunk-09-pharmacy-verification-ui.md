@@ -106,9 +106,12 @@ to constants; main validates sender, origin, size, and schema.
    cannot change the uploaded inode. Deleted → `FILE_MISSING`;
    size/mtime/dev/ino/realpath/symlink/sniff change → `FILE_CHANGED`;
    directory/unsupported/oversize → `UNSUPPORTED_FILE`.
-7. The handle is invalidated only after a **caller-visible** upload success
-   (IPC delivery acknowledged). Logout and window `closed` clear the store.
-   An IPC TIMEOUT leaves the handle in place so a retry can reuse it.
+7. The handle is invalidated only after a **caller-visible** upload success:
+   create / PUT / complete finished, the safe projection passed the IPC
+   response schema, and the delivery ticket was acknowledged. Logout and
+   window `closed` still clear the store. An IPC TIMEOUT or a
+   response-schema failure leaves the handle in place so a retry can reuse
+   it together with the original create/complete idempotency keys.
 
 Bytes never cross IPC as a renderer payload. The fd and absolute path never
 cross IPC.
@@ -147,31 +150,53 @@ is **not** treated as available. Submit stays disabled until server
 `IntentKeyStore` lives in main. Same logical fingerprint reuses the key;
 a changed payload mints a new key. Keys are **not** retired when the
 underlying promise eventually succeeds. Retirement is `retireWhenDelivered`
-bound to an IPC delivery ticket (`runIpcDelivered`):
+bound to an IPC delivery ticket (`runIpcDelivered`). Successful delivery
+acknowledgement occurs **only after** the channel's `contract.response.safeParse`
+accepts the value. Ordering for a resolved operation:
 
-- Caller-visible success (within the IPC deadline) acknowledges the ticket
-  and retires that exact key.
-- Delivered terminal 4xx (`VALIDATION_FAILED`, `PERMISSION_DENIED` on
-  onboard; `VERSION_CONFLICT` / `STATE_CONFLICT` on submit) also retire on
-  acknowledgement, matching the previous policy.
-- `TIMEOUT` abandons the ticket. A late HTTP success is a no-op against a
-  closed ticket, so retry of the same payload still uses key `K`.
-- Logout / window close still `clearAll()`.
+1. The gateway/operation resolves (and may queue `retireWhenDelivered`).
+2. Main validates/transforms through `contract.response.safeParse`.
+3. Only a schema-accepted value may `acknowledge(ticket)` and retire queued keys.
+4. The validated value is returned to the renderer.
+
+Distinguished outcomes:
+
+- **Operation completed** is not yet caller-deliverable.
+- **Response contract accepted** is required before acknowledgement.
+- **Caller-deliverable success** acknowledges the ticket and retires that exact key.
+- **Caller-visible operation error:** queued deterministic terminal 4xx
+  (`VALIDATION_FAILED`, `PERMISSION_DENIED` on onboard; `VERSION_CONFLICT` /
+  `STATE_CONFLICT` on submit) still retire on acknowledgement, matching the
+  previous policy. Uncertain network/upstream failures that never queued a
+  retirement keep their keys.
+- **Caller-visible TIMEOUT** abandons the ticket. A late HTTP success is a
+  no-op against a closed ticket, so retry of the same payload still uses key `K`.
+- **Response-schema failure** after a resolved mutation is **not** a
+  deterministic terminal 4xx. The ticket is abandoned, queued keys are **not**
+  retired, the renderer receives `INTERNAL_ERROR`, and retry of the same
+  logical payload still uses `K`. Logout / window close still `clearAll()`.
 
 Covered mutations: onboarding, open case, create upload, complete upload,
 submit.
 
 Deterministic proof (no sleeps): `openIpcDeadline().expire()` rejects the
 race while a deferred HTTP/operation is still pending; after late resolve,
-`peek` is still `K` and `keyFor` returns `K`. A subsequent delivered
+`peek` is still `K` and `keyFor` returns `K`. A subsequent caller-deliverable
 success retires `K` so a later new logical operation may mint a new key.
 
-Upload: the evidence handle is invalidated only after IPC delivery of the
-safe projection. TIMEOUT keeps the handle and both create/complete keys.
-The renderer refetches authoritative verification status and does not
-clear the selected handle. A retry reuses the same create idempotency key
-rather than minting a second upload intent. `GET /verification-uploads/{id}`
-remains the status reconciliation path when an upload id is already known.
+Malformed-success proof (no sleeps): the gateway mutation completes and queues
+`retireWhenDelivered(K)`, then the deliver seam wraps the value with an
+unexpected field so `.strict()` IPC schemas fail. The caller sees
+`INTERNAL_ERROR` (`ResponseContractError`); `K` remains; retry of the same
+payload sends exactly `K`; a later schema-valid response retires `K`.
+
+Upload: the evidence handle is invalidated only after IPC delivery of a
+schema-valid safe projection. TIMEOUT and response-schema failure keep the
+handle and both create/complete keys. The renderer refetches authoritative
+verification status and does not clear the selected handle. A retry reuses
+the same create and complete idempotency keys rather than minting a second
+upload intent. `GET /verification-uploads/{id}` remains the status
+reconciliation path when an upload id is already known.
 
 `VERSION_CONFLICT` / `STATE_CONFLICT` refetch authoritative status and show
 a safe stale-state message. Bridge errors are a closed taxonomy; raw
@@ -265,7 +290,7 @@ pharmacy case.
 | Command | Result |
 | --- | --- |
 | `npm run typecheck --workspace apps/pharmacy-desktop` | passed |
-| `npm run test --workspace apps/pharmacy-desktop` | **117 passed** (13 files) |
+| `npm run test --workspace apps/pharmacy-desktop` | **123 passed** (13 files) |
 | `npm run typecheck --workspace apps/doctor-desktop` | passed |
 | `npm run test --workspace apps/doctor-desktop` | **84 passed** (7 files) |
 | `npm run test --workspace packages/typescript/desktop_bridge_contracts` | **3 passed** |
@@ -279,8 +304,10 @@ pharmacy case.
 GitHub `pull-request` run **35562798541** on
 `72e60ab95d808b8838dc8ea9c6c9a3c2a164ff38` and run **35563277326** on
 `5480a52da7b7297fa2a6d57f2351c56f401e61ed` were **SUCCESS**. The
-descriptor-pin and IPC-delivery follow-up records its own exact-HEAD run
-after CI on this revision. Gitleaks, Trivy, and OpenVEX were **not**
+descriptor-pin / TIMEOUT follow-up is **35564482939** SUCCESS on
+`faab771b8a8b9fd32f51668c4ce0eafe6b4374c2`. This response-schema
+acknowledgement follow-up records its own exact-HEAD run after CI on this
+revision. Gitleaks, Trivy, and OpenVEX were **not**
 weakened. Contracts were not changed in this chunk.
 
 Phase 02 as a whole is **not** PASS.
@@ -309,5 +336,7 @@ Phase 02 as a whole is **not** PASS.
 - Signed GET URLs remain application-owned and bearer-style while valid.
 - Aborting an in-flight HTTP request is not treated as proof the server did
   not commit; TIMEOUT keeps the original idempotency key.
+- A resolved mutation that fails the IPC response schema is an uncertain
+  result, not a terminal 4xx; the original idempotency key is kept.
 - `ino` uniqueness varies by platform; the open file descriptor is the
   object pin, not a second pathname open.

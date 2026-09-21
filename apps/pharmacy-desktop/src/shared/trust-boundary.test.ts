@@ -287,6 +287,25 @@ describe('Clinic Pharmacy — IPC contract', () => {
     expect(capabilities).toContain('contract.response.safeParse');
   });
 
+  it('acknowledges delivery only after the response schema is accepted', () => {
+    const delivery = readCode('src/main/ipc-delivery.ts');
+    const capabilities = readCode('src/main/capabilities.ts');
+    const deliverIdx = delivery.indexOf('accepted = deliver(value)');
+    const ackIdx = delivery.indexOf('intents.acknowledge(ticket)');
+    const abandonIdx = delivery.indexOf('intents.abandon(ticket)');
+    const runIdx = capabilities.indexOf('runIpcDelivered');
+    const invalidateIdx = capabilities.indexOf('evidenceHandles.invalidate');
+
+    expect(deliverIdx).toBeGreaterThan(-1);
+    expect(ackIdx).toBeGreaterThan(deliverIdx);
+    expect(abandonIdx).toBeGreaterThan(-1);
+    expect(abandonIdx).toBeLessThan(ackIdx);
+    expect(capabilities).toContain('contract.response.safeParse');
+    expect(capabilities).toContain('ResponseContractError');
+    expect(runIdx).toBeGreaterThan(-1);
+    expect(invalidateIdx).toBeGreaterThan(runIdx);
+  });
+
   it('rejects a subframe sender', () => {
     const capabilities = read('src/main/capabilities.ts');
 
@@ -360,6 +379,8 @@ describe('Clinic Pharmacy — IPC contract', () => {
     expect(capabilities).toContain('runIpcDelivered');
     expect(capabilities).toContain('pharmacyIntentKeys');
     expect(capabilities).toContain('timeoutDeadline');
+    expect(capabilities).toContain('ResponseContractError');
+    expect(capabilities).toContain("fail('INTERNAL_ERROR'");
     expect(capabilities).toContain('PHARMACY_CHANNELS');
     expect(capabilities).toContain('PHARMACY_CAPABILITY_REGISTRY');
     expect(preload).toContain('pharmacy:');

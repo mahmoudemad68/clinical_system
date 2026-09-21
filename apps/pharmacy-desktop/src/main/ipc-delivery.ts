@@ -1,7 +1,8 @@
 /**
- * Separate "the mutation finished in main" from "the renderer received the
- * result". IPC timeouts reject the caller without cancelling the underlying
- * work, so acknowledgement must not run on that late completion.
+ * Separate "the mutation finished in main" from "the renderer received a
+ * contract-valid result". IPC timeouts reject the caller without cancelling
+ * the underlying work. A resolved value that fails the channel response
+ * schema is also an uncertain outcome: the ticket is abandoned, not retired.
  */
 
 import type { IntentKeyStore } from './intent-keys';
@@ -10,6 +11,13 @@ export class TimeoutError extends Error {
   constructor() {
     super('TIMEOUT');
     this.name = 'TimeoutError';
+  }
+}
+
+export class ResponseContractError extends Error {
+  constructor() {
+    super('INTERNAL_ERROR');
+    this.name = 'ResponseContractError';
   }
 }
 
@@ -45,22 +53,45 @@ export function timeoutDeadline(ms: number): Promise<never> {
   return deadline.promise;
 }
 
-export async function runIpcDelivered<T>(
+export function acceptIpcSchema<T>(schema: {
+  safeParse: (value: unknown) => { success: true; data: T } | { success: false };
+}): (value: unknown) => T {
+  return (value: unknown) => {
+    const parsed = schema.safeParse(value);
+    if (!parsed.success) {
+      throw new ResponseContractError();
+    }
+    return parsed.data;
+  };
+}
+
+export async function runIpcDelivered<T, U>(
   intents: IntentKeyStore,
   operation: () => Promise<T>,
   deadline: Promise<never>,
-): Promise<T> {
+  deliver: (value: T) => U,
+): Promise<U> {
   const ticket = intents.openTicket();
   const running = intents.runInTicket(ticket, operation);
   try {
     const value = await Promise.race([running, deadline]);
+    let accepted: U;
+    try {
+      accepted = deliver(value);
+    } catch {
+      intents.abandon(ticket);
+      throw new ResponseContractError();
+    }
     intents.acknowledge(ticket);
-    return value;
+    return accepted;
   } catch (error) {
     void running.then(
       () => undefined,
       () => undefined,
     );
+    if (error instanceof ResponseContractError) {
+      throw error;
+    }
     if (error instanceof TimeoutError) {
       intents.abandon(ticket);
     } else {

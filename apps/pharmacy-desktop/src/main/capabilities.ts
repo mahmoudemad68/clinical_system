@@ -15,7 +15,7 @@ import {
 import { APP_CONFIG } from '../shared/app-config';
 import { isTrustedFrameOrigin } from '../shared/sender-policy';
 import { EvidenceFileError, PharmacyEvidenceHandleStore } from './evidence-handles';
-import { runIpcDelivered, timeoutDeadline, TimeoutError } from './ipc-delivery';
+import { runIpcDelivered, timeoutDeadline, TimeoutError, ResponseContractError } from './ipc-delivery';
 import { pharmacyGateway, pharmacyIntentKeys } from './pharmacy-gateway';
 import { GatewayError, platformGateway, SecureStorageUnavailableError } from './platform-gateway';
 import { UploadTargetError } from './upload-target';
@@ -155,17 +155,20 @@ function handle(
         pharmacyIntentKeys,
         () => execute(parsed.data as never, event),
         timeoutDeadline(contract.timeoutMs),
+        (raw) => {
+          const validated = contract.response.safeParse(raw);
+          if (!validated.success) {
+            throw new ResponseContractError();
+          }
+          return validated.data;
+        },
       );
-      const validated = contract.response.safeParse(value);
-      if (!validated.success) {
-        return fail('INTERNAL_ERROR', 'The capability produced an unexpected result.');
-      }
 
       if (channel === PHARMACY_CHANNELS.evidenceUpload) {
         evidenceHandles.invalidate((parsed.data as { handleId: string }).handleId);
       }
 
-      return { ok: true, value: validated.data };
+      return { ok: true, value };
     } catch (error) {
       return mapThrown(error);
     }
@@ -200,6 +203,10 @@ function isTrustedSender(event: IpcMainInvokeEvent): boolean {
 function mapThrown(error: unknown): BridgeResult<never> {
   if (error instanceof TimeoutError) {
     return fail('TIMEOUT', 'The operation took too long.');
+  }
+
+  if (error instanceof ResponseContractError) {
+    return fail('INTERNAL_ERROR', 'The capability produced an unexpected result.');
   }
 
   if (error instanceof SecureStorageUnavailableError) {

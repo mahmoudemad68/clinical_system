@@ -40,8 +40,19 @@ import {
   pharmacyIntentKeys,
   resetPharmacyGatewayState,
 } from './pharmacy-gateway';
+import {
+  pharmacyOnboardResponseSchema,
+  pharmacyUploadStatusResponseSchema,
+  pharmacyVerificationSubmitResponseSchema,
+} from '@clinic/desktop-bridge-contracts';
 import { EVIDENCE_REQUIREMENT_CODE, PharmacyEvidenceHandleStore } from './evidence-handles';
-import { TimeoutError, createDeferred, openIpcDeadline, runIpcDelivered } from './ipc-delivery';
+import {
+  TimeoutError,
+  acceptIpcSchema,
+  createDeferred,
+  openIpcDeadline,
+  runIpcDelivered,
+} from './ipc-delivery';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -266,6 +277,14 @@ describe('pharmacy gateway safe projections', () => {
     return new Promise(() => undefined);
   }
 
+  function passThrough<T>(value: T): T {
+    return value;
+  }
+
+  function withUnexpectedField<T extends object>(value: T): unknown {
+    return { ...value, extra: 'must-not-cross-ipc' };
+  }
+
   function onboardFingerprint(): string {
     return pharmacyIntentKeys.fingerprint({
       legalName: onboardInput.legalName,
@@ -303,6 +322,7 @@ describe('pharmacy gateway safe projections', () => {
       pharmacyIntentKeys,
       () => pharmacyGateway.onboard('en', onboardInput),
       deadline.promise,
+      passThrough,
     );
     const fingerprint = onboardFingerprint();
     await vi.waitFor(() => {
@@ -320,6 +340,7 @@ describe('pharmacy gateway safe projections', () => {
       pharmacyIntentKeys,
       () => pharmacyGateway.onboard('en', onboardInput),
       hang(),
+      passThrough,
     );
     expect(delivered.status).toBe('organization_ready');
     const keys = idempotencyKeys();
@@ -348,6 +369,7 @@ describe('pharmacy gateway safe projections', () => {
       pharmacyIntentKeys,
       () => pharmacyGateway.openVerificationCase('en'),
       openDeadline.promise,
+      passThrough,
     );
     await vi.waitFor(() => {
       expect(pharmacyIntentKeys.peek(OPEN_CASE_INTENT, openFingerprint)).toEqual(expect.any(String));
@@ -359,7 +381,7 @@ describe('pharmacy gateway safe projections', () => {
     await vi.waitFor(() => {
       expect(pharmacyIntentKeys.peek(OPEN_CASE_INTENT, openFingerprint)).toBe(openKey);
     });
-    await runIpcDelivered(pharmacyIntentKeys, () => pharmacyGateway.openVerificationCase('en'), hang());
+    await runIpcDelivered(pharmacyIntentKeys, () => pharmacyGateway.openVerificationCase('en'), hang(), passThrough);
     expect(pharmacyIntentKeys.peek(OPEN_CASE_INTENT, openFingerprint)).toBeUndefined();
 
     const submitHeld = createDeferred<ReturnType<typeof envelope>>();
@@ -381,6 +403,7 @@ describe('pharmacy gateway safe projections', () => {
       pharmacyIntentKeys,
       () => pharmacyGateway.submitVerification('en', submitInput),
       submitDeadline.promise,
+      passThrough,
     );
     await vi.waitFor(() => {
       expect(pharmacyIntentKeys.peek(SUBMIT_INTENT, submitFingerprint)).toEqual(expect.any(String));
@@ -396,6 +419,7 @@ describe('pharmacy gateway safe projections', () => {
       pharmacyIntentKeys,
       () => pharmacyGateway.submitVerification('en', submitInput),
       hang(),
+      passThrough,
     );
     expect(pharmacyIntentKeys.peek(SUBMIT_INTENT, submitFingerprint)).toBeUndefined();
   });
@@ -453,7 +477,12 @@ describe('pharmacy gateway safe projections', () => {
       requirement: EVIDENCE_REQUIREMENT_CODE,
     });
 
-    async function uploadThroughIpc(deadline: Promise<never>) {
+    async function uploadThroughIpc(
+      deadline: Promise<never>,
+      deliver: (value: Awaited<ReturnType<typeof pharmacyGateway.uploadEvidence>>) => Awaited<
+        ReturnType<typeof pharmacyGateway.uploadEvidence>
+      > = acceptIpcSchema(pharmacyUploadStatusResponseSchema),
+    ) {
       const uploaded = await runIpcDelivered(
         pharmacyIntentKeys,
         async () => {
@@ -466,6 +495,7 @@ describe('pharmacy gateway safe projections', () => {
           });
         },
         deadline,
+        deliver,
       );
       store.invalidate(handleId);
       return uploaded;
@@ -507,6 +537,216 @@ describe('pharmacy gateway safe projections', () => {
       .map((call) => (call[1] as { headers?: Record<string, string> }).headers?.['Idempotency-Key']);
     expect(createKeys[0]).toBe(createKey);
     expect(createKeys[1]).toBe(createKey);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('retries onboarding with the same key when a successful mutation fails the IPC response contract', async () => {
+    const ready = envelope(200, {
+      status: 'organization_ready',
+      organization_id: '0199a5c8-0000-7000-8000-000000000010',
+      branch_id: '0199a5c8-0000-7000-8000-000000000011',
+      membership_id: '0199a5c8-0000-7000-8000-000000000012',
+      version: 1,
+    });
+    fetchMock.mockResolvedValueOnce(ready);
+    fetchMock.mockResolvedValueOnce(ready);
+
+    const fingerprint = onboardFingerprint();
+    const accept = acceptIpcSchema(pharmacyOnboardResponseSchema);
+    const rejectMalformed = (value: Awaited<ReturnType<typeof pharmacyGateway.onboard>>) =>
+      accept(withUnexpectedField(value));
+
+    await expect(
+      runIpcDelivered(
+        pharmacyIntentKeys,
+        () => pharmacyGateway.onboard('en', onboardInput),
+        hang(),
+        rejectMalformed,
+      ),
+    ).rejects.toMatchObject({ name: 'ResponseContractError', message: 'INTERNAL_ERROR' });
+
+    const original = pharmacyIntentKeys.peek(ONBOARD_INTENT, fingerprint);
+    expect(original).toEqual(expect.any(String));
+    expect(pharmacyIntentKeys.keyFor(ONBOARD_INTENT, fingerprint)).toBe(original);
+
+    const delivered = await runIpcDelivered(
+      pharmacyIntentKeys,
+      () => pharmacyGateway.onboard('en', onboardInput),
+      hang(),
+      accept,
+    );
+    expect(delivered.status).toBe('organization_ready');
+    const keys = idempotencyKeys();
+    expect(keys.length).toBeGreaterThanOrEqual(2);
+    expect(keys[0]).toBe(original);
+    expect(keys[1]).toBe(original);
+    expect(pharmacyIntentKeys.peek(ONBOARD_INTENT, fingerprint)).toBeUndefined();
+  });
+
+  it('retries verification submit with the same key when a successful mutation fails the IPC response contract', async () => {
+    const submitted = envelope(200, {
+      status: 'submitted',
+      organization_id: '0199a5c8-0000-7000-8000-000000000010',
+      case_id: '0199a5c8-0000-7000-8000-000000000040',
+      case_status: 'pending_review',
+      case_version: 2,
+      organization_version: 1,
+      organization_verification_status: 'pending_review',
+    });
+    fetchMock.mockResolvedValueOnce(submitted);
+    fetchMock.mockResolvedValueOnce(submitted);
+
+    const submitInput = { caseVersion: 1, organizationVersion: 1 };
+    const fingerprint = pharmacyIntentKeys.fingerprint(submitInput);
+    const accept = acceptIpcSchema(pharmacyVerificationSubmitResponseSchema);
+    const rejectMalformed = (value: Awaited<ReturnType<typeof pharmacyGateway.submitVerification>>) =>
+      accept(withUnexpectedField(value));
+
+    await expect(
+      runIpcDelivered(
+        pharmacyIntentKeys,
+        () => pharmacyGateway.submitVerification('en', submitInput),
+        hang(),
+        rejectMalformed,
+      ),
+    ).rejects.toMatchObject({ name: 'ResponseContractError', message: 'INTERNAL_ERROR' });
+
+    const original = pharmacyIntentKeys.peek(SUBMIT_INTENT, fingerprint);
+    expect(original).toEqual(expect.any(String));
+    expect(pharmacyIntentKeys.keyFor(SUBMIT_INTENT, fingerprint)).toBe(original);
+
+    const delivered = await runIpcDelivered(
+      pharmacyIntentKeys,
+      () => pharmacyGateway.submitVerification('en', submitInput),
+      hang(),
+      accept,
+    );
+    expect(delivered.status).toBe('submitted');
+    const keys = idempotencyKeys();
+    expect(keys.length).toBeGreaterThanOrEqual(2);
+    expect(keys[0]).toBe(original);
+    expect(keys[1]).toBe(original);
+    expect(pharmacyIntentKeys.peek(SUBMIT_INTENT, fingerprint)).toBeUndefined();
+  });
+
+  it('keeps the evidence handle and upload keys when the completed projection fails the IPC response contract', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'clinic-upload-schema-'));
+    const file = path.join(dir, 'registration.pdf');
+    writeFileSync(file, Buffer.from('%PDF-1.4\n%%EOF\n'));
+    const store = new PharmacyEvidenceHandleStore();
+    const selected = store.registerSelectedFile(file);
+    if (!selected.selected) {
+      rmSync(dir, { recursive: true, force: true });
+      throw new Error('expected selection');
+    }
+    const handleId = selected.handleId;
+    const sizeBytes = selected.sizeBytes;
+    const candidateMediaType = selected.candidateMediaType;
+
+    const created = envelope(201, {
+      upload_id: '0199a5c8-0000-7000-8000-000000000021',
+      requirement_code: EVIDENCE_REQUIREMENT_CODE,
+      state: 'uploading',
+      rejection_reason: null,
+      expires_at: '2026-09-21T00:10:00Z',
+      completed_at: null,
+      upload_target: {
+        method: 'PUT',
+        url: 'http://127.0.0.1:9000/quarantine',
+        headers: { 'Content-Type': 'application/pdf' },
+        expires_at: '2026-09-21T00:10:00Z',
+      },
+    });
+    const completed = envelope(200, {
+      upload_id: '0199a5c8-0000-7000-8000-000000000021',
+      requirement_code: EVIDENCE_REQUIREMENT_CODE,
+      state: 'quarantined',
+      rejection_reason: null,
+      expires_at: '2026-09-21T00:10:00Z',
+      completed_at: '2026-09-21T00:01:00Z',
+    });
+    fetchMock.mockResolvedValueOnce(created);
+    fetchMock.mockResolvedValueOnce({ status: 200 });
+    fetchMock.mockResolvedValueOnce(completed);
+    fetchMock.mockResolvedValueOnce(created);
+    fetchMock.mockResolvedValueOnce({ status: 200 });
+    fetchMock.mockResolvedValueOnce(completed);
+
+    const caseId = '0199a5c8-0000-7000-8000-000000000030';
+    const createFingerprint = pharmacyIntentKeys.fingerprint({
+      caseId,
+      sizeBytes,
+      mediaType: candidateMediaType,
+      requirement: EVIDENCE_REQUIREMENT_CODE,
+    });
+    const completeFingerprint = pharmacyIntentKeys.fingerprint({
+      uploadId: '0199a5c8-0000-7000-8000-000000000021',
+    });
+    const accept = acceptIpcSchema(pharmacyUploadStatusResponseSchema);
+    const rejectMalformed = (
+      value: Awaited<ReturnType<typeof pharmacyGateway.uploadEvidence>>,
+    ) => accept(withUnexpectedField(value));
+
+    async function uploadThroughIpc(
+      deliver: (
+        value: Awaited<ReturnType<typeof pharmacyGateway.uploadEvidence>>,
+      ) => Awaited<ReturnType<typeof pharmacyGateway.uploadEvidence>>,
+    ) {
+      const uploaded = await runIpcDelivered(
+        pharmacyIntentKeys,
+        async () => {
+          const bytes = store.readForUpload(handleId);
+          return pharmacyGateway.uploadEvidence('en', {
+            caseId,
+            bytes: bytes.bytes,
+            sizeBytes: bytes.sizeBytes,
+            candidateMediaType: bytes.candidateMediaType,
+          });
+        },
+        hang(),
+        deliver,
+      );
+      store.invalidate(handleId);
+      return uploaded;
+    }
+
+    await expect(uploadThroughIpc(rejectMalformed)).rejects.toMatchObject({
+      name: 'ResponseContractError',
+      message: 'INTERNAL_ERROR',
+    });
+
+    const createKey = pharmacyIntentKeys.peek(UPLOAD_CREATE_INTENT, createFingerprint);
+    const completeKey = pharmacyIntentKeys.peek(UPLOAD_COMPLETE_INTENT, completeFingerprint);
+    expect(store.hasHandle(handleId)).toBe(true);
+    expect(createKey).toEqual(expect.any(String));
+    expect(completeKey).toEqual(expect.any(String));
+    expect(pharmacyIntentKeys.keyFor(UPLOAD_CREATE_INTENT, createFingerprint)).toBe(createKey);
+    expect(pharmacyIntentKeys.keyFor(UPLOAD_COMPLETE_INTENT, completeFingerprint)).toBe(completeKey);
+
+    const retry = await uploadThroughIpc(accept);
+    expect(retry.uploadId).toBe('0199a5c8-0000-7000-8000-000000000021');
+    expect(store.hasHandle(handleId)).toBe(false);
+    expect(pharmacyIntentKeys.peek(UPLOAD_CREATE_INTENT, createFingerprint)).toBeUndefined();
+    expect(pharmacyIntentKeys.peek(UPLOAD_COMPLETE_INTENT, completeFingerprint)).toBeUndefined();
+
+    const createKeys = fetchMock.mock.calls
+      .filter((call) => {
+        const url = String(call[0]);
+        const method = (call[1] as { method?: string } | undefined)?.method;
+        return method === 'POST' && url.includes('/api/v1/verification-uploads') && !url.includes('/complete');
+      })
+      .map((call) => (call[1] as { headers?: Record<string, string> }).headers?.['Idempotency-Key']);
+    const completeKeys = fetchMock.mock.calls
+      .filter((call) => {
+        const url = String(call[0]);
+        const method = (call[1] as { method?: string } | undefined)?.method;
+        return method === 'POST' && url.includes('/complete');
+      })
+      .map((call) => (call[1] as { headers?: Record<string, string> }).headers?.['Idempotency-Key']);
+    expect(createKeys[0]).toBe(createKey);
+    expect(createKeys[1]).toBe(createKey);
+    expect(completeKeys[0]).toBe(completeKey);
+    expect(completeKeys[1]).toBe(completeKey);
     rmSync(dir, { recursive: true, force: true });
   });
 });
