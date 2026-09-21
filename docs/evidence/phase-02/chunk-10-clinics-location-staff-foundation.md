@@ -28,9 +28,11 @@ remains fail-closed. This chunk does not bypass those gates.
 
 - **Branch:** `cursor/phase-02-clinics-location-staff-foundation-cc7f`
 - **Base (GitHub `main` after merged PR #15 / Chunk 09):** `ac244532fd63c7d839374bc796fcf6edad19401c`
-- **CI-verified HEAD:** `84cfc482875cf7ea6acf32cb072af88d90551635`
-- **GitHub CI:** `pull-request` run **35574002563** SUCCESS on that exact HEAD
-  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35574002563)
+- **Independently reviewed HEAD:** `fbb0594aa6fc8d6730a96d25a588d000cd4cfe7d`
+  (`pull-request` **35574600596** SUCCESS)
+- **Invitation-blocker HEAD:** `c3ff0264bae3be99ffcaa9dc21845c040b7376c7`
+- **GitHub CI:** `pull-request` run **35577105427** SUCCESS on that exact HEAD
+  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35577105427)
 - **Recorded:** 2026-09-21
 - **Environment:** host PHP 8.3 with `pdo_pgsql`, PostgreSQL + PostGIS
   `clinic_test`. No Docker Compose. Redis/MinIO were not required for this
@@ -412,18 +414,27 @@ Doctor/Pharmacy/Patient/Admin operation IDs renamed.
 
 ## GitHub CI
 
-`pull-request` run **35574002563** SUCCESS on CI-verified HEAD
-`84cfc482875cf7ea6acf32cb072af88d90551635`
-(https://github.com/mahmoudemad68/clinical_system/actions/runs/35574002563).
+Independently reviewed foundation HEAD `fbb0594aa6fc8d6730a96d25a588d000cd4cfe7d`
+had `pull-request` run **35574600596** SUCCESS
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35574600596).
+
+Invitation-blocker HEAD `c3ff0264bae3be99ffcaa9dc21845c040b7376c7` has
+`pull-request` run **35577105427** SUCCESS
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35577105427).
 
 All required checks passed, including Core API, Contracts, Admin web,
 Electron desktops, packaged Electron E2E, security scans, and supply-chain
 policy. AI service and Flutter were skipped by path filters.
 
-The first run on `64034b5f19bbc383fd13e444fda1fc26c28743e4`
-(**35573585941**) failed Core API PHPStan (`missingType.iterableValue` /
-`missingType.return` in `PostgresClinicStore` and `ClinicOwnerGuard`). That
-was fixed in `84cfc48` and re-run successfully.
+Earlier on this PR:
+
+- `64034b5f19bbc383fd13e444fda1fc26c28743e4` (**35573585941**) failed
+  Core API PHPStan; fixed in `84cfc48`.
+- `84cfc482875cf7ea6acf32cb072af88d90551635` (**35574002563**) SUCCESS.
+- `492fc18fef62283e1e7f544101027f7132b353b0` (**35576808921**) failed
+  Core API: HMAC-rotation tests still used the doctor bearer token after
+  `session_token` hashing switched to HMAC v2. Fixed in `c3ff026` by
+  re-inviting through `InviteClinicStaff` + `clinicDoctorActor`.
 
 Chunk-only evidence. Phase 02 is **NOT PASS**.
 
@@ -432,6 +443,8 @@ Chunk-only evidence. Phase 02 is **NOT PASS**.
 Independently reviewed HEAD `fbb0594aa6fc8d6730a96d25a588d000cd4cfe7d`
 had GitHub CI `pull-request` **35574600596** SUCCESS. Three invitation
 blockers were then fixed on the same Draft PR without starting a new chunk.
+Code HEAD `c3ff0264bae3be99ffcaa9dc21845c040b7376c7` has
+`pull-request` **35577105427** SUCCESS.
 
 ### Expired pending → replacement
 
