@@ -27,9 +27,9 @@ remains fail-closed. This chunk does not bypass those gates.
 
 - **Branch:** `cursor/phase-02-pharmacy-verification-ui-cc7f`
 - **Base (GitHub `main` after merged PR #14):** `06a3f0551872f96ffd02093ce054a8486a612e37`
-- **CI-verified HEAD:** `72e60ab95d808b8838dc8ea9c6c9a3c2a164ff38`
-- **GitHub CI:** `pull-request` run **35562798541** SUCCESS on that exact HEAD
-  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35562798541)
+- **CI-verified HEAD:** `034c178c7a9b03a01c7b622b56b9a8627639d950`
+- **GitHub CI:** `pull-request` run **35565653652** SUCCESS on that exact HEAD
+  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35565653652)
 - **Recorded:** 2026-09-21
 - **Environment:** host Node 22 workspace, PHP 8.3 Core Pest against local
   PostgreSQL `clinic_test`. Packaged Electron E2E and Admin Playwright ran in
@@ -302,13 +302,12 @@ pharmacy case.
 | Core Pest `SeedAdminVerificationBrowserFixtureTest.php` | **3 passed**, 19 assertions |
 
 GitHub `pull-request` run **35562798541** on
-`72e60ab95d808b8838dc8ea9c6c9a3c2a164ff38` and run **35563277326** on
-`5480a52da7b7297fa2a6d57f2351c56f401e61ed` were **SUCCESS**. The
-descriptor-pin / TIMEOUT follow-up is **35564482939** SUCCESS on
-`faab771b8a8b9fd32f51668c4ce0eafe6b4374c2`. This response-schema
-acknowledgement follow-up records its own exact-HEAD run after CI on this
-revision. Gitleaks, Trivy, and OpenVEX were **not**
-weakened. Contracts were not changed in this chunk.
+`72e60ab95d808b8838dc8ea9c6c9a3c2a164ff38`, run **35563277326** on
+`5480a52da7b7297fa2a6d57f2351c56f401e61ed`, run **35564482939** on
+`faab771b8a8b9fd32f51668c4ce0eafe6b4374c2`, and run **35565653652** on
+`034c178c7a9b03a01c7b622b56b9a8627639d950` were **SUCCESS**. Gitleaks,
+Trivy, and OpenVEX were **not** weakened. Contracts were not changed in
+this chunk.
 
 Phase 02 as a whole is **not** PASS.
 
