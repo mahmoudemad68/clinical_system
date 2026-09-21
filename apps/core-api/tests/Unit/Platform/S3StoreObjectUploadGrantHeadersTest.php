@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use DateTimeImmutable;
-use DateTimeZone;
 use Modules\Platform\Services\ObjectStorage\S3StoreObject;
 use Modules\Platform\Support\StoredObjectRef;
 use Tests\Support\FakeS3Filesystem;

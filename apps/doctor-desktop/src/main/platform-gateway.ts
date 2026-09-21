@@ -49,37 +49,18 @@ async function deviceNetFetch(
     redirect?: RequestRedirect;
   },
 ): Promise<Response> {
-  // exactOptionalPropertyTypes: omit `body`/`redirect` when unused.
-  if (init.body === undefined && init.redirect === undefined) {
-    return net.fetch(url, {
-      method: init.method,
-      headers: init.headers,
-      credentials: DEVICE_NET_FETCH_CREDENTIALS,
-    });
-  }
-  if (init.body === undefined) {
-    return net.fetch(url, {
-      method: init.method,
-      headers: init.headers,
-      credentials: DEVICE_NET_FETCH_CREDENTIALS,
-      redirect: init.redirect,
-    });
-  }
-  if (init.redirect === undefined) {
-    return net.fetch(url, {
-      method: init.method,
-      headers: init.headers,
-      credentials: DEVICE_NET_FETCH_CREDENTIALS,
-      body: init.body,
-    });
-  }
-  return net.fetch(url, {
+  const requestInit: RequestInit = {
     method: init.method,
     headers: init.headers,
     credentials: DEVICE_NET_FETCH_CREDENTIALS,
-    body: init.body,
-    redirect: init.redirect,
-  });
+  };
+  if (init.body !== undefined) {
+    requestInit.body = init.body;
+  }
+  if (init.redirect !== undefined) {
+    requestInit.redirect = init.redirect;
+  }
+  return net.fetch(url, requestInit);
 }
 
 export class GatewayError extends Error {
