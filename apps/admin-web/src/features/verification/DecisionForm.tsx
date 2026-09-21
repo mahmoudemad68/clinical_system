@@ -56,6 +56,7 @@ interface DecisionFormProps {
   caseId: string;
   professionalDisplayName: string;
   expectedCaseVersion: number;
+  applicantType?: 'doctor' | 'pharmacy';
   onConflict: () => void;
 }
 
@@ -63,6 +64,7 @@ export function DecisionForm({
   caseId,
   professionalDisplayName,
   expectedCaseVersion,
+  applicantType = 'doctor',
   onConflict,
 }: DecisionFormProps) {
   const { t } = useTranslation();
@@ -251,7 +253,7 @@ export function DecisionForm({
           </DialogContentText>
           {pendingPayload?.decision === 'approved' ? (
             <Alert severity="warning" sx={{ mt: 2 }}>
-              {t('case.confirmApprovalCaveat')}
+              {t(applicantType === 'pharmacy' ? 'case.confirmApprovalCaveatPharmacy' : 'case.confirmApprovalCaveat')}
             </Alert>
           ) : null}
         </DialogContent>

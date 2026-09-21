@@ -71,10 +71,17 @@ export const bridgeErrorSchema = z.object({
     'CAPABILITY_NOT_AVAILABLE',
     'UNAUTHENTICATED',
     'PERMISSION_DENIED',
+    'NOT_FOUND',
     'TIMEOUT',
     'CANCELLED',
     'UPSTREAM_FAILED',
     'INTERNAL_ERROR',
+    'VERSION_CONFLICT',
+    'STATE_CONFLICT',
+    'VALIDATION_FAILED',
+    'UNSUPPORTED_FILE',
+    'FILE_CHANGED',
+    'FILE_MISSING',
   ]),
   message: z.string().max(500),
   requestId: uuidV7Schema.optional(),
@@ -119,6 +126,13 @@ export const CHANNELS = {
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];
 
+/**
+ * Shared Auth/Platform channels registered by both Doctor and Pharmacy.
+ *
+ * Pharmacy domain channels live in `./pharmacy` and are registered only by
+ * `apps/pharmacy-desktop`. They must never be appended here: doing so would
+ * make every pharmacy operation callable from the Doctor desktop.
+ */
 export const ALL_CHANNELS: readonly ChannelName[] = Object.values(CHANNELS);
 
 /** Phase 00 capabilities. Each is one intent, not a generic passthrough. */
@@ -377,4 +391,78 @@ export function withinSizeBound(payload: unknown, maxBytes = MAX_IPC_PAYLOAD_BYT
 
 export function bridgeFailure(code: BridgeError['code'], message: string): BridgeResult<never> {
   return { ok: false, error: { code, message } };
+}
+
+export {
+  PHARMACY_CAPABILITY_REGISTRY,
+  PHARMACY_CHANNELS,
+  PHARMACY_CHANNEL_LIST,
+  pharmacyEvidenceClearRequestSchema,
+  pharmacyEvidenceClearResponseSchema,
+  pharmacyEvidenceSelectResponseSchema,
+  pharmacyEvidenceUploadRequestSchema,
+  pharmacyOnboardRequestSchema,
+  pharmacyOnboardResponseSchema,
+  pharmacyOrganizationViewSchema,
+  pharmacyOwnOrganizationResponseSchema,
+  pharmacyUploadStatusRequestSchema,
+  pharmacyUploadStatusResponseSchema,
+  pharmacyVerificationOpenResponseSchema,
+  pharmacyVerificationStatusResponseSchema,
+  pharmacyVerificationSubmitRequestSchema,
+  pharmacyVerificationSubmitResponseSchema,
+  type PharmacyChannelName,
+  type PharmacyEvidenceSelectResponse,
+  type PharmacyOnboardRequest,
+  type PharmacyOnboardResponse,
+  type PharmacyOrganizationView,
+  type PharmacyOwnOrganizationResponse,
+  type PharmacyUploadStatus,
+  type PharmacyVerificationOpenResponse,
+  type PharmacyVerificationStatus,
+  type PharmacyVerificationSubmitResponse,
+} from './pharmacy';
+
+import type {
+  PharmacyChannelName,
+  PharmacyEvidenceSelectResponse,
+  PharmacyOnboardRequest,
+  PharmacyOnboardResponse,
+  PharmacyOwnOrganizationResponse,
+  PharmacyUploadStatus,
+  PharmacyVerificationOpenResponse,
+  PharmacyVerificationStatus,
+  PharmacyVerificationSubmitResponse,
+} from './pharmacy';
+import { PHARMACY_CHANNEL_LIST } from './pharmacy';
+
+export type PharmacyRegisteredChannelName = ChannelName | PharmacyChannelName;
+
+export const PHARMACY_ALL_CHANNELS: readonly PharmacyRegisteredChannelName[] = [
+  ...ALL_CHANNELS,
+  ...PHARMACY_CHANNEL_LIST,
+];
+
+/**
+ * Pharmacy renderer bridge. Doctor desktops expose `ClinicBridge` only and
+ * must not add this `pharmacy` surface.
+ */
+export interface PharmacyClinicBridge extends ClinicBridge {
+  readonly pharmacy: {
+    getOwnOrganization(): Promise<BridgeResult<PharmacyOwnOrganizationResponse>>;
+    onboard(input: PharmacyOnboardRequest): Promise<BridgeResult<PharmacyOnboardResponse>>;
+    openVerificationCase(): Promise<BridgeResult<PharmacyVerificationOpenResponse>>;
+    verificationStatus(): Promise<BridgeResult<PharmacyVerificationStatus>>;
+    submitVerification(input: {
+      caseVersion: number;
+      organizationVersion: number;
+    }): Promise<BridgeResult<PharmacyVerificationSubmitResponse>>;
+    selectEvidence(): Promise<BridgeResult<PharmacyEvidenceSelectResponse>>;
+    clearEvidence(handleId: string): Promise<BridgeResult<{ cleared: true }>>;
+    uploadEvidence(input: {
+      handleId: string;
+      caseId: string;
+    }): Promise<BridgeResult<PharmacyUploadStatus>>;
+    uploadStatus(uploadId: string): Promise<BridgeResult<PharmacyUploadStatus>>;
+  };
 }

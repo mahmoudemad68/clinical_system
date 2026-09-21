@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError, apiClient, toApiFailure } from '@/api/client';
-import { isDoctorVerificationCase } from '@/features/verification/doctorVerification';
+import { isReviewVerificationCase } from '@/features/verification/doctorVerification';
 import { verificationKeys } from '@/session/keys';
 import { useSession } from '@/session/useSession';
 import type { DecisionPayload } from '@/features/verification/idempotency';
 
-function requireDoctorVerificationCase<T>(data: T): T & { case_type: 'doctor_verification' } {
-  if (!isDoctorVerificationCase(data as Parameters<typeof isDoctorVerificationCase>[0])) {
+function requireReviewVerificationCase<T>(data: T): T & (
+  | { case_type: 'doctor_verification' }
+  | { case_type: 'pharmacy_verification' }
+) {
+  if (!isReviewVerificationCase(data as Parameters<typeof isReviewVerificationCase>[0])) {
     throw new ApiError({
       code: 'NOT_FOUND',
       message: 'The requested record is not available.',
@@ -14,7 +17,10 @@ function requireDoctorVerificationCase<T>(data: T): T & { case_type: 'doctor_ver
     });
   }
 
-  return data as T & { case_type: 'doctor_verification' };
+  return data as T & (
+    | { case_type: 'doctor_verification' }
+    | { case_type: 'pharmacy_verification' }
+  );
 }
 
 export function useVerificationCase(caseId: string | undefined) {
@@ -50,7 +56,7 @@ export function useVerificationCase(caseId: string | undefined) {
         throw new ApiError(toApiFailure(error, response.status));
       }
 
-      return requireDoctorVerificationCase(data.data);
+      return requireReviewVerificationCase(data.data);
     },
   });
 }
@@ -73,7 +79,7 @@ export function useClaimVerificationCase(caseId: string) {
         throw new ApiError(toApiFailure(error, response.status));
       }
 
-      return requireDoctorVerificationCase(data.data);
+      return requireReviewVerificationCase(data.data);
     },
     onSuccess: async (detail) => {
       queryClient.setQueryData(verificationKeys.case(caseId), detail);

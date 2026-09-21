@@ -12,6 +12,7 @@ import {
   jsonResponse,
   meBody,
   queueItem,
+  pharmacyCaseDetail,
   reviewDocument,
   REVIEW_CAPABILITY,
 } from '@/test/fixtures';
@@ -184,5 +185,48 @@ describe('verification case detail and claim', () => {
     renderApp(`/verification/${CASE_ID}`);
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(document.body.textContent).not.toContain(CANARIES.canonicalLocator);
+  });
+
+  it('renders a pharmacy case without legal identity fields', async () => {
+    const user = userEvent.setup();
+    const pharmacyId = pharmacyCaseDetail().case_id;
+    let assigned = false;
+    baseRoutes({
+      [`GET /api/v1/admin/verification-cases/${pharmacyId}`]: () =>
+        jsonResponse(
+          envelope(
+            pharmacyCaseDetail({
+              assignment: assigned ? 'mine' : 'unassigned',
+              assigned_to_me: assigned,
+              documents: assigned
+                ? [reviewDocument({ requirement_code: 'organization_registration_evidence' })]
+                : [],
+            }),
+          ),
+        ),
+      [`POST /api/v1/admin/verification-cases/${pharmacyId}/claim`]: () => {
+        assigned = true;
+        return jsonResponse(
+          envelope(
+            pharmacyCaseDetail({
+              assignment: 'mine',
+              assigned_to_me: true,
+              documents: [reviewDocument({ requirement_code: 'organization_registration_evidence' })],
+            }),
+          ),
+        );
+      },
+    });
+
+    renderApp(`/verification/${pharmacyId}`);
+    expect(await screen.findByText('Synthetic Pharmacy Review')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Displayed organization, branch, and membership statuses come from the server/),
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain(CANARIES.legalName);
+    expect(document.body.textContent).not.toContain(CANARIES.registration);
+    expect(document.body.textContent).not.toContain(CANARIES.address);
+    await user.click(screen.getByRole('button', { name: 'Claim case' }));
+    expect(await screen.findByRole('button', { name: 'View / download document' })).toBeInTheDocument();
   });
 });

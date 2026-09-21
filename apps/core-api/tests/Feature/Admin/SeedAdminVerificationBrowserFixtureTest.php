@@ -37,6 +37,7 @@ it('seeds a secretary unauthorized actor who can read me but not the review queu
 
     $fixture = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
     expect($fixture['case']['professional_display_name'])->toBe('Dr E2E Review')
+        ->and($fixture['pharmacy_case']['public_name'] ?? null)->toBe('E2E Pharmacy Review')
         ->and(is_string($fixture['unauthorized']['phone'] ?? null))->toBeTrue()
         ->and(is_string($fixture['unauthorized']['password'] ?? null))->toBeTrue();
 

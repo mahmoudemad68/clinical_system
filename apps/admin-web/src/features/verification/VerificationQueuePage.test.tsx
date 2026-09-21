@@ -11,6 +11,7 @@ import {
   jsonResponse,
   meBody,
   queueItem,
+  pharmacyQueueItem,
   REVIEW_CAPABILITY,
 } from '@/test/fixtures';
 import i18n from '@/i18n';
@@ -201,5 +202,52 @@ describe('verification queue', () => {
     await waitFor(() => {
       expect(calls).toBeGreaterThan(before);
     });
+  });
+
+  it('defaults to doctor_verification and switches to a separate pharmacy queue', async () => {
+    const user = userEvent.setup();
+    const seen: string[] = [];
+    reviewerRoutes((request) => {
+      const url = new URL(request.url);
+      const type = url.searchParams.get('case_type') ?? '';
+      seen.push(`${type}:${url.searchParams.get('cursor') ?? ''}`);
+      if (type === 'pharmacy_verification') {
+        return jsonResponse(
+          envelope(
+            [
+              pharmacyQueueItem({
+                public_name: 'Synthetic Pharmacy Review',
+              }),
+            ],
+            { meta: { locale: 'en', pagination: { has_more: false, next: null, limit: 25 } } },
+          ),
+        );
+      }
+      return jsonResponse(
+        envelope([queueItem()], {
+          meta: { locale: 'en', pagination: { has_more: true, next: 'doctor-cursor', limit: 25 } },
+        }),
+      );
+    });
+
+    renderApp('/verification');
+    expect(await screen.findByRole('heading', { name: 'Pending doctor verification' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await waitFor(() => {
+      expect(seen).toContain('doctor_verification:doctor-cursor');
+    });
+    await user.click(screen.getByRole('button', { name: 'Pharmacy verification' }));
+    expect(await screen.findByRole('heading', { name: 'Pending pharmacy verification' })).toBeInTheDocument();
+    expect(await screen.findByText('Synthetic Pharmacy Review')).toBeInTheDocument();
+    expect(screen.queryByText('Dr Synthetic Review')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(seen).toContain('pharmacy_verification:');
+    });
+    expect(seen.some((entry) => entry === 'pharmacy_verification:doctor-cursor')).toBe(false);
+    const html = document.body.textContent ?? '';
+    expect(html).not.toContain(CANARIES.legalName);
+    expect(html).not.toContain(CANARIES.registration);
+    expect(html).not.toContain(CANARIES.address);
+    expect(html).not.toContain(CANARIES.phone);
   });
 });
