@@ -157,19 +157,17 @@ it('does not let an active worker silently fall back to the serving connection',
         ->toThrow(RuntimeException::class);
 });
 
-/**
- * Worker tests need a live clinic_worker login, not only has_table_privilege.
- */
-function skipUnlessWorkerConnection(): void
-{
-    $role = DB::selectOne("SELECT 1 AS ok FROM pg_roles WHERE rolname = 'clinic_worker'");
-    if ($role === null) {
-        test()->markTestSkipped('clinic_worker is not present on this cluster');
-    }
+it('keeps the dedicated audit connection as clinic_audit_writer while the worker is active', function () {
+    skipUnlessWorkerConnection();
+    skipUnlessAuditWriterConnection();
 
-    try {
-        DB::connection('pgsql_worker')->selectOne('select 1');
-    } catch (Throwable) {
-        test()->markTestSkipped('pgsql_worker cannot connect');
-    }
-}
+    $identity = app(WorkerDatabaseIdentity::class);
+    $identity->activate();
+
+    expect(DB::getDefaultConnection())->toBe('pgsql_worker')
+        ->and($identity->currentRole())->toBe('clinic_worker')
+        ->and($identity->currentRole('pgsql'))->toBe('clinic_worker')
+        ->and($identity->currentRole('pgsql_audit'))->toBe('clinic_audit_writer')
+        ->and(config('database.connections.pgsql_audit.username'))->toBe('clinic_audit_writer')
+        ->and(config('database.connections.pgsql_audit.username'))->not->toBe('clinic_worker');
+});

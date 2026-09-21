@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true"
 >
     <testsuites>
@@ -19,7 +19,7 @@
         </include>
     </source>
     <php>
-        <env name="APP_ENV" value="testing"/>
+        <env name="APP_ENV" value="testing" force="true"/>
         <env name="APP_KEY" value="01234567890123456789012345678901"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
@@ -72,11 +72,12 @@
         <env name="DB_PASSWORD" value="local_dev_only_not_a_secret"/>
         <env name="DB_MIGRATION_USERNAME" value="clinic_migrator"/>
         <env name="DB_MIGRATION_PASSWORD" value="local_dev_only_not_a_secret"/>
-        <env name="DB_AUDIT_USERNAME" value="clinic_audit_writer"/>
-        <env name="DB_AUDIT_PASSWORD" value="local_dev_only_not_a_secret"/>
+        <env name="DB_AUDIT_USERNAME" value="clinic_audit_writer" force="true"/>
+        <env name="DB_AUDIT_PASSWORD" value="local_dev_only_not_a_secret" force="true"/>
         <env name="DB_WORKER_USERNAME" value="clinic_worker" force="true"/>
         <env name="DB_WORKER_PASSWORD" value="local_dev_only_not_a_secret" force="true"/>
-        <env name="DB_URL" value=""/>
+        <env name="DB_URL" value="" force="true"/>
+        <env name="DB_AUDIT_URL" value="" force="true"/>
         <env name="APP_VERSION" value="0.0.0-test"/>
         <env name="APP_BUSINESS_TIMEZONE" value="Africa/Cairo"/>
         <env name="APP_SUPPORTED_LOCALES" value="ar,en"/>

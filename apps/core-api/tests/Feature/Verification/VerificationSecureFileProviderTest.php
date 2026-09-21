@@ -14,40 +14,6 @@ use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
 
-/**
- * @param  array<string, mixed>|null  $headers
- * @return list<string>
- */
-function liveGrantHeaderNames(?array $headers): array
-{
-    if ($headers === null) {
-        return [];
-    }
-
-    return array_values(array_map(
-        static fn (string $name): string => strtolower($name),
-        array_keys($headers),
-    ));
-}
-
-function assertClientSafeUploadTarget(mixed $target, string $storageLocator, string $responseBody): void
-{
-    expect($target)->toBeArray()
-        ->and((string) ($target['method'] ?? ''))->toBe('PUT')
-        ->and((string) ($target['url'] ?? ''))->not->toBe('')
-        ->and($responseBody)->not->toContain('"storage_locator"')
-        ->and($responseBody)->not->toContain('"object_key"')
-        ->and($responseBody)->not->toContain('"object_id"')
-        ->and($responseBody)->not->toContain('"bucket"');
-    unset($storageLocator);
-
-    $names = liveGrantHeaderNames(is_array($target) && is_array($target['headers'] ?? null) ? $target['headers'] : []);
-    expect($names)->not->toContain('host')
-        ->and($names)->not->toContain('connection')
-        ->and($names)->not->toContain('transfer-encoding')
-        ->and($names)->toContain('content-type');
-}
-
 it('promotes a real provider-backed upload and ignores later ingress overwrite', function () {
     $endpoint = (string) config('filesystems.disks.s3.endpoint', '');
     $host = parse_url($endpoint, PHP_URL_HOST) ?: '127.0.0.1';

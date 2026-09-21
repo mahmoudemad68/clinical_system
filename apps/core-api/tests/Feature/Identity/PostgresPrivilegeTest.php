@@ -80,6 +80,7 @@ it('keeps the worker off users and grants', function () {
     $auditInsert = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'audit_events', 'INSERT') AS allowed");
     $auditUpdate = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'audit_events', 'UPDATE') AS allowed");
     $auditDelete = DB::selectOne("SELECT has_table_privilege('clinic_worker', 'audit_events', 'DELETE') AS allowed");
+    $auditExecute = DB::selectOne("SELECT has_function_privilege('clinic_worker', 'clinic_append_audit_event(uuid, text, uuid, text, text, uuid, jsonb, timestamptz)', 'EXECUTE') AS allowed");
 
     expect((bool) $users->allowed)->toBeFalse()
         ->and((bool) $grants->allowed)->toBeFalse()
@@ -87,7 +88,8 @@ it('keeps the worker off users and grants', function () {
         ->and((bool) $diagnostics->allowed)->toBeTrue()
         ->and((bool) $auditInsert->allowed)->toBeFalse()
         ->and((bool) $auditUpdate->allowed)->toBeFalse()
-        ->and((bool) $auditDelete->allowed)->toBeFalse();
+        ->and((bool) $auditDelete->allowed)->toBeFalse()
+        ->and((bool) $auditExecute->allowed)->toBeFalse();
 });
 
 it('gives the backup role select on identity tables without write', function () {

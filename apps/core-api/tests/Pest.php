@@ -17,3 +17,4 @@ require_once __DIR__.'/Support/pharmacyVerificationHttpHelpers.php';
 require_once __DIR__.'/Support/verificationMediaFixtures.php';
 require_once __DIR__.'/Support/adminVerificationHttpHelpers.php';
 require_once __DIR__.'/Support/clinicHttpHelpers.php';
+require_once __DIR__.'/Support/auditIdentityHelpers.php';

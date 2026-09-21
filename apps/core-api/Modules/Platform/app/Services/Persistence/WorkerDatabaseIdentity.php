@@ -42,6 +42,8 @@ final class WorkerDatabaseIdentity
 
     public const SERVING_ROLE = 'clinic_app';
 
+    public const AUDIT_CONNECTION = 'pgsql_audit';
+
     /**
      * Artisan commands that are background workers, not HTTP or one-shot operators.
      *
@@ -59,6 +61,10 @@ final class WorkerDatabaseIdentity
 
     /**
      * Singletons that captured ConnectionInterface at first resolve.
+     *
+     * AppendAuditEvent is intentionally omitted: the dedicated pgsql_audit
+     * connection must stay clinic_audit_writer while workers run as
+     * clinic_worker.
      *
      * @var list<class-string>
      */
@@ -84,6 +90,11 @@ final class WorkerDatabaseIdentity
      * @var array<string, mixed>
      */
     private array $servingConnectionSnapshot = [];
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $auditConnectionSnapshot = [];
 
     public function __construct(
         private readonly Application $app,
@@ -227,6 +238,7 @@ final class WorkerDatabaseIdentity
         $this->db->purge(self::SERVING_CONNECTION);
         $this->db->purge(self::CONNECTION);
         $this->db->setDefaultConnection(self::CONNECTION);
+        $this->assertAuditConnectionUntouched();
     }
 
     private function snapshotServingConnection(): void
@@ -234,6 +246,10 @@ final class WorkerDatabaseIdentity
         $this->originalDefault = (string) $this->app['config']->get('database.default', self::SERVING_CONNECTION);
         $this->servingConnectionSnapshot = (array) $this->app['config']->get(
             'database.connections.'.self::SERVING_CONNECTION,
+            [],
+        );
+        $this->auditConnectionSnapshot = (array) $this->app['config']->get(
+            'database.connections.'.self::AUDIT_CONNECTION,
             [],
         );
     }
@@ -255,6 +271,7 @@ final class WorkerDatabaseIdentity
         $this->db->setDefaultConnection($this->originalDefault);
 
         $this->servingConnectionSnapshot = [];
+        $this->auditConnectionSnapshot = [];
         $this->originalDefault = self::SERVING_CONNECTION;
     }
 
@@ -289,6 +306,32 @@ final class WorkerDatabaseIdentity
         }
 
         $this->verifiedRole = $defaultRole;
+    }
+
+    private function assertAuditConnectionUntouched(): void
+    {
+        $audit = (array) $this->app['config']->get('database.connections.'.self::AUDIT_CONNECTION, []);
+        $username = (string) ($audit['username'] ?? '');
+
+        if ($username === self::ROLE) {
+            throw new RuntimeException(
+                'Audit database username must not be '.self::ROLE.'.',
+            );
+        }
+
+        if ($this->auditConnectionSnapshot === []) {
+            return;
+        }
+
+        $snapshotUser = (string) ($this->auditConnectionSnapshot['username'] ?? '');
+        $snapshotUrl = $this->auditConnectionSnapshot['url'] ?? null;
+        $currentUrl = $audit['url'] ?? null;
+
+        if ($username !== $snapshotUser || $currentUrl !== $snapshotUrl) {
+            throw new RuntimeException(
+                'Queue worker must not mutate the dedicated audit connection.',
+            );
+        }
     }
 
     private function forgetCapturedConnections(): void
