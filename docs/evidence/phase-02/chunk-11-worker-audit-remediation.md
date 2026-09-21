@@ -17,7 +17,8 @@ Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 - **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/20
 - **Baseline (GitHub `main`):** `a438aba2d141ee41e59318c76b3f956998faf718`
 - **Implementation HEAD:** `ac44350a6fc983acdf713638a7563aeb60be1c50`
-- **GitHub CI:** pending on this head; this note will be updated with the exact `pull-request` run
+- **Recorded-CI HEAD:** `3f808eb6d693f245e765228d334a570d9158d8fd`
+- **GitHub CI:** SUCCESS `pull-request` run [35642597565](https://github.com/mahmoudemad68/clinical_system/actions/runs/35642597565) on `3f808eb6d693f245e765228d334a570d9158d8fd` (9 success, 4 skipped by path filter)
 - **Recorded:** 2026-09-21
 
 ## QA failure reproduced
@@ -128,16 +129,40 @@ the outbox `FAILED` (retry policy retained) and the upload not `available`.
 Audit chain: `VerifyAuditChain` `ok=true` after dedicated-writer appends. Existing
 hash-chain and checkpoint tests passed under `APP_ENV=testing`.
 
-## Final-head GitHub CI
+## Final-head GitHub CI (`3f808eb`)
 
-_Pending after push. This note will be updated with the exact `pull-request` run._
+https://github.com/mahmoudemad68/clinical_system/actions/runs/35642597565 — **SUCCESS** (`pull_request`, candidate SHA `3f808eb6d693f245e765228d334a570d9158d8fd`).
+
+| Check | Result |
+| --- | --- |
+| Detect changed areas | success |
+| Contracts | success (oasdiff could not load `/base/base.yaml`; job still succeeded) |
+| Supply-chain policy | success |
+| Security scans | success |
+| Core API | success — PHPStan `[OK] No errors`; Deptrac `--fail-on-uncovered` succeeded; Pest **800 passed**, 15 skipped, 17011 assertions; browser CSRF **4 passed**. `AuditDatabaseIdentityTest`, `PostgresPrivilegeTest`, `WorkerDatabaseIdentityTest`, `AuditChainIntegrityTest`, `AuditChainCheckpointTest` PASS. `VerificationWorkerAuditIdentityTest` WARN in this job: the in-memory worker path passed; live MinIO/scanner cases skip without the provider stack. |
+| Secure-file providers | success — Pest **72 passed** / 791 assertions, **0 skipped**, live digest-pinned MinIO + clamd. Includes `VerificationWorkerAuditIdentityTest` (3/3 PASS: worker+audit identities, fail-closed wrong audit identity, real MinIO PUT → worker → available), `VerificationSecureFileProviderTest`, `ClamdScanObjectTest` live scan, `S3StoreObjectUploadGrantHeadersTest`, `AuditDatabaseIdentityTest`, `PostgresPrivilegeTest`, `WorkerDatabaseIdentityTest`. |
+| Admin web | success — admin unit **46 passed**; browser admin verification **1 passed** |
+| Runtime image scan (core-api) | success |
+| Runtime image scan (ai-service) | success |
+| Electron desktops | skipped (path filter; no desktop file changes on this branch) |
+| Packaged Electron E2E | skipped (path filter) |
+| Flutter | skipped (path filter) |
+| AI service | skipped (path filter) |
+
+Worker/provider gate counted here is the **Secure-file** job, not the Core API skips. Live MinIO create → PUT → complete → `outbox:work` as `clinic_worker` with `pgsql_audit` = `clinic_audit_writer` → upload `available`, outbox `PROCESSED` (not `DEAD_LETTER`), document created, audit rows present, worker `EXECUTE` still false. Wrong audit identity left outbox `FAILED` (retry retained) and upload not `available`. `ClamdScanObjectTest` live EICAR passed in this job.
+
+Superseded cancelled run on implementation SHA `ac44350`: [35642519728](https://github.com/mahmoudemad68/clinical_system/actions/runs/35642519728).
+
+Core API postgres logs during container stop include `password authentication failed for user clinic_audit_writer`. Tests still passed (`AuditDatabaseIdentityTest` PASS). That is shutdown noise after the Pest process, not a grant of audit `EXECUTE` to `clinic_worker`.
 
 ## Remaining risks
 
 - Chunk 11 stays OPEN until GUI QA re-runs the mandatory journey without workarounds.
 - Phase 02 remains NOT PASS.
 - Legal/regulatory sign-off is not claimed by this note.
-- Packaged Electron E2E and Forge Doctor smoke are GitHub CI jobs on this branch;
-  they were not re-executed locally in this agent VM.
+- Packaged Electron E2E, Electron desktops (including Forge Doctor smoke and
+  cookieless runtime), Flutter, and AI service were skipped by GitHub path
+  filters because this branch did not change those trees. Local Doctor **161**,
+  Pharmacy **138**, cookieless node **2** still passed on this agent.
 - Local full Pest observed one unrelated live-clamd miss; do not treat that as
   this remediation regressing malware detection.
