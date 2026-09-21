@@ -92,10 +92,20 @@ This is **not** the mandatory QA GUI journey and **not** Chunk 11 closeout.
 
 ## Packaged Electron E2E
 
-Existing `scripts/desktop/run-packaged-e2e.mjs` / G-02-10. Must remain green
-on GitHub `desktop-packaged-e2e` (ubuntu/macos/windows). Local packaged run is
-recorded after it finishes; GitHub CI on final HEAD is authoritative for
-cross-OS packaged proof.
+Local `node scripts/desktop/run-packaged-e2e.mjs` with `CLINIC_DESKTOP_SKIP_MAKE=1`
+(real Forge-packaged binaries, not Forge dev server / Vitest):
+
+| App | Origin | WebdriverIO |
+| --- | --- | --- |
+| Clinic Doctor | `clinic-doctor-app://-` | **5 passing / 0 failing** |
+| Clinic Pharmacy | `clinic-pharmacy-app://-` | **5 passing / 0 failing** |
+
+Doctor assertions covered: custom origin, Doctor bridge present, Pharmacy bridge
+absent, no Node globals, no generic `invoke`, hostile navigation refused,
+Arabic RTL. Doctor `app.asar` SHA-256
+`552885edc51bc88c49649ecc0484fc401530c313146647f216ad9ab37c0a97a9`.
+
+Cross-OS packaged proof is GitHub `desktop-packaged-e2e` on final HEAD.
 
 Packaged HTTP rejection remains unit-tested:
 
