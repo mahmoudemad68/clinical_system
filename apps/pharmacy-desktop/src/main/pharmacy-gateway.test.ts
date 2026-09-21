@@ -583,6 +583,68 @@ describe('pharmacy gateway safe projections', () => {
     expect(pharmacyIntentKeys.peek(ONBOARD_INTENT, fingerprint)).toBeUndefined();
   });
 
+  it('retries onboarding with the same key when organization_ready omits required result fields', async () => {
+    const incomplete = envelope(200, {
+      status: 'organization_ready',
+    });
+    const ready = envelope(200, {
+      status: 'organization_ready',
+      organization_id: '0199a5c8-0000-7000-8000-000000000010',
+      branch_id: '0199a5c8-0000-7000-8000-000000000011',
+      membership_id: '0199a5c8-0000-7000-8000-000000000012',
+      version: 1,
+    });
+    fetchMock.mockResolvedValueOnce(incomplete);
+    fetchMock.mockResolvedValueOnce(ready);
+
+    const fingerprint = onboardFingerprint();
+    const accept = acceptIpcSchema(pharmacyOnboardResponseSchema);
+
+    await expect(
+      runIpcDelivered(
+        pharmacyIntentKeys,
+        () => pharmacyGateway.onboard('en', onboardInput),
+        hang(),
+        accept,
+      ),
+    ).rejects.toMatchObject({ name: 'GatewayError', failureCode: 'UPSTREAM_FAILED' });
+
+    const original = pharmacyIntentKeys.peek(ONBOARD_INTENT, fingerprint);
+    expect(original).toEqual(expect.any(String));
+    expect(pharmacyIntentKeys.keyFor(ONBOARD_INTENT, fingerprint)).toBe(original);
+
+    const delivered = await runIpcDelivered(
+      pharmacyIntentKeys,
+      () => pharmacyGateway.onboard('en', onboardInput),
+      hang(),
+      accept,
+    );
+    expect(delivered.status).toBe('organization_ready');
+    const keys = idempotencyKeys();
+    expect(keys.length).toBeGreaterThanOrEqual(2);
+    expect(keys[0]).toBe(original);
+    expect(keys[1]).toBe(original);
+    expect(pharmacyIntentKeys.peek(ONBOARD_INTENT, fingerprint)).toBeUndefined();
+  });
+
+  it('retires the onboarding key after a caller-deliverable manual_review_required result', async () => {
+    const review = envelope(200, { status: 'manual_review_required' });
+    fetchMock.mockResolvedValueOnce(review);
+
+    const fingerprint = onboardFingerprint();
+    const delivered = await runIpcDelivered(
+      pharmacyIntentKeys,
+      () => pharmacyGateway.onboard('en', onboardInput),
+      hang(),
+      acceptIpcSchema(pharmacyOnboardResponseSchema),
+    );
+    expect(delivered).toEqual({ status: 'manual_review_required' });
+    const used = idempotencyKeys();
+    expect(used).toHaveLength(1);
+    expect(pharmacyIntentKeys.peek(ONBOARD_INTENT, fingerprint)).toBeUndefined();
+    expect(pharmacyIntentKeys.keyFor(ONBOARD_INTENT, fingerprint)).not.toBe(used[0]);
+  });
+
   it('retries verification submit with the same key when a successful mutation fails the IPC response contract', async () => {
     const submitted = envelope(200, {
       status: 'submitted',

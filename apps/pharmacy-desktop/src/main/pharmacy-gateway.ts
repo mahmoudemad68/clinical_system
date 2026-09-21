@@ -160,9 +160,10 @@ export const pharmacyGateway = {
         },
         { 'Idempotency-Key': key },
       );
-      pharmacyIntentKeys.retireWhenDelivered(ONBOARD_INTENT, fingerprint, key);
       if (data.status === 'manual_review_required') {
-        return { status: 'manual_review_required' };
+        const mapped = { status: 'manual_review_required' as const };
+        pharmacyIntentKeys.retireWhenDelivered(ONBOARD_INTENT, fingerprint, key);
+        return mapped;
       }
       if (
         typeof data.organization_id !== 'string' ||
@@ -172,13 +173,15 @@ export const pharmacyGateway = {
       ) {
         throw new GatewayError('UPSTREAM_FAILED');
       }
-      return {
-        status: 'organization_ready',
+      const mapped = {
+        status: 'organization_ready' as const,
         organizationId: data.organization_id,
         branchId: data.branch_id,
         membershipId: data.membership_id,
         version: data.version,
       };
+      pharmacyIntentKeys.retireWhenDelivered(ONBOARD_INTENT, fingerprint, key);
+      return mapped;
     } catch (error) {
       if (
         error instanceof GatewayError &&
@@ -209,15 +212,16 @@ export const pharmacyGateway = {
         {},
         { 'Idempotency-Key': key },
       );
-      pharmacyIntentKeys.retireWhenDelivered(OPEN_CASE_INTENT, fingerprint, key);
-      return {
-        status: 'ready',
+      const mapped = {
+        status: 'ready' as const,
         organizationId: data.organization_id,
         caseId: data.case_id,
         caseStatus: data.case_status,
         caseVersion: data.case_version,
         organizationVersion: data.organization_version,
       };
+      pharmacyIntentKeys.retireWhenDelivered(OPEN_CASE_INTENT, fingerprint, key);
+      return mapped;
     } catch (error) {
       throw error;
     }
@@ -298,9 +302,8 @@ export const pharmacyGateway = {
         },
         { 'Idempotency-Key': key },
       );
-      pharmacyIntentKeys.retireWhenDelivered(SUBMIT_INTENT, fingerprint, key);
-      return {
-        status: 'submitted',
+      const mapped = {
+        status: 'submitted' as const,
         organizationId: data.organization_id,
         caseId: data.case_id,
         caseStatus: data.case_status,
@@ -308,6 +311,8 @@ export const pharmacyGateway = {
         organizationVersion: data.organization_version,
         organizationVerificationStatus: data.organization_verification_status,
       };
+      pharmacyIntentKeys.retireWhenDelivered(SUBMIT_INTENT, fingerprint, key);
+      return mapped;
     } catch (error) {
       if (
         error instanceof GatewayError &&
@@ -385,9 +390,10 @@ export const pharmacyGateway = {
         {},
         { 'Idempotency-Key': completeKey },
       );
+      const mapped = mapUploadStatus(completed);
       pharmacyIntentKeys.retireWhenDelivered(UPLOAD_CREATE_INTENT, createFingerprint, createKey);
       pharmacyIntentKeys.retireWhenDelivered(UPLOAD_COMPLETE_INTENT, completeFingerprint, completeKey);
-      return mapUploadStatus(completed);
+      return mapped;
     } catch (error) {
       throw error;
     }

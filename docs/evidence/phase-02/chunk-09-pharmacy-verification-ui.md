@@ -154,10 +154,19 @@ bound to an IPC delivery ticket (`runIpcDelivered`). Successful delivery
 acknowledgement occurs **only after** the channel's `contract.response.safeParse`
 accepts the value. Ordering for a resolved operation:
 
-1. The gateway/operation resolves (and may queue `retireWhenDelivered`).
+1. The gateway maps a **complete** local success result, then may queue `retireWhenDelivered`.
 2. Main validates/transforms through `contract.response.safeParse`.
 3. Only a schema-accepted value may `acknowledge(ticket)` and retire queued keys.
 4. The validated value is returned to the renderer.
+
+Onboarding specifically: `retireWhenDelivered` is **not** queued until a valid
+`PharmacyOnboardResponse` exists. `organization_ready` requires
+`organization_id`, `branch_id`, `membership_id`, and `version` before
+retirement is queued. `manual_review_required` constructs that safe result
+first, then queues retirement. An HTTP success that is missing those fields
+throws `UPSTREAM_FAILED` with **no** retirement queued, so retry keeps `K`.
+Accepted terminal 4xx (`VALIDATION_FAILED`, `PERMISSION_DENIED`) still queue
+retirement deliberately.
 
 Distinguished outcomes:
 
@@ -189,6 +198,24 @@ Malformed-success proof (no sleeps): the gateway mutation completes and queues
 unexpected field so `.strict()` IPC schemas fail. The caller sees
 `INTERNAL_ERROR` (`ResponseContractError`); `K` remains; retry of the same
 payload sends exactly `K`; a later schema-valid response retires `K`.
+
+Incomplete `organization_ready` proof (no sleeps): Core returns HTTP success
+with `status=organization_ready` but omits required ids/version. The gateway
+throws `UPSTREAM_FAILED` **without** queueing retirement. The caller-visible
+result is failure; `K` remains; retry of the same payload sends exactly `K`;
+a later complete Core body plus IPC schema accept retires `K`.
+`manual_review_required` is a valid delivered terminal onboarding result and
+retires `K` after mapping and schema accept.
+
+No successful idempotency intent is queued for retirement until gateway-local
+mapping is complete; final retirement still occurs only after IPC
+response-schema acceptance.
+
+Open-case, submit, and upload-complete construct the local mapped result
+before `retireWhenDelivered`. Those mappers are field copies and cannot throw
+an uncertain failure after HTTP success; `parseIssuedUploadTarget` / PUT
+failures happen **before** any upload retirement is queued. Terminal 4xx
+paths still queue retirement in their catch blocks only.
 
 Upload: the evidence handle is invalidated only after IPC delivery of a
 schema-valid safe projection. TIMEOUT and response-schema failure keep the
@@ -290,7 +317,7 @@ pharmacy case.
 | Command | Result |
 | --- | --- |
 | `npm run typecheck --workspace apps/pharmacy-desktop` | passed |
-| `npm run test --workspace apps/pharmacy-desktop` | **123 passed** (13 files) |
+| `npm run test --workspace apps/pharmacy-desktop` | **125 passed** (13 files) |
 | `npm run typecheck --workspace apps/doctor-desktop` | passed |
 | `npm run test --workspace apps/doctor-desktop` | **84 passed** (7 files) |
 | `npm run test --workspace packages/typescript/desktop_bridge_contracts` | **3 passed** |
@@ -304,10 +331,12 @@ pharmacy case.
 GitHub `pull-request` run **35562798541** on
 `72e60ab95d808b8838dc8ea9c6c9a3c2a164ff38`, run **35563277326** on
 `5480a52da7b7297fa2a6d57f2351c56f401e61ed`, run **35564482939** on
-`faab771b8a8b9fd32f51668c4ce0eafe6b4374c2`, and run **35565653652** on
-`034c178c7a9b03a01c7b622b56b9a8627639d950` were **SUCCESS**. Gitleaks,
-Trivy, and OpenVEX were **not** weakened. Contracts were not changed in
-this chunk.
+`faab771b8a8b9fd32f51668c4ce0eafe6b4374c2`, run **35565653652** on
+`034c178c7a9b03a01c7b622b56b9a8627639d950`, and run **35565907385** on
+`ddfce8886b8c950d3e43b731eb0eebcd0462d871` were **SUCCESS**. This
+onboarding mapping-order follow-up records its own exact-HEAD run after CI
+on this revision. Gitleaks, Trivy, and OpenVEX were **not** weakened.
+Contracts were not changed in this chunk.
 
 Phase 02 as a whole is **not** PASS.
 
@@ -337,5 +366,7 @@ Phase 02 as a whole is **not** PASS.
   not commit; TIMEOUT keeps the original idempotency key.
 - A resolved mutation that fails the IPC response schema is an uncertain
   result, not a terminal 4xx; the original idempotency key is kept.
+- An HTTP-successful onboarding body that cannot be mapped to a complete
+  local result is an uncertain `UPSTREAM_FAILED`; retirement is not queued.
 - `ino` uniqueness varies by platform; the open file descriptor is the
   object pin, not a second pathname open.
