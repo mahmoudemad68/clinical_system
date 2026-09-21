@@ -15,7 +15,8 @@ import {
 import { APP_CONFIG } from '../shared/app-config';
 import { isTrustedFrameOrigin } from '../shared/sender-policy';
 import { EvidenceFileError, PharmacyEvidenceHandleStore } from './evidence-handles';
-import { pharmacyGateway } from './pharmacy-gateway';
+import { runIpcDelivered, timeoutDeadline, TimeoutError } from './ipc-delivery';
+import { pharmacyGateway, pharmacyIntentKeys } from './pharmacy-gateway';
 import { GatewayError, platformGateway, SecureStorageUnavailableError } from './platform-gateway';
 import { UploadTargetError } from './upload-target';
 
@@ -86,14 +87,12 @@ export function registerCapabilities(): void {
   });
   handle(PHARMACY_CHANNELS.evidenceUpload, async (payload: { handleId: string; caseId: string }) => {
     const file = evidenceHandles.readForUpload(payload.handleId);
-    const uploaded = await pharmacyGateway.uploadEvidence(localeState, {
+    return pharmacyGateway.uploadEvidence(localeState, {
       caseId: payload.caseId,
       bytes: file.bytes,
       sizeBytes: file.sizeBytes,
       candidateMediaType: file.candidateMediaType,
     });
-    evidenceHandles.invalidate(payload.handleId);
-    return uploaded;
   });
   handle(PHARMACY_CHANNELS.uploadStatus, async (payload: { uploadId: string }) =>
     pharmacyGateway.uploadStatus(localeState, payload.uploadId),
@@ -152,10 +151,18 @@ function handle(
     }
 
     try {
-      const value = await withTimeout(execute(parsed.data as never, event), contract.timeoutMs);
+      const value = await runIpcDelivered(
+        pharmacyIntentKeys,
+        () => execute(parsed.data as never, event),
+        timeoutDeadline(contract.timeoutMs),
+      );
       const validated = contract.response.safeParse(value);
       if (!validated.success) {
         return fail('INTERNAL_ERROR', 'The capability produced an unexpected result.');
+      }
+
+      if (channel === PHARMACY_CHANNELS.evidenceUpload) {
+        evidenceHandles.invalidate((parsed.data as { handleId: string }).handleId);
       }
 
       return { ok: true, value: validated.data };
@@ -188,25 +195,6 @@ function isTrustedSender(event: IpcMainInvokeEvent): boolean {
   }
 
   return isTrustedFrameOrigin(frame.url, APP_CONFIG.packagedOrigin, app.isPackaged);
-}
-
-class TimeoutError extends Error {}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new TimeoutError()), ms);
-
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error instanceof Error ? error : new Error('unknown'));
-      },
-    );
-  });
 }
 
 function mapThrown(error: unknown): BridgeResult<never> {

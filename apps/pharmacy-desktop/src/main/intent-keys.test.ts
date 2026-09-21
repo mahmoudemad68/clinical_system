@@ -11,7 +11,7 @@ describe('pharmacy intent keys', () => {
     expect(changed).not.toBe(first);
   });
 
-  it('clears a key after success so a later mutation is a new intent', () => {
+  it('clears a key after a delivered success so a later mutation is a new intent', () => {
     const store = new IntentKeyStore();
     const fingerprint = store.fingerprint({ caseVersion: 1 });
     const first = store.keyFor('submit', fingerprint);

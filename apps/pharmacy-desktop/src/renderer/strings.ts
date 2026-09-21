@@ -89,7 +89,7 @@ export const pharmacyStrings = {
       FILE_CHANGED: 'The selected file changed after it was chosen. Choose the file again.',
       FILE_MISSING: 'The selected file is no longer available.',
       UPSTREAM_FAILED: 'The operation could not be completed.',
-      TIMEOUT: 'The operation took too long.',
+      TIMEOUT: 'The operation took too long. Server status was refreshed. A retry reuses the same request.',
     },
   },
   ar: {
@@ -177,7 +177,7 @@ export const pharmacyStrings = {
       FILE_CHANGED: 'تغير الملف المختار بعد اختياره. اختر الملف مرة أخرى.',
       FILE_MISSING: 'الملف المختار لم يعد متاحًا.',
       UPSTREAM_FAILED: 'تعذر إكمال العملية.',
-      TIMEOUT: 'استغرقت العملية وقتًا طويلًا.',
+      TIMEOUT: 'استغرقت العملية وقتًا طويلًا. تم تحديث حالة الخادم. إعادة المحاولة تعيد استخدام نفس الطلب.',
     },
   },
 } as const;

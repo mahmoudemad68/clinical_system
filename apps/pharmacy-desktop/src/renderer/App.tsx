@@ -42,6 +42,10 @@ const EMPTY_ONBOARDING: PharmacyOnboardRequest = {
   phone: '',
 };
 
+function isUncertainOutcome(code: string | undefined): boolean {
+  return code === 'TIMEOUT' || code === 'UPSTREAM_FAILED';
+}
+
 function errorMessage(locale: Locale, code: string | undefined): string {
   const catalog = pharmacyStrings[locale].errors;
   if (code && code in catalog) {
@@ -324,6 +328,9 @@ function OnboardingWizard({
     setBusy(false);
     if (!result.ok) {
       setMessage(errorMessage(locale, result.error.code));
+      if (isUncertainOutcome(result.error.code)) {
+        onReady();
+      }
       return;
     }
     setForm(EMPTY_ONBOARDING);
@@ -495,6 +502,18 @@ function VerificationWorkspace({
   }, [message]);
 
   const status: PharmacyVerificationStatus | undefined = statusQuery.data;
+  const requirementDocument = status?.documents.find(
+    (document) => document.requirementCode === 'organization_registration_evidence',
+  );
+  const reconciledUploadState: PharmacyUploadStatus['state'] | null =
+    uploadQuery.data?.state ??
+    (requirementDocument === undefined
+      ? null
+      : requirementDocument.status === 'available'
+        ? 'available'
+        : requirementDocument.status === 'rejected'
+          ? 'rejected'
+          : 'quarantined');
   const evidenceReady =
     uploadQuery.data?.state === 'available' ||
     status?.documents.some((document) => document.status === 'available' && document.scanStatus === 'clean') === true;
@@ -522,7 +541,7 @@ function VerificationWorkspace({
     setBusy(false);
     if (!result.ok) {
       setMessage(errorMessage(locale, result.error.code));
-      if (result.error.code === 'VERSION_CONFLICT' || result.error.code === 'STATE_CONFLICT') {
+      if (result.error.code === 'VERSION_CONFLICT' || result.error.code === 'STATE_CONFLICT' || isUncertainOutcome(result.error.code)) {
         await refreshAuthoritative();
       }
       return;
@@ -556,6 +575,9 @@ function VerificationWorkspace({
     setBusy(false);
     if (!result.ok) {
       setMessage(errorMessage(locale, result.error.code));
+      if (isUncertainOutcome(result.error.code)) {
+        await refreshAuthoritative();
+      }
       return;
     }
     setEvidence(null);
@@ -575,7 +597,7 @@ function VerificationWorkspace({
     setBusy(false);
     if (!result.ok) {
       setMessage(errorMessage(locale, result.error.code));
-      if (result.error.code === 'VERSION_CONFLICT' || result.error.code === 'STATE_CONFLICT') {
+      if (result.error.code === 'VERSION_CONFLICT' || result.error.code === 'STATE_CONFLICT' || isUncertainOutcome(result.error.code)) {
         await refreshAuthoritative();
       }
       return;
@@ -652,9 +674,9 @@ function VerificationWorkspace({
         </Stack>
       ) : null}
 
-      {uploadQuery.data ? (
+      {reconciledUploadState ? (
         <Alert severity="info" role="status" aria-live="polite" data-testid="upload-status">
-          {uploadStatusCopy(locale, uploadQuery.data.state)}
+          {uploadStatusCopy(locale, reconciledUploadState)}
         </Alert>
       ) : null}
 

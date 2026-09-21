@@ -20,11 +20,11 @@ import {
   putIssuedUploadBytes,
 } from './platform-gateway';
 
-const ONBOARD_INTENT = 'pharmacy.onboard';
-const OPEN_CASE_INTENT = 'pharmacy.verification.open';
-const SUBMIT_INTENT = 'pharmacy.verification.submit';
-const UPLOAD_CREATE_INTENT = 'pharmacy.verification.upload.create';
-const UPLOAD_COMPLETE_INTENT = 'pharmacy.verification.upload.complete';
+export const ONBOARD_INTENT = 'pharmacy.onboard';
+export const OPEN_CASE_INTENT = 'pharmacy.verification.open';
+export const SUBMIT_INTENT = 'pharmacy.verification.submit';
+export const UPLOAD_CREATE_INTENT = 'pharmacy.verification.upload.create';
+export const UPLOAD_COMPLETE_INTENT = 'pharmacy.verification.upload.complete';
 
 export const pharmacyIntentKeys = new IntentKeyStore();
 
@@ -160,7 +160,7 @@ export const pharmacyGateway = {
         },
         { 'Idempotency-Key': key },
       );
-      pharmacyIntentKeys.clear(ONBOARD_INTENT, fingerprint);
+      pharmacyIntentKeys.retireWhenDelivered(ONBOARD_INTENT, fingerprint, key);
       if (data.status === 'manual_review_required') {
         return { status: 'manual_review_required' };
       }
@@ -184,7 +184,7 @@ export const pharmacyGateway = {
         error instanceof GatewayError &&
         (error.failureCode === 'VALIDATION_FAILED' || error.failureCode === 'PERMISSION_DENIED')
       ) {
-        pharmacyIntentKeys.clear(ONBOARD_INTENT, fingerprint);
+        pharmacyIntentKeys.retireWhenDelivered(ONBOARD_INTENT, fingerprint, key);
       }
       throw error;
     }
@@ -209,7 +209,7 @@ export const pharmacyGateway = {
         {},
         { 'Idempotency-Key': key },
       );
-      pharmacyIntentKeys.clear(OPEN_CASE_INTENT, fingerprint);
+      pharmacyIntentKeys.retireWhenDelivered(OPEN_CASE_INTENT, fingerprint, key);
       return {
         status: 'ready',
         organizationId: data.organization_id,
@@ -298,7 +298,7 @@ export const pharmacyGateway = {
         },
         { 'Idempotency-Key': key },
       );
-      pharmacyIntentKeys.clear(SUBMIT_INTENT, fingerprint);
+      pharmacyIntentKeys.retireWhenDelivered(SUBMIT_INTENT, fingerprint, key);
       return {
         status: 'submitted',
         organizationId: data.organization_id,
@@ -313,7 +313,7 @@ export const pharmacyGateway = {
         error instanceof GatewayError &&
         (error.failureCode === 'VERSION_CONFLICT' || error.failureCode === 'STATE_CONFLICT')
       ) {
-        pharmacyIntentKeys.clear(SUBMIT_INTENT, fingerprint);
+        pharmacyIntentKeys.retireWhenDelivered(SUBMIT_INTENT, fingerprint, key);
       }
       throw error;
     }
@@ -385,8 +385,8 @@ export const pharmacyGateway = {
         {},
         { 'Idempotency-Key': completeKey },
       );
-      pharmacyIntentKeys.clear(UPLOAD_CREATE_INTENT, createFingerprint);
-      pharmacyIntentKeys.clear(UPLOAD_COMPLETE_INTENT, completeFingerprint);
+      pharmacyIntentKeys.retireWhenDelivered(UPLOAD_CREATE_INTENT, createFingerprint, createKey);
+      pharmacyIntentKeys.retireWhenDelivered(UPLOAD_COMPLETE_INTENT, completeFingerprint, completeKey);
       return mapUploadStatus(completed);
     } catch (error) {
       throw error;

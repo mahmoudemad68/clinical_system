@@ -357,6 +357,9 @@ describe('Clinic Pharmacy — IPC contract', () => {
     const preload = read('src/preload/index.ts');
 
     expect(capabilities).toContain('REGISTERED_CHANNELS = PHARMACY_ALL_CHANNELS');
+    expect(capabilities).toContain('runIpcDelivered');
+    expect(capabilities).toContain('pharmacyIntentKeys');
+    expect(capabilities).toContain('timeoutDeadline');
     expect(capabilities).toContain('PHARMACY_CHANNELS');
     expect(capabilities).toContain('PHARMACY_CAPABILITY_REGISTRY');
     expect(preload).toContain('pharmacy:');
@@ -365,7 +368,7 @@ describe('Clinic Pharmacy — IPC contract', () => {
     expect(capabilities).not.toContain('error.stack');
     expect(readCode('src/main/pharmacy-gateway.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
     expect(readCode('src/main/upload-target.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
-    expect(readCode('src/main/evidence-handles.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
+    expect(readCode('src/main/ipc-delivery.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
 
     expect([...PHARMACY_ALL_CHANNELS]).toEqual(expect.arrayContaining([...ALL_CHANNELS]));
     for (const channel of PHARMACY_CHANNEL_LIST) {

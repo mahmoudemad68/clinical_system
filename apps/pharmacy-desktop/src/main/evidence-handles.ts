@@ -2,13 +2,16 @@
  * Opaque pharmacy verification evidence handles.
  *
  * The renderer receives only a short-lived handle id and safe metadata. The
- * absolute path never crosses IPC. Bytes are read in this process after a
- * TOCTOU revalidation immediately before upload.
+ * absolute path never crosses IPC. Bytes are read through a pinned file
+ * descriptor so a pathname swap after open cannot change the uploaded object.
  */
 
 import { randomBytes } from 'node:crypto';
 import {
+  closeSync,
+  fstatSync,
   lstatSync,
+  openSync,
   readFileSync,
   realpathSync,
   type Stats,
@@ -21,6 +24,8 @@ export const EVIDENCE_HANDLE_TTL_MS = 15 * 60 * 1000;
 export const EVIDENCE_REQUIREMENT_CODE = 'organization_registration_evidence' as const;
 
 export type EvidenceMediaType = 'application/pdf' | 'image/jpeg' | 'image/png';
+
+export type PinnedOpenHook = (context: { fd: number; absolutePath: string }) => void;
 
 export class EvidenceFileError extends Error {
   constructor(
@@ -43,6 +48,12 @@ type HandleRecord = {
   candidateMediaType: EvidenceMediaType;
   createdAt: number;
 };
+
+let openDescriptorCount = 0;
+
+export function evidenceOpenDescriptorCount(): number {
+  return openDescriptorCount;
+}
 
 export function sniffEvidenceMediaType(bytes: Uint8Array): EvidenceMediaType | null {
   if (bytes.length >= 5 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
@@ -84,6 +95,48 @@ function identityFromStats(stats: Stats): { size: number; mtimeMs: number; dev: 
     dev: stats.dev,
     ino: stats.ino,
   };
+}
+
+function identitiesMatch(
+  left: { size: number; mtimeMs: number; dev: number; ino: number },
+  right: { size: number; mtimeMs: number; dev: number; ino: number },
+): boolean {
+  return (
+    left.size === right.size &&
+    left.mtimeMs === right.mtimeMs &&
+    left.dev === right.dev &&
+    left.ino === right.ino
+  );
+}
+
+function withPinnedDescriptor<T>(absolutePath: string, use: (fd: number, stats: Stats) => T): T {
+  let fd: number | undefined;
+  try {
+    try {
+      fd = openSync(absolutePath, 'r');
+    } catch {
+      throw new EvidenceFileError('FILE_MISSING');
+    }
+    openDescriptorCount += 1;
+    const stats = fstatSync(fd);
+    return use(fd, stats);
+  } finally {
+    if (fd !== undefined) {
+      try {
+        closeSync(fd);
+      } finally {
+        openDescriptorCount -= 1;
+      }
+    }
+  }
+}
+
+function readPinnedBytes(fd: number, size: number): Buffer {
+  const bytes = readFileSync(fd);
+  if (bytes.byteLength !== size) {
+    throw new EvidenceFileError('FILE_CHANGED');
+  }
+  return bytes;
 }
 
 export class PharmacyEvidenceHandleStore {
@@ -131,11 +184,24 @@ export class PharmacyEvidenceHandleStore {
     };
   }
 
+  hasHandle(handleId: string, now = Date.now()): boolean {
+    try {
+      this.requireFresh(handleId, now);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /**
-   * Re-stat the selected file and read bytes. The absolute path stays in this
-   * process; callers must not put it on an IPC payload.
+   * Open the selected pathname, fstat the descriptor, then read bytes from
+   * that same descriptor. Callers must not put the path or fd on an IPC payload.
    */
-  readForUpload(handleId: string, now = Date.now()): {
+  readForUpload(
+    handleId: string,
+    now = Date.now(),
+    afterPinnedOpen?: PinnedOpenHook,
+  ): {
     bytes: Buffer;
     sizeBytes: number;
     candidateMediaType: EvidenceMediaType;
@@ -168,40 +234,49 @@ export class PharmacyEvidenceHandleStore {
       throw new EvidenceFileError('FILE_CHANGED');
     }
 
-    const identity = identityFromStats(stats);
-    if (
-      identity.size !== record.size ||
-      identity.mtimeMs !== record.mtimeMs ||
-      identity.dev !== record.dev ||
-      identity.ino !== record.ino
-    ) {
+    const pathIdentity = identityFromStats(stats);
+    if (!identitiesMatch(pathIdentity, record)) {
       this.handles.delete(handleId);
       throw new EvidenceFileError('FILE_CHANGED');
     }
 
-    if (identity.size > EVIDENCE_MAX_BYTES || identity.size <= 0) {
+    if (pathIdentity.size > EVIDENCE_MAX_BYTES || pathIdentity.size <= 0) {
       this.handles.delete(handleId);
       throw new EvidenceFileError('UNSUPPORTED_FILE');
     }
 
-    const bytes = readFileSync(record.absolutePath);
-    if (bytes.byteLength !== record.size) {
-      this.handles.delete(handleId);
-      throw new EvidenceFileError('FILE_CHANGED');
+    try {
+      return withPinnedDescriptor(record.absolutePath, (fd, opened) => {
+        if (opened.isSymbolicLink() || opened.isDirectory() || !opened.isFile()) {
+          throw new EvidenceFileError('FILE_CHANGED');
+        }
+        const openedIdentity = identityFromStats(opened);
+        if (!identitiesMatch(openedIdentity, record)) {
+          throw new EvidenceFileError('FILE_CHANGED');
+        }
+        afterPinnedOpen?.({ fd, absolutePath: record.absolutePath });
+        const bytes = readPinnedBytes(fd, record.size);
+        const afterRead = identityFromStats(fstatSync(fd));
+        if (!identitiesMatch(afterRead, record)) {
+          throw new EvidenceFileError('FILE_CHANGED');
+        }
+        const sniffed = sniffEvidenceMediaType(bytes);
+        if (sniffed !== record.candidateMediaType) {
+          throw new EvidenceFileError('FILE_CHANGED');
+        }
+        return {
+          bytes,
+          sizeBytes: record.size,
+          candidateMediaType: record.candidateMediaType,
+          displayName: record.displayName,
+        };
+      });
+    } catch (error) {
+      if (error instanceof EvidenceFileError) {
+        this.handles.delete(handleId);
+      }
+      throw error;
     }
-
-    const sniffed = sniffEvidenceMediaType(bytes);
-    if (sniffed !== record.candidateMediaType) {
-      this.handles.delete(handleId);
-      throw new EvidenceFileError('FILE_CHANGED');
-    }
-
-    return {
-      bytes,
-      sizeBytes: record.size,
-      candidateMediaType: record.candidateMediaType,
-      displayName: record.displayName,
-    };
   }
 
   invalidate(handleId: string): void {
@@ -256,30 +331,35 @@ export function inspectCandidateFile(absolutePath: string): {
     throw new EvidenceFileError('UNSUPPORTED_FILE');
   }
 
-  const fdBytes = readFileSync(absolutePath);
-  const sniffed = sniffEvidenceMediaType(fdBytes);
-  if (sniffed === null) {
-    throw new EvidenceFileError('UNSUPPORTED_FILE');
-  }
-
-  const extension = path.extname(absolutePath).toLowerCase();
-  if (!extensionFor(sniffed).includes(extension)) {
-    throw new EvidenceFileError('UNSUPPORTED_FILE');
-  }
-
-  const displayName = path.basename(absolutePath);
-  if (displayName === '' || displayName === '.' || displayName === '..') {
-    throw new EvidenceFileError('UNSUPPORTED_FILE');
-  }
-
-  const identity = identityFromStats(stats);
-  return {
-    realPath,
-    displayName,
-    size: identity.size,
-    mtimeMs: identity.mtimeMs,
-    dev: identity.dev,
-    ino: identity.ino,
-    candidateMediaType: sniffed,
-  };
+  return withPinnedDescriptor(absolutePath, (fd, opened) => {
+    if (opened.isDirectory() || !opened.isFile()) {
+      throw new EvidenceFileError('UNSUPPORTED_FILE');
+    }
+    const identity = identityFromStats(opened);
+    if (identity.size <= 0 || identity.size > EVIDENCE_MAX_BYTES) {
+      throw new EvidenceFileError('UNSUPPORTED_FILE');
+    }
+    const bytes = readPinnedBytes(fd, identity.size);
+    const sniffed = sniffEvidenceMediaType(bytes);
+    if (sniffed === null) {
+      throw new EvidenceFileError('UNSUPPORTED_FILE');
+    }
+    const extension = path.extname(absolutePath).toLowerCase();
+    if (!extensionFor(sniffed).includes(extension)) {
+      throw new EvidenceFileError('UNSUPPORTED_FILE');
+    }
+    const displayName = path.basename(absolutePath);
+    if (displayName === '' || displayName === '.' || displayName === '..') {
+      throw new EvidenceFileError('UNSUPPORTED_FILE');
+    }
+    return {
+      realPath,
+      displayName,
+      size: identity.size,
+      mtimeMs: identity.mtimeMs,
+      dev: identity.dev,
+      ino: identity.ino,
+      candidateMediaType: sniffed,
+    };
+  });
 }

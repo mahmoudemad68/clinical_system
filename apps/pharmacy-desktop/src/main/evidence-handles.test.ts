@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   EvidenceFileError,
   PharmacyEvidenceHandleStore,
+  evidenceOpenDescriptorCount,
   inspectCandidateFile,
 } from './evidence-handles';
 
@@ -18,6 +19,7 @@ const MIN_PNG = Buffer.from([
   0xde, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
 ]);
 
+const MIN_JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0x00, 0x43, 0x00, 0x00]);
 const CANARY_PATH = '/tmp/clinic-canary-evidence.pdf';
 const CANARY_URL = 'https://objects.example/upload?X-Amz-Signature=CANARY-SIGNATURE';
 
@@ -147,6 +149,72 @@ describe('pharmacy evidence handles', () => {
     expect(() => store.readForUpload(selected.handleId, 1 + 16 * 60 * 1000)).toThrowError(/FILE_MISSING/);
   });
 
+  it('accepts pdf, jpeg, and png selected files and reads the original bytes', () => {
+    const dir = scratch();
+    const store = new PharmacyEvidenceHandleStore();
+    const pdf = path.join(dir, 'registration.pdf');
+    const jpeg = path.join(dir, 'stamp.jpg');
+    const png = path.join(dir, 'stamp.png');
+    writeFileSync(pdf, MIN_PDF);
+    writeFileSync(jpeg, MIN_JPEG);
+    writeFileSync(png, MIN_PNG);
+
+    const selectedPdf = store.registerSelectedFile(pdf);
+    if (!selectedPdf.selected) {
+      throw new Error('expected pdf selection');
+    }
+    const pdfBytes = store.readForUpload(selectedPdf.handleId);
+    expect(pdfBytes.candidateMediaType).toBe('application/pdf');
+    expect(pdfBytes.bytes.equals(MIN_PDF)).toBe(true);
+
+    const selectedJpeg = store.registerSelectedFile(jpeg);
+    if (!selectedJpeg.selected) {
+      throw new Error('expected jpeg selection');
+    }
+    expect(store.readForUpload(selectedJpeg.handleId).candidateMediaType).toBe('image/jpeg');
+
+    const selectedPng = store.registerSelectedFile(png);
+    if (!selectedPng.selected) {
+      throw new Error('expected png selection');
+    }
+    expect(store.readForUpload(selectedPng.handleId).bytes.equals(MIN_PNG)).toBe(true);
+    expect(evidenceOpenDescriptorCount()).toBe(0);
+  });
+
+  it('closes the descriptor after a deleted-file failure', () => {
+    const dir = scratch();
+    const file = path.join(dir, 'registration.pdf');
+    writeFileSync(file, MIN_PDF);
+    const store = new PharmacyEvidenceHandleStore();
+    const selected = store.registerSelectedFile(file);
+    if (!selected.selected) {
+      throw new Error('expected selection');
+    }
+    unlinkSync(file);
+    expect(() => store.readForUpload(selected.handleId)).toThrow(EvidenceFileError);
+    expect(evidenceOpenDescriptorCount()).toBe(0);
+  });
+
+  it('reads the pinned inode when the pathname is replaced after open', () => {
+    const dir = scratch();
+    const file = path.join(dir, 'registration.pdf');
+    const decoy = Buffer.from(MIN_PDF);
+    decoy[decoy.byteLength - 2] = 0x41;
+    writeFileSync(file, MIN_PDF);
+    const store = new PharmacyEvidenceHandleStore();
+    const selected = store.registerSelectedFile(file);
+    if (!selected.selected) {
+      throw new Error('expected selection');
+    }
+    const uploaded = store.readForUpload(selected.handleId, Date.now(), ({ absolutePath }) => {
+      unlinkSync(absolutePath);
+      writeFileSync(absolutePath, decoy);
+    });
+    expect(uploaded.bytes.equals(MIN_PDF)).toBe(true);
+    expect(uploaded.bytes.equals(decoy)).toBe(false);
+    expect(evidenceOpenDescriptorCount()).toBe(0);
+  });
+
   it('invalidates a handle after use so a second read fails', () => {
     const dir = scratch();
     const file = path.join(dir, 'registration.pdf');
@@ -159,5 +227,6 @@ describe('pharmacy evidence handles', () => {
     store.readForUpload(selected.handleId);
     store.invalidate(selected.handleId);
     expect(() => store.readForUpload(selected.handleId)).toThrowError(/FILE_MISSING/);
+    expect(evidenceOpenDescriptorCount()).toBe(0);
   });
 });
