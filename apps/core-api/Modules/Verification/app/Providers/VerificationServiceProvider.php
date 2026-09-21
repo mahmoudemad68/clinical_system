@@ -34,7 +34,7 @@ final class VerificationServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(dirname(__DIR__, 2).'/config/config.php', 'verification_module');
 
-        $this->app->singleton(PostgresVerificationStore::class, static fn ($app): PostgresVerificationStore => new PostgresVerificationStore(
+        $this->app->bind(PostgresVerificationStore::class, static fn ($app): PostgresVerificationStore => new PostgresVerificationStore(
             $app->make(ConnectionInterface::class),
         ));
         $this->app->bind(VerificationPolicy::class);

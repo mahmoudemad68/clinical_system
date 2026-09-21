@@ -56,6 +56,9 @@ it('keeps reporter off verification tables and worker off decisions', function (
         ->and((bool) $uploadUpdate->allowed)->toBeTrue()
         ->and((bool) $uploadInsert->allowed)->toBeFalse()
         ->and((bool) $uploadDelete->allowed)->toBeFalse();
+
+    $protect = DB::selectOne("SELECT prosecdef AS definer FROM pg_proc WHERE proname = 'clinic_verification_documents_protect'");
+    expect((bool) $protect->definer)->toBeTrue();
 });
 
 it('lets clinic_app mutate cases and documents but only insert decisions', function () {

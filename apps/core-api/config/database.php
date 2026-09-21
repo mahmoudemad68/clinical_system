@@ -179,9 +179,22 @@ return [
             'sslkey' => env('DB_SSLKEY') ?: null,
         ],
 
+        /*
+        |----------------------------------------------------------------------
+        | Audit writer connection
+        |----------------------------------------------------------------------
+        |
+        | Dedicated clinic_audit_writer identity for clinic_append_audit_event().
+        | Do not inherit DB_URL: a generic serving/worker URL would silently
+        | connect as clinic_app or clinic_worker, which must not EXECUTE the
+        | append function. DB_URL remains the optional serving/default URL.
+        | DB_AUDIT_URL is the optional explicit audit-writer URL. When it is
+        | absent, DB_AUDIT_USERNAME / DB_AUDIT_PASSWORD are authoritative.
+        |
+        */
         'pgsql_audit' => [
             'driver' => 'pgsql',
-            'url' => env('DB_AUDIT_URL', env('DB_URL')),
+            'url' => env('DB_AUDIT_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'laravel'),

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\Audit\Providers;
 
 use Illuminate\Database\ConnectionInterface;
-use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\ServiceProvider;
 use Modules\Audit\Console\CheckpointAuditChainCommand;
 use Modules\Audit\Console\VerifyAuditChainCommand;
@@ -16,6 +15,7 @@ use Modules\Audit\Services\Checkpoint\AuditChainCheckpointVerifier;
 use Modules\Audit\Services\Checkpoint\CreateAuditChainCheckpoint;
 use Modules\Audit\Services\Checkpoint\Ed25519AuditChainCheckpointSigner;
 use Modules\Audit\Services\Checkpoint\FilesystemAuditChainCheckpointStore;
+use Modules\Audit\Services\Persistence\AuditDatabaseIdentity;
 use Modules\Audit\Services\Persistence\PostgresAuditChainVerifier;
 use Modules\Audit\Services\Persistence\PostgresAuditStore;
 use Modules\Platform\Contracts\IdentityGenerator;
@@ -24,10 +24,12 @@ final class AuditServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(AuditDatabaseIdentity::class);
+
         $this->app->singleton(AppendAuditEvent::class, static function ($app): AppendAuditEvent {
             $connection = $app->environment('testing')
                 ? $app->make(ConnectionInterface::class)
-                : $app->make(DatabaseManager::class)->connection('pgsql_audit');
+                : $app->make(AuditDatabaseIdentity::class)->connection();
 
             return new PostgresAuditStore(
                 $connection,
