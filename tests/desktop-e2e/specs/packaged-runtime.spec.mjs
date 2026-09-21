@@ -48,6 +48,8 @@ describe(`Packaged ${PRODUCT} runtime`, () => {
       clinicKeys: window.clinic ? Object.keys(window.clinic) : [],
       pharmacyType: window.clinic ? typeof window.clinic.pharmacy : 'missing',
       pharmacyKeys: window.clinic && window.clinic.pharmacy ? Object.keys(window.clinic.pharmacy) : [],
+      doctorType: window.clinic ? typeof window.clinic.doctor : 'missing',
+      doctorKeys: window.clinic && window.clinic.doctor ? Object.keys(window.clinic.doctor) : [],
       hasInvoke: Boolean(window.clinic && 'invoke' in window.clinic),
       hasIpcRenderer: typeof window.ipcRenderer,
     }));
@@ -62,6 +64,9 @@ describe(`Packaged ${PRODUCT} runtime`, () => {
 
     if (PRODUCT === 'Clinic Pharmacy') {
       expect(isolation.pharmacyType).toBe('object');
+      expect(isolation.doctorType).toBe('undefined');
+      expect(isolation.clinicKeys).not.toContain('doctor');
+      expect(isolation.doctorKeys).toEqual([]);
       expect(isolation.pharmacyKeys).toEqual(expect.arrayContaining([
         'getOwnOrganization',
         'onboard',
@@ -77,6 +82,20 @@ describe(`Packaged ${PRODUCT} runtime`, () => {
       expect(isolation.pharmacyType).toBe('undefined');
       expect(isolation.clinicKeys).not.toContain('pharmacy');
       expect(isolation.pharmacyKeys).toEqual([]);
+      expect(isolation.doctorType).toBe('object');
+      expect(isolation.clinicKeys).toContain('doctor');
+      expect(isolation.doctorKeys).toEqual(expect.arrayContaining([
+        'getOwnProfile',
+        'listSpecialties',
+        'onboard',
+        'openVerificationCase',
+        'verificationStatus',
+        'submitVerification',
+        'selectEvidence',
+        'clearEvidence',
+        'uploadEvidence',
+        'uploadStatus',
+      ]));
     }
   });
 

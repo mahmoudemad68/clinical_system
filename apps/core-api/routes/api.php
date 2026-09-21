@@ -136,6 +136,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/doctors/me/profile', [DoctorProfileController::class, 'me'])
             ->name('api.v1.doctors.me.profile');
 
+        Route::get('/doctors/specialties', [DoctorProfileController::class, 'specialties'])
+            ->name('api.v1.doctors.specialties');
+
         Route::middleware('platform.idempotency')
             ->post('/pharmacy-organizations/onboarding', [PharmacyOrganizationController::class, 'onboard'])
             ->name('api.v1.pharmacy-organizations.onboarding');
@@ -180,6 +183,10 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/pharmacy-organizations/me/verification-status', [PharmacyVerificationController::class, 'status'])
             ->name('api.v1.pharmacy-organizations.me.verification-status');
+
+        Route::middleware('platform.idempotency')
+            ->post('/doctors/me/verification-cases', [DoctorVerificationController::class, 'open'])
+            ->name('api.v1.doctors.me.verification-cases');
 
         Route::middleware('platform.idempotency')
             ->post('/doctors/me/verification-submissions', [DoctorVerificationController::class, 'submit'])

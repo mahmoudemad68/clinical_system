@@ -1,4 +1,4 @@
-import type { ClinicBridge } from '@clinic/desktop-bridge-contracts';
+import type { DoctorClinicBridge } from '@clinic/desktop-bridge-contracts';
 
 /**
  * The only Electron-adjacent declaration renderer code may reference.
@@ -9,7 +9,7 @@ import type { ClinicBridge } from '@clinic/desktop-bridge-contracts';
  */
 declare global {
   interface Window {
-    readonly clinic: ClinicBridge;
+    readonly clinic: DoctorClinicBridge;
   }
 }
 

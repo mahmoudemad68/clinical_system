@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 use Modules\Access\Support\Capabilities;
 use Modules\Identity\Enums\AccountStatus;
 use Modules\Identity\Enums\AccountType;
@@ -108,6 +109,15 @@ function verificationOnboardDoctor(string $key, ?string $syndicate = null): arra
 function verificationOpenCase(ActorContext $actor): ApplicantCaseProjection
 {
     return app(VerificationService::class)->openDoctorCase($actor);
+}
+
+function verificationOpenHttp(array $onboarded, string $idem): TestResponse
+{
+    return test()->postJson(
+        '/api/v1/doctors/me/verification-cases',
+        [],
+        doctorsAuth($onboarded['session']['token']) + doctorsIdem($idem),
+    );
 }
 
 /**

@@ -651,6 +651,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/doctors/specialties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Active specialty catalogue for doctor onboarding
+         * @description Authenticated doctor-only projection of the Doctors-owned active
+         *     specialty catalogue, ordered by the authoritative in-process service.
+         *     Labels only. Inactive rows, encryption metadata, and internal database
+         *     columns are never returned. Patient, pharmacy, and secretary actors
+         *     cannot obtain Doctor business privileges through this read. Creating
+         *     a profile still requires a subsequent onboarding write.
+         */
+        get: operations["listDoctorSpecialties"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pharmacy-organizations/onboarding": {
         parameters: {
             query?: never;
@@ -933,6 +958,33 @@ export interface paths {
          *     acceptance yields one active membership.
          */
         post: operations["acceptClinicStaffInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/doctors/me/verification-cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open or resume the current doctor's verification case
+         * @description Opens or resumes the authenticated doctor's draft `doctor_verification`
+         *     case. Applicant, doctor identity, case type, verification status,
+         *     reviewer, and public status are server-derived. Concurrent duplicate
+         *     opens resolve to one open case. A new case is created only where
+         *     existing Doctor/Verification policy allows it. Idempotency-Key is
+         *     required. Compact write body fits the Platform 255-byte idempotency
+         *     pointer. GET /api/v1/doctors/me/verification-status is the canonical
+         *     applicant-safe projection.
+         */
+        post: operations["openOwnDoctorVerificationCase"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1674,6 +1726,20 @@ export interface components {
             created_at: components["schemas"]["Instant"];
             updated_at: components["schemas"]["Instant"];
         };
+        /**
+         * @description Active specialty catalogue row. Public labels only. Internal database
+         *     metadata is never included.
+         */
+        DoctorSpecialty: {
+            specialty_id: components["schemas"]["Uuid"];
+            code: string;
+            label_ar: string;
+            label_en: string;
+            sort_order: number;
+        };
+        DoctorSpecialtyCatalogue: {
+            specialties: components["schemas"]["DoctorSpecialty"][];
+        };
         PharmacyOnboardingRequest: {
             /** @description Write-only. Envelope-encrypted. Never echoed. */
             legal_name: string;
@@ -1906,6 +1972,27 @@ export interface components {
             accepted_at: string | null;
             /** Format: date-time */
             revoked_at: string | null;
+        };
+        /**
+         * @description Empty closed body. Applicant ID, doctor ID, case type, verification
+         *     status, reviewer, and public status cannot be assigned by the client.
+         */
+        DoctorVerificationCaseOpenRequest: Record<string, never>;
+        /**
+         * @description Compact open/resume outcome sized for the Platform 255-byte
+         *     idempotency pointer. GET /doctors/me/verification-status is the
+         *     canonical projection. Never includes National ID, syndicate number,
+         *     documents, reviewer notes, object keys, or HMAC.
+         */
+        DoctorVerificationCaseOpenResult: {
+            /** @enum {string} */
+            status: "ready";
+            doctor_id: components["schemas"]["Uuid"];
+            case_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            case_status: "draft" | "pending_review";
+            case_version: number;
+            profile_version: number;
         };
         DoctorVerificationSubmissionRequest: {
             /** @description Optimistic verification-case version. Not a reviewer identity. */
@@ -3432,6 +3519,38 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    listDoctorSpecialties: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active specialties in server order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["DoctorSpecialtyCatalogue"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     onboardPharmacyOrganization: {
         parameters: {
             query?: never;
@@ -3975,6 +4094,51 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Envelope"] & {
                         data?: components["schemas"]["ClinicMembership"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    openOwnDoctorVerificationCase: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DoctorVerificationCaseOpenRequest"];
+            };
+        };
+        responses: {
+            /** @description Own draft case opened or resumed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["DoctorVerificationCaseOpenResult"];
                     };
                 };
             };

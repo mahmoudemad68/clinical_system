@@ -6,6 +6,7 @@ import {
   BRIDGE_CONTRACT_VERSION,
   CAPABILITY_REGISTRY,
   CHANNELS,
+  DOCTOR_CHANNEL_LIST,
   MAX_IPC_PAYLOAD_BYTES,
   PHARMACY_ALL_CHANNELS,
   PHARMACY_CHANNEL_LIST,
@@ -395,6 +396,27 @@ describe('Clinic Pharmacy — IPC contract', () => {
     for (const channel of PHARMACY_CHANNEL_LIST) {
       expect(ALL_CHANNELS).not.toContain(channel);
       expect(PHARMACY_ALL_CHANNELS).toContain(channel);
+    }
+  });
+
+  it('does not register doctor domain channels on the Pharmacy bridge', () => {
+    const capabilities = read('src/main/capabilities.ts');
+    const preload = read('src/preload/index.ts');
+    const renderer = read('src/renderer/App.tsx') + read('src/renderer/index.tsx');
+
+    expect(capabilities).not.toContain('DOCTOR_CHANNELS');
+    expect(capabilities).not.toContain('DOCTOR_CAPABILITY_REGISTRY');
+    expect(capabilities).not.toContain('clinic:doctor.');
+    expect(preload).not.toContain('clinic:doctor.');
+    expect(preload).not.toContain('DOCTOR_CHANNELS');
+    expect(renderer).not.toContain('window.clinic.doctor');
+    expect(PHARMACY_ALL_CHANNELS).not.toEqual(expect.arrayContaining([...DOCTOR_CHANNEL_LIST]));
+
+    for (const channel of DOCTOR_CHANNEL_LIST) {
+      expect(ALL_CHANNELS).not.toContain(channel);
+      expect(PHARMACY_ALL_CHANNELS).not.toContain(channel);
+      expect(capabilities).not.toContain(channel);
+      expect(preload).not.toContain(channel);
     }
   });
 

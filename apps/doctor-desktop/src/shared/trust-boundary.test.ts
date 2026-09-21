@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   ALL_CHANNELS,
   BRIDGE_CONTRACT_VERSION,
   CAPABILITY_REGISTRY,
   CHANNELS,
+  DOCTOR_ALL_CHANNELS,
+  DOCTOR_CHANNEL_LIST,
+  DOCTOR_CHANNELS,
   MAX_IPC_PAYLOAD_BYTES,
   PHARMACY_CHANNEL_LIST,
   authSessionViewSchema,
@@ -18,6 +21,25 @@ import { APP_CONFIG } from './app-config';
 
 const appRoot = join(__dirname, '..', '..');
 const read = (relative: string): string => readFileSync(join(appRoot, relative), 'utf8');
+
+function rendererSourcePaths(): string[] {
+  const root = join(appRoot, 'src', 'renderer');
+  const collected: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (/\.(ts|tsx)$/.test(entry.name) && !entry.name.includes('.test.')) {
+        collected.push(full.slice(appRoot.length + 1));
+      }
+    }
+  };
+  walk(root);
+  return collected;
+}
 
 /**
  * Source with comments removed.
@@ -47,35 +69,48 @@ describe('Clinic Doctor — renderer isolation', () => {
   it('renderer source imports no Node or Electron module', () => {
     // Ambient Window.clinic types live in clinic-bridge.d.ts (tsconfig include).
     // A runtime import of that file is not a module webpack can resolve.
-    const renderer = read('src/renderer/index.tsx');
-
-    for (const forbidden of [
-      "from 'electron'",
-      'require(',
-      "from 'node:",
-      "from 'fs'",
-      "from 'path'",
-      "from 'child_process'",
-      '__dirname',
-      'process.env',
-    ]) {
-      expect(renderer).not.toContain(forbidden);
+    for (const relative of rendererSourcePaths()) {
+      const renderer = read(relative);
+      for (const forbidden of [
+        "from 'electron'",
+        'require(',
+        "from 'node:",
+        "from 'fs'",
+        "from 'path'",
+        "from 'child_process'",
+        '__dirname',
+        'process.env',
+      ]) {
+        expect(renderer).not.toContain(forbidden);
+      }
     }
   });
 
   it('renderer never performs its own network or storage access', () => {
-    const renderer = read('src/renderer/index.tsx');
+    for (const relative of rendererSourcePaths()) {
+      const renderer = read(relative);
 
-    // Every byte in and out goes through window.clinic. A fetch here would be
-    // an unauthenticated request outside the main-process transport, and a
-    // localStorage write would put data outside the encrypted boundary.
-    for (const forbidden of ['fetch(', 'XMLHttpRequest', 'localStorage', 'sessionStorage', 'indexedDB', 'new WebSocket', 'access_token', 'refresh_token']) {
-      expect(renderer).not.toContain(forbidden);
+      // Every byte in and out goes through window.clinic. A fetch here would be
+      // an unauthenticated request outside the main-process transport, and a
+      // localStorage write would put data outside the encrypted boundary.
+      // Word-boundary so `refetch(` (TanStack Query) is not treated as `fetch(`.
+      for (const forbidden of [
+        'XMLHttpRequest',
+        'localStorage',
+        'sessionStorage',
+        'indexedDB',
+        'new WebSocket',
+        'access_token',
+        'refresh_token',
+      ]) {
+        expect(renderer).not.toContain(forbidden);
+      }
+      expect(renderer).not.toMatch(/(?<![A-Za-z])fetch\(/);
     }
   });
 
   it('keeps the encrypted store and native sqlite out of the renderer', () => {
-    const renderer = read('src/renderer/index.tsx');
+    const renderer = rendererSourcePaths().map(read).join('\n');
     const preload = read('src/preload/index.ts');
 
     for (const source of [renderer, preload]) {
@@ -247,13 +282,16 @@ describe('Clinic Doctor — IPC contract', () => {
     }
   });
 
-  it('the main process registers handlers only from the shared registry', () => {
+  it('the main process registers handlers only from the Doctor registry', () => {
     const capabilities = read('src/main/capabilities.ts');
 
     // A hand-rolled ipcMain.handle with a string literal would bypass
     // validation entirely.
     expect(capabilities).not.toMatch(/ipcMain\.handle\(\s*['"`]/);
-    expect(capabilities).toContain('CAPABILITY_REGISTRY[channel]');
+    expect(capabilities).toContain('DOCTOR_REGISTRY[channel]');
+    expect(capabilities).toContain('REGISTERED_CHANNELS = DOCTOR_ALL_CHANNELS');
+    expect(capabilities).toContain('runIpcDelivered');
+    expect(capabilities).toContain('clearDoctorSession');
   });
 
   it('validates sender, size, request schema, and response schema', () => {
@@ -333,9 +371,9 @@ describe('Clinic Doctor — IPC contract', () => {
   it('does not register pharmacy domain channels on the Doctor bridge', () => {
     const capabilities = read('src/main/capabilities.ts');
     const preload = read('src/preload/index.ts');
-    const renderer = read('src/renderer/index.tsx');
+    const renderer = rendererSourcePaths().map(read).join('\n');
 
-    expect(capabilities).toContain('REGISTERED_CHANNELS = ALL_CHANNELS');
+    expect(capabilities).toContain('REGISTERED_CHANNELS = DOCTOR_ALL_CHANNELS');
     expect(capabilities).not.toContain('PHARMACY_CHANNELS');
     expect(capabilities).not.toContain('PHARMACY_CAPABILITY_REGISTRY');
     expect(capabilities).not.toContain('clinic:pharmacy.');
@@ -343,12 +381,58 @@ describe('Clinic Doctor — IPC contract', () => {
     expect(preload).not.toContain('pharmacy:');
     expect(preload).not.toContain('clinic:pharmacy.');
     expect(renderer).not.toContain('window.clinic.pharmacy');
+    expect(renderer).not.toContain('clinic:pharmacy.');
 
     for (const channel of PHARMACY_CHANNEL_LIST) {
       expect(ALL_CHANNELS).not.toContain(channel);
+      expect(DOCTOR_ALL_CHANNELS).not.toContain(channel);
       expect(capabilities).not.toContain(channel);
       expect(preload).not.toContain(channel);
     }
+  });
+
+  it('registers a closed Doctor-only channel set and no future clinical operations', () => {
+    const capabilities = read('src/main/capabilities.ts');
+    const preload = read('src/preload/index.ts');
+    const renderer = rendererSourcePaths().map(read).join('\n');
+
+    expect([...DOCTOR_CHANNEL_LIST].sort()).toEqual(
+      [
+        DOCTOR_CHANNELS.evidenceClear,
+        DOCTOR_CHANNELS.evidenceSelect,
+        DOCTOR_CHANNELS.evidenceUpload,
+        DOCTOR_CHANNELS.profileGetOwn,
+        DOCTOR_CHANNELS.profileOnboard,
+        DOCTOR_CHANNELS.specialtiesList,
+        DOCTOR_CHANNELS.uploadStatus,
+        DOCTOR_CHANNELS.verificationOpenCase,
+        DOCTOR_CHANNELS.verificationStatus,
+        DOCTOR_CHANNELS.verificationSubmit,
+      ].sort(),
+    );
+
+    expect(capabilities).toContain('DOCTOR_CHANNELS');
+    expect(capabilities).toContain('DOCTOR_CAPABILITY_REGISTRY');
+    expect(preload).toContain('DOCTOR_CHANNELS');
+    expect(preload).toContain('doctor:');
+
+    for (const channel of DOCTOR_CHANNEL_LIST) {
+      expect(ALL_CHANNELS).not.toContain(channel);
+      expect(DOCTOR_ALL_CHANNELS).toContain(channel);
+    }
+
+    expect(preload).not.toMatch(/invoke\s*:\s*\(\s*channel/);
+    expect(preload).not.toContain('filePaths');
+    expect(preload).not.toContain('absolutePath');
+    expect(preload).not.toContain('upload_target');
+    expect(preload).not.toContain('X-Amz-Signature');
+    expect(renderer).not.toContain('window.clinic.doctor.schedule');
+    expect(renderer).not.toContain('clinic:doctor.schedule');
+    expect(renderer).not.toContain('clinic:doctor.queue');
+    expect(renderer).not.toContain('data-testid="clinical-nav"');
+    expect(capabilities).toContain("fail('INTERNAL_ERROR'");
+    expect(readCode('src/main/doctor-gateway.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
+    expect(readCode('src/main/upload-target.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
   });
 
   it('auth IPC responses never include tokens', () => {

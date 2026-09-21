@@ -423,6 +423,38 @@ export {
   type PharmacyVerificationSubmitResponse,
 } from './pharmacy';
 
+export {
+  DOCTOR_CAPABILITY_REGISTRY,
+  DOCTOR_CHANNELS,
+  DOCTOR_CHANNEL_LIST,
+  doctorEvidenceClearRequestSchema,
+  doctorEvidenceClearResponseSchema,
+  doctorEvidenceSelectResponseSchema,
+  doctorEvidenceUploadRequestSchema,
+  doctorOnboardRequestSchema,
+  doctorOnboardResponseSchema,
+  doctorOwnProfileResponseSchema,
+  doctorProfileViewSchema,
+  doctorSpecialtiesResponseSchema,
+  doctorUploadStatusRequestSchema,
+  doctorUploadStatusResponseSchema,
+  doctorVerificationOpenResponseSchema,
+  doctorVerificationStatusResponseSchema,
+  doctorVerificationSubmitRequestSchema,
+  doctorVerificationSubmitResponseSchema,
+  type DoctorChannelName,
+  type DoctorEvidenceSelectResponse,
+  type DoctorOnboardRequest,
+  type DoctorOnboardResponse,
+  type DoctorOwnProfileResponse,
+  type DoctorProfileView,
+  type DoctorSpecialtiesResponse,
+  type DoctorUploadStatus,
+  type DoctorVerificationOpenResponse,
+  type DoctorVerificationStatus,
+  type DoctorVerificationSubmitResponse,
+} from './doctor';
+
 import type {
   PharmacyChannelName,
   PharmacyEvidenceSelectResponse,
@@ -435,12 +467,32 @@ import type {
   PharmacyVerificationSubmitResponse,
 } from './pharmacy';
 import { PHARMACY_CHANNEL_LIST } from './pharmacy';
+import type {
+  DoctorChannelName,
+  DoctorEvidenceSelectResponse,
+  DoctorOnboardRequest,
+  DoctorOnboardResponse,
+  DoctorOwnProfileResponse,
+  DoctorSpecialtiesResponse,
+  DoctorUploadStatus,
+  DoctorVerificationOpenResponse,
+  DoctorVerificationStatus,
+  DoctorVerificationSubmitResponse,
+} from './doctor';
+import { DOCTOR_CHANNEL_LIST } from './doctor';
 
 export type PharmacyRegisteredChannelName = ChannelName | PharmacyChannelName;
 
 export const PHARMACY_ALL_CHANNELS: readonly PharmacyRegisteredChannelName[] = [
   ...ALL_CHANNELS,
   ...PHARMACY_CHANNEL_LIST,
+];
+
+export type DoctorRegisteredChannelName = ChannelName | DoctorChannelName;
+
+export const DOCTOR_ALL_CHANNELS: readonly DoctorRegisteredChannelName[] = [
+  ...ALL_CHANNELS,
+  ...DOCTOR_CHANNEL_LIST,
 ];
 
 /**
@@ -464,5 +516,29 @@ export interface PharmacyClinicBridge extends ClinicBridge {
       caseId: string;
     }): Promise<BridgeResult<PharmacyUploadStatus>>;
     uploadStatus(uploadId: string): Promise<BridgeResult<PharmacyUploadStatus>>;
+  };
+}
+
+/**
+ * Doctor renderer bridge. Pharmacy desktops must not add this `doctor` surface.
+ */
+export interface DoctorClinicBridge extends ClinicBridge {
+  readonly doctor: {
+    getOwnProfile(): Promise<BridgeResult<DoctorOwnProfileResponse>>;
+    listSpecialties(): Promise<BridgeResult<DoctorSpecialtiesResponse>>;
+    onboard(input: DoctorOnboardRequest): Promise<BridgeResult<DoctorOnboardResponse>>;
+    openVerificationCase(): Promise<BridgeResult<DoctorVerificationOpenResponse>>;
+    verificationStatus(): Promise<BridgeResult<DoctorVerificationStatus>>;
+    submitVerification(input: {
+      caseVersion: number;
+      profileVersion: number;
+    }): Promise<BridgeResult<DoctorVerificationSubmitResponse>>;
+    selectEvidence(): Promise<BridgeResult<DoctorEvidenceSelectResponse>>;
+    clearEvidence(handleId: string): Promise<BridgeResult<{ cleared: true }>>;
+    uploadEvidence(input: {
+      handleId: string;
+      caseId: string;
+    }): Promise<BridgeResult<DoctorUploadStatus>>;
+    uploadStatus(uploadId: string): Promise<BridgeResult<DoctorUploadStatus>>;
   };
 }

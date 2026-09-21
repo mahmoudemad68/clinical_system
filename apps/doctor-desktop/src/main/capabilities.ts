@@ -1,31 +1,40 @@
-import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron';
 import {
-  ALL_CHANNELS,
   BRIDGE_CONTRACT_VERSION,
   CAPABILITY_REGISTRY,
   CHANNELS,
+  DOCTOR_ALL_CHANNELS,
+  DOCTOR_CAPABILITY_REGISTRY,
+  DOCTOR_CHANNELS,
   MAX_IPC_PAYLOAD_BYTES,
   withinSizeBound,
+  type BridgeError,
   type BridgeResult,
-  type ChannelName,
+  type DoctorRegisteredChannelName,
 } from '@clinic/desktop-bridge-contracts';
 import { APP_CONFIG } from '../shared/app-config';
 import { isTrustedFrameOrigin } from '../shared/sender-policy';
-import { platformGateway, SecureStorageUnavailableError } from './platform-gateway';
+import { doctorGateway, doctorIntentKeys } from './doctor-gateway';
+import { DoctorEvidenceHandleStore, EvidenceFileError } from './evidence-handles';
+import { runIpcDelivered, timeoutDeadline, TimeoutError, ResponseContractError } from './ipc-delivery';
+import { GatewayError, platformGateway, SecureStorageUnavailableError } from './platform-gateway';
+import { UploadTargetError } from './upload-target';
 
 /**
  * The privileged side of the IPC boundary.
  *
- * Every handler is registered from the shared registry, so a channel cannot
- * exist without a schema. Registering by hand and forgetting the validation is
- * structurally impossible.
- *
- * Validation happens here even though the preload also validates. The preload
- * runs in the renderer's process: a compromised renderer can call it with
- * anything, or bypass it entirely. Only this side is a real control.
+ * Shared Auth/Platform handlers come from CAPABILITY_REGISTRY. Doctor domain
+ * handlers come from DOCTOR_CAPABILITY_REGISTRY and are registered only here,
+ * in the Doctor application. The Pharmacy desktop never imports this file.
  */
 
 let localeState: 'ar' | 'en' = 'en';
+const evidenceHandles = new DoctorEvidenceHandleStore();
+
+const DOCTOR_REGISTRY = {
+  ...CAPABILITY_REGISTRY,
+  ...DOCTOR_CAPABILITY_REGISTRY,
+} as const;
 
 export function registerCapabilities(): void {
   handle(CHANNELS.appMetadata, async () => ({
@@ -51,171 +60,227 @@ export function registerCapabilities(): void {
   handle(CHANNELS.authVerifyMfa, async (payload: { challengeId: string; code: string }) =>
     platformGateway.verifyMfa(localeState, payload),
   );
-  handle(CHANNELS.authLogout, async () => platformGateway.logout(localeState));
+  handle(CHANNELS.authLogout, async () => {
+    const result = await platformGateway.logout(localeState);
+    clearDoctorSession();
+    return result;
+  });
   handle(CHANNELS.authMe, async () => platformGateway.me(localeState));
   handle(CHANNELS.authSessions, async () => platformGateway.sessions(localeState));
   handle(CHANNELS.authRevokeSession, async (payload: { sessionId: string }) =>
     platformGateway.revokeSession(localeState, payload.sessionId),
   );
+
+  handle(DOCTOR_CHANNELS.profileGetOwn, async () => doctorGateway.getOwnProfile(localeState));
+  handle(DOCTOR_CHANNELS.specialtiesList, async () => doctorGateway.listSpecialties(localeState));
+  handle(DOCTOR_CHANNELS.profileOnboard, async (payload) => doctorGateway.onboard(localeState, payload));
+  handle(DOCTOR_CHANNELS.verificationOpenCase, async () => doctorGateway.openVerificationCase(localeState));
+  handle(DOCTOR_CHANNELS.verificationStatus, async () => doctorGateway.verificationStatus(localeState));
+  handle(DOCTOR_CHANNELS.verificationSubmit, async (payload) =>
+    doctorGateway.submitVerification(localeState, payload),
+  );
+  handle(DOCTOR_CHANNELS.evidenceSelect, async (_payload, event) => selectEvidence(event));
+  handle(DOCTOR_CHANNELS.evidenceClear, async (payload: { handleId: string }) => {
+    evidenceHandles.clearHandle(payload.handleId);
+    return { cleared: true as const };
+  });
+  handle(DOCTOR_CHANNELS.evidenceUpload, async (payload: { handleId: string; caseId: string }) => {
+    const file = evidenceHandles.readForUpload(payload.handleId);
+    return doctorGateway.uploadEvidence(localeState, {
+      caseId: payload.caseId,
+      bytes: file.bytes,
+      sizeBytes: file.sizeBytes,
+      candidateMediaType: file.candidateMediaType,
+    });
+  });
+  handle(DOCTOR_CHANNELS.uploadStatus, async (payload: { uploadId: string }) =>
+    doctorGateway.uploadStatus(localeState, payload.uploadId),
+  );
 }
 
-/**
- * Register one validated handler.
- *
- * Order matters and is not arbitrary:
- *   1. sender check   — reject a frame that should not be calling at all
- *   2. size check     — before parsing, because parsing is the DoS
- *   3. schema check   — reject a malformed or unexpected shape
- *   4. execute        — under a deadline
- *   5. response check — a handler bug must not leak an unexpected shape
- */
-function handle<T>(
-  channel: ChannelName,
-  execute: (payload: never) => Promise<T>,
+async function selectEvidence(event: IpcMainInvokeEvent) {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (window === null) {
+    throw new GatewayError('PERMISSION_DENIED');
+  }
+
+  const choice = await dialog.showOpenDialog(window, {
+    title: 'Select professional verification evidence',
+    properties: ['openFile'],
+    filters: [{ name: 'PDF, JPEG, or PNG', extensions: ['pdf', 'jpg', 'jpeg', 'png'] }],
+  });
+
+  if (choice.canceled || choice.filePaths.length === 0) {
+    return { selected: false as const };
+  }
+
+  const selectedPath = choice.filePaths[0];
+  if (typeof selectedPath !== 'string') {
+    return { selected: false as const };
+  }
+
+  return evidenceHandles.registerSelectedFile(selectedPath);
+}
+
+export function clearDoctorSession(): void {
+  evidenceHandles.clear();
+  doctorGateway.clearIntents();
+}
+
+function handle(
+  channel: DoctorRegisteredChannelName,
+  execute: (payload: never, event: IpcMainInvokeEvent) => Promise<unknown>,
 ): void {
-  const contract = CAPABILITY_REGISTRY[channel];
+  const contract = DOCTOR_REGISTRY[channel];
 
   ipcMain.handle(channel, async (event: IpcMainInvokeEvent, rawPayload: unknown): Promise<BridgeResult<unknown>> => {
-    // 1. Sender validation. Only the app's own top-level frame may invoke.
     if (!isTrustedSender(event)) {
       return fail('PERMISSION_DENIED', 'Caller is not permitted to use this capability.');
     }
 
-    // 2. Size before parse.
     if (!withinSizeBound(rawPayload, MAX_IPC_PAYLOAD_BYTES)) {
       return fail('PAYLOAD_TOO_LARGE', 'The request exceeded the maximum IPC payload size.');
     }
 
-    // 3. Schema.
     const parsed = contract.request.safeParse(rawPayload ?? {});
     if (!parsed.success) {
-      // The Zod issue list is not returned: it echoes the input, and the input
-      // came from a process we treat as hostile.
       return fail('INVALID_REQUEST', 'The request did not match the expected shape.');
     }
 
     try {
-      // 4. Deadline. A capability that hangs blocks the UI awaiting it.
-      const value = await withTimeout(execute(parsed.data as never), contract.timeoutMs);
+      const value = await runIpcDelivered(
+        doctorIntentKeys,
+        () => execute(parsed.data as never, event),
+        timeoutDeadline(contract.timeoutMs),
+        (raw) => {
+          const validated = contract.response.safeParse(raw);
+          if (!validated.success) {
+            throw new ResponseContractError();
+          }
+          return validated.data;
+        },
+      );
 
-      // 5. Response validation. A handler returning an unexpected shape is a
-      //    bug here, not there, and must not cross the boundary.
-      const validated = contract.response.safeParse(value);
-      if (!validated.success) {
-        return fail('INTERNAL_ERROR', 'The capability produced an unexpected result.');
+      if (channel === DOCTOR_CHANNELS.evidenceUpload) {
+        evidenceHandles.invalidate((parsed.data as { handleId: string }).handleId);
       }
 
-      return { ok: true, value: validated.data };
+      return { ok: true, value };
     } catch (error) {
-      if (error instanceof TimeoutError) {
-        return fail('TIMEOUT', 'The operation took too long.');
-      }
-
-      if (error instanceof SecureStorageUnavailableError) {
-        return fail('CAPABILITY_NOT_AVAILABLE', error.message);
-      }
-
-      if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-        return fail('UNAUTHENTICATED', 'The session is no longer valid.');
-      }
-
-      // Never serialize the thrown error: main-process stacks name filesystem
-      // paths and adapter internals.
-      return fail('UPSTREAM_FAILED', 'The operation could not be completed.');
+      return mapThrown(error);
     }
   });
 }
 
-/**
- * Windows permitted to invoke a capability.
- *
- * Registered by the main process when it creates a window. Validating against
- * this set is the check Electron's security guidance actually asks for:
- * comparing a URL is not enough, because a URL says nothing about which
- * WebContents sent the message.
- */
 const trustedWebContentsIds = new Set<number>();
 
 export function trustWindow(window: BrowserWindow): void {
   const id = window.webContents.id;
   trustedWebContentsIds.add(id);
-  window.on('closed', () => trustedWebContentsIds.delete(id));
+  window.on('closed', () => {
+    trustedWebContentsIds.delete(id);
+    clearDoctorSession();
+  });
 }
 
-/**
- * Only this application's own top-level window may invoke a capability.
- *
- * Three independent checks, because each catches something the others miss:
- *
- *   1. the sender is a WebContents we created and still own — a URL comparison
- *      alone cannot establish this;
- *   2. the sender frame is top-level — nothing here uses a subframe, so a call
- *      from one means something is embedding content that should not exist;
- *   3. the frame's origin is exactly the packaged origin.
- *
- * An earlier version compared only `url.protocol`, which admitted any host
- * under the scheme, and allowed localhost unconditionally with a comment
- * asserting it was "never reachable in a packaged build" — an assertion nothing
- * enforced. The localhost branch is now gated on `!app.isPackaged`, so it
- * cannot exist in a shipped artifact regardless of how the app is launched.
- */
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
-  // 1. Known, still-open window of ours.
   if (!trustedWebContentsIds.has(event.sender.id)) {
     return false;
   }
 
   const frame = event.senderFrame;
 
-  // 2. Top-level frame only.
   if (frame === null || frame.parent !== null) {
     return false;
   }
 
-  // 3. Exact origin, via the shared pure policy that the behavioural tests
-  //    exercise directly with hostile inputs.
   return isTrustedFrameOrigin(frame.url, APP_CONFIG.packagedOrigin, app.isPackaged);
 }
 
-class TimeoutError extends Error {}
+function mapThrown(error: unknown): BridgeResult<never> {
+  if (error instanceof TimeoutError) {
+    return fail('TIMEOUT', 'The operation took too long.');
+  }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new TimeoutError()), ms);
+  if (error instanceof ResponseContractError) {
+    return fail('INTERNAL_ERROR', 'The capability produced an unexpected result.');
+  }
 
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error instanceof Error ? error : new Error('unknown'));
-      },
-    );
-  });
+  if (error instanceof SecureStorageUnavailableError) {
+    return fail('CAPABILITY_NOT_AVAILABLE', error.message);
+  }
+
+  if (error instanceof EvidenceFileError) {
+    return fail(error.code, evidenceMessage(error.code));
+  }
+
+  if (error instanceof UploadTargetError) {
+    return fail('UPSTREAM_FAILED', 'The operation could not be completed.');
+  }
+
+  if (error instanceof GatewayError) {
+    return fail(safeGatewayCode(error.failureCode), safeGatewayMessage(error.failureCode));
+  }
+
+  if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+    return fail('UNAUTHENTICATED', 'The session is no longer valid.');
+  }
+
+  return fail('UPSTREAM_FAILED', 'The operation could not be completed.');
 }
 
-function fail(code: Parameters<typeof buildError>[0], message: string): BridgeResult<never> {
-  return { ok: false, error: buildError(code, message) };
+function evidenceMessage(code: EvidenceFileError['code']): string {
+  if (code === 'FILE_MISSING') {
+    return 'The selected file is no longer available.';
+  }
+  if (code === 'FILE_CHANGED') {
+    return 'The selected file changed after it was chosen. Choose the file again.';
+  }
+  if (code === 'UNSUPPORTED_FILE') {
+    return 'Choose a PDF, JPEG, or PNG file of at most 20 MiB.';
+  }
+  return 'The request did not match the expected shape.';
 }
 
-function buildError(
-  code:
-    | 'INVALID_REQUEST'
-    | 'PAYLOAD_TOO_LARGE'
-    | 'UNSUPPORTED_CONTRACT_VERSION'
-    | 'CAPABILITY_NOT_AVAILABLE'
-    | 'UNAUTHENTICATED'
-    | 'PERMISSION_DENIED'
-    | 'TIMEOUT'
-    | 'CANCELLED'
-    | 'UPSTREAM_FAILED'
-    | 'INTERNAL_ERROR',
-  message: string,
-) {
-  return { code, message };
+function safeGatewayCode(code: string): BridgeError['code'] {
+  switch (code) {
+    case 'UNAUTHENTICATED':
+    case 'PERMISSION_DENIED':
+    case 'NOT_FOUND':
+    case 'VERSION_CONFLICT':
+    case 'STATE_CONFLICT':
+    case 'VALIDATION_FAILED':
+    case 'CANCELLED':
+    case 'TIMEOUT':
+      return code;
+    default:
+      return 'UPSTREAM_FAILED';
+  }
+}
+
+function safeGatewayMessage(code: string): string {
+  switch (code) {
+    case 'UNAUTHENTICATED':
+      return 'The session is no longer valid.';
+    case 'PERMISSION_DENIED':
+      return 'This account cannot use doctor onboarding.';
+    case 'NOT_FOUND':
+      return 'The requested record is not available.';
+    case 'VERSION_CONFLICT':
+    case 'STATE_CONFLICT':
+      return 'The server state changed. Refresh and continue from the current status.';
+    case 'VALIDATION_FAILED':
+      return 'The form could not be submitted. Check the highlighted fields.';
+    default:
+      return 'The operation could not be completed.';
+  }
+}
+
+function fail(code: BridgeError['code'], message: string): BridgeResult<never> {
+  return { ok: false, error: { code, message } };
 }
 
 /** Exported for the test that asserts no channel exists outside the registry. */
-export const REGISTERED_CHANNELS = ALL_CHANNELS;
+export const REGISTERED_CHANNELS = DOCTOR_ALL_CHANNELS;
+
+export const doctorEvidenceHandleStore = evidenceHandles;

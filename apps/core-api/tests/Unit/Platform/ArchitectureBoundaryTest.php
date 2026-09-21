@@ -319,6 +319,10 @@ final class ArchitectureBoundaryTest extends TestCase
 
         $routes = (string) file_get_contents(dirname(__DIR__, 3).'/routes/api.php');
         $this->assertMatchesRegularExpression(
+            '/DoctorVerificationController::class, [\'"]open[\'"]/',
+            $routes,
+        );
+        $this->assertMatchesRegularExpression(
             '/DoctorVerificationController::class, [\'"]submit[\'"]/',
             $routes,
         );
@@ -326,6 +330,8 @@ final class ArchitectureBoundaryTest extends TestCase
             '/DoctorVerificationController::class, [\'"]status[\'"]/',
             $routes,
         );
+        $this->assertStringContainsString('doctors/specialties', $routes);
+        $this->assertStringContainsString('doctors/me/verification-cases', $routes);
         $this->assertMatchesRegularExpression(
             '/PharmacyVerificationController::class, [\'"]open[\'"]/',
             $routes,
