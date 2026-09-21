@@ -389,11 +389,11 @@ Host Pest against PostgreSQL `clinic_test` (not SQLite):
 
 | Suite | Result |
 | --- | --- |
-| `tests/Feature/Clinics` + `tests/Unit/Clinics` + `ArchitectureBoundaryTest` + `IdentityRulesTest` | 68 passed |
-| plus `tests/Feature/Identity/EraseSubjectServiceTest` | **73 passed, 5561 assertions** |
-| `tests/Feature/Doctors` + `tests/Unit/Doctors` (helper cookie-flush regression) | 25 passed, 361 assertions |
-| Deptrac | 0 violations, 2801 allowed |
-| Pint `--dirty` | passed |
+| `tests/Feature/Clinics` + `tests/Unit/Clinics` + `ArchitectureBoundaryTest` + `tests/Unit/Identity` + `EraseSubjectServiceTest` | **79 passed, 5673 assertions** |
+| `tests/Feature/Doctors` + `tests/Unit/Doctors` | 25 passed, 361 assertions |
+| `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | 0 errors |
+| Deptrac | 0 violations, 2813 allowed |
+| Pint `--test` | passed |
 
 ## OpenAPI / generated clients / breaking check
 
@@ -471,6 +471,11 @@ covered by
 Existing concurrent first-invite still yields one pending row; that path
 now also locks every configured lookup candidate for the canonical phone,
 so a v1/v2 key-transition pair cannot create two logical pendings.
+Doctor HTTP bearer tokens hash `session_token` with the **current** HMAC
+key, so rotation tests re-invite through `InviteClinicStaff` +
+`clinicDoctorActor` after switching `identity.hmac.current_version`.
+Secretary accept after rotation uses a fresh cookie login (new session
+hash under the current key).
 
 ### Target-invitation subject export
 

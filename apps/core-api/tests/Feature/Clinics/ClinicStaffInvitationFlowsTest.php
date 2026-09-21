@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Clinics\Enums\ClinicMembershipStatus;
 use Modules\Clinics\Enums\ClinicStaffRole;
 use Modules\Clinics\Services\AcceptClinicStaffInvitation;
+use Modules\Clinics\Services\InviteClinicStaff;
 use Modules\Clinics\Services\ResolveActiveClinicMembership;
 use Modules\Identity\Services\EraseSubjectService;
 use Modules\Identity\Services\ExportSubjectDataService;
@@ -504,17 +505,16 @@ describe('clinic staff invitation and membership', function () {
 
         clinicUseHmacCurrentVersion(2);
 
-        $replay = $this->postJson(
-            '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+        $replay = app(InviteClinicStaff::class)->handle(
+            clinicDoctorActor($doctor['user_id']),
+            Identifier::fromTrusted($locationId),
             ['phone' => $phoneCanary],
-            doctorsAuth($doctor['token']) + clinicIdem('csi-hmac-replay'),
         );
-        $replay->assertOk()
-            ->assertJsonPath('data.invitation_id', $firstId)
-            ->assertJsonMissingPath('data.phone')
-            ->assertJsonMissingPath('data.target_phone_lookup_hmac');
-        expect($replay->getContent())->not->toContain($phoneCanary)
-            ->and($replay->getContent())->not->toContain('hmac')
+        $replayJson = json_encode($replay->toArray(), JSON_THROW_ON_ERROR);
+        expect($replay->created)->toBeFalse()
+            ->and($replay->invitationId)->toBe($firstId)
+            ->and($replayJson)->not->toContain($phoneCanary)
+            ->and($replayJson)->not->toContain('hmac')
             ->and(DB::table('clinic_staff_invitations')->count())->toBe(1)
             ->and(DB::table('clinic_staff_invitations')->where('status', 'pending')->count())->toBe(1)
             ->and(hash_equals($storedV1, BinaryColumn::asString(
@@ -555,23 +555,24 @@ describe('clinic staff invitation and membership', function () {
             'expires_at' => now('UTC')->subHour(),
         ]);
 
-        $replacement = $this->postJson(
-            '/api/v1/clinic-locations/'.$locationId.'/staff-invitations',
+        $replacement = app(InviteClinicStaff::class)->handle(
+            clinicDoctorActor($doctor['user_id']),
+            Identifier::fromTrusted($locationId),
             ['phone' => $phoneCanary],
-            doctorsAuth($doctor['token']) + clinicIdem('csi-hmac-exp-new'),
         );
-        $newId = $replacement->json('data.invitation_id');
+        $newId = $replacement->invitationId;
         $storedV2 = BinaryColumn::asString(
             DB::table('clinic_staff_invitations')->where('id', $newId)->value('target_phone_lookup_hmac'),
         );
-        $replacement->assertCreated();
-        expect($newId)->not->toBe($firstId)
+        $replacementJson = json_encode($replacement->toArray(), JSON_THROW_ON_ERROR);
+        expect($replacement->created)->toBeTrue()
+            ->and($newId)->not->toBe($firstId)
             ->and((string) DB::table('clinic_staff_invitations')->where('id', $firstId)->value('status'))->toBe('expired')
             ->and((int) DB::table('clinic_staff_invitations')->where('id', $newId)->value('target_phone_key_version'))->toBe(2)
             ->and(hash_equals($storedV1, $storedV2))->toBeFalse()
             ->and(DB::table('clinic_staff_invitations')->where('status', 'pending')->count())->toBe(1)
-            ->and($replacement->getContent())->not->toContain($phoneCanary)
-            ->and($replacement->getContent())->not->toContain('hmac');
+            ->and($replacementJson)->not->toContain($phoneCanary)
+            ->and($replacementJson)->not->toContain('hmac');
 
         clinicSecretaryLogin($secretary);
         clinicSecretaryPostJson(
@@ -623,11 +624,12 @@ describe('clinic staff invitation and membership', function () {
             ->and(clinicHoldingCount($doctorExport->holdings, 'clinic_locations'))->toBe(1)
             ->and($secretaryJson)->not->toContain($phoneCanary)
             ->and($secretaryJson)->not->toContain($doctor['user_id'])
-            ->and($secretaryJson)->not->toContain('hmac')
             ->and($secretaryJson)->not->toContain(bin2hex($hmacBefore))
+            ->and($secretaryJson)->not->toContain('target_phone_lookup_hmac')
             ->and($doctorJson)->not->toContain($phoneCanary)
             ->and($doctorJson)->not->toContain($secretary['user_id'])
-            ->and($doctorJson)->not->toContain('hmac');
+            ->and($doctorJson)->not->toContain(bin2hex($hmacBefore))
+            ->and($doctorJson)->not->toContain('target_phone_lookup_hmac');
 
         app(EraseSubjectService::class)->handle(
             clinicEraseOperator(),
