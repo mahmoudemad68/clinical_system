@@ -7,6 +7,8 @@ import {
   CAPABILITY_REGISTRY,
   CHANNELS,
   MAX_IPC_PAYLOAD_BYTES,
+  PHARMACY_ALL_CHANNELS,
+  PHARMACY_CHANNEL_LIST,
   authSessionViewSchema,
   localeSetRequestSchema,
   platformHealthResponseSchema,
@@ -46,35 +48,55 @@ describe('Clinic Pharmacy — renderer isolation', () => {
   it('renderer source imports no Node or Electron module', () => {
     // Ambient Window.clinic types live in clinic-bridge.d.ts (tsconfig include).
     // A runtime import of that file is not a module webpack can resolve.
-    const renderer = read('src/renderer/index.tsx');
+    const rendererFiles = [
+      'src/renderer/index.tsx',
+      'src/renderer/App.tsx',
+      'src/renderer/strings.ts',
+      'src/renderer/theme.ts',
+    ];
 
-    for (const forbidden of [
-      "from 'electron'",
-      'require(',
-      "from 'node:",
-      "from 'fs'",
-      "from 'path'",
-      "from 'child_process'",
-      '__dirname',
-      'process.env',
-    ]) {
-      expect(renderer).not.toContain(forbidden);
+    for (const relative of rendererFiles) {
+      const renderer = read(relative);
+      for (const forbidden of [
+        "from 'electron'",
+        'require(',
+        "from 'node:",
+        "from 'fs'",
+        "from 'path'",
+        "from 'child_process'",
+        '__dirname',
+        'process.env',
+      ]) {
+        expect(renderer).not.toContain(forbidden);
+      }
     }
   });
 
   it('renderer never performs its own network or storage access', () => {
-    const renderer = read('src/renderer/index.tsx');
+    for (const relative of ['src/renderer/index.tsx', 'src/renderer/App.tsx']) {
+      const renderer = read(relative);
 
-    // Every byte in and out goes through window.clinic. A fetch here would be
-    // an unauthenticated request outside the main-process transport, and a
-    // localStorage write would put data outside the encrypted boundary.
-    for (const forbidden of ['fetch(', 'XMLHttpRequest', 'localStorage', 'sessionStorage', 'indexedDB', 'new WebSocket', 'access_token', 'refresh_token']) {
-      expect(renderer).not.toContain(forbidden);
+      // Every byte in and out goes through window.clinic. A fetch here would be
+      // an unauthenticated request outside the main-process transport, and a
+      // localStorage write would put data outside the encrypted boundary.
+      // Word-boundary so `refetch(` (TanStack Query) is not treated as `fetch(`.
+      for (const forbidden of [
+        'XMLHttpRequest',
+        'localStorage',
+        'sessionStorage',
+        'indexedDB',
+        'new WebSocket',
+        'access_token',
+        'refresh_token',
+      ]) {
+        expect(renderer).not.toContain(forbidden);
+      }
+      expect(renderer).not.toMatch(/(?<![A-Za-z])fetch\(/);
     }
   });
 
   it('keeps the encrypted store and native sqlite out of the renderer', () => {
-    const renderer = read('src/renderer/index.tsx');
+    const renderer = read('src/renderer/App.tsx') + read('src/renderer/index.tsx');
     const preload = read('src/preload/index.ts');
 
     for (const source of [renderer, preload]) {
@@ -234,9 +256,7 @@ describe('Clinic Pharmacy — Electron fuses', () => {
 });
 
 describe('Clinic Pharmacy — IPC contract', () => {
-  it('every registered channel has a schema, a response schema, and a timeout', () => {
-    // Driving registration from the registry makes a schema-less channel
-    // structurally impossible.
+  it('every registered shared channel has a schema, a response schema, and a timeout', () => {
     for (const channel of ALL_CHANNELS) {
       const contract = CAPABILITY_REGISTRY[channel];
 
@@ -246,13 +266,16 @@ describe('Clinic Pharmacy — IPC contract', () => {
     }
   });
 
-  it('the main process registers handlers only from the shared registry', () => {
+  it('the main process registers handlers only from the pharmacy app registry', () => {
     const capabilities = read('src/main/capabilities.ts');
 
     // A hand-rolled ipcMain.handle with a string literal would bypass
-    // validation entirely.
+    // validation entirely. Shared Auth/Platform schemas are spread into the
+    // Pharmacy registry; Doctor never imports this file.
     expect(capabilities).not.toMatch(/ipcMain\.handle\(\s*['"`]/);
-    expect(capabilities).toContain('CAPABILITY_REGISTRY[channel]');
+    expect(capabilities).toContain('PHARMACY_REGISTRY[channel]');
+    expect(capabilities).toContain('...CAPABILITY_REGISTRY');
+    expect(capabilities).toContain('...PHARMACY_CAPABILITY_REGISTRY');
   });
 
   it('validates sender, size, request schema, and response schema', () => {
@@ -262,6 +285,25 @@ describe('Clinic Pharmacy — IPC contract', () => {
     expect(capabilities).toContain('withinSizeBound');
     expect(capabilities).toContain('contract.request.safeParse');
     expect(capabilities).toContain('contract.response.safeParse');
+  });
+
+  it('acknowledges delivery only after the response schema is accepted', () => {
+    const delivery = readCode('src/main/ipc-delivery.ts');
+    const capabilities = readCode('src/main/capabilities.ts');
+    const deliverIdx = delivery.indexOf('accepted = deliver(value)');
+    const ackIdx = delivery.indexOf('intents.acknowledge(ticket)');
+    const abandonIdx = delivery.indexOf('intents.abandon(ticket)');
+    const runIdx = capabilities.indexOf('runIpcDelivered');
+    const invalidateIdx = capabilities.indexOf('evidenceHandles.invalidate');
+
+    expect(deliverIdx).toBeGreaterThan(-1);
+    expect(ackIdx).toBeGreaterThan(deliverIdx);
+    expect(abandonIdx).toBeGreaterThan(-1);
+    expect(abandonIdx).toBeLessThan(ackIdx);
+    expect(capabilities).toContain('contract.response.safeParse');
+    expect(capabilities).toContain('ResponseContractError');
+    expect(runIdx).toBeGreaterThan(-1);
+    expect(invalidateIdx).toBeGreaterThan(runIdx);
   });
 
   it('rejects a subframe sender', () => {
@@ -308,9 +350,9 @@ describe('Clinic Pharmacy — IPC contract', () => {
     expect(platformHealthResponseSchema.safeParse({ status: 'exploded' }).success).toBe(false);
   });
 
-  it('exposes exactly the Phase 01 capability set and nothing more', () => {
-    // A new channel is a new piece of attack surface and must be a deliberate,
-    // reviewed change rather than something that appears quietly.
+  it('exposes exactly the Phase 01 capability set on the shared ALL_CHANNELS list', () => {
+    // Shared Auth/Platform channels stay on ALL_CHANNELS so Doctor remains
+    // unchanged. Pharmacy domain channels are a separate registry.
     expect([...ALL_CHANNELS].sort()).toEqual(
       [
         CHANNELS.appMetadata,
@@ -327,6 +369,33 @@ describe('Clinic Pharmacy — IPC contract', () => {
         CHANNELS.platformVersion,
       ].sort(),
     );
+  });
+
+  it('registers pharmacy domain channels only on the Pharmacy app registry', () => {
+    const capabilities = read('src/main/capabilities.ts');
+    const preload = read('src/preload/index.ts');
+
+    expect(capabilities).toContain('REGISTERED_CHANNELS = PHARMACY_ALL_CHANNELS');
+    expect(capabilities).toContain('runIpcDelivered');
+    expect(capabilities).toContain('pharmacyIntentKeys');
+    expect(capabilities).toContain('timeoutDeadline');
+    expect(capabilities).toContain('ResponseContractError');
+    expect(capabilities).toContain("fail('INTERNAL_ERROR'");
+    expect(capabilities).toContain('PHARMACY_CHANNELS');
+    expect(capabilities).toContain('PHARMACY_CAPABILITY_REGISTRY');
+    expect(preload).toContain('pharmacy:');
+    expect(preload).toContain('PHARMACY_CHANNELS');
+    expect(preload).not.toMatch(/invoke\s*:\s*\(\s*channel/);
+    expect(capabilities).not.toContain('error.stack');
+    expect(readCode('src/main/pharmacy-gateway.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
+    expect(readCode('src/main/upload-target.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
+    expect(readCode('src/main/ipc-delivery.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
+
+    expect([...PHARMACY_ALL_CHANNELS]).toEqual(expect.arrayContaining([...ALL_CHANNELS]));
+    for (const channel of PHARMACY_CHANNEL_LIST) {
+      expect(ALL_CHANNELS).not.toContain(channel);
+      expect(PHARMACY_ALL_CHANNELS).toContain(channel);
+    }
   });
 
   it('auth IPC responses never include tokens', () => {

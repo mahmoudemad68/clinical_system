@@ -11,6 +11,10 @@ export const CANARIES = {
   signedUrl: 'http://127.0.0.1:8080/api/v1/verification-review-files/0199a5c8-0000-7000-8000-000000000021/0199a5c8-0000-7000-8000-000000000041?expires=1&signature=secret',
   notes: 'reviewer-private-notes-must-not-render',
   amz: 'X-Amz-Signature=should-never-render',
+  legalName: 'CANARY-LEGAL-PHARMACY-NAME',
+  registration: 'CANARY-REG-CR-998877',
+  address: 'CANARY-BRANCH-ADDRESS-99 Nile St',
+  coordinates: '30.04441234,31.23571234',
 } as const;
 
 export function envelope<T>(data: T, extra: Record<string, unknown> = {}) {
@@ -106,6 +110,46 @@ export function reviewDocument(
     scan_status: 'clean',
     status: 'available',
     uploaded_at: '2026-09-19T07:50:00Z',
+    ...overrides,
+  };
+}
+
+export function pharmacyQueueItem(
+  overrides: Partial<components['schemas']['AdminPharmacyVerificationQueueItem']> = {},
+): components['schemas']['AdminPharmacyVerificationQueueItem'] {
+  return {
+    case_id: '0199a5c8-0000-7000-8000-000000000121',
+    case_type: 'pharmacy_verification',
+    case_status: 'pending_review',
+    case_version: 2,
+    submitted_at: '2026-09-19T08:00:00Z',
+    assignment: 'unassigned',
+    assigned_to_me: false,
+    applicant_type: 'pharmacy',
+    organization_id: '0199a5c8-0000-7000-8000-000000000131',
+    public_name: 'Synthetic Pharmacy Review',
+    verification_status: 'pending_review',
+    status: 'pending',
+    version: 2,
+    initial_branch: {
+      branch_id: '0199a5c8-0000-7000-8000-000000000132',
+      public_name: 'Main Branch',
+      country_code: 'EG',
+      status: 'pending',
+    },
+    ...overrides,
+  };
+}
+
+export function pharmacyCaseDetail(
+  overrides: Partial<components['schemas']['AdminPharmacyVerificationCase']> = {},
+): components['schemas']['AdminPharmacyVerificationCase'] {
+  return {
+    ...pharmacyQueueItem(),
+    decided_at: null,
+    decision: null,
+    reason_code: null,
+    documents: [],
     ...overrides,
   };
 }

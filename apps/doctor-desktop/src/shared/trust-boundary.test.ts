@@ -7,6 +7,7 @@ import {
   CAPABILITY_REGISTRY,
   CHANNELS,
   MAX_IPC_PAYLOAD_BYTES,
+  PHARMACY_CHANNEL_LIST,
   authSessionViewSchema,
   localeSetRequestSchema,
   platformHealthResponseSchema,
@@ -327,6 +328,27 @@ describe('Clinic Doctor — IPC contract', () => {
         CHANNELS.platformVersion,
       ].sort(),
     );
+  });
+
+  it('does not register pharmacy domain channels on the Doctor bridge', () => {
+    const capabilities = read('src/main/capabilities.ts');
+    const preload = read('src/preload/index.ts');
+    const renderer = read('src/renderer/index.tsx');
+
+    expect(capabilities).toContain('REGISTERED_CHANNELS = ALL_CHANNELS');
+    expect(capabilities).not.toContain('PHARMACY_CHANNELS');
+    expect(capabilities).not.toContain('PHARMACY_CAPABILITY_REGISTRY');
+    expect(capabilities).not.toContain('clinic:pharmacy.');
+    expect(preload).not.toContain('PHARMACY_CHANNELS');
+    expect(preload).not.toContain('pharmacy:');
+    expect(preload).not.toContain('clinic:pharmacy.');
+    expect(renderer).not.toContain('window.clinic.pharmacy');
+
+    for (const channel of PHARMACY_CHANNEL_LIST) {
+      expect(ALL_CHANNELS).not.toContain(channel);
+      expect(capabilities).not.toContain(channel);
+      expect(preload).not.toContain(channel);
+    }
   });
 
   it('auth IPC responses never include tokens', () => {

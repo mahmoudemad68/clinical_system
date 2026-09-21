@@ -6,6 +6,13 @@ type FixtureFile = {
   reviewer: { phone: string; password: string; totp_secret: string };
   unauthorized: { phone: string; password: string; totp_secret: string };
   case: { professional_display_name: string };
+  pharmacy_case: { public_name: string };
+  canaries: {
+    legal_name: string;
+    registration: string;
+    address: string;
+    phone: string;
+  };
 };
 
 function loadFixture(): FixtureFile {
@@ -142,6 +149,67 @@ test.describe('admin verification review', () => {
     await expect(page.getByRole('button', { name: /Submit decision|إرسال القرار/ })).toHaveCount(0);
     expect(decisionPosts).toHaveLength(1);
     expect(decisionPosts[0]?.length ?? 0).toBeGreaterThan(16);
+
+    await page.getByRole('link', { name: /Back to queue|العودة إلى القائمة/ }).click();
+    await expect(page.getByRole('heading', { name: /Pending doctor verification|تحقق الأطباء المعلّق/ })).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await page.getByRole('button', { name: /Pharmacy verification|تحقق الصيدلية/ }).click();
+    await expect(page.getByRole('heading', { name: /Pending pharmacy verification|تحقق الصيدليات المعلّق/ })).toBeVisible();
+    await expect(page.getByText(fixture.pharmacy_case.public_name)).toBeVisible();
+    await expect(page.getByText(fixture.case.professional_display_name)).toHaveCount(0);
+
+    const pharmacyQueueText = await page.locator('body').innerText();
+    expect(pharmacyQueueText).not.toContain(fixture.canaries.legal_name);
+    expect(pharmacyQueueText).not.toContain(fixture.canaries.registration);
+    expect(pharmacyQueueText).not.toContain(fixture.canaries.address);
+    expect(pharmacyQueueText).not.toContain(fixture.canaries.phone);
+    expect(pharmacyQueueText).not.toContain('30.0444');
+    expect(pharmacyQueueText).not.toContain('31.2357');
+
+    await page.getByRole('link', { name: /Open case|فتح الحالة/ }).click();
+    await expect(page.getByRole('heading', { name: /Verification case|حالة التحقق/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: fixture.pharmacy_case.public_name })).toBeVisible();
+    await expect(
+      page.getByText(/Displayed organization, branch, and membership statuses come from the server|حالات المنظمة والفرع والعضوية المعروضة صادرة من الخادم/),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /View \/ download document|عرض \/ تنزيل المستند/ })).toHaveCount(0);
+
+    const pharmacyClaimWait = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/v1\/admin\/verification-cases\/[^/]+\/claim$/.test(new URL(response.url()).pathname),
+      { timeout: 20_000 },
+    );
+    await page.getByRole('button', { name: /Claim case|ادّعاء الحالة/ }).click();
+    const pharmacyClaim = await pharmacyClaimWait;
+    expect(pharmacyClaim.ok(), `pharmacy claim HTTP ${String(pharmacyClaim.status())}`).toBeTruthy();
+    const pharmacyView = page.getByRole('button', { name: /View \/ download document|عرض \/ تنزيل المستند/ });
+    await expect(pharmacyView).toBeVisible({ timeout: 20_000 });
+
+    const pharmacyDownload = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null);
+    await pharmacyView.click();
+    await expect(page.getByText(/Document access was recorded|تم تسجيل الوصول إلى المستند/)).toBeVisible();
+    expect(accessPosts).toHaveLength(2);
+    await pharmacyDownload;
+    const pharmacyHtml = await page.content();
+    expect(pharmacyHtml).not.toContain(fixture.canaries.legal_name);
+    expect(pharmacyHtml).not.toContain(fixture.canaries.registration);
+    expect(pharmacyHtml).not.toContain('signature=');
+    expect(pharmacyHtml).not.toContain('X-Amz-');
+    expect(pharmacyHtml).not.toContain('verification/c/');
+    expect(pharmacyHtml).not.toContain('verification/q/');
+
+    await page.getByRole('button', { name: /Submit decision|إرسال القرار/ }).click();
+    await expect(page.getByRole('dialog', { name: /Confirm verification decision|تأكيد قرار التحقق/ })).toBeVisible();
+    await expect(
+      page.getByText(/Approval records the server decision only|الموافقة تسجّل قرار الخادم فقط/),
+    ).toBeVisible();
+    await page.getByRole('button', { name: /Record decision|تسجيل القرار/ }).click();
+    await expect(page.getByText(/This case is no longer pending review|هذه الحالة لم تعد معلّقة للمراجعة/)).toBeVisible();
+    expect(decisionPosts).toHaveLength(2);
+    expect(decisionPosts[1]?.length ?? 0).toBeGreaterThan(16);
 
     await page.getByRole('button', { name: /Sign out|خروج/ }).click();
     await expect(page.getByRole('heading', { name: /Admin sign in|دخول المسؤول/ })).toBeVisible();

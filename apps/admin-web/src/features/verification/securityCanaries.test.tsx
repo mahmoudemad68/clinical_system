@@ -72,6 +72,10 @@ describe('security canaries and accessibility', () => {
     expect(queueText).not.toContain(CANARIES.signedUrl);
     expect(queueText).not.toContain(CANARIES.notes);
     expect(queueText).not.toContain(CANARIES.amz);
+    expect(queueText).not.toContain(CANARIES.legalName);
+    expect(queueText).not.toContain(CANARIES.registration);
+    expect(queueText).not.toContain(CANARIES.address);
+    expect(queueText).not.toContain(CANARIES.coordinates);
   });
 
   it('has no serious axe violations on the queue', async () => {

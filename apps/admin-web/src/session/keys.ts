@@ -9,13 +9,18 @@ export const sessionKeys = {
 export const verificationKeys = {
   all: ['verification'] as const,
   queueRoot: ['verification', 'queue'] as const,
-  queue: (assignment: QueueAssignmentFilter, cursor: string | null) =>
-    ['verification', 'queue', assignment, cursor] as const,
+  queue: (
+    caseType: VerificationCaseTypeFilter,
+    assignment: QueueAssignmentFilter,
+    cursor: string | null,
+  ) => ['verification', 'queue', caseType, assignment, cursor] as const,
   caseRoot: ['verification', 'case'] as const,
   case: (caseId: string) => ['verification', 'case', caseId] as const,
 } as const;
 
 export type QueueAssignmentFilter = 'unassigned' | 'mine' | 'all';
+
+export type VerificationCaseTypeFilter = 'doctor_verification' | 'pharmacy_verification';
 
 export type SessionStatus =
   | 'bootstrapping'

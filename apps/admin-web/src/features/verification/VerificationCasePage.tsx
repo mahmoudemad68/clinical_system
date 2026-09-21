@@ -16,6 +16,7 @@ import {
   useClaimVerificationCase,
   useVerificationCase,
 } from '@/features/verification/useVerificationCase';
+import { isDoctorVerificationCase } from '@/features/verification/doctorVerification';
 import { isRtl } from '@/i18n';
 
 export function VerificationCasePage() {
@@ -95,22 +96,51 @@ export function VerificationCasePage() {
       ) : null}
 
       <Stack spacing={1} component="section">
-        <Typography variant="h5" component="h2">
-          {data.professional_display_name}
-        </Typography>
-        <Typography>
-          {t('queue.specialty')}: {isRtl(language) ? data.specialty.label_ar : data.specialty.label_en} (
-          {data.specialty.code})
-        </Typography>
-        <Typography>
-          {t('case.doctorId')}: {data.doctor_id}
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-          <StatusChip value={data.case_status} />
-          <StatusChip value={data.doctor_verification_status} />
-          <StatusChip value={data.doctor_public_status} />
-          <StatusChip value={data.assignment} />
-        </Stack>
+        {isDoctorVerificationCase(data) ? (
+          <>
+            <Typography variant="h5" component="h2">
+              {data.professional_display_name}
+            </Typography>
+            <Typography>
+              {t('queue.specialty')}: {isRtl(language) ? data.specialty.label_ar : data.specialty.label_en} (
+              {data.specialty.code})
+            </Typography>
+            <Typography>
+              {t('case.doctorId')}: {data.doctor_id}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+              <StatusChip value={data.case_status} />
+              <StatusChip value={data.doctor_verification_status} />
+              <StatusChip value={data.doctor_public_status} />
+              <StatusChip value={data.assignment} />
+            </Stack>
+          </>
+        ) : (
+          <>
+            <Typography variant="h5" component="h2">
+              {data.public_name}
+            </Typography>
+            <Typography>
+              {t('queue.publicName')}: {data.public_name}
+            </Typography>
+            <Typography>
+              {t('queue.branchName')}: {data.initial_branch.public_name}
+            </Typography>
+            <Typography>
+              {t('queue.branchCountry')}: {data.initial_branch.country_code}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+              <StatusChip value={data.case_status} />
+              <StatusChip value={data.verification_status} />
+              <StatusChip value={data.status} />
+              <StatusChip value={data.initial_branch.status} />
+              <StatusChip value={data.assignment} />
+            </Stack>
+            <Alert severity="info" role="status">
+              {t('case.pharmacyActivationNote')}
+            </Alert>
+          </>
+        )}
         <Typography>
           {t('queue.submitted')}:{' '}
           <time dateTime={data.submitted_at ?? undefined}>
@@ -171,8 +201,11 @@ export function VerificationCasePage() {
       {canDecide ? (
         <DecisionForm
           caseId={data.case_id}
-          professionalDisplayName={data.professional_display_name}
+          professionalDisplayName={
+            isDoctorVerificationCase(data) ? data.professional_display_name : data.public_name
+          }
           expectedCaseVersion={data.case_version}
+          applicantType={isDoctorVerificationCase(data) ? 'doctor' : 'pharmacy'}
           onConflict={() => {
             void onDecisionConflict();
           }}

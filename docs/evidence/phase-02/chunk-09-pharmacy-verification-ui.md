@@ -1,0 +1,372 @@
+# Phase 02 chunk 09 — Pharmacy verification UI surfaces (not phase PASS)
+
+Chunk-only evidence. This file does **not** mark Phase 02 complete and does
+**not** claim the branch is READY_TO_MERGE.
+
+**Scope implemented:** user-facing Pharmacy Electron onboarding/verification
+and React Admin pharmacy queue/detail rendering on top of Chunks 07 and 08.
+The synthetic flow is: pharmacy login + MFA → own organization onboarding →
+open/resume verification case → main-owned opaque evidence selection →
+main-owned signed-target upload → quarantine/scanning UX → submit → Admin
+explicitly opens the pharmacy queue → claim → explicit document access →
+approve/reject/changes-requested → Pharmacy refreshes authoritative status.
+
+**Explicitly deferred:** Clinics / clinic locations / clinic staff, Doctor
+Electron verification UX, Patient Flutter Phase-02 completion, additional
+pharmacy branches, membership invitation/revocation, payment methods,
+operating modes, Inventory, Purchasing, POS, Medication Catalog, public
+listing, clinical capability, scheduling / Phase 03, external government
+verification, external map/geocoding, generic filesystem/HTTP IPC, generic
+role editor, inline Admin document viewer, production deployment, staging
+provisioning.
+
+**SF-001** remains unresolved / unaccepted (`MERGE_ONLY`,
+`promotion_allowed=false`). `FEATURE_IDENTITY_PROFILE_CLAIM` remains off.
+ADR 0014 and G-08-04 are not closed by this slice. Staging `Deploy to staging`
+remains fail-closed. This chunk does not bypass those gates.
+
+- **Branch:** `cursor/phase-02-pharmacy-verification-ui-cc7f`
+- **Base (GitHub `main` after merged PR #14):** `06a3f0551872f96ffd02093ce054a8486a612e37`
+- **CI-verified HEAD:** `034c178c7a9b03a01c7b622b56b9a8627639d950`
+- **GitHub CI:** `pull-request` run **35565653652** SUCCESS on that exact HEAD
+  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35565653652)
+- **Recorded:** 2026-09-21
+- **Environment:** host Node 22 workspace, PHP 8.3 Core Pest against local
+  PostgreSQL `clinic_test`. Packaged Electron E2E and Admin Playwright ran in
+  that GitHub `pull-request` job set.
+
+## What was implemented
+
+Pharmacy Electron replaces the signed-in Auth-only shell with a Phase-02
+onboarding/verification workspace while keeping session controls, language
+switching, health, and MFA. React Admin keeps the default queue on
+`doctor_verification` and adds an explicit case-type selector for
+`pharmacy_verification`.
+
+`organization_registration_evidence` remains an **ENGINEERING_DEFAULT**
+synthetic requirement. No test or UI copy claims government or license
+verification.
+
+## Pharmacy Electron IPC capabilities
+
+Shared Auth/Platform channels remain on `ALL_CHANNELS` /
+`CAPABILITY_REGISTRY` and are registered by both desktops.
+
+Pharmacy domain channels live in
+`packages/typescript/desktop_bridge_contracts/src/pharmacy.ts` and are
+**not** members of `ALL_CHANNELS`. Executable registration is only in
+`apps/pharmacy-desktop` (`PHARMACY_REGISTRY` =
+`CAPABILITY_REGISTRY` ∪ `PHARMACY_CAPABILITY_REGISTRY`).
+
+| Channel | Capability |
+| --- | --- |
+| `clinic:pharmacy.organization.getOwn` | GET own organization projection |
+| `clinic:pharmacy.organization.onboard` | POST onboarding |
+| `clinic:pharmacy.verification.openCase` | POST open/resume case |
+| `clinic:pharmacy.verification.status` | GET verification status |
+| `clinic:pharmacy.verification.submit` | POST submission |
+| `clinic:pharmacy.evidence.select` | native file chooser → opaque handle |
+| `clinic:pharmacy.evidence.clear` | invalidate handle |
+| `clinic:pharmacy.evidence.upload` | main-owned create + PUT + complete |
+| `clinic:pharmacy.upload.status` | GET upload projection |
+
+There is no generic `invoke`, HTTP, filesystem, or upload primitive. The
+renderer never receives bearer tokens, signed upload URLs, storage locators,
+object IDs, or absolute paths.
+
+## Doctor desktop isolation
+
+`apps/doctor-desktop` still registers `REGISTERED_CHANNELS = ALL_CHANNELS`
+only. Source tests assert Doctor `capabilities.ts`, `preload/index.ts`, and
+`renderer/index.tsx` do not contain `clinic:pharmacy.`, `PHARMACY_CHANNELS`,
+or `window.clinic.pharmacy`. Packaged-runtime E2E asserts
+`window.clinic.pharmacy` is `undefined` when `CLINIC_DESKTOP_PRODUCT` is
+Clinic Doctor, and is an object with the pharmacy methods when the product
+is Clinic Pharmacy.
+
+Unknown/unregistered channels remain unreachable: preload maps named methods
+to constants; main validates sender, origin, size, and schema.
+
+## Evidence-file handle lifecycle
+
+`PharmacyEvidenceHandleStore` (main process):
+
+1. Renderer requests `selectEvidence`.
+2. Main opens `dialog.showOpenDialog` (PDF/JPEG/PNG, 20 MiB).
+3. Main inspects with `lstat` + `realpath`, then opens a file descriptor,
+   `fstat`s it, sniffs magic bytes from that descriptor, and stores the
+   absolute path privately. The descriptor is closed before returning.
+4. Renderer receives only `{ handleId, displayName, sizeBytes, candidateMediaType }`.
+5. Handle is unguessable (`base64url` 24 random bytes), TTL 15 minutes,
+   one-at-a-time, purpose-bound to pharmacy verification evidence.
+6. `readForUpload` lstat/realpath identity-checks, then **opens the path**,
+   `fstat`s the descriptor (size/mtime/dev/ino plus regular-file), reads
+   bytes with `readFileSync(fd)` from that same descriptor, `fstat`s again,
+   and closes the descriptor in `finally`. Pathname replacement after open
+   cannot change the uploaded inode. Deleted → `FILE_MISSING`;
+   size/mtime/dev/ino/realpath/symlink/sniff change → `FILE_CHANGED`;
+   directory/unsupported/oversize → `UNSUPPORTED_FILE`.
+7. The handle is invalidated only after a **caller-visible** upload success:
+   create / PUT / complete finished, the safe projection passed the IPC
+   response schema, and the delivery ticket was acknowledged. Logout and
+   window `closed` still clear the store. An IPC TIMEOUT or a
+   response-schema failure leaves the handle in place so a retry can reuse
+   it together with the original create/complete idempotency keys.
+
+Bytes never cross IPC as a renderer payload. The fd and absolute path never
+cross IPC.
+
+Deterministic substitution proof: `readForUpload(..., afterPinnedOpen)`
+unlinks and rewrites the pathname after the descriptor is open; the returned
+bytes still match the originally selected PDF, not the decoy.
+
+## Signed upload target confinement
+
+Main `uploadEvidence`:
+
+1. `POST /api/v1/verification-uploads` with a main-owned idempotency key.
+2. `parseIssuedUploadTarget` accepts only PUT, https (or unpackaged localhost
+   HTTP), no credentials, no `file:`/`javascript:`, no Host/Connection/
+   Transfer-Encoding headers.
+3. `putIssuedUploadBytes` uses Electron `net.fetch` with `redirect: 'error'`
+   and **without** the session Bearer header.
+4. `POST /api/v1/verification-uploads/{id}/complete`.
+5. Renderer receives only the safe upload projection (`uploadId`, state,
+   rejectionReason, timestamps). Strict Zod rejects `upload_target`.
+
+The target URL is not logged, not persisted, and not returned over IPC.
+
+## Upload / scanner UX
+
+Renderer polls `uploadStatus` every 2s while state is `requested`,
+`uploading`, `quarantined`, `validating`, or `scanning`. Polling stops on a
+terminal state, query disable, unmount, logout, or session failure. `complete`
+is **not** treated as available. Submit stays disabled until server
+`available` + `clean`. Status text is explicit (not color-only) with
+`aria-live`.
+
+## Idempotency / retry / reconciliation
+
+`IntentKeyStore` lives in main. Same logical fingerprint reuses the key;
+a changed payload mints a new key. Keys are **not** retired when the
+underlying promise eventually succeeds. Retirement is `retireWhenDelivered`
+bound to an IPC delivery ticket (`runIpcDelivered`). Successful delivery
+acknowledgement occurs **only after** the channel's `contract.response.safeParse`
+accepts the value. Ordering for a resolved operation:
+
+1. The gateway maps a **complete** local success result, then may queue `retireWhenDelivered`.
+2. Main validates/transforms through `contract.response.safeParse`.
+3. Only a schema-accepted value may `acknowledge(ticket)` and retire queued keys.
+4. The validated value is returned to the renderer.
+
+Onboarding specifically: `retireWhenDelivered` is **not** queued until a valid
+`PharmacyOnboardResponse` exists. `organization_ready` requires
+`organization_id`, `branch_id`, `membership_id`, and `version` before
+retirement is queued. `manual_review_required` constructs that safe result
+first, then queues retirement. An HTTP success that is missing those fields
+throws `UPSTREAM_FAILED` with **no** retirement queued, so retry keeps `K`.
+Accepted terminal 4xx (`VALIDATION_FAILED`, `PERMISSION_DENIED`) still queue
+retirement deliberately.
+
+Distinguished outcomes:
+
+- **Operation completed** is not yet caller-deliverable.
+- **Response contract accepted** is required before acknowledgement.
+- **Caller-deliverable success** acknowledges the ticket and retires that exact key.
+- **Caller-visible operation error:** queued deterministic terminal 4xx
+  (`VALIDATION_FAILED`, `PERMISSION_DENIED` on onboard; `VERSION_CONFLICT` /
+  `STATE_CONFLICT` on submit) still retire on acknowledgement, matching the
+  previous policy. Uncertain network/upstream failures that never queued a
+  retirement keep their keys.
+- **Caller-visible TIMEOUT** abandons the ticket. A late HTTP success is a
+  no-op against a closed ticket, so retry of the same payload still uses key `K`.
+- **Response-schema failure** after a resolved mutation is **not** a
+  deterministic terminal 4xx. The ticket is abandoned, queued keys are **not**
+  retired, the renderer receives `INTERNAL_ERROR`, and retry of the same
+  logical payload still uses `K`. Logout / window close still `clearAll()`.
+
+Covered mutations: onboarding, open case, create upload, complete upload,
+submit.
+
+Deterministic proof (no sleeps): `openIpcDeadline().expire()` rejects the
+race while a deferred HTTP/operation is still pending; after late resolve,
+`peek` is still `K` and `keyFor` returns `K`. A subsequent caller-deliverable
+success retires `K` so a later new logical operation may mint a new key.
+
+Malformed-success proof (no sleeps): the gateway mutation completes and queues
+`retireWhenDelivered(K)`, then the deliver seam wraps the value with an
+unexpected field so `.strict()` IPC schemas fail. The caller sees
+`INTERNAL_ERROR` (`ResponseContractError`); `K` remains; retry of the same
+payload sends exactly `K`; a later schema-valid response retires `K`.
+
+Incomplete `organization_ready` proof (no sleeps): Core returns HTTP success
+with `status=organization_ready` but omits required ids/version. The gateway
+throws `UPSTREAM_FAILED` **without** queueing retirement. The caller-visible
+result is failure; `K` remains; retry of the same payload sends exactly `K`;
+a later complete Core body plus IPC schema accept retires `K`.
+`manual_review_required` is a valid delivered terminal onboarding result and
+retires `K` after mapping and schema accept.
+
+No successful idempotency intent is queued for retirement until gateway-local
+mapping is complete; final retirement still occurs only after IPC
+response-schema acceptance.
+
+Open-case, submit, and upload-complete construct the local mapped result
+before `retireWhenDelivered`. Those mappers are field copies and cannot throw
+an uncertain failure after HTTP success; `parseIssuedUploadTarget` / PUT
+failures happen **before** any upload retirement is queued. Terminal 4xx
+paths still queue retirement in their catch blocks only.
+
+Upload: the evidence handle is invalidated only after IPC delivery of a
+schema-valid safe projection. TIMEOUT and response-schema failure keep the
+handle and both create/complete keys. The renderer refetches authoritative
+verification status and does not clear the selected handle. A retry reuses
+the same create and complete idempotency keys rather than minting a second
+upload intent. `GET /verification-uploads/{id}` remains the status
+reconciliation path when an upload id is already known.
+
+`VERSION_CONFLICT` / `STATE_CONFLICT` refetch authoritative status and show
+a safe stale-state message. Bridge errors are a closed taxonomy; raw
+backend bodies and stacks do not cross IPC.
+
+## Renderer persistence policy
+
+Legal name, registration identifier, address, and phone exist only as
+transient React state. They are cleared after a successful onboard (including
+generic `manual_review_required`). Renderer source is forbidden from
+`localStorage`, `sessionStorage`, `indexedDB`, authenticated `fetch`, and
+token names. Packaged E2E asserts empty Chromium storage on boot.
+
+## Onboarding and verification screen states
+
+Onboarding: organization fields → initial branch/public location (Egypt
+country locked, explicit copy that these fields become the stored branch
+location, no map provider) → submit. Fail-closed unless `/me`
+`account_type = pharmacy` (main + renderer). Duplicate detection stays
+server-owned; `manual_review_required` is generic.
+
+Verification: draft, upload in progress, quarantined, validating/scanning,
+available, pending review, changes requested, rejected, approved (authoritative
+org/branch/membership status), stale/version conflict, expired/rejected
+upload, session expiration. Changes requested / rejected open a **new** case
+via the server open/resume endpoint; the terminal historical case is not
+mutated. No Inventory/POS/Purchasing/Catalog navigation.
+
+## React Admin pharmacy queue / detail
+
+- Default heading and query remain `doctor_verification`.
+- Explicit Doctor / Pharmacy toggle. Changing type clears cursor pagination
+  and uses a TanStack Query key that includes `caseType` so doctor/pharmacy
+  result sets are not merged.
+- Pharmacy rows/detail render only Chunk-08 safe fields (public name,
+  verification/lifecycle status, initial branch public name/country/status,
+  case status, assignment, submitted time, case version).
+- Doctor rows, claim, `DocumentList`, signed document access, `DecisionForm`,
+  version handling, and closed reason validation are unchanged.
+- Pharmacy approval copy states the server is authoritative and this
+  workspace does not activate operational capabilities. No optimistic
+  active-state writes.
+
+## Security canaries
+
+Prohibited strings (legal name, registration, address, phone, coordinates,
+absolute path, signed upload URL / query signature, storage locator, object
+ID, reviewer notes, bearer/refresh tokens) are asserted absent from:
+
+- Pharmacy IPC-safe projections and Zod schemas
+- Pharmacy renderer DOM + `localStorage` / `sessionStorage` / cookies after
+  onboard/upload transitions
+- Bridge error serialization (no stacks, no target URLs)
+- Admin queue/detail DOM
+- Admin Playwright body after pharmacy claim/download/decision
+- Packaged Chromium storage on boot
+
+## Accessibility and Arabic/RTL
+
+Keyboard-accessible wizard, explicit labels, status text plus color,
+focus on error alerts, `aria-live` for upload/decision transitions, disabled
+submit with a reason, `dir`/`lang` on `<html>` for Arabic. Packaged E2E still
+asserts English → Arabic sets `dir=rtl`. Admin Arabic specialty/RTL tests
+remain.
+
+## Packaged Electron evidence
+
+`tests/desktop-e2e/specs/packaged-runtime.spec.mjs` still covers privileged
+custom origin, no Node globals, no generic invoke, navigation/new-window
+denial, empty renderer storage, and Arabic RTL. This chunk adds pharmacy
+bridge presence only on Clinic Pharmacy and absence on Clinic Doctor.
+
+Windows/Linux/macOS packaged lanes are unchanged. Tests still run against
+packaged artifacts via `scripts/desktop/run-packaged-e2e.mjs`, not
+`electron-forge start`.
+
+## Admin browser E2E
+
+Existing doctor Playwright assertions remain (default heading “Pending
+doctor verification”, claim, document access, decision). After that doctor
+decision, the same reviewer session returns to the queue, switches to
+Pharmacy verification, asserts canaries absent, claims, downloads, and
+approves the seeded `E2E Pharmacy Review` case. Pharmacy coverage stays in
+that one session so the reviewer TOTP is not replayed in the same 30s
+window (`last_used_counter`). Return to the queue uses the MUI `RouterLink`
+control (accessible as a link). The browser seeder still creates the pending
+pharmacy case.
+
+## Local tests and counts
+
+| Command | Result |
+| --- | --- |
+| `npm run typecheck --workspace apps/pharmacy-desktop` | passed |
+| `npm run test --workspace apps/pharmacy-desktop` | **125 passed** (13 files) |
+| `npm run typecheck --workspace apps/doctor-desktop` | passed |
+| `npm run test --workspace apps/doctor-desktop` | **84 passed** (7 files) |
+| `npm run test --workspace packages/typescript/desktop_bridge_contracts` | **3 passed** |
+| `npm run admin:typecheck` | passed |
+| `npm run admin:lint` | eslint `--max-warnings 0` passed |
+| `npm run admin:test` | **46 passed** (9 files) |
+| `npm run admin:build` | `tsc -b && vite build` passed |
+| Core `pint --test` on touched PHP | passed |
+| Core Pest `SeedAdminVerificationBrowserFixtureTest.php` | **3 passed**, 19 assertions |
+
+GitHub `pull-request` run **35562798541** on
+`72e60ab95d808b8838dc8ea9c6c9a3c2a164ff38`, run **35563277326** on
+`5480a52da7b7297fa2a6d57f2351c56f401e61ed`, run **35564482939** on
+`faab771b8a8b9fd32f51668c4ce0eafe6b4374c2`, run **35565653652** on
+`034c178c7a9b03a01c7b622b56b9a8627639d950`, and run **35565907385** on
+`ddfce8886b8c950d3e43b731eb0eebcd0462d871` were **SUCCESS**. This
+onboarding mapping-order follow-up records its own exact-HEAD run after CI
+on this revision. Gitleaks, Trivy, and OpenVEX were **not** weakened.
+Contracts were not changed in this chunk.
+
+Phase 02 as a whole is **not** PASS.
+
+## Residual (this chunk)
+
+- `organization_registration_evidence` remains ENGINEERING_DEFAULT, not a
+  legal/regulatory catalogue.
+- Clinics / location / staff foundation remains.
+- Doctor Electron Phase-02 verification UX remains.
+- Patient Flutter Phase-02 completion remains.
+- Pharmacy membership invitation/revocation remains.
+- Additional branch management remains.
+- Pharmacy Phase-10 operational capability matrix remains.
+- SF-001 remains MERGE_ONLY / production promotion blocked.
+- G-08-04 / ADR 0014 / profile-claim gate remain unchanged.
+- Staging remains unprovisioned.
+- Pharmacy envelope key rotation remains deferred (`identity:rotate-keys`
+  still does not rotate pharmacy legal-name / registration / address
+  envelopes).
+- Existing pharmacy subject-erasure lifecycle/documentation residual remains
+  open; this UI chunk does not change erasure semantics.
+- Document requirement and reason catalogues remain ENGINEERING_DEFAULT.
+- Reviewer document TTL 120s and queue page size 25/100 remain
+  ENGINEERING_DEFAULT.
+- Signed GET URLs remain application-owned and bearer-style while valid.
+- Aborting an in-flight HTTP request is not treated as proof the server did
+  not commit; TIMEOUT keeps the original idempotency key.
+- A resolved mutation that fails the IPC response schema is an uncertain
+  result, not a terminal 4xx; the original idempotency key is kept.
+- An HTTP-successful onboarding body that cannot be mapped to a complete
+  local result is an uncertain `UPSTREAM_FAILED`; retirement is not queued.
+- `ino` uniqueness varies by platform; the open file descriptor is the
+  object pin, not a second pathname open.

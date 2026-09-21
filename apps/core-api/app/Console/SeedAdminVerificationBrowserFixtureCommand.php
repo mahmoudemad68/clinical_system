@@ -17,6 +17,7 @@ use Modules\Identity\Enums\AssuranceLevel;
 use Modules\Identity\Enums\LanguagePreference;
 use Modules\Identity\Services\NationalIdProtector;
 use Modules\Identity\Support\ActorContext;
+use Modules\Pharmacies\Services\RegisterPharmacyOrganization;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\ScanObject;
@@ -51,6 +52,7 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
         Clock $clock,
         UserDirectory $identities,
         RegisterDoctor $registerDoctor,
+        RegisterPharmacyOrganization $registerPharmacy,
         VerificationService $verification,
         VerificationUploadService $uploads,
         StoreObject $objects,
@@ -193,6 +195,31 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
             'profile_version' => $opened->profileVersion,
         ]);
 
+        $pharmacyPublicName = 'E2E Pharmacy Review';
+        $pharmacyCanaries = [
+            'legal_name' => 'CANARY-LEGAL-PHARMACY-NAME',
+            'registration' => 'CANARY-REG-CR-998877',
+            'address' => 'CANARY-BRANCH-ADDRESS-99 Nile St',
+            'phone' => '01911112222',
+        ];
+        $this->seedPendingPharmacyCase(
+            $ids,
+            $protector,
+            $hasher,
+            $totp,
+            $clock,
+            $registerPharmacy,
+            $verification,
+            $uploads,
+            $objects,
+            $policy,
+            $processor,
+            $password,
+            $bytes,
+            $pharmacyPublicName,
+            $pharmacyCanaries,
+        );
+
         $payload = [
             'reviewer' => [
                 'phone' => $reviewer['phone'],
@@ -207,6 +234,10 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
             'case' => [
                 'professional_display_name' => 'Dr E2E Review',
             ],
+            'pharmacy_case' => [
+                'public_name' => $pharmacyPublicName,
+            ],
+            'canaries' => $pharmacyCanaries,
         ];
 
         if (file_put_contents($write, json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)) === false) {
@@ -219,6 +250,124 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
         $this->info('Seeded browser verification fixture.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @param  array{legal_name: string, registration: string, address: string, phone: string}  $canaries
+     */
+    private function seedPendingPharmacyCase(
+        IdentityGenerator $ids,
+        NationalIdProtector $protector,
+        PasswordHasher $hasher,
+        TotpVerifier $totp,
+        Clock $clock,
+        RegisterPharmacyOrganization $registerPharmacy,
+        VerificationService $verification,
+        VerificationUploadService $uploads,
+        StoreObject $objects,
+        VerificationPolicy $policy,
+        VerificationUploadProcessor $processor,
+        string $password,
+        string $bytes,
+        string $publicName,
+        array $canaries,
+    ): void {
+        $synthetic = new SyntheticEgyptianData;
+        $phone = $synthetic->mobileNumber();
+        $parsedPhone = $protector->phone($phone);
+        $now = $clock->now();
+        $pharmacyUserId = $ids->next();
+
+        DB::table('users')->insert([
+            'id' => $pharmacyUserId->value,
+            'name' => 'Synthetic Pharmacy E2E',
+            'phone_e164_encrypted' => BinaryColumn::bind($protector->encryptPhone($parsedPhone)),
+            'phone_lookup_hmac' => BinaryColumn::bind($protector->phoneHmac($parsedPhone)),
+            'phone_key_version' => 1,
+            'password_hash' => $hasher->hash($password),
+            'account_type' => AccountType::Pharmacy->value,
+            'status' => AccountStatus::Active->value,
+            'language' => LanguagePreference::English->value,
+            'credential_version' => 1,
+            'phone_verified_at' => $now,
+            'last_authenticated_at' => null,
+            'bootstrap_exempt' => false,
+            'password_must_change' => false,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $secret = $totp->generateSecret();
+        DB::table('mfa_factors')->insert([
+            'id' => $ids->next()->value,
+            'user_id' => $pharmacyUserId->value,
+            'factor_type' => 'totp',
+            'secret_ciphertext' => BinaryColumn::bind($protector->encryptSecret('mfa_secret', $secret)),
+            'key_version' => 1,
+            'last_used_counter' => null,
+            'last_used_at' => null,
+            'verified_at' => $now,
+            'disabled_at' => null,
+            'disabled_by' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        unset($secret);
+
+        $pharmacyActor = new ActorContext(
+            $pharmacyUserId,
+            AccountType::Pharmacy,
+            AccountStatus::Active,
+            LanguagePreference::English,
+            AssuranceLevel::Aal2Totp,
+            1,
+            null,
+            null,
+            [],
+            Capabilities::AUTHENTICATED_SELF,
+        );
+
+        $onboarded = $registerPharmacy->handle($pharmacyActor, [
+            'legal_name' => $canaries['legal_name'],
+            'public_name' => $publicName,
+            'legal_registration_identifier' => $canaries['registration'],
+            'branch_public_name' => 'E2E Main Branch',
+            'address' => $canaries['address'],
+            'country_code' => 'EG',
+            'latitude' => 30.0444,
+            'longitude' => 31.2357,
+            'phone' => $canaries['phone'],
+        ]);
+        if ($onboarded->organizationId === null || $onboarded->version === null) {
+            throw new RuntimeException('Pharmacy onboarding did not produce an organization.');
+        }
+
+        $opened = $verification->openPharmacyCase($pharmacyActor);
+        $created = $uploads->createDoctorUpload($pharmacyActor, [
+            'case_id' => $opened->caseId,
+            'requirement_code' => 'organization_registration_evidence',
+            'expected_size_bytes' => strlen($bytes),
+            'declared_media_type' => 'application/pdf',
+        ]);
+        if (! isset($created['grant'], $created['projection'])) {
+            throw new RuntimeException('Pharmacy upload intent was not created.');
+        }
+        $objects->writeAt(
+            new StoredObjectRef(
+                $policy->objectNamespace(),
+                $created['grant']->objectId,
+                $created['grant']->storageLocator,
+            ),
+            'application/pdf',
+            $bytes,
+        );
+        $uploads->completeDoctorUpload($pharmacyActor, Identifier::fromString($created['projection']->uploadId));
+        $processor->process(Identifier::fromString($created['projection']->uploadId));
+
+        $verification->submitPharmacyCase($pharmacyActor, [
+            'case_version' => $opened->caseVersion,
+            'organization_version' => $opened->organizationVersion,
+        ]);
     }
 
     /**

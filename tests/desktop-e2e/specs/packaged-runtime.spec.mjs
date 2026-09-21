@@ -45,12 +45,39 @@ describe(`Packaged ${PRODUCT} runtime`, () => {
       electronType: typeof window.electron,
       clinicType: typeof window.clinic,
       clinicFrozen: Object.isFrozen(window.clinic),
+      clinicKeys: window.clinic ? Object.keys(window.clinic) : [],
+      pharmacyType: window.clinic ? typeof window.clinic.pharmacy : 'missing',
+      pharmacyKeys: window.clinic && window.clinic.pharmacy ? Object.keys(window.clinic.pharmacy) : [],
+      hasInvoke: Boolean(window.clinic && 'invoke' in window.clinic),
+      hasIpcRenderer: typeof window.ipcRenderer,
     }));
 
     expect(isolation.requireType).toBe('undefined');
     expect(isolation.processType).toBe('undefined');
     expect(isolation.electronType).toBe('undefined');
     expect(isolation.clinicType).toBe('object');
+    expect(isolation.hasInvoke).toBe(false);
+    expect(isolation.hasIpcRenderer).toBe('undefined');
+    expect(isolation.clinicKeys).not.toContain('invoke');
+
+    if (PRODUCT === 'Clinic Pharmacy') {
+      expect(isolation.pharmacyType).toBe('object');
+      expect(isolation.pharmacyKeys).toEqual(expect.arrayContaining([
+        'getOwnOrganization',
+        'onboard',
+        'openVerificationCase',
+        'verificationStatus',
+        'submitVerification',
+        'selectEvidence',
+        'clearEvidence',
+        'uploadEvidence',
+        'uploadStatus',
+      ]));
+    } else {
+      expect(isolation.pharmacyType).toBe('undefined');
+      expect(isolation.clinicKeys).not.toContain('pharmacy');
+      expect(isolation.pharmacyKeys).toEqual([]);
+    }
   });
 
   it('shows the unsigned-in boot shell and does not persist session material in renderer storage', async () => {
@@ -85,6 +112,7 @@ describe(`Packaged ${PRODUCT} runtime`, () => {
     expect(storage.localStorageKeys).toEqual([]);
     expect(storage.sessionStorageKeys).toEqual([]);
     expect(storage.cookie).not.toMatch(/access_token|refresh_token|session/i);
+    expect(JSON.stringify(storage)).not.toMatch(/X-Amz-Signature|verification\/q\/|verification\/c\//);
   });
 
   it('refuses hostile navigation and new windows', async () => {
