@@ -75,6 +75,12 @@ describe('Clinic Doctor — packaged API exact-origin allowlist', () => {
     expect(resolve(DEVELOPMENT_API_BASE_URL, UNPACKAGED, [])).toBe(DEVELOPMENT_API_BASE_URL);
   });
 
+  it('does not activate the development HTTP allowance when packaged', () => {
+    expect(() => resolve(DEVELOPMENT_API_BASE_URL, PACKAGED)).toThrow('INSECURE_TRANSPORT');
+    expect(() => resolve(undefined, PACKAGED, [])).toThrow('PACKAGED_ALLOWLIST_MISSING');
+    expect(() => resolve(undefined, PACKAGED, [APPROVED])).toThrow('ORIGIN_REFUSED');
+  });
+
   it('does not trust the sibling desktop packaged origin', () => {
     expect(() => resolve(SIBLING, PACKAGED, [APPROVED])).toThrow('ORIGIN_REFUSED');
     expect(resolve(SIBLING, PACKAGED, [SIBLING])).toBe(SIBLING);
