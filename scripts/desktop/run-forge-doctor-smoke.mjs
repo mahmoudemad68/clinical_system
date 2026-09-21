@@ -225,6 +225,30 @@ async function probeCoreApi(baseUrl) {
   }
 }
 
+function electronSandboxPath() {
+  for (const dir of [join(repoRoot, 'node_modules', 'electron'), join(doctorApp, 'node_modules', 'electron')]) {
+    const helper = join(dir, 'dist', 'chrome-sandbox');
+    if (existsSync(helper)) {
+      return helper;
+    }
+  }
+  return null;
+}
+
+function ensureElectronRuntime() {
+  if (electronSandboxPath()) {
+    return;
+  }
+  const installer = join(repoRoot, 'node_modules', 'electron', 'install.js');
+  if (!existsSync(installer)) {
+    throw new Error('Electron package is not installed at the workspace root');
+  }
+  const installed = spawnSync(process.execPath, [installer], { cwd: repoRoot, stdio: 'inherit' });
+  if (installed.status !== 0) {
+    throw new Error(`Electron download failed with status ${installed.status ?? 'null'}`);
+  }
+}
+
 async function main() {
   if (process.platform === 'linux' && !process.env.DISPLAY && process.env.CLINIC_FORGE_SMOKE_NESTED !== '1') {
     const rerun = spawnSync('xvfb-run', ['-a', process.execPath, fileURLToPath(import.meta.url)], {
@@ -242,6 +266,7 @@ async function main() {
   const apiBase = process.env.CLINIC_API_BASE_URL?.trim() || 'http://localhost:8080';
   const stdoutChunks = [];
 
+  ensureElectronRuntime();
   const sandbox = spawnSync(process.execPath, [join(here, 'ensure-linux-chromium-sandbox.mjs')], {
     cwd: doctorApp,
     stdio: 'inherit',
