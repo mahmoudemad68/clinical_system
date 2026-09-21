@@ -31,7 +31,37 @@ import { TokenRefreshSession } from './token-refresh';
  * Packaged API origin trust comes from `PACKAGED_API_ALLOWED_ORIGINS` (baked
  * into this bundle). Runtime `CLINIC_API_BASE_URL` only selects among that
  * list; it cannot add a host.
+ *
+ * Device/bearer Core calls are cookieless (`credentials: 'omit'`). Laravel
+ * browser-session cookies and CSRF tokens are never sent or stored for this
+ * transport. Do not add X-XSRF-TOKEN headers here.
  */
+
+/** Explicit cookieless Fetch mode for every device Core and object-store call. */
+export const DEVICE_NET_FETCH_CREDENTIALS = 'omit' as const;
+
+async function deviceNetFetch(
+  url: string,
+  init: {
+    method: string;
+    headers: Record<string, string>;
+    body?: BodyInit;
+    redirect?: RequestRedirect;
+  },
+): Promise<Response> {
+  const requestInit: RequestInit = {
+    method: init.method,
+    headers: init.headers,
+    credentials: DEVICE_NET_FETCH_CREDENTIALS,
+  };
+  if (init.body !== undefined) {
+    requestInit.body = init.body;
+  }
+  if (init.redirect !== undefined) {
+    requestInit.redirect = init.redirect;
+  }
+  return net.fetch(url, requestInit);
+}
 
 export class GatewayError extends Error {
   constructor(readonly failureCode: string) {
@@ -104,9 +134,7 @@ async function requestJson<T>(
     throw new Error('ORIGIN_REFUSED');
   }
 
-  // exactOptionalPropertyTypes: omit `body` entirely when the request has none.
-  // Passing `body: undefined` is not assignable to RequestInit.
-  const response = await net.fetch(
+  const response = await deviceNetFetch(
     target.toString(),
     body === undefined
       ? { method, headers }
@@ -147,7 +175,7 @@ export async function putIssuedUploadBytes(
   body: Uint8Array,
 ): Promise<void> {
   const payload = Buffer.from(body);
-  const response = await net.fetch(url, {
+  const response = await deviceNetFetch(url, {
     method: 'PUT',
     headers,
     body: payload,

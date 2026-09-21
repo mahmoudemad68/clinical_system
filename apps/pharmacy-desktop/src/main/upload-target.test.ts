@@ -56,4 +56,20 @@ describe('issued upload target validation', () => {
     );
     expect(target.url.startsWith('http://127.0.0.1:9000/')).toBe(true);
   });
+
+  it.each(['Host', 'host', 'HOST', 'Connection', 'transfer-encoding'])(
+    'fail-closes when the issued target includes forbidden header %s',
+    (name) => {
+      expect(() =>
+        parseIssuedUploadTarget(
+          {
+            method: 'PUT',
+            url: 'https://objects.example/upload',
+            headers: { [name]: '127.0.0.1:19000', 'Content-Type': 'application/pdf' },
+          },
+          false,
+        ),
+      ).toThrow(UploadTargetError);
+    },
+  );
 });

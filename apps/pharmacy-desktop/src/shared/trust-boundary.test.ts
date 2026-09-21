@@ -505,4 +505,17 @@ describe('Clinic Pharmacy — packaged API origin trust boundary', () => {
     expect(gateway).toContain('tokenRefresh.run');
     expect(gateway).toContain('persist: persistDeviceTokens');
   });
+
+  it('issues Core and object-store fetches without session cookies or CSRF headers', () => {
+    const gateway = readCode('src/main/platform-gateway.ts');
+    expect(gateway).toContain("DEVICE_NET_FETCH_CREDENTIALS = 'omit'");
+    expect(gateway).toContain('credentials: DEVICE_NET_FETCH_CREDENTIALS');
+    expect(gateway).not.toContain("credentials: 'include'");
+    expect(gateway).not.toContain("credentials: 'same-origin'");
+    expect(gateway).not.toContain('useSessionCookies: true');
+    expect(gateway).not.toContain('XSRF-TOKEN');
+    expect(gateway).not.toContain('X-XSRF-TOKEN');
+    expect(gateway).not.toContain('X-CSRF-TOKEN');
+    expect((gateway.match(/net\.fetch\(/g) ?? []).length).toBe(1);
+  });
 });

@@ -37,7 +37,7 @@ vi.mock('./packaged-api-allowlist', () => ({
   PACKAGED_API_ALLOWED_ORIGINS: allowlistState.origins,
 }));
 
-import { platformGateway, resetPlatformGatewaySession } from './platform-gateway';
+import { platformGateway, putIssuedUploadBytes, resetPlatformGatewaySession } from './platform-gateway';
 
 function envelope(status: number, data: unknown, extra: Record<string, unknown> = {}) {
   return {
@@ -306,5 +306,202 @@ describe('Clinic Pharmacy — platform gateway origin and refresh', () => {
 
     await expect(platformGateway.logout('en')).rejects.toThrow();
     expect(clearMock).not.toHaveBeenCalled();
+  });
+});
+
+function fetchInit(callIndex: number): {
+  credentials?: string;
+  headers?: Record<string, string>;
+  method?: string;
+  redirect?: string;
+  body?: unknown;
+} {
+  return (fetchMock.mock.calls[callIndex]?.[1] ?? {}) as {
+    credentials?: string;
+    headers?: Record<string, string>;
+    method?: string;
+    redirect?: string;
+    body?: unknown;
+  };
+}
+
+function expectCookielessDeviceFetch(
+  callIndex: number,
+  options: { bearer?: boolean; refreshBody?: boolean } = {},
+): void {
+  const init = fetchInit(callIndex);
+  expect(init.credentials).toBe('omit');
+  const headers = init.headers ?? {};
+  const names = Object.keys(headers).map((name) => name.toLowerCase());
+  expect(names).not.toContain('cookie');
+  expect(names).not.toContain('x-xsrf-token');
+  expect(names).not.toContain('x-csrf-token');
+  if (options.bearer) {
+    expect(headers['Authorization']?.startsWith('Bearer ')).toBe(true);
+  } else {
+    expect(headers['Authorization']).toBeUndefined();
+  }
+  if (options.refreshBody) {
+    expect(String(init.body ?? '')).toContain('"refresh_token"');
+    expect(String(init.body ?? '')).not.toContain('clinic_session');
+  }
+}
+
+describe('Clinic Pharmacy — cookieless device transport', () => {
+  const previousApi = process.env['CLINIC_API_BASE_URL'];
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    persistMock.mockReset();
+    loadMock.mockReset();
+    loadMock.mockReturnValue(null);
+    clearMock.mockReset();
+    appState.isPackaged = false;
+    allowlistState.origins.splice(0, allowlistState.origins.length, APPROVED);
+    delete process.env['CLINIC_API_BASE_URL'];
+    resetPlatformGatewaySession();
+  });
+
+  afterEach(() => {
+    if (previousApi === undefined) {
+      delete process.env['CLINIC_API_BASE_URL'];
+    } else {
+      process.env['CLINIC_API_BASE_URL'] = previousApi;
+    }
+  });
+
+  it('uses cookieless credentials for health, login, MFA, refresh, and authenticated Core calls', async () => {
+    fetchMock
+      .mockResolvedValueOnce(healthOk())
+      .mockResolvedValueOnce(
+        envelope(200, {
+          status: 'mfa_required',
+          mfa_required: true,
+          challenge_id: '0199a5c8-0000-7000-8000-0000000000aa',
+          session_kind: 'device',
+          account_type: 'pharmacy',
+        }),
+      )
+      .mockResolvedValueOnce(
+        envelope(200, {
+          status: 'active',
+          mfa_required: false,
+          session_kind: 'device',
+          user_id: 'u1',
+          account_type: 'pharmacy',
+          access_token: 'issued-access',
+          refresh_token: 'issued-refresh',
+        }),
+      )
+      .mockResolvedValueOnce(
+        envelope(200, {
+          user_id: 'u1',
+          account_type: 'pharmacy',
+          status: 'active',
+          language: 'en',
+          assurance_level: 'aal2_totp',
+          profile_links: [],
+        }),
+      )
+      .mockResolvedValueOnce(envelope(200, { capabilities: [] }));
+
+    await platformGateway.health('en');
+    const loginView = await platformGateway.login('en', {
+      phone: '01000000000',
+      password: 'password-value',
+      deviceLabel: 'synthetic',
+    });
+    const mfaView = await platformGateway.verifyMfa('en', {
+      challengeId: '0199a5c8-0000-7000-8000-0000000000aa',
+      code: '123456',
+    });
+    const me = await platformGateway.me('en');
+
+    expect(loginView.mfaRequired).toBe(true);
+    expect(mfaView.status).toBe('active');
+    expect(me.userId).toBe('u1');
+    expect(JSON.stringify(loginView)).not.toContain('issued-access');
+    expect(JSON.stringify(mfaView)).not.toContain('issued-refresh');
+    expect(persistMock).toHaveBeenCalledWith({ access: 'issued-access', refresh: 'issued-refresh' });
+
+    expectCookielessDeviceFetch(0);
+    expectCookielessDeviceFetch(1);
+    expectCookielessDeviceFetch(2);
+    expectCookielessDeviceFetch(3, { bearer: true });
+    expectCookielessDeviceFetch(4, { bearer: true });
+  });
+
+  it('keeps the next device POST cookieless after Core attempts Set-Cookie', async () => {
+    fetchMock.mockImplementation(async () => ({
+      status: 200,
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === 'set-cookie' ? 'clinic_session=fixture; Path=/' : null,
+      },
+      json: async () => ({
+        data: {
+          status: 'mfa_required',
+          mfa_required: true,
+          challenge_id: '0199a5c8-0000-7000-8000-0000000000bb',
+          session_kind: 'device',
+          account_type: 'pharmacy',
+        },
+        meta: {},
+        errors: [],
+        request_id: '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c01',
+      }),
+    }));
+
+    await platformGateway.login('en', {
+      phone: '01000000000',
+      password: 'password-value',
+      deviceLabel: 'synthetic',
+    });
+    await platformGateway.verifyMfa('en', {
+      challengeId: '0199a5c8-0000-7000-8000-0000000000bb',
+      code: '123456',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expectCookielessDeviceFetch(0);
+    expectCookielessDeviceFetch(1);
+    expect(headerBag(1)['Cookie']).toBeUndefined();
+    expect(headerBag(1)['X-XSRF-TOKEN']).toBeUndefined();
+  });
+
+  it('refreshes with the refresh token body and no cookie session', async () => {
+    loadMock.mockReturnValue({ access: 'old-access', refresh: 'old-refresh' });
+    fetchMock
+      .mockResolvedValueOnce(envelope(401, null, { errors: [{ code: 'UNAUTHENTICATED' }] }))
+      .mockResolvedValueOnce(envelope(200, { access_token: 'new-access', refresh_token: 'new-refresh' }))
+      .mockResolvedValueOnce(
+        envelope(200, {
+          user_id: 'u1',
+          account_type: 'pharmacy',
+          status: 'active',
+          language: 'en',
+          assurance_level: 'aal1',
+          profile_links: [],
+        }),
+      )
+      .mockResolvedValueOnce(envelope(200, { capabilities: [] }));
+
+    await platformGateway.me('en');
+    expectCookielessDeviceFetch(0, { bearer: true });
+    expectCookielessDeviceFetch(1, { refreshBody: true });
+    expectCookielessDeviceFetch(2, { bearer: true });
+  });
+
+  it('PUTs issued upload bytes cookieless without the Core bearer', async () => {
+    fetchMock.mockResolvedValueOnce({ status: 200 });
+    await putIssuedUploadBytes(
+      'https://objects.example/upload?X-Amz-Signature=synthetic',
+      { 'Content-Type': 'application/pdf' },
+      new Uint8Array([1, 2, 3]),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expectCookielessDeviceFetch(0);
+    expect(fetchInit(0).redirect).toBe('error');
+    expect(fetchInit(0).method).toBe('PUT');
   });
 });

@@ -366,6 +366,7 @@ jobs:
         run: |
           ./vendor/bin/pest \
             tests/Feature/Platform/S3StoreObjectContractTest.php \
+            tests/Unit/Platform/S3StoreObjectUploadGrantHeadersTest.php \
             tests/Unit/Platform/ClamdScanObjectTest.php \
             tests/Feature/Verification/VerificationSecureFileProviderTest.php \
             tests/Feature/Verification/VerificationUploadFlowsTest.php \
@@ -612,7 +613,7 @@ jobs:
         run: npm run packages:test
 
       - name: Forge Doctor smoke helpers
-        run: node --test scripts/desktop/forge-doctor-smoke.test.mjs
+        run: node --test scripts/desktop/forge-doctor-smoke.test.mjs scripts/desktop/cookieless-electron-transport.test.mjs
 
       - name: Linux runtime libraries for Forge development smoke
         run: |
@@ -629,6 +630,9 @@ jobs:
             libxrandr2 libxfixes3 libxext6 libxi6 libx11-xcb1 libxcb-dri3-0 \
             libxshmfence1 libxss1 libxtst6 libpango-1.0-0 libpangocairo-1.0-0 \
             libcairo2 libcups2 libasound2
+
+      - name: Cookieless Electron net.fetch runtime
+        run: npm run desktop:cookieless-electron-transport
 
       - name: Forge development Doctor smoke
         run: npm run desktop:forge-doctor-smoke
