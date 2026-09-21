@@ -307,3 +307,7 @@ Phase 02 as a whole is **not** PASS.
 - Reviewer document TTL 120s and queue page size 25/100 remain
   ENGINEERING_DEFAULT.
 - Signed GET URLs remain application-owned and bearer-style while valid.
+- Aborting an in-flight HTTP request is not treated as proof the server did
+  not commit; TIMEOUT keeps the original idempotency key.
+- `ino` uniqueness varies by platform; the open file descriptor is the
+  object pin, not a second pathname open.
