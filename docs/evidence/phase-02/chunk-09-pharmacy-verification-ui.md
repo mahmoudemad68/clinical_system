@@ -27,10 +27,13 @@ remains fail-closed. This chunk does not bypass those gates.
 
 - **Branch:** `cursor/phase-02-pharmacy-verification-ui-cc7f`
 - **Base (GitHub `main` after merged PR #14):** `06a3f0551872f96ffd02093ce054a8486a612e37`
+- **CI-verified HEAD:** `72e60ab95d808b8838dc8ea9c6c9a3c2a164ff38`
+- **GitHub CI:** `pull-request` run **35562798541** SUCCESS on that exact HEAD
+  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35562798541)
 - **Recorded:** 2026-09-21
 - **Environment:** host Node 22 workspace, PHP 8.3 Core Pest against local
-  PostgreSQL `clinic_test`. Packaged Electron E2E and Admin Playwright run in
-  GitHub `pull-request` CI on this HEAD.
+  PostgreSQL `clinic_test`. Packaged Electron E2E and Admin Playwright ran in
+  that GitHub `pull-request` job set.
 
 ## What was implemented
 
@@ -239,11 +242,15 @@ pharmacy case.
 | Core `pint --test` on touched PHP | passed |
 | Core Pest `SeedAdminVerificationBrowserFixtureTest.php` | **3 passed**, 19 assertions |
 
-GitHub `pull-request` CI on this HEAD is recorded after the Draft PR run
-completes. Packaged Electron E2E and Admin Playwright are CI jobs.
-
-Gitleaks, Trivy, and OpenVEX were **not** weakened. Contracts were not
-changed in this chunk.
+GitHub `pull-request` run **35562798541** on
+`72e60ab95d808b8838dc8ea9c6c9a3c2a164ff38`: **SUCCESS**. 13 jobs passed
+(Detect changed areas, Security scans, Supply-chain policy, Contracts,
+Core API, Admin web, Electron desktops, Secure-file providers, Runtime
+image scan core-api, Runtime image scan ai-service, Packaged Electron E2E
+ubuntu/macos/windows). Flutter and AI service were skipped as unchanged.
+Admin Playwright: **1 passed** (8.6s) covering doctor then pharmacy in one
+reviewer session. Gitleaks, Trivy, and OpenVEX were **not** weakened.
+Contracts were not changed in this chunk.
 
 Phase 02 as a whole is **not** PASS.
 
