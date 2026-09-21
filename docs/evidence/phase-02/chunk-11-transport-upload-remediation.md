@@ -14,7 +14,8 @@ It does **not** itself close Chunk 11.
 - **Baseline (GitHub `main`):** `4541ec03323f6c7f14546a85bdfc7f8eda616403`
   This work does **not** reopen or continue PR #17 or PR #18.
 - **Implementation HEAD:** `50be552e3b8af0be717da4adc4f76f32f7b5bfd5`
-- **GitHub CI:** (filled after the final-head `pull-request` run)
+- **Recorded-CI HEAD:** `673f2f4ac531486c2fdd6b183ad2d5e0a6a83831`
+- **GitHub CI:** SUCCESS `pull-request` run [35618740389](https://github.com/mahmoudemad68/clinical_system/actions/runs/35618740389) on `673f2f4ac531486c2fdd6b183ad2d5e0a6a83831` (14 checks success, AI service skipped)
 - **Recorded:** 2026-09-21
 
 ## DOC-LOGIN-CSRF-001
@@ -97,10 +98,33 @@ Packaged security invariants are unchanged (source trust-boundary tests plus pac
 | `./vendor/bin/phpstan analyse --no-progress --memory-limit=1G` | 0 errors |
 | `./vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress --fail-on-uncovered` | 0 violations |
 | `./vendor/bin/pint --dirty` | passed |
-| Packaged Electron E2E | GitHub `desktop-packaged-e2e` on final HEAD |
-| Forge Doctor smoke | GitHub `desktop` job on final HEAD |
+| Packaged Electron E2E | GitHub SUCCESS on ubuntu/macOS/windows: Doctor **5** + Pharmacy **5** passing per OS |
+| Forge Doctor smoke | GitHub SUCCESS: `Forge Doctor smoke passed.` |
+| Cookieless Electron runtime (CI) | GitHub SUCCESS: `Cookieless Electron net.fetch runtime passed.` |
 
 Local MinIO was `http://127.0.0.1:19000` (anonymous GET 403). Port 9000 on this VM is occupied by another HTTP listener, so phpunit.xml’s default `AWS_ENDPOINT=http://127.0.0.1:9000` is overridden for live object-store tests. CI starts MinIO on 9000 via `scripts/ci/start-secure-file-providers.sh`.
+
+## Final-head GitHub CI (`673f2f4`)
+
+https://github.com/mahmoudemad68/clinical_system/actions/runs/35618740389 — **SUCCESS** (`pull_request`, candidate SHA `673f2f4ac531486c2fdd6b183ad2d5e0a6a83831`).
+
+| Check | Result |
+| --- | --- |
+| Detect changed areas | success |
+| Contracts | success |
+| Supply-chain policy | success |
+| Security scans | success |
+| Core API | success — Pest **792 passed**, 14 skipped, 16927 assertions |
+| Secure-file providers | success — Pest **50 passed** / 620 assertions (live MinIO + clamd, including `S3StoreObjectUploadGrantHeadersTest` and Doctor/Pharmacy `VerificationSecureFileProviderTest`) |
+| Electron desktops | success — Doctor **161**, Pharmacy **138**, helper **5**, cookieless runtime passed, Forge Doctor smoke passed |
+| Packaged Electron E2E (ubuntu-latest) | success — Doctor 5 + Pharmacy 5 |
+| Packaged Electron E2E (macos-latest) | success — Doctor 5 + Pharmacy 5 |
+| Packaged Electron E2E (windows-latest) | success — Doctor 5 + Pharmacy 5 |
+| Admin web | success — browser admin verification **7 passed** |
+| Flutter | success |
+| Runtime image scan (core-api) | success |
+| Runtime image scan (ai-service) | success |
+| AI service | skipped (no AI service path change) |
 
 ## Prior HEAD `f352dec` CI (superseded)
 
@@ -122,6 +146,6 @@ Local live clamd on this VM returned `Clean` for the EICAR sample in `ClamdScanO
 
 Path-style MinIO signed PUT URLs include the object key in the URL path. Device HTTP create responses therefore contain that path inside `upload_target.url`. Renderer IPC still drops the signed target; Core `__debugInfo` still redacts locator/URL.
 
-Windows packaged E2E may flake on Electron binary download (504). Flutter CI may flake on sqlite3mc asset hash when root `package.json` changes.
+Windows packaged E2E can flake on Electron binary download (504); that happened on superseded `f352dec` and passed on `673f2f4`. Flutter CI can flake on sqlite3mc asset hash when root `package.json` changes; that also passed on `673f2f4`.
 
 Out of scope and unchanged: Doctor clinic-location/staff UI, Patient Flutter, extra Pharmacy branches/memberships, DEF-SEC-MFA-001, SF-001, G-08-04, staging provisioning, general Doctor profile PATCH, Phase 03, production TLS/KMS, `designs/**`.
