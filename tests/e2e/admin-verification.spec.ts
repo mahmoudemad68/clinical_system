@@ -170,7 +170,7 @@ test.describe('admin verification review', () => {
 
     await page.getByRole('link', { name: /Open case|فتح الحالة/ }).click();
     await expect(page.getByRole('heading', { name: /Verification case|حالة التحقق/ })).toBeVisible();
-    await expect(page.getByText(fixture.pharmacy_case.public_name)).toBeVisible();
+    await expect(page.getByRole('heading', { name: fixture.pharmacy_case.public_name })).toBeVisible();
     await expect(
       page.getByText(/Displayed organization, branch, and membership statuses come from the server|حالات المنظمة والفرع والعضوية المعروضة صادرة من الخادم/),
     ).toBeVisible();
