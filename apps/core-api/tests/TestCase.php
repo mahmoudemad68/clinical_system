@@ -21,4 +21,11 @@ abstract class TestCase extends BaseTestCase
             }
         }
     }
+
+    public function clearBrowserSession(): void
+    {
+        $this->withCredentials = false;
+        $this->defaultCookies = [];
+        $this->unencryptedCookies = [];
+    }
 }

@@ -9,6 +9,7 @@ use Modules\Access\Contracts\GrantStore;
 use Modules\Access\Support\Capabilities;
 use Modules\Audit\Services\RecordPrivilegedFailure;
 use Modules\Auth\Contracts\AuthDirectory;
+use Modules\Identity\Contracts\ClinicSubjectPrivacy;
 use Modules\Identity\Contracts\DoctorSubjectPrivacy;
 use Modules\Identity\Contracts\PatientSubjectPrivacy;
 use Modules\Identity\Contracts\PharmacySubjectPrivacy;
@@ -41,6 +42,7 @@ final class ExportSubjectDataService
         private readonly PatientSubjectPrivacy $patientPrivacy,
         private readonly DoctorSubjectPrivacy $doctorPrivacy,
         private readonly PharmacySubjectPrivacy $pharmacyPrivacy,
+        private readonly ClinicSubjectPrivacy $clinicPrivacy,
     ) {}
 
     public function handle(ActorContext $initiator, Identifier $userId): SubjectDataExport
@@ -99,7 +101,7 @@ final class ExportSubjectDataService
             'backup_artefacts' => null,
         ];
 
-        $counts = array_merge($counts, $this->patientPrivacy->exportCounts($userId), $this->doctorPrivacy->exportCounts($userId), $this->pharmacyPrivacy->exportCounts($userId));
+        $counts = array_merge($counts, $this->patientPrivacy->exportCounts($userId), $this->doctorPrivacy->exportCounts($userId), $this->pharmacyPrivacy->exportCounts($userId), $this->clinicPrivacy->exportCounts($userId));
 
         $holdings = array_map(
             static function (SubjectHoldingPlan $plan) use ($counts): array {
@@ -115,7 +117,7 @@ final class ExportSubjectDataService
                     ], true) ? null : $count,
                 ];
             },
-            [...Phase01SubjectHoldings::plan(), ...$this->patientPrivacy->holdings(), ...$this->doctorPrivacy->holdings(), ...$this->pharmacyPrivacy->holdings()],
+            [...Phase01SubjectHoldings::plan(), ...$this->patientPrivacy->holdings(), ...$this->doctorPrivacy->holdings(), ...$this->pharmacyPrivacy->holdings(), ...$this->clinicPrivacy->holdings()],
         );
 
         return new SubjectDataExport(

@@ -1,0 +1,22 @@
+{
+    "name": "clinic/clinics",
+    "description": "Clinic locations and staff membership foundation",
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Clinics\\": "app/",
+            "Modules\\Clinics\\Database\\Factories\\": "database/factories/",
+            "Modules\\Clinics\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Clinics\\Tests\\": "tests/"
+        }
+    }
+}

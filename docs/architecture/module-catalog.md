@@ -16,9 +16,11 @@ implements the `Verification` case/document-metadata/decision foundation.
 Phase 02 chunk 04 implements doctor verification secure-file ingestion.
 Phase 02 chunk 07 implements the canonical `Pharmacies` organization, initial
 branch, and founding owner-membership foundation. Phase 02 chunk 08 integrates
-pharmacy verification into the existing Verification pipeline. Phase 10 later
-extends that same module with catalog, operating mode, payment methods, and
-business capability tenancy. Clinic locations and remaining Phase 02 slices
+pharmacy verification into the existing Verification pipeline. Phase 02 chunk 10
+implements the `Clinics` location, secretary invitation, and staff-membership
+foundation. Phase 10 later
+extends that same Pharmacies module with catalog, operating mode, payment methods, and
+business capability tenancy. Remaining Phase 02 client UX and public discovery
 remain later work.
 
 **Classification levels** are defined in
@@ -126,9 +128,13 @@ cookies. TOTP enrolment HTTP is not exposed; bootstrap inserts a verified factor
 `AuditedSensitiveDecryptor`, `RotateIdentityKeysService` (`identity:rotate-keys`),
 `PatientIdentityRegistry` (Patients adapter; claim still off), `PatientSubjectPrivacy`
 (Identity contract; Patients adapter only), `DoctorSubjectPrivacy`
-(Identity contract; Doctors adapter only), `LinkVerifiedPatientAccount`
+(Identity contract; Doctors adapter only), `PharmacySubjectPrivacy`
+(Identity contract; Pharmacies adapter only), `ClinicSubjectPrivacy`
+(Identity contract; Clinics adapter only), `InvitationRecipientService`
+(purpose-specific invitation phone HMAC binding; never reports whether a
+phone belongs to an account), `LinkVerifiedPatientAccount`
 (not enabled), `DisableIdentity`, `EraseSubject`, `ExportSubjectData`.
-Identity never queries Patients or Doctors tables.
+Identity never queries Patients, Doctors, Pharmacies, or Clinics tables.
 **Events:** `identity.account_registered`, `identity.phone_verified`,
 `identity.profile_linked`, `identity.status_changed`. Audit also records
 `identity.subject_erased` (append-only; not an outbox event type).
@@ -180,7 +186,10 @@ status transition; no National ID/HMAC/key-version fields),
 `DoctorReviewerService` (narrow reviewer-facing professional display, specialty
 labels, and verification/public status; no National ID/HMAC/key-version/phone
 fields),
-`DoctorSubjectPrivacy` (Identity erasure/export adapter).
+`DoctorSubjectPrivacy` (Identity erasure/export adapter),
+`PracticeOwnerEligibilityService` (narrow Clinics-facing owner projection:
+doctor_id, user_id, verification_status, profile version only; no National ID,
+syndicate, ciphertext, HMAC, specialty internals, documents, or public_status).
 **Events:** `doctor.profile_created` (personal identifier-only).
 `doctor.verification_submitted` and `doctor.verification_decided` are owned by
 `Verification`.
@@ -270,14 +279,25 @@ Phase 02 module ownership is authoritative: verification documents belong here.
 ## `Clinics` — locations and staff
 
 **Built in:** 02. **Owner:** backend.
-**Public ports:** `CreateLocation`, `AssignStaff`, `GetLocation`,
-`SearchLocationsByGeography`.
-**Events:** `clinic.location_created`, `clinic.staff_assigned`.
-**Tables:** `clinic_locations`, `clinic_staff`.
+**Public services:** `CreateClinicLocation`, `UpdateClinicLocation`,
+`GetOwnClinicLocations`, `InviteClinicStaff`, `AcceptClinicStaffInvitation`,
+`ManageClinicMemberships`, `GetClinicLocation`, `ResolveActiveClinicMembership`,
+`PracticeOwnerEligibilityService` (Doctors public contract consumed by Clinics).
+**Events:** `clinic.location_changed`, `clinic.membership_changed`.
+**Tables:** `clinic_locations`, `clinic_staff_profiles`,
+`clinic_staff_memberships`, `clinic_staff_invitations`.
 **Classification:** personal. Location geometry is a PostGIS `geography(POINT)`
-with a GiST index.
+with a GiST index. Address is envelope-encrypted. Invitation targets are HMAC
+only. Personal staff location is never collected. Clinic geography is not a
+patient location.
 **Prohibited:** storing patient location for search convenience
-(`plan.md` section 150).
+(`plan.md` section 150); querying `doctor_profiles` from Clinics application
+SQL; public geographic search (Phase 08); schedules, appointment types, prices,
+availability, or booking (Phase 03).
+**Status (Phase 02 chunk 10):** private owner/staff APIs and secretary
+invitation/acceptance/revocation are implemented. `active` means authoritative
+location readiness only, not public directory listing. Doctor Electron clinic
+screens remain later work.
 
 ## `Appointments` — schedules and booking
 

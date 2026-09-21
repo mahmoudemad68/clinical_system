@@ -35,7 +35,8 @@ Reconciled to committed Core migrations under
 `patient_demographic_revisions`, `specialties`, `doctor_profiles`,
 `verification_cases`, `verification_documents`, `verification_decisions`,
 `verification_upload_intents`, `pharmacy_organizations`, `pharmacy_branches`,
-`pharmacy_memberships`.
+`pharmacy_memberships`, `clinic_locations`, `clinic_staff_profiles`,
+`clinic_staff_memberships`, `clinic_staff_invitations`.
 
 **Laravel catalog (not created by an application `Schema::create`):**
 `migrations`.
@@ -921,6 +922,105 @@ the branch to belong to the same `organization_id` via composite FK
 | `invited_at`, `accepted_at`, `revoked_at` | internal | Membership lifecycle instants | app | as row | at rest | Mahmoud | n/a |
 | `inviter_user_id`, `revoker_user_id` | personal | Nullable actor references | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `clinic_locations`
+
+Phase 02 chunk 10 clinic location foundation
+(`2026_09_21_120000_create_clinic_location_and_staff_tables.php`). Owned by
+an approved doctor's `doctor_profiles.id` FK. Application ownership checks
+go through `PracticeOwnerEligibilityService`; Clinics SQL does not query
+`doctor_profiles`. PostGIS `geography(Point, 4326)` with a GiST index.
+Coordinates are validated to legal WGS-84 latitude/longitude at the
+database. V1 Egypt service-area check is application `ENGINEERING_DEFAULT`.
+Schema is country-ready (`country_code` ISO-2). Clinic geography is a
+practice location, not a patient's location.
+
+**Writer.** Clinics module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked.
+
+**PII / sensitive.** Address is envelope-encrypted (`physical_address`
+purpose). Owner private HTTP may decrypt it. Events, logs, metrics, cache
+keys, URLs, audit metadata, and idempotency pointers never contain address
+or coordinates.
+
+`active` means authoritative location readiness only. It is not public
+directory listing, schedules, booking, clinical capability, or patient
+visibility.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 location identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `doctor_id` | internal | FK to authoritative `doctor_profiles.id` | app | as row | at rest | Mahmoud | n/a |
+| `public_name` | personal | Practice public name shown to the owner/staff | app | until erasure tombstone | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `address_ciphertext` | sensitive | Protected physical clinic address | app (audited decrypt) | until erasure tombstone | envelope | Mahmoud | owner_approved_2026-08-27 |
+| `address_key_version` | internal | Envelope key version | app | as row | at rest | Mahmoud | n/a |
+| `country_code` | internal | ISO 3166-1 alpha-2; V1 application requires EG | app | as row | at rest | Mahmoud | n/a |
+| `geography_point` | personal | PostGIS geography(Point, 4326) clinic location. Not a patient location. | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `status` | internal | `draft` / `pending` / `active` / `suspended` / `closed` (server-owned) | app | as row | at rest | Mahmoud | n/a |
+| `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `clinic_staff_profiles`
+
+Phase 02 chunk 10 linked staff identity. A staff profile is the user
+relationship, not a location grant. Personal staff location is never
+collected.
+
+**Writer.** Clinics module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 staff-profile identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `user_id` | personal | Linked user identity | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `clinic_staff_memberships`
+
+Phase 02 chunk 10 location-scoped membership. Secretary membership at
+location A grants nothing at location B. The location owner remains
+authoritative through `clinic_locations.doctor_id`. Role `doctor` is
+reserved by schema and is not written in this chunk. Personal staff
+location is never collected.
+
+**Writer.** Clinics module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 membership identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `staff_profile_id` | internal | FK to `clinic_staff_profiles` | app | as row | at rest | Mahmoud | n/a |
+| `location_id` | internal | FK to `clinic_locations`; membership scope | app | as row | at rest | Mahmoud | n/a |
+| `role` | internal | `doctor` (reserved) / `secretary` | app | as row | at rest | Mahmoud | n/a |
+| `status` | internal | `pending` / `active` / `suspended` / `revoked` | app | as row | at rest | Mahmoud | n/a |
+| `invited_at`, `accepted_at`, `revoked_at` | internal | Membership lifecycle instants | app | as row | at rest | Mahmoud | n/a |
+| `inviter_user_id`, `revoker_user_id` | personal | Nullable actor references | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `version` | internal | Optimistic concurrency | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `clinic_staff_invitations`
+
+Phase 02 chunk 10 secretary invitation. Single-use, expiring, bound to a
+phone HMAC. Plaintext phone is never stored. Invitation ID is not
+authorization. `ENGINEERING_DEFAULT` TTL is 72 hours until a product-
+approved value exists. Phase 09 owns SMS/email delivery; this table does
+not send messages.
+
+**Writer.** Clinics module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | UUIDv7 invitation identity | app | until row deleted | at rest | Mahmoud | n/a |
+| `location_id` | internal | FK to `clinic_locations` | app | as row | at rest | Mahmoud | n/a |
+| `role` | internal | `secretary` only | app | as row | at rest | Mahmoud | n/a |
+| `status` | internal | `pending` / `consumed` / `expired` / `cancelled` | app | as row | at rest | Mahmoud | n/a |
+| `target_phone_lookup_hmac` | sensitive | Blind match of intended recipient phone | app | until consumption/erasure tombstone | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `target_phone_key_version` | internal | HMAC key version | app | as row | at rest | Mahmoud | n/a |
+| `expires_at` | internal | Invitation expiry (`ENGINEERING_DEFAULT` 72h) | app | as row | at rest | Mahmoud | n/a |
+| `consumed_at` | internal | Single-use consumption instant | app | as row | at rest | Mahmoud | n/a |
+| `inviter_user_id` | personal | Owning-doctor actor reference | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
 ### `verification_cases`

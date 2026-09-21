@@ -14,6 +14,7 @@ use Modules\Doctors\Services\GetDoctorProfile;
 use Modules\Doctors\Services\ListSpecialties;
 use Modules\Doctors\Services\Persistence\PostgresDoctorProfileStore;
 use Modules\Doctors\Services\Persistence\PostgresSpecialtyStore;
+use Modules\Doctors\Services\PracticeOwnerEligibilityService;
 use Modules\Doctors\Services\RegisterDoctor;
 use Modules\Doctors\Support\DoctorProfileProjector;
 use Modules\Doctors\Support\DoctorProfileRowFactory;
@@ -40,6 +41,7 @@ final class DoctorsServiceProvider extends ServiceProvider
         $this->app->bind(GetDoctorProfile::class);
         $this->app->bind(ListSpecialties::class);
         $this->app->bind(DoctorApplicantService::class);
+        $this->app->bind(PracticeOwnerEligibilityService::class);
         $this->app->bind(DoctorReviewerService::class);
         $this->app->bind(DoctorProfileController::class);
     }
