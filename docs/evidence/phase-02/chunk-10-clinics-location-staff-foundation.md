@@ -28,8 +28,9 @@ remains fail-closed. This chunk does not bypass those gates.
 
 - **Branch:** `cursor/phase-02-clinics-location-staff-foundation-cc7f`
 - **Base (GitHub `main` after merged PR #15 / Chunk 09):** `ac244532fd63c7d839374bc796fcf6edad19401c`
-- **Working HEAD:** recorded at commit time in this file's CI section after the
-  pull-request workflow completes on the exact final SHA.
+- **CI-verified HEAD:** `84cfc482875cf7ea6acf32cb072af88d90551635`
+- **GitHub CI:** `pull-request` run **35574002563** SUCCESS on that exact HEAD
+  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35574002563)
 - **Recorded:** 2026-09-21
 - **Environment:** host PHP 8.3 with `pdo_pgsql`, PostgreSQL + PostGIS
   `clinic_test`. No Docker Compose. Redis/MinIO were not required for this
@@ -361,10 +362,20 @@ Doctor/Pharmacy/Patient/Admin operation IDs renamed.
 
 ## GitHub CI
 
-Pending on the exact final HEAD after the Draft PR `pull-request` workflow
-completes. This section will be updated with run ID/status before the
-independent-review handoff is considered complete. Chunk-only evidence.
-Phase 02 is **NOT PASS**.
+`pull-request` run **35574002563** SUCCESS on CI-verified HEAD
+`84cfc482875cf7ea6acf32cb072af88d90551635`
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35574002563).
+
+All required checks passed, including Core API, Contracts, Admin web,
+Electron desktops, packaged Electron E2E, security scans, and supply-chain
+policy. AI service and Flutter were skipped by path filters.
+
+The first run on `64034b5f19bbc383fd13e444fda1fc26c28743e4`
+(**35573585941**) failed Core API PHPStan (`missingType.iterableValue` /
+`missingType.return` in `PostgresClinicStore` and `ClinicOwnerGuard`). That
+was fixed in `84cfc48` and re-run successfully.
+
+Chunk-only evidence. Phase 02 is **NOT PASS**.
 
 ## Residuals (keep visible)
 
