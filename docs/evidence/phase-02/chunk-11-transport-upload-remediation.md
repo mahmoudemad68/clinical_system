@@ -13,7 +13,7 @@ It does **not** itself close Chunk 11.
 - **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/19
 - **Baseline (GitHub `main`):** `4541ec03323f6c7f14546a85bdfc7f8eda616403`
   This work does **not** reopen or continue PR #17 or PR #18.
-- **Implementation HEAD:** (filled after this commit is created)
+- **Implementation HEAD:** `50be552e3b8af0be717da4adc4f76f32f7b5bfd5`
 - **GitHub CI:** (filled after the final-head `pull-request` run)
 - **Recorded:** 2026-09-21
 
