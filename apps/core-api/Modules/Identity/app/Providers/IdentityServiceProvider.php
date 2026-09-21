@@ -7,11 +7,13 @@ namespace Modules\Identity\Providers;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\ServiceProvider;
 use Modules\Identity\Console\RotateIdentityKeysCommand;
+use Modules\Identity\Contracts\ClinicSubjectPrivacy;
 use Modules\Identity\Contracts\DoctorSubjectPrivacy;
 use Modules\Identity\Contracts\PatientIdentityRegistry;
 use Modules\Identity\Contracts\PatientSubjectPrivacy;
 use Modules\Identity\Contracts\PharmacySubjectPrivacy;
 use Modules\Identity\Contracts\UserDirectory;
+use Modules\Identity\Services\Adapters\UnavailableClinicSubjectPrivacy;
 use Modules\Identity\Services\Adapters\UnavailableDoctorSubjectPrivacy;
 use Modules\Identity\Services\Adapters\UnavailablePatientIdentityRegistry;
 use Modules\Identity\Services\Adapters\UnavailablePatientSubjectPrivacy;
@@ -20,6 +22,7 @@ use Modules\Identity\Services\AuditedSensitiveDecryptor;
 use Modules\Identity\Services\DisableIdentityService;
 use Modules\Identity\Services\EraseSubjectService;
 use Modules\Identity\Services\ExportSubjectDataService;
+use Modules\Identity\Services\InvitationRecipientService;
 use Modules\Identity\Services\LinkVerifiedPatientAccount;
 use Modules\Identity\Services\MeQuery;
 use Modules\Identity\Services\NationalIdProtector;
@@ -43,11 +46,12 @@ final class IdentityServiceProvider extends ServiceProvider
             (bool) config('identity.allow_synthetic_national_ids', false),
         ));
 
-        // Patients (50), Doctors (52), and Pharmacies (53) replace these adapters.
+        // Patients (50), Doctors (52), Pharmacies (53), and Clinics (53) replace these adapters.
         $this->app->singleton(PatientIdentityRegistry::class, UnavailablePatientIdentityRegistry::class);
         $this->app->singleton(PatientSubjectPrivacy::class, UnavailablePatientSubjectPrivacy::class);
         $this->app->singleton(DoctorSubjectPrivacy::class, UnavailableDoctorSubjectPrivacy::class);
         $this->app->singleton(PharmacySubjectPrivacy::class, UnavailablePharmacySubjectPrivacy::class);
+        $this->app->singleton(ClinicSubjectPrivacy::class, UnavailableClinicSubjectPrivacy::class);
 
         $this->app->bind(ResolveActorContext::class);
         $this->app->bind(MeQuery::class);
@@ -57,6 +61,7 @@ final class IdentityServiceProvider extends ServiceProvider
         $this->app->bind(LinkVerifiedPatientAccount::class);
         $this->app->bind(AuditedSensitiveDecryptor::class);
         $this->app->bind(RotateIdentityKeysService::class);
+        $this->app->bind(InvitationRecipientService::class);
     }
 
     public function boot(): void

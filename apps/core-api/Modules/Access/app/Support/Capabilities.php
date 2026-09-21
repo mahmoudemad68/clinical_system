@@ -40,6 +40,18 @@ final class Capabilities
 
     public const PHARMACIES_ORGANIZATION_READ_OWN = 'pharmacies.organization.read_own';
 
+    public const CLINICS_LOCATION_WRITE = 'clinics.location.write';
+
+    public const CLINICS_LOCATION_READ_OWN = 'clinics.location.read_own';
+
+    public const CLINICS_STAFF_INVITE = 'clinics.staff.invite';
+
+    public const CLINICS_STAFF_ACCEPT = 'clinics.staff.accept';
+
+    public const CLINICS_MEMBERSHIP_READ_OWN = 'clinics.membership.read_own';
+
+    public const CLINICS_MEMBERSHIP_REVOKE = 'clinics.membership.revoke';
+
     public const VERIFICATION_SUBMIT_OWN = 'verification.case.submit_own';
 
     public const VERIFICATION_STATUS_READ_OWN = 'verification.case.read_own';
@@ -81,6 +93,12 @@ final class Capabilities
         self::DOCTORS_PROFILE_READ_OWN,
         self::PHARMACIES_ONBOARDING,
         self::PHARMACIES_ORGANIZATION_READ_OWN,
+        self::CLINICS_LOCATION_WRITE,
+        self::CLINICS_LOCATION_READ_OWN,
+        self::CLINICS_STAFF_INVITE,
+        self::CLINICS_STAFF_ACCEPT,
+        self::CLINICS_MEMBERSHIP_READ_OWN,
+        self::CLINICS_MEMBERSHIP_REVOKE,
         self::VERIFICATION_SUBMIT_OWN,
         self::VERIFICATION_STATUS_READ_OWN,
         self::MFA_MANAGE_SELF,

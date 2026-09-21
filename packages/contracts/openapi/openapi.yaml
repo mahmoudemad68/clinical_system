@@ -35,7 +35,18 @@ info:
     `POST /api/v1/pharmacy-organizations/me/verification-submissions`,
     `GET /api/v1/pharmacy-organizations/me/verification-status`) on the
     existing Verification pipeline. Pharmacy Electron UX and Admin pharmacy
-    review UI remain absent.
+    review UI remain absent. Phase 02 chunk 10 adds the Clinics location and
+    staff foundation (`POST /api/v1/clinic-locations`,
+    `GET /api/v1/clinic-locations`,
+    `GET /api/v1/clinic-locations/{location_id}`,
+    `PATCH /api/v1/clinic-locations/{location_id}`,
+    `POST /api/v1/clinic-locations/{location_id}/staff-invitations`,
+    `GET /api/v1/clinic-locations/{location_id}/memberships`,
+    `DELETE /api/v1/clinic-locations/{location_id}/memberships/{membership_id}`,
+    `POST /api/v1/clinic-staff-invitations/{invitation_id}/accept`).
+    These are private owner/staff projections. There is no public clinic
+    directory, radius search, schedule, or booking contract in this slice.
+    Doctor Electron clinic screens remain absent.
 
     Compatibility rules (ADR 0003):
       * Additive optional fields are compatible within a version.
@@ -99,6 +110,14 @@ tags:
       only. Legal registration, legal name, address, and phone are write-only
       and never returned. There is no public pharmacy lookup or admin
       organization search in this slice.
+  - name: clinics
+    description: |
+      Phase 02 chunk 10 clinic location and staff foundation. Private
+      owner/staff projections only. Creating an active location means
+      authoritative location readiness, not public listing, schedules, or
+      booking. Address is envelope-encrypted and returned only on the owning
+      doctor's private GET/PATCH. Invitation phone is write-only, never stored
+      plaintext, and never returned. There is no public clinic directory.
   - name: admin
     description: |
       Phase 02 chunk 05 privileged Admin verification review. Requires an
@@ -1414,6 +1433,365 @@ paths:
           $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/v1/clinic-locations:
+    get:
+      tags: [clinics]
+      operationId: listOwnClinicLocations
+      summary: List the authenticated actor's private clinic locations
+      description: |
+        Owning approved doctors receive private projections including decrypted
+        address and coordinates. Active secretaries receive staff-safe
+        projections without address or coordinates. This is not a public
+        directory or geography search. Cursor pagination is actor-scoped.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/CursorParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Private clinic location page.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ClinicLocationPrivate'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    post:
+      tags: [clinics]
+      operationId: createClinicLocation
+      summary: Create an authoritative clinic location for the approved owning doctor
+      description: |
+        Requires an authenticated active doctor account, privileged MFA
+        session, and an approved doctor profile. Clients cannot assign
+        doctor_id, status, version, or verification flags. Status is
+        server-owned and becomes `active` when required fields pass. `active`
+        means location readiness only, not public listing. Address is
+        write-only on create, envelope-encrypted, and must never be logged.
+        Idempotency-Key is required.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClinicLocationCreateRequest'
+      responses:
+        '201':
+          description: Compact created location. GET is the canonical projection.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClinicLocationCreateResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/clinic-locations/{location_id}:
+    get:
+      tags: [clinics]
+      operationId: getOwnClinicLocation
+      summary: Read one private clinic location
+      description: |
+        Owner projection includes decrypted address and coordinates. Staff
+        projection omits them. Cross-owner access is non-enumerating 404.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Private clinic location projection.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClinicLocationPrivate'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [clinics]
+      operationId: updateClinicLocation
+      summary: Update an owned clinic location with optimistic concurrency
+      description: |
+        `expected_version` is required. Stale versions return VERSION_CONFLICT
+        and never last-write-wins. Clients cannot assign doctor_id, status, or
+        version override. Address is write-only on input for logging/redaction
+        and returned only on the owner projection.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClinicLocationUpdateRequest'
+      responses:
+        '200':
+          description: Updated owner projection.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClinicLocationPrivate'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/clinic-locations/{location_id}/staff-invitations:
+    post:
+      tags: [clinics]
+      operationId: inviteClinicStaff
+      summary: Invite a secretary to one clinic location
+      description: |
+        Only the approved owning doctor of that exact location may invite.
+        The inviteable role is secretary only and is server-owned. Phone is
+        write-only, canonicalized through Identity, stored as HMAC, and never
+        returned. Responses do not disclose whether the phone belongs to an
+        account. No SMS or email is sent. Idempotency-Key is required.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClinicStaffInvitationRequest'
+      responses:
+        '201':
+          description: Invitation created.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClinicStaffInvitationResult'
+        '200':
+          description: Existing pending invitation for the same bound identity.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClinicStaffInvitationResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/clinic-locations/{location_id}/memberships:
+    get:
+      tags: [clinics]
+      operationId: listClinicLocationMemberships
+      summary: List memberships for an owned clinic location
+      description: |
+        Owning approved doctor only. Returns membership_id, role, status,
+        version, and invited/accepted/revoked instants. Never phone, HMAC,
+        password, device, or clinical data.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Safe membership projections.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ClinicMembership'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/clinic-locations/{location_id}/memberships/{membership_id}:
+    delete:
+      tags: [clinics]
+      operationId: revokeClinicLocationMembership
+      summary: Revoke a membership at an owned clinic location
+      description: |
+        Only the owning approved doctor of that exact location may revoke.
+        Cross-clinic revocation is 404. Repeated revoke returns the stable
+        revoked state. Membership history is not hard-deleted.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: location_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+        - name: membership_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Revoked membership projection.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClinicMembership'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/clinic-staff-invitations/{invitation_id}/accept:
+    post:
+      tags: [clinics]
+      operationId: acceptClinicStaffInvitation
+      summary: Accept a clinic secretary invitation as the intended recipient
+      description: |
+        Invitation ID is not authorization. The authenticated actor must be
+        the active secretary whose phone HMAC matches the invitation binding.
+        Empty closed body. Idempotency-Key is required. Concurrent double
+        acceptance yields one active membership.
+      security:
+        - deviceToken: []
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - name: invitation_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClinicStaffInvitationAcceptRequest'
+      responses:
+        '200':
+          description: Active secretary membership.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClinicMembership'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /api/v1/doctors/me/verification-submissions:
     post:
@@ -3387,6 +3765,195 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PharmacyVerificationDocumentStatus'
+
+    ClinicLocationCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - public_name
+        - address
+        - country_code
+        - latitude
+        - longitude
+      properties:
+        public_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        address:
+          type: string
+          minLength: 1
+          maxLength: 500
+          writeOnly: true
+          description: Write-only on create. Envelope-encrypted. Never logged or placed in events, audit metadata, or idempotency pointers.
+        country_code:
+          $ref: '#/components/schemas/CountryCode'
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: WGS-84 latitude. V1 also requires the Egypt service area. ENGINEERING_DEFAULT bbox.
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: WGS-84 longitude. Stored as PostGIS geography(Point, 4326).
+
+    ClinicLocationCreateResult:
+      type: object
+      additionalProperties: false
+      required: [location_id, status, version]
+      properties:
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          type: string
+          enum: [active]
+        version:
+          type: integer
+          minimum: 1
+
+    ClinicLocationUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version]
+      properties:
+        expected_version:
+          type: integer
+          minimum: 1
+        public_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        address:
+          type: string
+          minLength: 1
+          maxLength: 500
+          writeOnly: true
+          description: Write-only on input for logging/redaction. Envelope-encrypted at rest.
+        country_code:
+          $ref: '#/components/schemas/CountryCode'
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+
+    ClinicLocationPrivate:
+      type: object
+      additionalProperties: false
+      description: |
+        Private owner/staff projection. Address, latitude, and longitude are
+        present only for the owning doctor. Staff projections omit them.
+        Never a public directory record.
+      required:
+        - location_id
+        - public_name
+        - country_code
+        - status
+        - version
+        - created_at
+        - updated_at
+      properties:
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        public_name:
+          type: string
+          maxLength: 200
+        country_code:
+          $ref: '#/components/schemas/CountryCode'
+        status:
+          type: string
+          enum: [draft, pending, active, suspended, closed]
+        version:
+          type: integer
+          minimum: 1
+        created_at:
+          $ref: '#/components/schemas/Instant'
+        updated_at:
+          $ref: '#/components/schemas/Instant'
+        address:
+          type: string
+          maxLength: 500
+          description: Owner private GET/PATCH only. Protected. Must be redacted from logs.
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+
+    ClinicStaffInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [phone]
+      properties:
+        phone:
+          type: string
+          maxLength: 32
+          writeOnly: true
+          description: Write-only. Canonicalized through Identity. Stored as HMAC only. Never echoed, logged, or placed in events.
+
+    ClinicStaffInvitationResult:
+      type: object
+      additionalProperties: false
+      required: [invitation_id, location_id, status, expires_at]
+      properties:
+        invitation_id:
+          $ref: '#/components/schemas/Uuid'
+        location_id:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          type: string
+          enum: [pending]
+        expires_at:
+          $ref: '#/components/schemas/Instant'
+
+    ClinicStaffInvitationAcceptRequest:
+      type: object
+      additionalProperties: false
+      description: Empty closed body. Invitation identity is server-derived.
+      properties: {}
+
+    ClinicMembership:
+      type: object
+      additionalProperties: false
+      required:
+        - membership_id
+        - role
+        - status
+        - version
+        - invited_at
+        - accepted_at
+        - revoked_at
+      properties:
+        membership_id:
+          $ref: '#/components/schemas/Uuid'
+        role:
+          type: string
+          enum: [doctor, secretary]
+        status:
+          type: string
+          enum: [pending, active, suspended, revoked]
+        version:
+          type: integer
+          minimum: 1
+        invited_at:
+          type: ['string', 'null']
+          format: date-time
+        accepted_at:
+          type: ['string', 'null']
+          format: date-time
+        revoked_at:
+          type: ['string', 'null']
+          format: date-time
 
     DoctorVerificationSubmissionRequest:
       type: object

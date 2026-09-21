@@ -787,6 +787,158 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clinic-locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the authenticated actor's private clinic locations
+         * @description Owning approved doctors receive private projections including decrypted
+         *     address and coordinates. Active secretaries receive staff-safe
+         *     projections without address or coordinates. This is not a public
+         *     directory or geography search. Cursor pagination is actor-scoped.
+         */
+        get: operations["listOwnClinicLocations"];
+        put?: never;
+        /**
+         * Create an authoritative clinic location for the approved owning doctor
+         * @description Requires an authenticated active doctor account, privileged MFA
+         *     session, and an approved doctor profile. Clients cannot assign
+         *     doctor_id, status, version, or verification flags. Status is
+         *     server-owned and becomes `active` when required fields pass. `active`
+         *     means location readiness only, not public listing. Address is
+         *     write-only on create, envelope-encrypted, and must never be logged.
+         *     Idempotency-Key is required.
+         */
+        post: operations["createClinicLocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-locations/{location_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one private clinic location
+         * @description Owner projection includes decrypted address and coordinates. Staff
+         *     projection omits them. Cross-owner access is non-enumerating 404.
+         */
+        get: operations["getOwnClinicLocation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update an owned clinic location with optimistic concurrency
+         * @description `expected_version` is required. Stale versions return VERSION_CONFLICT
+         *     and never last-write-wins. Clients cannot assign doctor_id, status, or
+         *     version override. Address is write-only on input for logging/redaction
+         *     and returned only on the owner projection.
+         */
+        patch: operations["updateClinicLocation"];
+        trace?: never;
+    };
+    "/api/v1/clinic-locations/{location_id}/staff-invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invite a secretary to one clinic location
+         * @description Only the approved owning doctor of that exact location may invite.
+         *     The inviteable role is secretary only and is server-owned. Phone is
+         *     write-only, canonicalized through Identity, stored as HMAC, and never
+         *     returned. Responses do not disclose whether the phone belongs to an
+         *     account. No SMS or email is sent. Idempotency-Key is required.
+         */
+        post: operations["inviteClinicStaff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-locations/{location_id}/memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List memberships for an owned clinic location
+         * @description Owning approved doctor only. Returns membership_id, role, status,
+         *     version, and invited/accepted/revoked instants. Never phone, HMAC,
+         *     password, device, or clinical data.
+         */
+        get: operations["listClinicLocationMemberships"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-locations/{location_id}/memberships/{membership_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a membership at an owned clinic location
+         * @description Only the owning approved doctor of that exact location may revoke.
+         *     Cross-clinic revocation is 404. Repeated revoke returns the stable
+         *     revoked state. Membership history is not hard-deleted.
+         */
+        delete: operations["revokeClinicLocationMembership"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic-staff-invitations/{invitation_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a clinic secretary invitation as the intended recipient
+         * @description Invitation ID is not authorization. The authenticated actor must be
+         *     the active secretary whose phone HMAC matches the invitation binding.
+         *     Empty closed body. Idempotency-Key is required. Concurrent double
+         *     acceptance yields one active membership.
+         */
+        post: operations["acceptClinicStaffInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/doctors/me/verification-submissions": {
         parameters: {
             query?: never;
@@ -1673,6 +1825,87 @@ export interface components {
             decision: "approved" | "rejected" | "changes_requested" | null;
             reason_code: string | null;
             documents: components["schemas"]["PharmacyVerificationDocumentStatus"][];
+        };
+        ClinicLocationCreateRequest: {
+            public_name: string;
+            /** @description Write-only on create. Envelope-encrypted. Never logged or placed in events, audit metadata, or idempotency pointers. */
+            address: string;
+            country_code: components["schemas"]["CountryCode"];
+            /**
+             * Format: double
+             * @description WGS-84 latitude. V1 also requires the Egypt service area. ENGINEERING_DEFAULT bbox.
+             */
+            latitude: number;
+            /**
+             * Format: double
+             * @description WGS-84 longitude. Stored as PostGIS geography(Point, 4326).
+             */
+            longitude: number;
+        };
+        ClinicLocationCreateResult: {
+            location_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            status: "active";
+            version: number;
+        };
+        ClinicLocationUpdateRequest: {
+            expected_version: number;
+            public_name?: string;
+            /** @description Write-only on input for logging/redaction. Envelope-encrypted at rest. */
+            address?: string;
+            country_code?: components["schemas"]["CountryCode"];
+            /** Format: double */
+            latitude?: number;
+            /** Format: double */
+            longitude?: number;
+        };
+        /**
+         * @description Private owner/staff projection. Address, latitude, and longitude are
+         *     present only for the owning doctor. Staff projections omit them.
+         *     Never a public directory record.
+         */
+        ClinicLocationPrivate: {
+            location_id: components["schemas"]["Uuid"];
+            public_name: string;
+            country_code: components["schemas"]["CountryCode"];
+            /** @enum {string} */
+            status: "draft" | "pending" | "active" | "suspended" | "closed";
+            version: number;
+            created_at: components["schemas"]["Instant"];
+            updated_at: components["schemas"]["Instant"];
+            /** @description Owner private GET/PATCH only. Protected. Must be redacted from logs. */
+            address?: string;
+            /** Format: double */
+            latitude?: number;
+            /** Format: double */
+            longitude?: number;
+        };
+        ClinicStaffInvitationRequest: {
+            /** @description Write-only. Canonicalized through Identity. Stored as HMAC only. Never echoed, logged, or placed in events. */
+            phone: string;
+        };
+        ClinicStaffInvitationResult: {
+            invitation_id: components["schemas"]["Uuid"];
+            location_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            status: "pending";
+            expires_at: components["schemas"]["Instant"];
+        };
+        /** @description Empty closed body. Invitation identity is server-derived. */
+        ClinicStaffInvitationAcceptRequest: Record<string, never>;
+        ClinicMembership: {
+            membership_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            role: "doctor" | "secretary";
+            /** @enum {string} */
+            status: "pending" | "active" | "suspended" | "revoked";
+            version: number;
+            /** Format: date-time */
+            invited_at: string | null;
+            /** Format: date-time */
+            accepted_at: string | null;
+            /** Format: date-time */
+            revoked_at: string | null;
         };
         DoctorVerificationSubmissionRequest: {
             /** @description Optimistic verification-case version. Not a reviewer identity. */
@@ -3412,6 +3645,343 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listOwnClinicLocations: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Opaque forward cursor from a previous response's `meta.pagination.next`.
+                 *     Cursors are signed when they carry state, size-bounded, and scoped to the
+                 *     filter, ordering, and actor that produced them. A cursor from a different
+                 *     filter, ordering, or actor is rejected with `422 CURSOR_INVALID`.
+                 */
+                cursor?: components["parameters"]["CursorParam"];
+                /** @description Maximum items per page. */
+                limit?: components["parameters"]["LimitParam"];
+            };
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private clinic location page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["ClinicLocationPrivate"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    createClinicLocation: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClinicLocationCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Compact created location. GET is the canonical projection. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["ClinicLocationCreateResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getOwnClinicLocation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                location_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private clinic location projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["ClinicLocationPrivate"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateClinicLocation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                location_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClinicLocationUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated owner projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["ClinicLocationPrivate"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    inviteClinicStaff: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                location_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClinicStaffInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Existing pending invitation for the same bound identity. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["ClinicStaffInvitationResult"];
+                    };
+                };
+            };
+            /** @description Invitation created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["ClinicStaffInvitationResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    listClinicLocationMemberships: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                location_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Safe membership projections. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["ClinicMembership"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    revokeClinicLocationMembership: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                location_id: components["schemas"]["Uuid"];
+                membership_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked membership projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["ClinicMembership"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    acceptClinicStaffInvitation: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                invitation_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClinicStaffInvitationAcceptRequest"];
+            };
+        };
+        responses: {
+            /** @description Active secretary membership. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["ClinicMembership"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
         };
     };
     submitOwnDoctorVerification: {

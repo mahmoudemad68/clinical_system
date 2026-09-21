@@ -96,6 +96,7 @@ Named in the phase file; each owns one transaction boundary.
 | `CompleteConsultationService` | Clinical (finalize + revoke access), Queue (advance), Appointments (complete), Chat (write window) | all of the above plus outbox notifications |
 | `CompleteSaleService` | POS (cart/payment intent), Inventory (FEFO allocation + movements) | invoice, payment, movements, outbox |
 | `RegisterPharmacyOrganization` | Pharmacies (organization/branch/membership), Identity (protection services), Access, Audit | organization, initial branch, founding owner membership, audit, idempotency, outbox |
+| `CreateClinicLocation` / `UpdateClinicLocation` / `InviteClinicStaff` / `AcceptClinicStaffInvitation` / `ManageClinicMemberships` | Clinics (location/membership/invitation), Doctors (`PracticeOwnerEligibilityService`), Identity (`InvitationRecipientService`), Access, Audit | location, invitation, staff profile, membership, audit, idempotency, outbox |
 
 Architecture tests must prove that only the approved coordinating service uses
 the participating module services, and that an integration-event consumer cannot

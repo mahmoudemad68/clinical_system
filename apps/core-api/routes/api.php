@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Admin\Http\Controllers\AdminVerificationController;
 use Modules\Auth\Http\Controllers\AuthController;
+use Modules\Clinics\Http\Controllers\ClinicLocationController;
+use Modules\Clinics\Http\Controllers\ClinicStaffInvitationController;
 use Modules\Doctors\Http\Controllers\DoctorProfileController;
 use Modules\Patients\Http\Controllers\PatientProfileController;
 use Modules\Pharmacies\Http\Controllers\PharmacyOrganizationController;
@@ -140,6 +142,33 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/pharmacy-organizations/me', [PharmacyOrganizationController::class, 'me'])
             ->name('api.v1.pharmacy-organizations.me');
+
+        Route::get('/clinic-locations', [ClinicLocationController::class, 'index'])
+            ->name('api.v1.clinic-locations.index');
+
+        Route::middleware('platform.idempotency')
+            ->post('/clinic-locations', [ClinicLocationController::class, 'store'])
+            ->name('api.v1.clinic-locations.store');
+
+        Route::get('/clinic-locations/{locationId}', [ClinicLocationController::class, 'show'])
+            ->name('api.v1.clinic-locations.show');
+
+        Route::patch('/clinic-locations/{locationId}', [ClinicLocationController::class, 'update'])
+            ->name('api.v1.clinic-locations.update');
+
+        Route::middleware('platform.idempotency')
+            ->post('/clinic-locations/{locationId}/staff-invitations', [ClinicLocationController::class, 'invite'])
+            ->name('api.v1.clinic-locations.staff-invitations');
+
+        Route::get('/clinic-locations/{locationId}/memberships', [ClinicLocationController::class, 'memberships'])
+            ->name('api.v1.clinic-locations.memberships.index');
+
+        Route::delete('/clinic-locations/{locationId}/memberships/{membershipId}', [ClinicLocationController::class, 'revokeMembership'])
+            ->name('api.v1.clinic-locations.memberships.destroy');
+
+        Route::middleware('platform.idempotency')
+            ->post('/clinic-staff-invitations/{invitationId}/accept', [ClinicStaffInvitationController::class, 'accept'])
+            ->name('api.v1.clinic-staff-invitations.accept');
 
         Route::middleware('platform.idempotency')
             ->post('/pharmacy-organizations/me/verification-cases', [PharmacyVerificationController::class, 'open'])

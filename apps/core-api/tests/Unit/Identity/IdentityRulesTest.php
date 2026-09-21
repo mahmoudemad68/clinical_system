@@ -105,6 +105,12 @@ describe('default-deny authorizer', function () {
         expect($authorizer->decide($actor, Capabilities::DOCTORS_PROFILE_READ_OWN)->allowed)->toBeTrue();
         expect($authorizer->decide($actor, Capabilities::PHARMACIES_ONBOARDING)->allowed)->toBeTrue();
         expect($authorizer->decide($actor, Capabilities::PHARMACIES_ORGANIZATION_READ_OWN)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::CLINICS_LOCATION_WRITE)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::CLINICS_LOCATION_READ_OWN)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::CLINICS_STAFF_INVITE)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::CLINICS_STAFF_ACCEPT)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::CLINICS_MEMBERSHIP_READ_OWN)->allowed)->toBeTrue();
+        expect($authorizer->decide($actor, Capabilities::CLINICS_MEMBERSHIP_REVOKE)->allowed)->toBeTrue();
         expect($authorizer->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN)->allowed)->toBeTrue();
         expect($authorizer->decide($actor, Capabilities::VERIFICATION_STATUS_READ_OWN)->allowed)->toBeTrue();
         expect($authorizer->decide($actor, Capabilities::VERIFICATION_REVIEW)->allowed)->toBeFalse()
@@ -145,6 +151,10 @@ describe('default-deny authorizer', function () {
         expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::PHARMACIES_ONBOARDING)->reasonCode)
             ->toBe('pending_restricted');
         expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::PHARMACIES_ORGANIZATION_READ_OWN)->reasonCode)
+            ->toBe('pending_restricted');
+        expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::CLINICS_LOCATION_WRITE)->reasonCode)
+            ->toBe('pending_restricted');
+        expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::CLINICS_STAFF_ACCEPT)->reasonCode)
             ->toBe('pending_restricted');
         expect((new DefaultDenyAuthorizer(Mockery::mock(GrantStore::class)))->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN)->reasonCode)
             ->toBe('pending_restricted');

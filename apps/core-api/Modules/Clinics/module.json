@@ -1,0 +1,11 @@
+{
+    "name": "Clinics",
+    "alias": "clinics",
+    "description": "Clinic locations and staff membership foundation",
+    "keywords": [],
+    "priority": 53,
+    "providers": [
+        "Modules\\Clinics\\Providers\\ClinicsServiceProvider"
+    ],
+    "files": []
+}

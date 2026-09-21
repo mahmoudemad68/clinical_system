@@ -97,6 +97,8 @@ function doctorsIdem(string $name): array
 function doctorsActiveSession(string $key, string $status = 'active'): array
 {
     auth()->forgetGuards();
+    test()->flushHeaders();
+    test()->clearBrowserSession();
 
     $payload = doctorsSyntheticIdentity();
     $protector = app(NationalIdProtector::class);
