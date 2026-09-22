@@ -28,8 +28,7 @@ Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 
 - **Branch:** `cursor/phase-02-chunk-13-patient-flutter-onboarding-cc7f`
 - **Baseline (GitHub `main`):** `bbbcd7f499529cfa6e01420827b36418d7631a4a`
-- **Implementation HEAD:** recorded after the history rewrite that removes
-  National-ID literals from branch commits.
+- **Implementation HEAD:** `055944964a8dd922f1cebaf83e2f8b452dfa9471`
 - **Recorded:** 2026-09-22
 - **Chunks 11 and 12:** CLOSED (not reopened by this work).
 
