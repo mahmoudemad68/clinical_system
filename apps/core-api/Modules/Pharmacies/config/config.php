@@ -13,4 +13,12 @@ return [
     'egypt_latitude_max' => 31.7,
     'egypt_longitude_min' => 24.7,
     'egypt_longitude_max' => 36.9,
+    /*
+     | Staff invitation lifetime. ENGINEERING_DEFAULT until a product-approved
+     | TTL exists. Phase 09 owns notification delivery; this chunk does not
+     | send SMS or email.
+     */
+    'invitation_ttl_hours' => 72,
+    'list_default_limit' => 25,
+    'list_max_limit' => 100,
 ];

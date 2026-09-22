@@ -42,6 +42,18 @@ final class Capabilities
 
     public const PHARMACIES_ORGANIZATION_READ_OWN = 'pharmacies.organization.read_own';
 
+    public const PHARMACIES_BRANCH_WRITE = 'pharmacies.branch.write';
+
+    public const PHARMACIES_BRANCH_READ_OWN = 'pharmacies.branch.read_own';
+
+    public const PHARMACIES_STAFF_INVITE = 'pharmacies.staff.invite';
+
+    public const PHARMACIES_STAFF_ACCEPT = 'pharmacies.staff.accept';
+
+    public const PHARMACIES_MEMBERSHIP_READ_OWN = 'pharmacies.membership.read_own';
+
+    public const PHARMACIES_MEMBERSHIP_REVOKE = 'pharmacies.membership.revoke';
+
     public const CLINICS_LOCATION_WRITE = 'clinics.location.write';
 
     public const CLINICS_LOCATION_READ_OWN = 'clinics.location.read_own';
@@ -96,6 +108,12 @@ final class Capabilities
         self::DOCTORS_SPECIALTIES_READ,
         self::PHARMACIES_ONBOARDING,
         self::PHARMACIES_ORGANIZATION_READ_OWN,
+        self::PHARMACIES_BRANCH_WRITE,
+        self::PHARMACIES_BRANCH_READ_OWN,
+        self::PHARMACIES_STAFF_INVITE,
+        self::PHARMACIES_STAFF_ACCEPT,
+        self::PHARMACIES_MEMBERSHIP_READ_OWN,
+        self::PHARMACIES_MEMBERSHIP_REVOKE,
         self::CLINICS_LOCATION_WRITE,
         self::CLINICS_LOCATION_READ_OWN,
         self::CLINICS_STAFF_INVITE,

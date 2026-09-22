@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Modules\Identity\Services\NationalIdProtector;
 use Modules\Identity\Support\PhoneE164;
 use Modules\Pharmacies\Enums\PharmacyBranchStatus;
+use Modules\Pharmacies\Enums\PharmacyInvitationStatus;
 use Modules\Pharmacies\Enums\PharmacyMembershipRole;
 use Modules\Pharmacies\Enums\PharmacyMembershipStatus;
 use Modules\Pharmacies\Enums\PharmacyOrganizationStatus;
@@ -123,6 +124,136 @@ final class PharmacyOrganizationRowFactory
             'revoked_at' => null,
             'inviter_user_id' => null,
             'revoker_user_id' => null,
+            'version' => 1,
+            'created_at' => $stamp,
+            'updated_at' => $stamp,
+        ];
+    }
+
+    /**
+     * Additional branch after the organization is already approved. Status is
+     * server-owned `active` because the organization identity is inherited.
+     * No Phase-10 operating mode or inventory flag is written.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function additionalBranchAttributes(
+        Identifier $id,
+        Identifier $organizationId,
+        PhoneE164 $phone,
+        array $input,
+        DateTimeImmutable $now,
+    ): array {
+        $stamp = $now->format('Y-m-d H:i:s.uP');
+        $keyVersion = $this->protector->encryptionVersion();
+
+        return [
+            'id' => $id->value,
+            'organization_id' => $organizationId->value,
+            'public_name' => (string) $input['public_name'],
+            'address_ciphertext' => BinaryColumn::bind(
+                $this->protector->encryptSecret(self::ENCRYPT_PHYSICAL_ADDRESS, (string) $input['address']),
+            ),
+            'address_key_version' => $keyVersion,
+            'country_code' => 'EG',
+            'phone_ciphertext' => BinaryColumn::bind(
+                $this->protector->encryptPhone($phone),
+            ),
+            'phone_key_version' => $keyVersion,
+            'status' => PharmacyBranchStatus::Active->value,
+            'version' => 1,
+            'created_at' => $stamp,
+            'updated_at' => $stamp,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function encryptAddress(string $address): array
+    {
+        return [
+            'address_ciphertext' => BinaryColumn::bind(
+                $this->protector->encryptSecret(self::ENCRYPT_PHYSICAL_ADDRESS, $address),
+            ),
+            'address_key_version' => $this->protector->encryptionVersion(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function encryptPhone(PhoneE164 $phone): array
+    {
+        return [
+            'phone_ciphertext' => BinaryColumn::bind(
+                $this->protector->encryptPhone($phone),
+            ),
+            'phone_key_version' => $this->protector->encryptionVersion(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function branchOperatorMembershipAttributes(
+        Identifier $id,
+        Identifier $organizationId,
+        Identifier $userId,
+        Identifier $branchId,
+        Identifier $inviterUserId,
+        DateTimeImmutable $now,
+        DateTimeImmutable $invitedAt,
+    ): array {
+        $stamp = $now->format('Y-m-d H:i:s.uP');
+
+        return [
+            'id' => $id->value,
+            'organization_id' => $organizationId->value,
+            'user_id' => $userId->value,
+            'branch_id' => $branchId->value,
+            'role' => PharmacyMembershipRole::BranchOperator->value,
+            'status' => PharmacyMembershipStatus::Active->value,
+            'invited_at' => $invitedAt->format('Y-m-d H:i:s.uP'),
+            'accepted_at' => $stamp,
+            'revoked_at' => null,
+            'inviter_user_id' => $inviterUserId->value,
+            'revoker_user_id' => null,
+            'version' => 1,
+            'created_at' => $stamp,
+            'updated_at' => $stamp,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function invitationAttributes(
+        Identifier $id,
+        Identifier $organizationId,
+        Identifier $branchId,
+        string $phoneHmac,
+        int $hmacVersion,
+        Identifier $inviterUserId,
+        DateTimeImmutable $now,
+        DateTimeImmutable $expiresAt,
+    ): array {
+        $stamp = $now->format('Y-m-d H:i:s.uP');
+
+        return [
+            'id' => $id->value,
+            'organization_id' => $organizationId->value,
+            'branch_id' => $branchId->value,
+            'role' => PharmacyMembershipRole::BranchOperator->value,
+            'status' => PharmacyInvitationStatus::Pending->value,
+            'target_phone_lookup_hmac' => BinaryColumn::bind($phoneHmac),
+            'target_phone_key_version' => $hmacVersion,
+            'expires_at' => $expiresAt->format('Y-m-d H:i:s.uP'),
+            'invited_at' => $stamp,
+            'accepted_at' => null,
+            'consumed_at' => null,
+            'inviter_user_id' => $inviterUserId->value,
             'version' => 1,
             'created_at' => $stamp,
             'updated_at' => $stamp,

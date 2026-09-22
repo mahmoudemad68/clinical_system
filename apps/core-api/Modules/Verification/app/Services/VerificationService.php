@@ -439,6 +439,16 @@ final class VerificationService
         return $this->pharmacyApplicantProjection($pharmacy, $case);
     }
 
+    public function pharmacyApplicantStatusForOrganization(ActorContext $actor, Identifier $organizationId): PharmacyApplicantCaseProjection
+    {
+        $status = $this->pharmacyApplicantStatus($actor);
+        if ($status->organizationId !== $organizationId->value) {
+            throw new AuthorizationDenied;
+        }
+
+        return $status;
+    }
+
     public function claimCase(ActorContext $reviewer, Identifier $caseId, int $expectedVersion): ReviewerCaseProjection
     {
         $this->assertPrivilegedReviewer($reviewer, $caseId);

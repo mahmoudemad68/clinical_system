@@ -812,6 +812,190 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pharmacy-organizations/{organization_id}/verification-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Owner-scoped pharmacy verification status by organization id
+         * @description Reuses the existing applicant verification projection. The authenticated
+         *     owner of that exact organization may read it. Cross-organization IDs
+         *     are non-enumerating 404. This is not a broader GET-by-organization-id
+         *     organization endpoint.
+         */
+        get: operations["getPharmacyOrganizationVerificationStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy-organizations/{organization_id}/branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the authenticated owner's private pharmacy branches
+         * @description Approved active pharmacy owners receive private projections including
+         *     decrypted address and coordinates. Phone is omitted. This is not a
+         *     public directory or geography search. Cursor pagination is
+         *     owner-scoped to one organization.
+         */
+        get: operations["listOwnPharmacyBranches"];
+        put?: never;
+        /**
+         * Create an additional pharmacy branch for an approved organization
+         * @description Requires an authenticated active Pharmacy account, privileged MFA
+         *     session, approved/active organization, and active owner membership for
+         *     that exact organization. Clients cannot assign organization_id, status,
+         *     version, verification flags, operating mode, inventory, POS, or actor
+         *     IDs. Additional branches inherit the already-approved organization
+         *     identity. Status is server-owned and becomes `active` when required
+         *     fields pass. `active` is not a Phase-10 business capability.
+         *     Address and phone are write-only, envelope-encrypted, and must never
+         *     be logged. Idempotency-Key is required.
+         */
+        post: operations["createPharmacyBranch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy-organizations/{organization_id}/branches/{branch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one private pharmacy branch
+         * @description Owner projection includes decrypted address and coordinates. Active
+         *     branch_operator projection omits them. Phone is never returned.
+         *     Cross-organization and cross-branch access is non-enumerating 404.
+         */
+        get: operations["getOwnPharmacyBranch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update an owned pharmacy branch with optimistic concurrency
+         * @description `expected_version` is required. Stale versions return VERSION_CONFLICT
+         *     and never last-write-wins. Clients cannot assign organization
+         *     ownership, status, or version override. Address and phone are
+         *     write-only on input. Phone is omitted from the owner projection.
+         */
+        patch: operations["updatePharmacyBranch"];
+        trace?: never;
+    };
+    "/api/v1/pharmacy-organizations/{organization_id}/branches/{branch_id}/staff-invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invite a branch_operator to one pharmacy branch
+         * @description Only the approved owning pharmacy of that exact organization and
+         *     branch may invite. The inviteable role is branch_operator only and is
+         *     server-owned. Phone is write-only, canonicalized through Identity,
+         *     stored as HMAC, and never returned. Responses do not disclose whether
+         *     the phone belongs to an account. No SMS or email is sent.
+         *     Idempotency-Key is required.
+         */
+        post: operations["invitePharmacyStaff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy-organizations/{organization_id}/branches/{branch_id}/memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List branch_operator memberships for an owned pharmacy branch
+         * @description Owning approved pharmacy only. Returns membership_id, branch_id, role,
+         *     status, version, and invited/accepted/revoked instants. Never phone,
+         *     HMAC, National ID, email, user_id, password, device, inventory, or
+         *     clinical data. Founding owner membership does not appear as a
+         *     branch_operator row.
+         */
+        get: operations["listPharmacyBranchMemberships"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy-organizations/{organization_id}/branches/{branch_id}/memberships/{membership_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a branch_operator membership at an owned pharmacy branch
+         * @description Only the owning approved pharmacy of that exact organization and
+         *     branch may revoke. Only branch_operator membership may be revoked.
+         *     Founding owner membership cannot be revoked through this route.
+         *     Cross-organization/cross-branch IDs are 404. Repeated revoke returns
+         *     the stable revoked state. Membership history is not hard-deleted.
+         */
+        delete: operations["revokePharmacyBranchMembership"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy-staff-invitations/{invitation_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a pharmacy branch_operator invitation as the intended recipient
+         * @description Invitation ID is not authorization. The authenticated actor must be
+         *     the active Pharmacy account whose phone HMAC matches the invitation
+         *     binding. Empty closed body. Idempotency-Key is required. Concurrent
+         *     double acceptance yields one active membership. UNIQUE
+         *     (organization_id, user_id) is preserved.
+         */
+        post: operations["acceptPharmacyStaffInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/clinic-locations": {
         parameters: {
             query?: never;
@@ -1891,6 +2075,90 @@ export interface components {
             decision: "approved" | "rejected" | "changes_requested" | null;
             reason_code: string | null;
             documents: components["schemas"]["PharmacyVerificationDocumentStatus"][];
+        };
+        PharmacyBranchCreateRequest: {
+            public_name: string;
+            /** @description Write-only. Envelope-encrypted. Never logged or placed in events, audit metadata, or idempotency pointers. */
+            address: string;
+            country_code: components["schemas"]["CountryCode"];
+            /**
+             * Format: double
+             * @description WGS-84 latitude. V1 also requires the Egypt service area. ENGINEERING_DEFAULT bbox.
+             */
+            latitude: number;
+            /**
+             * Format: double
+             * @description WGS-84 longitude. Stored as PostGIS geography(Point, 4326).
+             */
+            longitude: number;
+            /** @description Write-only. Envelope-encrypted. Never echoed, logged, or placed in events. */
+            phone: string;
+        };
+        PharmacyBranchCreateResult: {
+            branch_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            status: "active";
+            version: number;
+        };
+        PharmacyBranchUpdateRequest: {
+            expected_version: number;
+            public_name?: string;
+            address?: string;
+            country_code?: components["schemas"]["CountryCode"];
+            /** Format: double */
+            latitude?: number;
+            /** Format: double */
+            longitude?: number;
+            phone?: string;
+        };
+        /**
+         * @description Private owner/operator projection. Address, latitude, and longitude are
+         *     present only for the owning pharmacy. Operator projections omit them.
+         *     Phone is never returned. Never a public directory record.
+         */
+        PharmacyBranchPrivate: {
+            branch_id: components["schemas"]["Uuid"];
+            organization_id: components["schemas"]["Uuid"];
+            public_name: string;
+            country_code: components["schemas"]["CountryCode"];
+            /** @enum {string} */
+            status: "draft" | "pending" | "active" | "suspended" | "closed";
+            version: number;
+            created_at: components["schemas"]["Instant"];
+            updated_at: components["schemas"]["Instant"];
+            /** @description Owner private GET/PATCH only. Protected. Must be redacted from logs. */
+            address?: string;
+            /** Format: double */
+            latitude?: number;
+            /** Format: double */
+            longitude?: number;
+        };
+        PharmacyStaffInvitationRequest: {
+            /** @description Write-only. Canonicalized through Identity. Stored as HMAC only. Never echoed, logged, or placed in events. */
+            phone: string;
+        };
+        PharmacyStaffInvitationResult: {
+            invitation_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            status: "pending";
+            expires_at: components["schemas"]["Instant"];
+        };
+        /** @description Empty closed body. Invitation identity is server-derived. */
+        PharmacyStaffInvitationAcceptRequest: Record<string, never>;
+        PharmacyMembership: {
+            membership_id: components["schemas"]["Uuid"];
+            branch_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            role: "branch_operator";
+            /** @enum {string} */
+            status: "pending" | "active" | "suspended" | "revoked";
+            version: number;
+            /** Format: date-time */
+            invited_at: string | null;
+            /** Format: date-time */
+            accepted_at: string | null;
+            /** Format: date-time */
+            revoked_at: string | null;
         };
         ClinicLocationCreateRequest: {
             public_name: string;
@@ -3764,6 +4032,386 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    getPharmacyOrganizationVerificationStatus: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                organization_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Own pharmacy verification status projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyVerificationStatusResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listOwnPharmacyBranches: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Opaque forward cursor from a previous response's `meta.pagination.next`.
+                 *     Cursors are signed when they carry state, size-bounded, and scoped to the
+                 *     filter, ordering, and actor that produced them. A cursor from a different
+                 *     filter, ordering, or actor is rejected with `422 CURSOR_INVALID`.
+                 */
+                cursor?: components["parameters"]["CursorParam"];
+                /** @description Maximum items per page. */
+                limit?: components["parameters"]["LimitParam"];
+            };
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                organization_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private pharmacy branch page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyBranchPrivate"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    createPharmacyBranch: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                organization_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PharmacyBranchCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Compact created branch. GET is the canonical projection. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyBranchCreateResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getOwnPharmacyBranch: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                organization_id: components["schemas"]["Uuid"];
+                branch_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Private pharmacy branch projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyBranchPrivate"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updatePharmacyBranch: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                organization_id: components["schemas"]["Uuid"];
+                branch_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PharmacyBranchUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated owner projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyBranchPrivate"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    invitePharmacyStaff: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                organization_id: components["schemas"]["Uuid"];
+                branch_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PharmacyStaffInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Existing pending invitation for the same bound identity. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyStaffInvitationResult"];
+                    };
+                };
+            };
+            /** @description Invitation created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyStaffInvitationResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    listPharmacyBranchMemberships: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                organization_id: components["schemas"]["Uuid"];
+                branch_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Safe membership projections. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyMembership"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    revokePharmacyBranchMembership: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                organization_id: components["schemas"]["Uuid"];
+                branch_id: components["schemas"]["Uuid"];
+                membership_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked membership projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyMembership"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    acceptPharmacyStaffInvitation: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path: {
+                invitation_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PharmacyStaffInvitationAcceptRequest"];
+            };
+        };
+        responses: {
+            /** @description Active branch_operator membership. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["PharmacyMembership"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
         };
     };
     listOwnClinicLocations: {

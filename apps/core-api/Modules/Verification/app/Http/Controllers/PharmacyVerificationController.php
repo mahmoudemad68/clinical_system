@@ -44,6 +44,17 @@ final class PharmacyVerificationController
         );
     }
 
+    public function statusForOrganization(Request $request, string $organizationId, VerificationService $handler): JsonResponse
+    {
+        return Envelope::ok(
+            $handler->pharmacyApplicantStatusForOrganization(
+                $this->actor($request),
+                Identifier::fromString($organizationId),
+            )->toArray(),
+            $this->requestId($request),
+        );
+    }
+
     private function actor(Request $request): ActorContext
     {
         $actor = $request->attributes->get(ActorContext::class);

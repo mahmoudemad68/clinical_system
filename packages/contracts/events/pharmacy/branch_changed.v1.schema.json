@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/pharmacy/branch_changed.v1.schema.json",
+  "title": "pharmacy.branch_changed v1",
+  "description": "A pharmacy branch was created or updated. No address, phone, coordinates, ciphertext, HMAC, legal registration, or key versions.",
+  "type": "object",
+  "required": ["branch_id", "organization_id", "version", "change_type"],
+  "additionalProperties": false,
+  "properties": {
+    "branch_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "organization_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "change_type": {
+      "type": "string",
+      "enum": ["created", "updated"]
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Pharmacies",
+    "classification": "personal",
+    "consumers": ["audit.identity"],
+    "retention_days": 365
+  }
+}

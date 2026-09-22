@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Modules\Pharmacies\Enums\PharmacyBranchStatus;
+use Modules\Pharmacies\Enums\PharmacyInvitationStatus;
 use Modules\Pharmacies\Enums\PharmacyMembershipRole;
 use Modules\Pharmacies\Enums\PharmacyMembershipStatus;
 use Modules\Pharmacies\Enums\PharmacyOrganizationStatus;
@@ -28,6 +29,9 @@ it('never treats verification, organization, branch, or membership state as a bu
         expect($role->confersBusinessCapability())->toBeFalse();
     }
     foreach (PharmacyMembershipStatus::cases() as $status) {
+        expect($status->confersBusinessCapability())->toBeFalse();
+    }
+    foreach (PharmacyInvitationStatus::cases() as $status) {
         expect($status->confersBusinessCapability())->toBeFalse();
     }
 });
