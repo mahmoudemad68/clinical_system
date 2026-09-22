@@ -112,7 +112,10 @@ void main() {
     await tester.enterText(find.byKey(const Key('onboarding-height')), '900');
     await tester.tap(find.byKey(const Key('primary-action')));
     await tester.pump();
-    expect(find.textContaining('allowed storage range'), findsOneWidget);
+    expect(
+      find.textContaining('Enter a height within the allowed storage range'),
+      findsOneWidget,
+    );
     expect(find.text('900'), findsOneWidget);
   });
 

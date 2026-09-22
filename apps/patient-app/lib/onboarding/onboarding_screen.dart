@@ -188,6 +188,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           obscureText: true,
           enableSuggestions: false,
           autocorrect: false,
+          autofillHints: const <String>[],
           keyboardType: TextInputType.number,
           scrollPadding: const EdgeInsets.only(bottom: 120),
           decoration: InputDecoration(

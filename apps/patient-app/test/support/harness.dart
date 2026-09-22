@@ -118,13 +118,47 @@ List<Override> patientOverrides({
   ];
 }
 
+const Size kHarnessSurfaceSize = Size(390, 844);
+
+MediaQueryData harnessMediaQuery({double textScale = 1}) {
+  return MediaQueryData(
+    size: kHarnessSurfaceSize,
+    textScaler: TextScaler.linear(textScale),
+  );
+}
+
+class HarnessSurface extends ConsumerWidget {
+  const HarnessSurface({super.key, required this.home, this.textScale = 1});
+
+  final Widget home;
+  final double textScale;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+    return MediaQuery(
+      data: harnessMediaQuery(textScale: textScale),
+      child: MaterialApp(
+        locale: locale,
+        supportedLocales: ClinicLocales.supported,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: home,
+      ),
+    );
+  }
+}
+
 Widget materialHost(
   Widget child, {
   Locale locale = ClinicLocales.english,
   double textScale = 1,
 }) {
   return MediaQuery(
-    data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+    data: harnessMediaQuery(textScale: textScale),
     child: MaterialApp(
       locale: locale,
       supportedLocales: ClinicLocales.supported,
@@ -149,7 +183,7 @@ Widget wrap(
       localeProvider.overrideWith(() => LocaleController(initial: locale)),
       ...overrides,
     ],
-    child: materialHost(child, locale: locale, textScale: textScale),
+    child: HarnessSurface(home: child, textScale: textScale),
   );
 }
 
@@ -164,7 +198,7 @@ Widget clinicHost({
       ...overrides,
     ],
     child: MediaQuery(
-      data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+      data: harnessMediaQuery(textScale: textScale),
       child: const ClinicApp(),
     ),
   );

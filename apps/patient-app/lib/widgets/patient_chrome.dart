@@ -52,15 +52,19 @@ class PrimaryBottomBar extends StatelessWidget {
     super.key,
     required this.primaryLabel,
     required this.onPrimary,
+    this.primaryKey = const Key('primary-action'),
     this.secondaryLabel,
     this.onSecondary,
+    this.secondaryKey = const Key('secondary-action'),
     this.busy = false,
   });
 
   final String primaryLabel;
   final VoidCallback? onPrimary;
+  final Key primaryKey;
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
+  final Key secondaryKey;
   final bool busy;
 
   @override
@@ -73,7 +77,7 @@ class PrimaryBottomBar extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             FilledButton(
-              key: const Key('primary-action'),
+              key: primaryKey,
               onPressed: busy ? null : onPrimary,
               child: busy
                   ? const SizedBox(
@@ -86,7 +90,7 @@ class PrimaryBottomBar extends StatelessWidget {
             if (secondaryLabel != null) ...[
               const SizedBox(height: 8),
               TextButton(
-                key: const Key('secondary-action'),
+                key: secondaryKey,
                 onPressed: busy ? null : onSecondary,
                 child: Text(secondaryLabel!),
               ),

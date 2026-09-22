@@ -60,23 +60,35 @@ class PatientSession extends Notifier<PatientRouteState> {
   PatientRouteState build() => const PatientRouteBooting();
 
   Future<void> restore() async {
+    final gen = ++_generation;
     final tokens = ref.read(tokenStoreProvider);
     final access = await tokens.readAccess();
+    if (gen != _generation) {
+      return;
+    }
     if (access == null || access.isEmpty) {
       state = const PatientRouteUnauthenticated();
       return;
     }
     ref.read(httpClientProvider).setAuthToken(access);
-    await resolve();
+    await _resolveAt(gen);
   }
 
   Future<void> onAuthenticated() async {
     _manualReviewHold = false;
-    await resolve();
+    await _resolveAt(++_generation);
   }
 
   Future<void> resolve() async {
-    final gen = ++_generation;
+    await _resolveAt(++_generation);
+  }
+
+  Future<void> refresh() => resolve();
+
+  Future<void> _resolveAt(int gen) async {
+    if (gen != _generation) {
+      return;
+    }
     state = const PatientRouteResolving();
     try {
       final raw = await ref.read(authApiProvider).me();
@@ -97,8 +109,6 @@ class PatientSession extends Notifier<PatientRouteState> {
       await _onIdentityFailure(failure);
     }
   }
-
-  Future<void> refresh() => resolve();
 
   Future<void> applyOnboarding(PatientOnboardingResult result) async {
     final gen = ++_generation;
@@ -122,13 +132,12 @@ class PatientSession extends Notifier<PatientRouteState> {
     _generation++;
     _manualReviewHold = false;
     ref.read(onboardingProvider.notifier).reset();
+    state = const PatientRouteUnauthenticated();
     try {
       await ref.read(authApiProvider).logout();
     } catch (_) {
-      await ref.read(tokenStoreProvider).clear();
-      ref.read(httpClientProvider).setAuthToken(null);
+      await _clearLocalSession();
     }
-    state = const PatientRouteUnauthenticated();
   }
 
   Future<void> _loadOwnProfile(int gen) async {

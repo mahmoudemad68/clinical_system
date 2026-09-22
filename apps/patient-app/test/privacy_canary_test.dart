@@ -95,16 +95,13 @@ void main() {
           .readAsStringSync(),
       isNot(contains('LogInterceptor')),
     );
-    expect(
-      File('../../packages/flutter/common_models/lib/src/patient_profile.dart')
-          .readAsStringSync(),
-      isNot(contains('nationalId')),
-    );
-    expect(
-      File('../../packages/flutter/common_models/lib/src/patient_profile.dart')
-          .readAsStringSync(),
-      isNot(contains('national_id')),
-    );
+    final profileModel = File(
+      '../../packages/flutter/common_models/lib/src/patient_profile.dart',
+    ).readAsStringSync();
+    expect(profileModel, isNot(contains('national_id')));
+    expect(profileModel, isNot(contains('final String nationalId')));
+    expect(profileModel, isNot(contains('this.nationalId')));
+    expect(profileModel, contains('nationalIdMaxLength'));
   });
 
   test('named routes never accept a patient id or national id parameter', () {
@@ -150,7 +147,17 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('العربية'));
       await tester.pumpAndSettle();
-      expect(find.text(canary), findsNothing);
+      final field = tester.widget<TextField>(
+        find.byKey(const Key('onboarding-national-id')),
+      );
+      expect(field.obscureText, isTrue);
+      expect(field.controller?.text, canary);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Text && widget.data == canary,
+        ),
+        findsNothing,
+      );
       for (final value in vault.values.values) {
         expect(value, isNot(contains(canary)));
       }
@@ -158,6 +165,7 @@ void main() {
       final container = ProviderScope.containerOf(context);
       expect(container.read(onboardingProvider).draft.nationalId, canary);
       expect(container.read(onboardingProvider).draft.fullName, 'Ada Lovelace');
+      expect(Directionality.of(context), TextDirection.rtl);
     },
   );
 }
