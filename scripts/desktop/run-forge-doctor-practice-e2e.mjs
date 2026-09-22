@@ -199,6 +199,11 @@ async function waitSnapshot(wsUrl, test, timeoutMs, label) {
         locations: Boolean(document.querySelector('[data-testid="practice-locations"]')),
         empty: Boolean(document.querySelector('[data-testid="locations-empty"]')),
         create: Boolean(document.querySelector('[data-testid="location-create-form"]')),
+        edit: Boolean(document.querySelector('[data-testid="location-edit-form"]')),
+        submitEnabled: Boolean(
+          document.querySelector('[data-testid="location-submit"]') &&
+            !document.querySelector('[data-testid="location-submit"]')?.disabled,
+        ),
         details: Boolean(document.querySelector('[data-testid="practice-location-details"]')),
         version: document.querySelector('[data-testid="location-version"]')?.textContent ?? null,
         name: document.querySelector('[data-testid="location-public-name"]')?.textContent ?? null,
@@ -379,12 +384,16 @@ async function main() {
     }
 
     await evalAction(ws, `document.querySelector('[data-testid="tab-location"]')?.click(); true`);
-    await waitSnapshot(ws, (snap) => snap.hash.includes('/location'), 8_000, 'location tab');
+    await waitSnapshot(ws, (snap) => snap.edit, 8_000, 'location edit form');
     await evalAction(ws, setReactValueExpression('#location-public-name', 'Cairo Nile Clinic'));
     await evalAction(ws, setReactValueExpression('#location-address', '1 Tahrir Square, Cairo'));
     await evalAction(ws, setReactValueExpression('#location-latitude', '30.0444'));
     await evalAction(ws, setReactValueExpression('#location-longitude', '31.2357'));
-    await evalAction(ws, `document.querySelector('#location-edit-form input[type="checkbox"]')?.click(); true`);
+    await evalAction(
+      ws,
+      `document.querySelector('[data-testid="confirm-coordinates"] input')?.click() || document.querySelector('#location-edit-form input[type="checkbox"]')?.click(); true`,
+    );
+    await waitSnapshot(ws, (snap) => snap.submitEnabled, 8_000, 'edit submit enabled');
     await evalAction(ws, `document.querySelector('[data-testid="location-submit"]')?.click(); true`);
     await waitSnapshot(ws, (snap) => String(snap.version ?? '').includes('2'), 20_000, 'edited version');
     proof.edited = true;
