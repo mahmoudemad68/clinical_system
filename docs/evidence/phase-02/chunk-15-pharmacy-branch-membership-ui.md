@@ -46,10 +46,10 @@ Core test helpers seed/accept/bump synthetic actors for Forge GUI E2E only.
 Chunk 14 is CLOSED (merged PR #24). **Phase 02 remains NOT PASS.**
 
 - **Branch:** `cursor/phase-02-chunk-15-pharmacy-branch-membership-ui-cc7f`
-- **Draft PR:** (recorded after open)
+- **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/25
 - **Baseline (GitHub `main`):** `cc8f9be7df683624ed9323f2dd357fadc9bc7d13`
-- **Implementation HEAD:** (recorded after push)
-- **GitHub CI (implementation HEAD):** (recorded after the final-head run)
+- **Implementation HEAD:** (this evidence commit's SHA after push; recorded in the next evidence update with CI)
+- **GitHub CI (implementation HEAD):** pending `pull-request` on Draft PR #25
 
 Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 
