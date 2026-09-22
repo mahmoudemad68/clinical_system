@@ -109,6 +109,24 @@ async function requestJson<T>(
   extraHeaders: Record<string, string> = {},
   allowRefresh = true,
 ): Promise<T> {
+  const envelope = await requestEnvelope<T>(method, path, locale, body, extraHeaders, allowRefresh);
+  return envelope.data;
+}
+
+export type CoreJsonEnvelope<T> = {
+  data: T;
+  meta: Record<string, unknown>;
+  status: number;
+};
+
+async function requestEnvelope<T>(
+  method: string,
+  path: string,
+  locale: string,
+  body?: Record<string, unknown>,
+  extraHeaders: Record<string, string> = {},
+  allowRefresh = true,
+): Promise<CoreJsonEnvelope<T>> {
   restoreFromDisk();
   const headers: Record<string, string> = {
     ...baseRequestHeaders(locale),
@@ -144,7 +162,7 @@ async function requestJson<T>(
   if (response.status === 401 && allowRefresh && memoryRefresh !== null && path !== '/api/v1/auth/token/refresh' && path !== '/api/v1/auth/logout') {
     const rotated = await refreshTokens(locale);
     if (rotated) {
-      return requestJson<T>(method, path, locale, body, extraHeaders, false);
+      return requestEnvelope<T>(method, path, locale, body, extraHeaders, false);
     }
   }
 
@@ -155,7 +173,21 @@ async function requestJson<T>(
     throw new GatewayError(result.failure.code);
   }
 
-  return result.data;
+  return {
+    data: result.data,
+    meta: envelopeMeta(json),
+    status: response.status,
+  };
+}
+
+function envelopeMeta(json: unknown): Record<string, unknown> {
+  if (json && typeof json === 'object' && 'meta' in json) {
+    const meta = (json as { meta?: unknown }).meta;
+    if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+      return meta as Record<string, unknown>;
+    }
+  }
+  return {};
 }
 
 export async function coreJsonRequest<T>(
@@ -167,6 +199,17 @@ export async function coreJsonRequest<T>(
   allowRefresh = true,
 ): Promise<T> {
   return requestJson<T>(method, path, locale, body, extraHeaders, allowRefresh);
+}
+
+export async function coreJsonRequestEnvelope<T>(
+  method: string,
+  path: string,
+  locale: string,
+  body?: Record<string, unknown>,
+  extraHeaders: Record<string, string> = {},
+  allowRefresh = true,
+): Promise<CoreJsonEnvelope<T>> {
+  return requestEnvelope<T>(method, path, locale, body, extraHeaders, allowRefresh);
 }
 
 export async function putIssuedUploadBytes(

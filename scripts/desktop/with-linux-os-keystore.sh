@@ -8,9 +8,14 @@
 set -euo pipefail
 
 required=0
-flag="${CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E:-}"
-flag_lc="$(printf '%s' "$flag" | tr '[:upper:]' '[:lower:]')"
+doctor_flag="${CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E:-}"
+pharmacy_flag="${CLINIC_REQUIRE_PHARMACY_PRACTICE_E2E:-}"
+flag_lc="$(printf '%s' "$doctor_flag" | tr '[:upper:]' '[:lower:]')"
+pharmacy_lc="$(printf '%s' "$pharmacy_flag" | tr '[:upper:]' '[:lower:]')"
 if [[ "$flag_lc" == "1" || "$flag_lc" == "true" || "$flag_lc" == "yes" || "$flag_lc" == "on" ]]; then
+  required=1
+fi
+if [[ "$pharmacy_lc" == "1" || "$pharmacy_lc" == "true" || "$pharmacy_lc" == "yes" || "$pharmacy_lc" == "on" ]]; then
   required=1
 fi
 
@@ -29,7 +34,7 @@ fi
 
 if ! command -v dbus-run-session >/dev/null 2>&1 || ! command -v gnome-keyring-daemon >/dev/null 2>&1; then
   if [[ "$required" -eq 1 ]]; then
-    echo "dbus-run-session and gnome-keyring-daemon are required when CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E is enabled." >&2
+    echo "dbus-run-session and gnome-keyring-daemon are required when CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E or CLINIC_REQUIRE_PHARMACY_PRACTICE_E2E is enabled." >&2
     echo "Install gnome-keyring dbus-x11 libsecret-1-0." >&2
     exit 1
   fi
@@ -73,7 +78,7 @@ exec dbus-run-session -- bash -c '
       secret-tool clear service clinic.ci user e2e >/dev/null 2>&1 || true
     fi
   elif [[ "$required" -eq 1 ]]; then
-    echo "secret-tool is required when CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E is enabled so the keystore can be probed." >&2
+    echo "secret-tool is required when CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E or CLINIC_REQUIRE_PHARMACY_PRACTICE_E2E is enabled so the keystore can be probed." >&2
     exit 1
   fi
   exec "$@"

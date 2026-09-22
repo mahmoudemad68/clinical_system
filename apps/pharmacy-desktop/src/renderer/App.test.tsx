@@ -139,6 +139,33 @@ function installBridge(overrides: Partial<PharmacyClinicBridge['pharmacy']> & Re
         expiresAt: '2026-09-21T00:10:00Z',
         completedAt: '2026-09-21T00:01:00Z',
       }),
+    listBranches: () => ok({ branches: [], hasMore: false, nextCursor: null }),
+    createBranch: () =>
+      Promise.resolve({
+        ok: false as const,
+        error: { code: 'PERMISSION_DENIED' as const, message: 'denied' },
+      }),
+    getBranch: () =>
+      Promise.resolve({
+        ok: false as const,
+        error: { code: 'NOT_FOUND' as const, message: 'missing' },
+      }),
+    updateBranch: () =>
+      Promise.resolve({
+        ok: false as const,
+        error: { code: 'NOT_FOUND' as const, message: 'missing' },
+      }),
+    inviteOperator: () =>
+      Promise.resolve({
+        ok: false as const,
+        error: { code: 'NOT_FOUND' as const, message: 'missing' },
+      }),
+    listMemberships: () => ok({ memberships: [] }),
+    revokeMembership: () =>
+      Promise.resolve({
+        ok: false as const,
+        error: { code: 'NOT_FOUND' as const, message: 'missing' },
+      }),
     ...overrides,
   };
 

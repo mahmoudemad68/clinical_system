@@ -36,6 +36,8 @@
     "desktop:forge-doctor-smoke": "node scripts/desktop/run-forge-doctor-smoke.mjs",
     "desktop:forge-doctor-practice-e2e": "node scripts/desktop/run-forge-doctor-practice-e2e.mjs",
     "desktop:forge-doctor-practice-e2e:assert": "node scripts/desktop/assert-forge-doctor-practice-e2e-evidence.mjs",
+    "desktop:forge-pharmacy-practice-e2e": "node scripts/desktop/run-forge-pharmacy-practice-e2e.mjs",
+    "desktop:forge-pharmacy-practice-e2e:assert": "node scripts/desktop/assert-forge-pharmacy-practice-e2e-evidence.mjs",
     "desktop:cookieless-electron-transport": "node scripts/desktop/run-cookieless-electron-transport.mjs",
     "desktop:configure-sandbox": "node scripts/desktop/ensure-linux-chromium-sandbox.mjs",
     "packages:typecheck": "npm run typecheck --workspaces --if-present",

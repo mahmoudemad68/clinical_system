@@ -97,6 +97,27 @@ export function registerCapabilities(): void {
   handle(PHARMACY_CHANNELS.uploadStatus, async (payload: { uploadId: string }) =>
     pharmacyGateway.uploadStatus(localeState, payload.uploadId),
   );
+  handle(PHARMACY_CHANNELS.branchesList, async (payload) =>
+    pharmacyGateway.listBranches(localeState, payload),
+  );
+  handle(PHARMACY_CHANNELS.branchCreate, async (payload) =>
+    pharmacyGateway.createBranch(localeState, payload),
+  );
+  handle(PHARMACY_CHANNELS.branchGet, async (payload: { branchId: string }) =>
+    pharmacyGateway.getBranch(localeState, payload.branchId),
+  );
+  handle(PHARMACY_CHANNELS.branchUpdate, async (payload) =>
+    pharmacyGateway.updateBranch(localeState, payload),
+  );
+  handle(PHARMACY_CHANNELS.branchInviteOperator, async (payload) =>
+    pharmacyGateway.inviteOperator(localeState, payload),
+  );
+  handle(PHARMACY_CHANNELS.branchMemberships, async (payload: { branchId: string }) =>
+    pharmacyGateway.listMemberships(localeState, payload.branchId),
+  );
+  handle(PHARMACY_CHANNELS.branchRevokeMembership, async (payload) =>
+    pharmacyGateway.revokeMembership(localeState, payload),
+  );
 }
 
 async function selectEvidence(event: IpcMainInvokeEvent) {
