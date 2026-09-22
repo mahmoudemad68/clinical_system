@@ -58,7 +58,11 @@ branch-create idempotency remediation.
   (`pull-request` run **35766687221** SUCCESS)
 - **Pre-remediation evidence HEAD:** `f2304fee104f0f772f03cdc5ccef47e154028a1d`
   (`pull-request` run **35767496247** SUCCESS)
-- **Final-head GitHub CI:** pending the commit that records this note.
+- **Evidence HEAD (GitHub CI SUCCESS):** `59645c581f7312f3168b07a503cbe6605987f2bd`
+  (`pull-request` run **35773556737** SUCCESS)
+  https://github.com/mahmoudemad68/clinical_system/actions/runs/35773556737
+  — 17 success, 1 skipped (AI service path filter). Forge Pharmacy practice
+  E2E passed with `skipped=false` and all mandatory journey booleans true.
 
 Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 
@@ -333,7 +337,8 @@ The dedicated GitHub job `desktop-pharmacy-practice-e2e` provisions
 PostgreSQL/PostGIS, Redis, Core migrations, Core HTTP on
 `http://localhost:8080`, Pharmacy Forge, and a Linux GNOME/libsecret keystore.
 
-Artifact `chunk-15-pharmacy-practice-e2e` from run **35766687221**
+Artifact `chunk-15-pharmacy-practice-e2e` from remediation evidence run
+**35773556737** on `59645c5`
 (`tests/desktop-e2e/logs/pharmacy-forge-practice-e2e.json`):
 
 ```json
@@ -433,50 +438,48 @@ Host Node 22 / PHP 8.3, this agent:
 | `node --test scripts/desktop/forge-pharmacy-practice-e2e.test.mjs` | **6 passed** |
 | `npm run typecheck` pharmacy + doctor | pass |
 
-Dedicated Core-backed Forge Pharmacy practice E2E previously passed in GitHub
-job `desktop-pharmacy-practice-e2e` on runs **35766687221** (`0dd7861`) and
-**35767496247** (`f2304fe`) (required mode, `skipped=false`). Remediation SHA
-`4f5d5a3` must re-prove that job plus packaged ubuntu/macos/windows,
-Contracts, Core API, and Security scans; exact final-head run is recorded
-below when GitHub CI on this evidence HEAD is terminal.
+Dedicated Core-backed Forge Pharmacy practice E2E passed in GitHub job
+`desktop-pharmacy-practice-e2e` on remediation evidence HEAD `59645c5`
+(run **35773556737**, required mode, `skipped=false`). Packaged
+ubuntu/macos/windows, Contracts, Core API, Security scans, and Electron
+desktops also succeeded on that SHA.
 
 ## Exact final-head GitHub CI
 
-Pending this evidence commit. Pre-remediation SUCCESS runs (do not treat as
-proof of the address/phone fingerprint fix):
+Remediation evidence HEAD `59645c581f7312f3168b07a503cbe6605987f2bd` has
+GitHub `pull-request` run **35773556737** SUCCESS
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35773556737).
 
-Evidence HEAD `f2304fee104f0f772f03cdc5ccef47e154028a1d` has GitHub
-`pull-request` run **35767496247** SUCCESS
-(https://github.com/mahmoudemad68/clinical_system/actions/runs/35767496247).
+Product remediation SHA `4f5d5a3c371c092747048b0dc670935c71ee36c0` is the
+parent of that evidence commit (fingerprint includes address and phone).
 
-Implementation HEAD `0dd78616885947bd00830996cac7c7b5bc572ea3` has GitHub
-`pull-request` run **35766687221** SUCCESS
-(https://github.com/mahmoudemad68/clinical_system/actions/runs/35766687221).
-
-Both runs: 17 success, 1 skipped (AI service). Forge Pharmacy practice E2E
-required-mode passed (`skipped=false`). Packaged Electron E2E passed on
+17 success, 1 skipped (AI service). Forge Pharmacy practice E2E required-mode
+passed (`skipped=false`). Packaged Electron E2E passed on
 ubuntu/macos/windows.
 
-| Job | 35766687221 (`0dd7861`) | 35767496247 (`f2304fe`) |
-| --- | --- | --- |
-| Detect changed areas | success | success |
-| Supply-chain policy | success | success |
-| Security scans | success | success |
-| Contracts | success | success |
-| Core API | success | success |
-| Electron desktops | success | success |
-| Admin web | success | success |
-| Secure-file providers | success | success |
-| Forge Pharmacy practice E2E | success | success |
-| Forge Doctor practice E2E | success | success |
-| Packaged Electron E2E (ubuntu-latest) | success | success |
-| Packaged Electron E2E (macos-latest) | success | success |
-| Packaged Electron E2E (windows-latest) | success | success |
-| Flutter | success | success |
-| Flutter Patient profile E2E | success | success |
-| Runtime image scan (core-api) | success | success |
-| Runtime image scan (ai-service) | success | success |
-| AI service | skipped | skipped |
+Pre-remediation SUCCESS runs (do not treat as proof of the address/phone
+fingerprint fix): **35766687221** (`0dd7861`), **35767496247** (`f2304fe`).
+
+| Job | 35773556737 (`59645c5`) |
+| --- | --- |
+| Detect changed areas | success |
+| Supply-chain policy | success |
+| Security scans | success |
+| Contracts | success |
+| Core API | success |
+| Electron desktops | success |
+| Admin web | success |
+| Secure-file providers | success |
+| Forge Pharmacy practice E2E | success |
+| Forge Doctor practice E2E | success |
+| Packaged Electron E2E (ubuntu-latest) | success |
+| Packaged Electron E2E (macos-latest) | success |
+| Packaged Electron E2E (windows-latest) | success |
+| Flutter | success |
+| Flutter Patient profile E2E | success |
+| Runtime image scan (core-api) | success |
+| Runtime image scan (ai-service) | success |
+| AI service | skipped |
 
 Earlier on this PR:
 
@@ -488,10 +491,10 @@ Earlier on this PR:
   because `pharmacy_desktop` is not compatible with doctor accounts
   (`AuthenticationFailed` / client mismatch). Fixed in `0dd7861`.
 
-This SHA-recording commit follows `f2304fe` and does not change product
-code. Chunk-only evidence. Phase 02 is **NOT PASS**. Independent review
-decides `READY_TO_MERGE`. This chunk does not mark READY_TO_MERGE and does
-not merge.
+This SHA-recording commit follows `59645c5` and does not change product
+code. Chunk-only evidence. Phase 02 is **NOT PASS**. This PR is **NOT
+READY_TO_MERGE**. Independent review re-checks the address/phone intent
+identity. This chunk does not merge.
 
 ## Remaining risks
 
@@ -521,4 +524,5 @@ Chunk 15 does not complete Phase 02.
 Phase 02 remains **NOT PASS**.
 Inventory, POS, purchasing, catalog, operating modes,
 the Phase-10 role matrix, and Pharmacy Home remain out of scope.
-This PR stays **Draft**. Independent review decides READY_TO_MERGE.
+This PR stays **Draft** and is **NOT READY_TO_MERGE**. Independent review
+re-checks the address/phone intent-identity remediation.
