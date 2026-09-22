@@ -288,6 +288,9 @@ Failed iterations:
   on `802df3d`: Core reachable; E2E still on the demographics-edit route
   (waited for `171` already present in the field) so two `sign-out` keys
   were in the tree. Gitleaks still flagged commit `30aee8e` history.
+- [`35714444397`](https://github.com/mahmoudemad68/clinical_system/actions/runs/35714444397)
+  on `8a3f4a3`: Security scans green. VERSION_CONFLICT `pageBack` left the
+  edit-route overlay absorbing AppBar taps (`sign-out` not hit-testable).
 
 Remediations in this HEAD:
 
@@ -297,6 +300,7 @@ Remediations in this HEAD:
   route pops after a successful save.
 - Feature-branch history rewritten from `main` so gitleaks does not see the
   removed test literals in older commits.
+- Logout waits for a hit-testable `sign-out` after the edit overlay is gone.
 
 ## Changed files
 

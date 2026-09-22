@@ -102,13 +102,12 @@ void main() {
     }
 
     Future<void> logout() async {
-      final signOut = find.byKey(const Key('sign-out'));
-      expect(signOut, findsOneWidget);
-      await tester.ensureVisible(signOut);
+      final signOut = find.byKey(const Key('sign-out')).hitTestable();
+      await pumpUntilFound(tester, signOut, realAsync: true, maxPumps: 200);
       await tester.tap(signOut);
       await pumpUntilFound(
         tester,
-        find.byKey(const Key('sign-in')),
+        find.byKey(const Key('sign-in')).hitTestable(),
         realAsync: true,
         maxPumps: 200,
       );
@@ -208,7 +207,8 @@ void main() {
     await waitGone(find.byKey(const Key('version-conflict')));
     expect(find.byKey(const Key('version-conflict')), findsNothing);
     await tester.pageBack();
-    await waitFor(find.byKey(const Key('edit-demographics')));
+    await waitGone(find.byKey(const Key('demographics-save')));
+    await waitFor(find.byKey(const Key('edit-demographics')).hitTestable());
     await logout();
 
     // Manual review: unlinked collision, generic UI.
