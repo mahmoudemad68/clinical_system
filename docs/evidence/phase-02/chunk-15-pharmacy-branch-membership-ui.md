@@ -48,8 +48,11 @@ Chunk 14 is CLOSED (merged PR #24). **Phase 02 remains NOT PASS.**
 - **Branch:** `cursor/phase-02-chunk-15-pharmacy-branch-membership-ui-cc7f`
 - **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/25
 - **Baseline (GitHub `main`):** `cc8f9be7df683624ed9323f2dd357fadc9bc7d13`
-- **Implementation HEAD:** recorded after the doctor client-class E2E fix on this branch
-- **GitHub CI:** run `35762899892` on `c57c2b848f9a6b46d7b93e2f38db49eedaecaa68` was 17 success / 1 skipped (AI service) / Forge Pharmacy practice E2E failed only after the owner journey, because a Doctor password on `pharmacy_desktop` is Core `AuthenticationFailed` (client mismatch) and never reaches MFA or `account-denied`. Successor HEAD re-records exact CI.
+- **CI-proven implementation HEAD:** `0dd78616885947bd00830996cac7c7b5bc572ea3`
+- **GitHub CI (implementation HEAD):** `pull-request` run **35766687221** SUCCESS
+  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35766687221)
+  — 17 success, 1 skipped (AI service path filter). Forge Pharmacy practice
+  E2E passed with `skipped=false` and all mandatory journey booleans true.
 
 Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 
@@ -270,6 +273,37 @@ The dedicated GitHub job `desktop-pharmacy-practice-e2e` provisions
 PostgreSQL/PostGIS, Redis, Core migrations, Core HTTP on
 `http://localhost:8080`, Pharmacy Forge, and a Linux GNOME/libsecret keystore.
 
+Artifact `chunk-15-pharmacy-practice-e2e` from run **35766687221**
+(`tests/desktop-e2e/logs/pharmacy-forge-practice-e2e.json`):
+
+```json
+{
+  "kind": "forge-development-pharmacy-practice-e2e",
+  "skipped": false,
+  "required": true,
+  "apiBase": "http://localhost:8080",
+  "coreApi": {
+    "reachable": true,
+    "status": 200,
+    "health": "operational"
+  },
+  "core_health": "operational",
+  "branch_created": true,
+  "branch_edited": true,
+  "version_conflict": true,
+  "invited": true,
+  "accepted": true,
+  "membership_visible": true,
+  "revoked": true,
+  "account_isolation": true,
+  "phone_absent_after_submit": true,
+  "no_phase10_navigation": true,
+  "no_generic_invoke": true
+}
+```
+
+CI also printed `Pharmacy practice E2E evidence executed (skipped=false)`.
+
 Packaged Electron E2E remains the ubuntu/macos/windows matrix (startup,
 sandbox/CSP, credential transport, existing verification). Full new
 branch-management GUI E2E is the Ubuntu Forge job; that is documented, not a
@@ -339,9 +373,51 @@ Host Node 22 / PHP 8.3, this agent:
 | `npm run typecheck` pharmacy + doctor | pass |
 | PHP lint of three Chunk 15 helpers | pass |
 
-Dedicated Core-backed Forge Pharmacy practice E2E is the GitHub job
-`desktop-pharmacy-practice-e2e` (not this unprovisioned agent). CI must fail
-when `skipped !== false`.
+Dedicated Core-backed Forge Pharmacy practice E2E ran in GitHub job
+`desktop-pharmacy-practice-e2e` on run **35766687221** (required mode,
+`skipped=false`).
+
+## Exact final-head GitHub CI
+
+CI-proven implementation HEAD `0dd78616885947bd00830996cac7c7b5bc572ea3`
+has GitHub `pull-request` run **35766687221** SUCCESS
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35766687221).
+
+| Job | Conclusion |
+| --- | --- |
+| Detect changed areas | success |
+| Supply-chain policy | success |
+| Security scans | success |
+| Contracts | success |
+| Core API | success |
+| Electron desktops | success |
+| Admin web | success |
+| Secure-file providers | success |
+| Forge Pharmacy practice E2E | success |
+| Forge Doctor practice E2E | success |
+| Packaged Electron E2E (ubuntu-latest) | success |
+| Packaged Electron E2E (macos-latest) | success |
+| Packaged Electron E2E (windows-latest) | success |
+| Flutter | success |
+| Flutter Patient profile E2E | success |
+| Runtime image scan (core-api) | success |
+| Runtime image scan (ai-service) | success |
+| AI service | skipped (path filter) |
+
+Earlier on this PR:
+
+- `02d52e4bd2919e0b4e9b11c3e8ec1522648127bd` (**35761681211**) failed Forge
+  Pharmacy practice E2E: packaged CSP overwrote Forge webpack-dev-server
+  (`connect-src 'none'` + missing `'unsafe-eval'`), blanking the login shell.
+- `c57c2b848f9a6b46d7b93e2f38db49eedaecaa68` (**35762899892**) mounted the
+  login shell; the owner journey completed, then doctor MFA wait failed
+  because `pharmacy_desktop` is not compatible with doctor accounts
+  (`AuthenticationFailed` / client mismatch). Fixed in `0dd7861`.
+
+This evidence-recording commit follows `0dd7861` and does not change product
+code. Chunk-only evidence. Phase 02 is **NOT PASS**. Independent review
+decides `READY_TO_MERGE`. This chunk does not mark READY_TO_MERGE and does
+not merge.
 
 ## Remaining risks
 
