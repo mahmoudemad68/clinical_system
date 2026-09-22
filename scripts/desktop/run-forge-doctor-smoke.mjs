@@ -233,7 +233,7 @@ async function probeCoreApi(baseUrl) {
   }
 }
 
-function electronSandboxPath() {
+export function electronSandboxPath() {
   for (const dir of [join(repoRoot, 'node_modules', 'electron'), join(doctorApp, 'node_modules', 'electron')]) {
     const helper = join(dir, 'dist', 'chrome-sandbox');
     if (existsSync(helper)) {
@@ -243,7 +243,7 @@ function electronSandboxPath() {
   return null;
 }
 
-function ensureElectronRuntime() {
+export function ensureElectronRuntime() {
   if (electronSandboxPath()) {
     return;
   }

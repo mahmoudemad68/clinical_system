@@ -689,6 +689,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run contracts:generate:ts
+      - name: Download Electron runtime binary
+        run: node node_modules/electron/install.js
 
       - uses: shivammathur/setup-php@9e72090525849c5e82e596468b86eb55e9cc5401  # 2.32.0
         with:
@@ -733,6 +735,10 @@ jobs:
             libxshmfence1 libxss1 libxtst6 libpango-1.0-0 libpangocairo-1.0-0 \
             libcairo2 libcups2 libasound2 \
             gnome-keyring dbus-x11 libsecret-1-0 libsecret-tools
+
+      - name: Configure Linux Chromium SUID sandbox
+        working-directory: apps/doctor-desktop
+        run: node ../../scripts/desktop/ensure-linux-chromium-sandbox.mjs
 
       - name: Forge Doctor clinic location practice E2E
         env:

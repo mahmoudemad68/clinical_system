@@ -28,7 +28,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pickRendererTarget } from './run-forge-doctor-smoke.mjs';
+import { ensureElectronRuntime, pickRendererTarget } from './run-forge-doctor-smoke.mjs';
 
 const require = createRequire(import.meta.url);
 const WebSocket = require('ws');
@@ -354,6 +354,7 @@ async function main() {
   const debugPort = 9222 + Math.floor(Math.random() * 400);
   const protocolLog = join(workDir, 'protocol.log');
   const stdoutChunks = [];
+  ensureElectronRuntime();
   const sandbox = spawnSync(process.execPath, [join(here, 'ensure-linux-chromium-sandbox.mjs')], {
     cwd: doctorApp,
     stdio: 'inherit',
