@@ -63,6 +63,11 @@ branch-create idempotency remediation.
   https://github.com/mahmoudemad68/clinical_system/actions/runs/35773556737
   — 17 success, 1 skipped (AI service path filter). Forge Pharmacy practice
   E2E passed with `skipped=false` and all mandatory journey booleans true.
+- **Exact-head SHA-recording (GitHub CI SUCCESS):** `a4970961b4db51006b05cc4b9b7bf3b10bb99497`
+  (`pull-request` run **35774376967** SUCCESS)
+  https://github.com/mahmoudemad68/clinical_system/actions/runs/35774376967
+  — 17 success, 1 skipped. Forge Pharmacy practice E2E again
+  `skipped=false` with all mandatory journey booleans true.
 
 Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 
@@ -440,46 +445,50 @@ Host Node 22 / PHP 8.3, this agent:
 
 Dedicated Core-backed Forge Pharmacy practice E2E passed in GitHub job
 `desktop-pharmacy-practice-e2e` on remediation evidence HEAD `59645c5`
-(run **35773556737**, required mode, `skipped=false`). Packaged
-ubuntu/macos/windows, Contracts, Core API, Security scans, and Electron
-desktops also succeeded on that SHA.
+(run **35773556737**) and SHA-recording HEAD `a497096` (run **35774376967**),
+required mode, `skipped=false`. Packaged ubuntu/macos/windows, Contracts,
+Core API, Security scans, and Electron desktops also succeeded on those SHAs.
 
 ## Exact final-head GitHub CI
+
+SHA-recording HEAD `a4970961b4db51006b05cc4b9b7bf3b10bb99497` has GitHub
+`pull-request` run **35774376967** SUCCESS
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35774376967).
 
 Remediation evidence HEAD `59645c581f7312f3168b07a503cbe6605987f2bd` has
 GitHub `pull-request` run **35773556737** SUCCESS
 (https://github.com/mahmoudemad68/clinical_system/actions/runs/35773556737).
 
 Product remediation SHA `4f5d5a3c371c092747048b0dc670935c71ee36c0` is the
-parent of that evidence commit (fingerprint includes address and phone).
+grandparent of `a497096` (fingerprint includes address and phone).
 
-17 success, 1 skipped (AI service). Forge Pharmacy practice E2E required-mode
-passed (`skipped=false`). Packaged Electron E2E passed on
-ubuntu/macos/windows.
+Both post-remediation runs: 17 success, 1 skipped (AI service). Forge Pharmacy
+practice E2E required-mode passed (`skipped=false`). Packaged Electron E2E
+passed on ubuntu/macos/windows.
 
 Pre-remediation SUCCESS runs (do not treat as proof of the address/phone
 fingerprint fix): **35766687221** (`0dd7861`), **35767496247** (`f2304fe`).
 
-| Job | 35773556737 (`59645c5`) |
-| --- | --- |
-| Detect changed areas | success |
-| Supply-chain policy | success |
-| Security scans | success |
-| Contracts | success |
-| Core API | success |
-| Electron desktops | success |
-| Admin web | success |
-| Secure-file providers | success |
-| Forge Pharmacy practice E2E | success |
-| Forge Doctor practice E2E | success |
-| Packaged Electron E2E (ubuntu-latest) | success |
-| Packaged Electron E2E (macos-latest) | success |
-| Packaged Electron E2E (windows-latest) | success |
-| Flutter | success |
-| Flutter Patient profile E2E | success |
-| Runtime image scan (core-api) | success |
-| Runtime image scan (ai-service) | success |
-| AI service | skipped |
+| Job | 35773556737 (`59645c5`) | 35774376967 (`a497096`) |
+| --- | --- | --- |
+| Detect changed areas | success | success |
+| Supply-chain policy | success | success |
+| Security scans | success | success |
+| Contracts | success | success |
+| Core API | success | success |
+| Electron desktops | success | success |
+| Admin web | success | success |
+| Secure-file providers | success | success |
+| Forge Pharmacy practice E2E | success | success |
+| Forge Doctor practice E2E | success | success |
+| Packaged Electron E2E (ubuntu-latest) | success | success |
+| Packaged Electron E2E (macos-latest) | success | success |
+| Packaged Electron E2E (windows-latest) | success | success |
+| Flutter | success | success |
+| Flutter Patient profile E2E | success | success |
+| Runtime image scan (core-api) | success | success |
+| Runtime image scan (ai-service) | success | success |
+| AI service | skipped | skipped |
 
 Earlier on this PR:
 
@@ -491,7 +500,7 @@ Earlier on this PR:
   because `pharmacy_desktop` is not compatible with doctor accounts
   (`AuthenticationFailed` / client mismatch). Fixed in `0dd7861`.
 
-This SHA-recording commit follows `59645c5` and does not change product
+This exact-head recording follows `a497096` and does not change product
 code. Chunk-only evidence. Phase 02 is **NOT PASS**. This PR is **NOT
 READY_TO_MERGE**. Independent review re-checks the address/phone intent
 identity. This chunk does not merge.
