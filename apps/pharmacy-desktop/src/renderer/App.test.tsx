@@ -139,6 +139,33 @@ function installBridge(overrides: Partial<PharmacyClinicBridge['pharmacy']> & Re
         expiresAt: '2026-09-21T00:10:00Z',
         completedAt: '2026-09-21T00:01:00Z',
       }),
+    listBranches: () => ok({ branches: [], hasMore: false, nextCursor: null }),
+    createBranch: () =>
+      Promise.resolve({
+        ok: false as const,
+        error: { code: 'PERMISSION_DENIED' as const, message: 'denied' },
+      }),
+    getBranch: () =>
+      Promise.resolve({
+        ok: false as const,
+        error: { code: 'NOT_FOUND' as const, message: 'missing' },
+      }),
+    updateBranch: () =>
+      Promise.resolve({
+        ok: false as const,
+        error: { code: 'NOT_FOUND' as const, message: 'missing' },
+      }),
+    inviteOperator: () =>
+      Promise.resolve({
+        ok: false as const,
+        error: { code: 'NOT_FOUND' as const, message: 'missing' },
+      }),
+    listMemberships: () => ok({ memberships: [] }),
+    revokeMembership: () =>
+      Promise.resolve({
+        ok: false as const,
+        error: { code: 'NOT_FOUND' as const, message: 'missing' },
+      }),
     ...overrides,
   };
 
@@ -325,6 +352,23 @@ describe('pharmacy renderer workspace', () => {
     assertNoCanaries(html);
     expect(html).not.toContain(CANARIES.path);
     expect(JSON.stringify(await clinic.pharmacy.selectEvidence())).not.toContain(CANARIES.path);
+  });
+
+  it('keeps a doctor login on the sign-in form without pharmacy workspace', async () => {
+    const clinic = installBridge();
+    clinic.auth.login = () => fail('UNAUTHENTICATED', 'The session is no longer valid.');
+
+    renderApp();
+    expect(await screen.findByTestId('login-form')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Mobile number'), { target: { value: '01900000099' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'correct-horse-battery' } });
+    fireEvent.click(screen.getByTestId('sign-in'));
+
+    expect(await screen.findByTestId('login-error')).toBeTruthy();
+    expect(screen.queryByTestId('mfa-code')).toBeNull();
+    expect(screen.queryByTestId('pharmacy-workspace')).toBeNull();
+    expect(screen.queryByTestId('practice-branches-nav')).toBeNull();
+    expect(screen.queryByTestId('account-denied')).toBeNull();
   });
 
   it('fail-closes a non-pharmacy account', async () => {

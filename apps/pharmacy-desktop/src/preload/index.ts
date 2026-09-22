@@ -94,6 +94,13 @@ const bridge: PharmacyClinicBridge = {
     clearEvidence: (handleId) => call(PHARMACY_CHANNELS.evidenceClear, { handleId }),
     uploadEvidence: (input) => call(PHARMACY_CHANNELS.evidenceUpload, input),
     uploadStatus: (uploadId) => call(PHARMACY_CHANNELS.uploadStatus, { uploadId }),
+    listBranches: (input) => call(PHARMACY_CHANNELS.branchesList, input),
+    createBranch: (input) => call(PHARMACY_CHANNELS.branchCreate, input),
+    getBranch: (input) => call(PHARMACY_CHANNELS.branchGet, input),
+    updateBranch: (input) => call(PHARMACY_CHANNELS.branchUpdate, input),
+    inviteOperator: (input) => call(PHARMACY_CHANNELS.branchInviteOperator, input),
+    listMemberships: (input) => call(PHARMACY_CHANNELS.branchMemberships, input),
+    revokeMembership: (input) => call(PHARMACY_CHANNELS.branchRevokeMembership, input),
   },
 };
 

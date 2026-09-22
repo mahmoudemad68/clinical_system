@@ -31,11 +31,13 @@ vi.mock('./packaged-api-allowlist', () => ({
 
 import { platformGateway, resetPlatformGatewaySession } from './platform-gateway';
 import {
+  BRANCH_CREATE_INTENT,
   ONBOARD_INTENT,
   OPEN_CASE_INTENT,
   SUBMIT_INTENT,
   UPLOAD_COMPLETE_INTENT,
   UPLOAD_CREATE_INTENT,
+  pharmacyBranchCreateIntentFingerprint,
   pharmacyGateway,
   pharmacyIntentKeys,
   resetPharmacyGatewayState,
@@ -43,6 +45,7 @@ import {
 import { UploadTargetError } from './upload-target';
 import {
   pharmacyOnboardResponseSchema,
+  pharmacyBranchCreateResponseSchema,
   pharmacyUploadStatusResponseSchema,
   pharmacyVerificationSubmitResponseSchema,
 } from '@clinic/desktop-bridge-contracts';
@@ -994,3 +997,377 @@ describe('pharmacy verification transport without cookie or Host workarounds', (
     expect(JSON.stringify(uploaded)).not.toContain(CANARIES.signedUrl);
   });
 });
+
+const ORG_ID = '0199a5c8-0000-7000-8000-000000000010';
+const BRANCH_ID = '0199a5c8-0000-7000-8000-0000000000aa';
+const MEMBERSHIP_ID = '0199a5c8-0000-7000-8000-0000000000bb';
+const INVITATION_ID = '0199a5c8-0000-7000-8000-0000000000cc';
+const PHONE_CANARY = 'CANARY-OPERATOR-PHONE-01099999999';
+const ADDRESS_CANARY = 'CANARY-BRANCH-ADDRESS-99 Nile St';
+const HMAC_CANARY = 'CANARY-PHONE-HMAC';
+
+function approvedOrganization(overrides: Record<string, unknown> = {}) {
+  return {
+    organization_id: ORG_ID,
+    public_name: 'Safe Pharmacy',
+    verification_status: 'approved',
+    status: 'active',
+    version: 2,
+    created_at: '2026-09-21T00:00:00Z',
+    updated_at: '2026-09-21T00:00:00Z',
+    initial_branch: {
+      branch_id: BRANCH_ID,
+      public_name: 'Main',
+      country_code: 'EG',
+      status: 'active',
+      version: 2,
+    },
+    membership: {
+      membership_id: '0199a5c8-0000-7000-8000-000000000012',
+      role: 'owner',
+      status: 'active',
+    },
+    ...overrides,
+  };
+}
+
+function apiBranch(overrides: Record<string, unknown> = {}) {
+  return {
+    branch_id: BRANCH_ID,
+    organization_id: ORG_ID,
+    public_name: 'Cairo Pharmacy',
+    country_code: 'EG',
+    status: 'active',
+    version: 1,
+    created_at: '2026-09-21T00:00:00Z',
+    updated_at: '2026-09-21T00:00:00Z',
+    address: ADDRESS_CANARY,
+    latitude: 30.0444,
+    longitude: 31.2357,
+    phone: PHONE_CANARY,
+    phone_hmac: HMAC_CANARY,
+    ...overrides,
+  };
+}
+
+describe('pharmacy gateway branch and membership projections', () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    appState.isPackaged = false;
+    resetPlatformGatewaySession();
+    resetPharmacyGatewayState();
+    process.env['CLINIC_API_BASE_URL'] = 'http://localhost:8080';
+    fetchMock.mockResolvedValueOnce(
+      envelope(200, {
+        user_id: '0199a5c8-0000-7000-8000-000000000001',
+        account_type: 'pharmacy',
+        status: 'active',
+        language: 'en',
+        assurance_level: 'aal2_totp',
+        profile_links: [],
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(envelope(200, { capabilities: [] }));
+  });
+
+  afterEach(() => {
+    delete process.env['CLINIC_API_BASE_URL'];
+  });
+
+  function hang(): Promise<never> {
+    return new Promise(() => undefined);
+  }
+
+  function lastIdempotencyKey(): string {
+    const keys = fetchMock.mock.calls
+      .map((call) => (call[1] as { headers?: Record<string, string> } | undefined)?.headers?.['Idempotency-Key'])
+      .filter((key): key is string => typeof key === 'string');
+    const last = keys.at(-1);
+    expect(last).toEqual(expect.any(String));
+    return last as string;
+  }
+
+  function assertIntentStoreOmitsCanaries(): void {
+    const snapshot = pharmacyIntentKeys.snapshot();
+    const serialized = JSON.stringify(snapshot);
+    expect(serialized).not.toContain(ADDRESS_CANARY);
+    expect(serialized).not.toContain(PHONE_CANARY);
+    for (const [mapKey, uuid] of snapshot) {
+      expect(mapKey).not.toContain(ADDRESS_CANARY);
+      expect(mapKey).not.toContain(PHONE_CANARY);
+      expect(uuid).not.toContain(ADDRESS_CANARY);
+      expect(uuid).not.toContain(PHONE_CANARY);
+      expect(uuid).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+    }
+  }
+
+  const createPayload = {
+    publicName: 'Cairo Pharmacy',
+    address: ADDRESS_CANARY,
+    countryCode: 'EG' as const,
+    latitude: 30.0444,
+    longitude: 31.2357,
+    phone: PHONE_CANARY,
+  };
+
+  async function expectChangedCreateKey(patch: Partial<typeof createPayload>): Promise<void> {
+    const nextPayload = { ...createPayload, ...patch };
+    const firstFingerprint = pharmacyBranchCreateIntentFingerprint(ORG_ID, createPayload);
+    const nextFingerprint = pharmacyBranchCreateIntentFingerprint(ORG_ID, nextPayload);
+    expect(nextFingerprint).not.toBe(firstFingerprint);
+
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockRejectedValueOnce(new Error('network'));
+    await expect(pharmacyGateway.createBranch('en', createPayload)).rejects.toThrow();
+    const firstKey = lastIdempotencyKey();
+    expect(firstKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(pharmacyIntentKeys.peek(BRANCH_CREATE_INTENT, firstFingerprint)).toBe(firstKey);
+
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockResolvedValueOnce(envelope(201, { branch_id: BRANCH_ID, status: 'active', version: 1 }));
+    await pharmacyGateway.createBranch('en', nextPayload);
+    const secondKey = lastIdempotencyKey();
+    expect(secondKey).not.toBe(firstKey);
+    expect(secondKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(secondKey).not.toContain(ADDRESS_CANARY);
+    expect(secondKey).not.toContain(PHONE_CANARY);
+    expect(pharmacyIntentKeys.peek(BRANCH_CREATE_INTENT, firstFingerprint)).toBe(firstKey);
+    expect(pharmacyIntentKeys.peek(BRANCH_CREATE_INTENT, nextFingerprint)).toBeUndefined();
+    assertIntentStoreOmitsCanaries();
+  }
+
+  it('lists owner branches without phone, hmac, or organization internals', async () => {
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockResolvedValueOnce({
+      status: 200,
+      json: async () => ({
+        data: [apiBranch()],
+        meta: { pagination: { has_more: true, next: 'opaque-cursor', limit: 25 } },
+        errors: [],
+        request_id: '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c01',
+      }),
+    });
+
+    const listed = await pharmacyGateway.listBranches('en', {});
+    expect(listed.hasMore).toBe(true);
+    expect(listed.nextCursor).toBe('opaque-cursor');
+    expect(listed.branches[0]?.publicName).toBe('Cairo Pharmacy');
+    expect(listed.branches[0]?.address).toBe(ADDRESS_CANARY);
+    const serialized = JSON.stringify(listed);
+    expect(serialized).not.toContain(PHONE_CANARY);
+    expect(serialized).not.toContain(HMAC_CANARY);
+    expect(serialized).not.toContain('organization_id');
+    expect(serialized).not.toContain(ORG_ID);
+  });
+
+  it('retries the exact branch-create payload with the same Idempotency-Key after an uncertain result', async () => {
+    const payload = {
+      publicName: 'Cairo Pharmacy',
+      address: ADDRESS_CANARY,
+      countryCode: 'EG' as const,
+      latitude: 30.0444,
+      longitude: 31.2357,
+      phone: PHONE_CANARY,
+    };
+    const fingerprint = pharmacyBranchCreateIntentFingerprint(ORG_ID, payload);
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockRejectedValueOnce(new Error('network'));
+    await expect(pharmacyGateway.createBranch('en', payload)).rejects.toThrow();
+    const firstKey = lastIdempotencyKey();
+    expect(firstKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(firstKey).not.toContain(ADDRESS_CANARY);
+    expect(firstKey).not.toContain(PHONE_CANARY);
+    expect(pharmacyIntentKeys.peek(BRANCH_CREATE_INTENT, fingerprint)).toBe(firstKey);
+    assertIntentStoreOmitsCanaries();
+
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockResolvedValueOnce(envelope(201, { branch_id: BRANCH_ID, status: 'active', version: 1 }));
+    const created = await pharmacyGateway.createBranch('en', payload);
+    expect(created.branchId).toBe(BRANCH_ID);
+    expect(JSON.stringify(created)).not.toContain(ADDRESS_CANARY);
+    expect(JSON.stringify(created)).not.toContain(PHONE_CANARY);
+    expect(lastIdempotencyKey()).toBe(firstKey);
+    expect(pharmacyIntentKeys.peek(BRANCH_CREATE_INTENT, fingerprint)).toBeUndefined();
+  });
+
+  it('keeps the original branch-create key when a late success arrives after the IPC deadline', async () => {
+    const payload = {
+      publicName: 'Cairo Pharmacy',
+      address: ADDRESS_CANARY,
+      countryCode: 'EG' as const,
+      latitude: 30.0444,
+      longitude: 31.2357,
+      phone: PHONE_CANARY,
+    };
+    const fingerprint = pharmacyBranchCreateIntentFingerprint(ORG_ID, payload);
+    const held = createDeferred<ReturnType<typeof envelope>>();
+    const ready = envelope(201, { branch_id: BRANCH_ID, status: 'active', version: 1 });
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockImplementationOnce(() => held.promise);
+
+    const deadline = openIpcDeadline();
+    const pending = runIpcDelivered(
+      pharmacyIntentKeys,
+      () => pharmacyGateway.createBranch('en', payload),
+      deadline.promise,
+      acceptIpcSchema(pharmacyBranchCreateResponseSchema),
+    );
+    await vi.waitFor(() => {
+      expect(pharmacyIntentKeys.peek(BRANCH_CREATE_INTENT, fingerprint)).toEqual(expect.any(String));
+    });
+    const original = pharmacyIntentKeys.peek(BRANCH_CREATE_INTENT, fingerprint);
+    deadline.expire();
+    await expect(pending).rejects.toBeInstanceOf(TimeoutError);
+    held.resolve(ready);
+    await vi.waitFor(() => {
+      expect(pharmacyIntentKeys.peek(BRANCH_CREATE_INTENT, fingerprint)).toBe(original);
+    });
+    assertIntentStoreOmitsCanaries();
+
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockResolvedValueOnce(envelope(201, { branch_id: BRANCH_ID, status: 'active', version: 1 }));
+    const delivered = await runIpcDelivered(
+      pharmacyIntentKeys,
+      () => pharmacyGateway.createBranch('en', payload),
+      hang(),
+      acceptIpcSchema(pharmacyBranchCreateResponseSchema),
+    );
+    expect(delivered.branchId).toBe(BRANCH_ID);
+    const keys = fetchMock.mock.calls
+      .map((call) => (call[1] as { headers?: Record<string, string> } | undefined)?.headers?.['Idempotency-Key'])
+      .filter((key): key is string => typeof key === 'string');
+    expect(keys.length).toBeGreaterThanOrEqual(2);
+    expect(keys[0]).toBe(original);
+    expect(keys[keys.length - 1]).toBe(original);
+    expect(pharmacyIntentKeys.peek(BRANCH_CREATE_INTENT, fingerprint)).toBeUndefined();
+  });
+
+  it('mints a new branch-create key when only the address changes after an uncertain result', async () => {
+    await expectChangedCreateKey({ address: 'CANARY-BRANCH-ADDRESS-CHANGED-1 Tahrir' });
+  });
+
+  it('mints a new branch-create key when only the phone changes after an uncertain result', async () => {
+    await expectChangedCreateKey({ phone: 'CANARY-BRANCH-PHONE-01000000000' });
+  });
+
+  it('mints a new branch-create key when public name or coordinates change after an uncertain result', async () => {
+    await expectChangedCreateKey({ publicName: 'Nile Pharmacy' });
+    resetPharmacyGatewayState();
+    await expectChangedCreateKey({ latitude: 30.05, longitude: 31.24 });
+  });
+
+  it('does not retain or log branch-create address and phone canaries in the intent map', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockRejectedValueOnce(new Error('network'));
+    await expect(
+      pharmacyGateway.createBranch('en', {
+        publicName: 'Cairo Pharmacy',
+        address: ADDRESS_CANARY,
+        countryCode: 'EG',
+        latitude: 30.0444,
+        longitude: 31.2357,
+        phone: PHONE_CANARY,
+      }),
+    ).rejects.toThrow();
+    assertIntentStoreOmitsCanaries();
+    const firstKey = lastIdempotencyKey();
+    expect(firstKey).not.toContain(ADDRESS_CANARY);
+    expect(firstKey).not.toContain(PHONE_CANARY);
+    for (const spy of [log, info, warn, error, debug]) {
+      expect(JSON.stringify(spy.mock.calls)).not.toContain(ADDRESS_CANARY);
+      expect(JSON.stringify(spy.mock.calls)).not.toContain(PHONE_CANARY);
+      spy.mockRestore();
+    }
+  });
+
+  it('requires expected_version on update and maps VERSION_CONFLICT', async () => {
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockResolvedValueOnce({
+      status: 409,
+      json: async () => ({
+        data: null,
+        meta: {},
+        errors: [{ code: 'VERSION_CONFLICT', message: `stale ${PHONE_CANARY}` }],
+        request_id: '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c01',
+      }),
+    });
+    await expect(
+      pharmacyGateway.updateBranch('en', {
+        branchId: BRANCH_ID,
+        expectedVersion: 1,
+        publicName: 'Cairo Nile Pharmacy',
+      }),
+    ).rejects.toMatchObject({ failureCode: 'VERSION_CONFLICT' });
+  });
+
+  it('marks a 200 invitation replay as existingPending without echoing phone', async () => {
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockResolvedValueOnce(
+      envelope(200, {
+        invitation_id: INVITATION_ID,
+        status: 'pending',
+        expires_at: '2026-09-22T00:00:00Z',
+        phone: PHONE_CANARY,
+        phone_hmac: HMAC_CANARY,
+      }),
+    );
+    const invited = await pharmacyGateway.inviteOperator('en', { branchId: BRANCH_ID, phone: PHONE_CANARY });
+    expect(invited.existingPending).toBe(true);
+    expect(invited.invitationId).toBe(INVITATION_ID);
+    const serialized = JSON.stringify(invited);
+    expect(serialized).not.toContain(PHONE_CANARY);
+    expect(serialized).not.toContain(HMAC_CANARY);
+    const init = fetchMock.mock.calls.at(-1)?.[1] as { body?: string };
+    expect(JSON.parse(init.body ?? '{}')).toEqual({ phone: PHONE_CANARY });
+  });
+
+  it('maps memberships without user identifiers or phones', async () => {
+    fetchMock.mockResolvedValueOnce(envelope(200, approvedOrganization()));
+    fetchMock.mockResolvedValueOnce(
+      envelope(200, [
+        {
+          membership_id: MEMBERSHIP_ID,
+          branch_id: BRANCH_ID,
+          role: 'branch_operator',
+          status: 'active',
+          version: 1,
+          invited_at: '2026-09-21T00:04:00Z',
+          accepted_at: '2026-09-21T00:05:00Z',
+          revoked_at: null,
+          user_id: '0199a5c8-0000-7000-8000-000000000099',
+          phone: PHONE_CANARY,
+          phone_hmac: HMAC_CANARY,
+        },
+      ]),
+    );
+    const listed = await pharmacyGateway.listMemberships('en', BRANCH_ID);
+    expect(listed.memberships[0]?.role).toBe('branch_operator');
+    const serialized = JSON.stringify(listed);
+    expect(serialized).not.toContain(PHONE_CANARY);
+    expect(serialized).not.toContain('user_id');
+    expect(serialized).not.toContain('0199a5c8-0000-7000-8000-000000000099');
+  });
+
+  it('fails closed when the organization is not approved', async () => {
+    fetchMock.mockResolvedValueOnce(
+      envelope(200, approvedOrganization({ verification_status: 'pending_review', status: 'pending' })),
+    );
+    await expect(pharmacyGateway.listBranches('en', {})).rejects.toMatchObject({
+      failureCode: 'PERMISSION_DENIED',
+    });
+  });
+});
+

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   ALL_CHANNELS,
@@ -10,6 +10,7 @@ import {
   MAX_IPC_PAYLOAD_BYTES,
   PHARMACY_ALL_CHANNELS,
   PHARMACY_CHANNEL_LIST,
+  PHARMACY_CHANNELS,
   authSessionViewSchema,
   localeSetRequestSchema,
   platformHealthResponseSchema,
@@ -20,6 +21,25 @@ import { APP_CONFIG } from './app-config';
 
 const appRoot = join(__dirname, '..', '..');
 const read = (relative: string): string => readFileSync(join(appRoot, relative), 'utf8');
+
+function rendererSourcePaths(): string[] {
+  const root = join(appRoot, 'src', 'renderer');
+  const collected: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (/\.(ts|tsx)$/.test(entry.name) && !entry.name.includes('.test.')) {
+        collected.push(full.slice(appRoot.length + 1));
+      }
+    }
+  };
+  walk(root);
+  return collected;
+}
 
 /**
  * Source with comments removed.
@@ -49,14 +69,7 @@ describe('Clinic Pharmacy — renderer isolation', () => {
   it('renderer source imports no Node or Electron module', () => {
     // Ambient Window.clinic types live in clinic-bridge.d.ts (tsconfig include).
     // A runtime import of that file is not a module webpack can resolve.
-    const rendererFiles = [
-      'src/renderer/index.tsx',
-      'src/renderer/App.tsx',
-      'src/renderer/strings.ts',
-      'src/renderer/theme.ts',
-    ];
-
-    for (const relative of rendererFiles) {
+    for (const relative of rendererSourcePaths()) {
       const renderer = read(relative);
       for (const forbidden of [
         "from 'electron'",
@@ -74,7 +87,7 @@ describe('Clinic Pharmacy — renderer isolation', () => {
   });
 
   it('renderer never performs its own network or storage access', () => {
-    for (const relative of ['src/renderer/index.tsx', 'src/renderer/App.tsx']) {
+    for (const relative of rendererSourcePaths()) {
       const renderer = read(relative);
 
       // Every byte in and out goes through window.clinic. A fetch here would be
@@ -97,7 +110,7 @@ describe('Clinic Pharmacy — renderer isolation', () => {
   });
 
   it('keeps the encrypted store and native sqlite out of the renderer', () => {
-    const renderer = read('src/renderer/App.tsx') + read('src/renderer/index.tsx');
+    const renderer = rendererSourcePaths().map(read).join('\n');
     const preload = read('src/preload/index.ts');
 
     for (const source of [renderer, preload]) {
@@ -221,10 +234,34 @@ describe('Clinic Pharmacy — window security configuration', () => {
   });
 
   it('declares a CSP that forbids remote script and any renderer connection', () => {
-    expect(main).toContain("default-src 'none'");
-    expect(main).toContain("connect-src 'none'");
-    expect(main).toContain("frame-ancestors 'none'");
-    expect(main).not.toContain("script-src 'unsafe-inline'");
+    const csp = read('src/shared/content-security-policy.ts');
+
+    expect(csp).toContain("default-src 'none'");
+    expect(csp).toContain("connect-src 'none'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).not.toContain("script-src 'unsafe-inline'");
+    expect(main).toContain('rendererResponseSecurityHeaders(!isDevelopment)');
+  });
+
+  it('does not overwrite Forge development CSP with the packaged policy', () => {
+    const mainCode = readCode('src/main/index.ts');
+    const forge = readCode('forge.config.ts');
+    const html = read('src/renderer/index.html');
+    const webpackRenderer = readCode('webpack.renderer.config.ts');
+
+    expect(forge).toContain('DEVELOPMENT_CONTENT_SECURITY_POLICY');
+    expect(forge).not.toContain('unsafe-eval');
+    expect(forge).not.toMatch(/connect-src 'self' ws:/);
+
+    expect(mainCode).toContain('rendererResponseSecurityHeaders(!isDevelopment)');
+    expect(mainCode).not.toMatch(/Content-Security-Policy['":\s]*\[contentSecurityPolicy/);
+
+    expect(webpackRenderer).toContain("devtool: 'source-map'");
+    expect(webpackRenderer).not.toMatch(/eval-source-map|eval-cheap-module-source-map/);
+    expect(webpackRenderer).not.toMatch(/devtool:\s*'eval'/);
+
+    expect(html).toContain("webpackConfig.mode === 'production'");
+    expect(html).toContain("connect-src 'none'");
   });
 });
 
@@ -393,6 +430,26 @@ describe('Clinic Pharmacy — IPC contract', () => {
     expect(readCode('src/main/ipc-delivery.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
 
     expect([...PHARMACY_ALL_CHANNELS]).toEqual(expect.arrayContaining([...ALL_CHANNELS]));
+    expect([...PHARMACY_CHANNEL_LIST].sort()).toEqual(
+      [
+        PHARMACY_CHANNELS.organizationGetOwn,
+        PHARMACY_CHANNELS.organizationOnboard,
+        PHARMACY_CHANNELS.verificationOpenCase,
+        PHARMACY_CHANNELS.verificationStatus,
+        PHARMACY_CHANNELS.verificationSubmit,
+        PHARMACY_CHANNELS.evidenceSelect,
+        PHARMACY_CHANNELS.evidenceClear,
+        PHARMACY_CHANNELS.evidenceUpload,
+        PHARMACY_CHANNELS.uploadStatus,
+        PHARMACY_CHANNELS.branchesList,
+        PHARMACY_CHANNELS.branchCreate,
+        PHARMACY_CHANNELS.branchGet,
+        PHARMACY_CHANNELS.branchUpdate,
+        PHARMACY_CHANNELS.branchInviteOperator,
+        PHARMACY_CHANNELS.branchMemberships,
+        PHARMACY_CHANNELS.branchRevokeMembership,
+      ].sort(),
+    );
     for (const channel of PHARMACY_CHANNEL_LIST) {
       expect(ALL_CHANNELS).not.toContain(channel);
       expect(PHARMACY_ALL_CHANNELS).toContain(channel);
@@ -402,7 +459,7 @@ describe('Clinic Pharmacy — IPC contract', () => {
   it('does not register doctor domain channels on the Pharmacy bridge', () => {
     const capabilities = read('src/main/capabilities.ts');
     const preload = read('src/preload/index.ts');
-    const renderer = read('src/renderer/App.tsx') + read('src/renderer/index.tsx');
+    const renderer = rendererSourcePaths().map(read).join('\n');
 
     expect(capabilities).not.toContain('DOCTOR_CHANNELS');
     expect(capabilities).not.toContain('DOCTOR_CAPABILITY_REGISTRY');
@@ -410,6 +467,10 @@ describe('Clinic Pharmacy — IPC contract', () => {
     expect(preload).not.toContain('clinic:doctor.');
     expect(preload).not.toContain('DOCTOR_CHANNELS');
     expect(renderer).not.toContain('window.clinic.doctor');
+    expect(renderer).not.toContain('data-testid="inventory-nav"');
+    expect(renderer).not.toContain('data-testid="pos-nav"');
+    expect(renderer).not.toContain('pharmacist');
+    expect(renderer).not.toContain('cashier');
     expect(PHARMACY_ALL_CHANNELS).not.toEqual(expect.arrayContaining([...DOCTOR_CHANNEL_LIST]));
 
     for (const channel of DOCTOR_CHANNEL_LIST) {

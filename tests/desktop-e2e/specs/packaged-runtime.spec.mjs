@@ -77,6 +77,13 @@ describe(`Packaged ${PRODUCT} runtime`, () => {
         'clearEvidence',
         'uploadEvidence',
         'uploadStatus',
+        'listBranches',
+        'createBranch',
+        'getBranch',
+        'updateBranch',
+        'inviteOperator',
+        'listMemberships',
+        'revokeMembership',
       ]));
     } else {
       expect(isolation.pharmacyType).toBe('undefined');

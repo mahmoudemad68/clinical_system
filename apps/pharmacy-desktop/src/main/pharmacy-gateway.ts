@@ -1,5 +1,16 @@
 import { app } from 'electron';
 import type {
+  PharmacyBranchCreateRequest,
+  PharmacyBranchCreateResponse,
+  PharmacyBranchInviteOperatorRequest,
+  PharmacyBranchInviteOperatorResponse,
+  PharmacyBranchMembershipView,
+  PharmacyBranchMembershipsResponse,
+  PharmacyBranchPrivateView,
+  PharmacyBranchRevokeMembershipRequest,
+  PharmacyBranchUpdateRequest,
+  PharmacyBranchesListRequest,
+  PharmacyBranchesListResponse,
   PharmacyOnboardRequest,
   PharmacyOnboardResponse,
   PharmacyOrganizationView,
@@ -15,6 +26,7 @@ import { parseIssuedUploadTarget } from './upload-target';
 import {
   GatewayError,
   coreJsonRequest,
+  coreJsonRequestEnvelope,
   currentAccountType,
   platformGateway,
   putIssuedUploadBytes,
@@ -25,8 +37,34 @@ export const OPEN_CASE_INTENT = 'pharmacy.verification.open';
 export const SUBMIT_INTENT = 'pharmacy.verification.submit';
 export const UPLOAD_CREATE_INTENT = 'pharmacy.verification.upload.create';
 export const UPLOAD_COMPLETE_INTENT = 'pharmacy.verification.upload.complete';
+export const BRANCH_CREATE_INTENT = 'pharmacy.branch.create';
+export const BRANCH_INVITE_INTENT = 'pharmacy.branch.inviteOperator';
 
 export const pharmacyIntentKeys = new IntentKeyStore();
+
+/**
+ * Canonical branch-create intent identity. Address and phone are material
+ * request fields, so they participate in the SHA-256 fingerprint. The store
+ * retains only that digest plus a random UUID Idempotency-Key — never the
+ * plaintext fields.
+ */
+export function pharmacyBranchCreateIntentFingerprint(
+  organizationId: string,
+  input: Pick<
+    PharmacyBranchCreateRequest,
+    'publicName' | 'address' | 'countryCode' | 'latitude' | 'longitude' | 'phone'
+  >,
+): string {
+  return pharmacyIntentKeys.fingerprint({
+    organizationId,
+    publicName: input.publicName,
+    address: input.address,
+    countryCode: input.countryCode,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    phone: input.phone,
+  });
+}
 
 type ApiOrganization = {
   organization_id: string;
@@ -102,6 +140,111 @@ function mapUploadStatus(raw: {
     expiresAt: raw.expires_at,
     completedAt: raw.completed_at,
   };
+}
+
+type ApiBranch = {
+  branch_id: string;
+  public_name: string;
+  country_code: 'EG';
+  status: PharmacyBranchPrivateView['status'];
+  version: number;
+  created_at: string;
+  updated_at: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+};
+
+type ApiMembership = {
+  membership_id: string;
+  role: 'branch_operator';
+  status: PharmacyBranchMembershipView['status'];
+  version: number;
+  invited_at: string | null;
+  accepted_at: string | null;
+  revoked_at: string | null;
+};
+
+function mapBranch(raw: ApiBranch): PharmacyBranchPrivateView {
+  return {
+    branchId: raw.branch_id,
+    publicName: raw.public_name,
+    countryCode: raw.country_code,
+    status: raw.status,
+    version: raw.version,
+    createdAt: raw.created_at,
+    updatedAt: raw.updated_at,
+    ...(typeof raw.address === 'string' ? { address: raw.address } : {}),
+    ...(typeof raw.latitude === 'number' ? { latitude: raw.latitude } : {}),
+    ...(typeof raw.longitude === 'number' ? { longitude: raw.longitude } : {}),
+  };
+}
+
+function mapMembership(raw: ApiMembership): PharmacyBranchMembershipView {
+  return {
+    membershipId: raw.membership_id,
+    role: 'branch_operator',
+    status: raw.status,
+    version: raw.version,
+    invitedAt: raw.invited_at,
+    acceptedAt: raw.accepted_at,
+    revokedAt: raw.revoked_at,
+  };
+}
+
+function paginationFromMeta(meta: Record<string, unknown>): {
+  hasMore: boolean;
+  nextCursor: string | null;
+} {
+  const pagination = meta['pagination'];
+  if (!pagination || typeof pagination !== 'object') {
+    return { hasMore: false, nextCursor: null };
+  }
+  const record = pagination as Record<string, unknown>;
+  const next = record['next'];
+  return {
+    hasMore: record['has_more'] === true,
+    nextCursor: typeof next === 'string' && next.length > 0 ? next : null,
+  };
+}
+
+function branchesListPath(organizationId: string, input: PharmacyBranchesListRequest): string {
+  const params = new URLSearchParams();
+  if (typeof input.cursor === 'string') {
+    params.set('cursor', input.cursor);
+  }
+  if (typeof input.limit === 'number') {
+    params.set('limit', String(input.limit));
+  }
+  const query = params.toString();
+  const base = `/api/v1/pharmacy-organizations/${organizationId}/branches`;
+  return query === '' ? base : `${base}?${query}`;
+}
+
+async function requireOwnOrganizationId(locale: string): Promise<string> {
+  await requirePharmacyAccount(locale);
+  try {
+    const data = await coreJsonRequest<ApiOrganization>(
+      'GET',
+      '/api/v1/pharmacy-organizations/me',
+      locale,
+    );
+    const organization = mapOrganization(data);
+    if (
+      organization.verificationStatus !== 'approved' ||
+      organization.status !== 'active' ||
+      organization.membership.role !== 'owner' ||
+      organization.membership.status !== 'active'
+    ) {
+      throw new GatewayError('PERMISSION_DENIED');
+    }
+    return organization.organizationId;
+  } catch (error) {
+    if (error instanceof GatewayError && error.failureCode === 'NOT_FOUND') {
+      throw new GatewayError('PERMISSION_DENIED');
+    }
+    throw error;
+  }
 }
 
 export const pharmacyGateway = {
@@ -410,6 +553,178 @@ export const pharmacyGateway = {
       completed_at: string | null;
     }>('GET', `/api/v1/verification-uploads/${uploadId}`, locale);
     return mapUploadStatus(data);
+  },
+
+  async listBranches(
+    locale: string,
+    input: PharmacyBranchesListRequest,
+  ): Promise<PharmacyBranchesListResponse> {
+    const organizationId = await requireOwnOrganizationId(locale);
+    const envelope = await coreJsonRequestEnvelope<ApiBranch[]>(
+      'GET',
+      branchesListPath(organizationId, input),
+      locale,
+    );
+    const pagination = paginationFromMeta(envelope.meta);
+    return {
+      branches: envelope.data.map(mapBranch),
+      hasMore: pagination.hasMore,
+      nextCursor: pagination.nextCursor,
+    };
+  },
+
+  async createBranch(
+    locale: string,
+    input: PharmacyBranchCreateRequest,
+  ): Promise<PharmacyBranchCreateResponse> {
+    const organizationId = await requireOwnOrganizationId(locale);
+    const fingerprint = pharmacyBranchCreateIntentFingerprint(organizationId, input);
+    const key = pharmacyIntentKeys.keyFor(BRANCH_CREATE_INTENT, fingerprint);
+    try {
+      const data = await coreJsonRequest<{
+        branch_id: string;
+        status: 'active';
+        version: number;
+      }>(
+        'POST',
+        `/api/v1/pharmacy-organizations/${organizationId}/branches`,
+        locale,
+        {
+          public_name: input.publicName,
+          address: input.address,
+          country_code: input.countryCode,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          phone: input.phone,
+        },
+        { 'Idempotency-Key': key },
+      );
+      const mapped = {
+        branchId: data.branch_id,
+        status: data.status,
+        version: data.version,
+      };
+      pharmacyIntentKeys.retireWhenDelivered(BRANCH_CREATE_INTENT, fingerprint, key);
+      return mapped;
+    } catch (error) {
+      if (
+        error instanceof GatewayError &&
+        (error.failureCode === 'VALIDATION_FAILED' || error.failureCode === 'PERMISSION_DENIED')
+      ) {
+        pharmacyIntentKeys.retireWhenDelivered(BRANCH_CREATE_INTENT, fingerprint, key);
+      }
+      throw error;
+    }
+  },
+
+  async getBranch(locale: string, branchId: string): Promise<PharmacyBranchPrivateView> {
+    const organizationId = await requireOwnOrganizationId(locale);
+    const data = await coreJsonRequest<ApiBranch>(
+      'GET',
+      `/api/v1/pharmacy-organizations/${organizationId}/branches/${branchId}`,
+      locale,
+    );
+    return mapBranch(data);
+  },
+
+  async updateBranch(
+    locale: string,
+    input: PharmacyBranchUpdateRequest,
+  ): Promise<PharmacyBranchPrivateView> {
+    const organizationId = await requireOwnOrganizationId(locale);
+    const body: Record<string, unknown> = {
+      expected_version: input.expectedVersion,
+    };
+    if (input.publicName !== undefined) {
+      body['public_name'] = input.publicName;
+    }
+    if (input.address !== undefined) {
+      body['address'] = input.address;
+    }
+    if (input.countryCode !== undefined) {
+      body['country_code'] = input.countryCode;
+    }
+    if (input.latitude !== undefined) {
+      body['latitude'] = input.latitude;
+    }
+    if (input.longitude !== undefined) {
+      body['longitude'] = input.longitude;
+    }
+    if (input.phone !== undefined) {
+      body['phone'] = input.phone;
+    }
+    const data = await coreJsonRequest<ApiBranch>(
+      'PATCH',
+      `/api/v1/pharmacy-organizations/${organizationId}/branches/${input.branchId}`,
+      locale,
+      body,
+    );
+    return mapBranch(data);
+  },
+
+  async inviteOperator(
+    locale: string,
+    input: PharmacyBranchInviteOperatorRequest,
+  ): Promise<PharmacyBranchInviteOperatorResponse> {
+    const organizationId = await requireOwnOrganizationId(locale);
+    const fingerprint = pharmacyIntentKeys.fingerprint({
+      organizationId,
+      branchId: input.branchId,
+      phone: input.phone,
+    });
+    const key = pharmacyIntentKeys.keyFor(BRANCH_INVITE_INTENT, fingerprint);
+    try {
+      const envelope = await coreJsonRequestEnvelope<{
+        invitation_id: string;
+        status: 'pending';
+        expires_at: string;
+      }>(
+        'POST',
+        `/api/v1/pharmacy-organizations/${organizationId}/branches/${input.branchId}/staff-invitations`,
+        locale,
+        { phone: input.phone },
+        { 'Idempotency-Key': key },
+      );
+      const mapped = {
+        invitationId: envelope.data.invitation_id,
+        status: envelope.data.status,
+        expiresAt: envelope.data.expires_at,
+        existingPending: envelope.status === 200,
+      };
+      pharmacyIntentKeys.retireWhenDelivered(BRANCH_INVITE_INTENT, fingerprint, key);
+      return mapped;
+    } catch (error) {
+      if (
+        error instanceof GatewayError &&
+        (error.failureCode === 'VALIDATION_FAILED' || error.failureCode === 'PERMISSION_DENIED')
+      ) {
+        pharmacyIntentKeys.retireWhenDelivered(BRANCH_INVITE_INTENT, fingerprint, key);
+      }
+      throw error;
+    }
+  },
+
+  async listMemberships(locale: string, branchId: string): Promise<PharmacyBranchMembershipsResponse> {
+    const organizationId = await requireOwnOrganizationId(locale);
+    const data = await coreJsonRequest<ApiMembership[]>(
+      'GET',
+      `/api/v1/pharmacy-organizations/${organizationId}/branches/${branchId}/memberships`,
+      locale,
+    );
+    return { memberships: data.map(mapMembership) };
+  },
+
+  async revokeMembership(
+    locale: string,
+    input: PharmacyBranchRevokeMembershipRequest,
+  ): Promise<PharmacyBranchMembershipView> {
+    const organizationId = await requireOwnOrganizationId(locale);
+    const data = await coreJsonRequest<ApiMembership>(
+      'DELETE',
+      `/api/v1/pharmacy-organizations/${organizationId}/branches/${input.branchId}/memberships/${input.membershipId}`,
+      locale,
+    );
+    return mapMembership(data);
   },
 
   clearIntents(): void {

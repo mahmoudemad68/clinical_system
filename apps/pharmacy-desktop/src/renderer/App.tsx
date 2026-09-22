@@ -25,6 +25,9 @@ import type {
 } from '@clinic/desktop-bridge-contracts';
 import { pharmacyStrings } from './strings';
 import { createPharmacyTheme } from './theme';
+import { canManagePharmacyBranches } from './features/pharmacy-practice/eligibility';
+import { PracticeWorkspace } from './features/pharmacy-practice/PracticeWorkspace';
+import { navigatePractice, parsePracticeHash } from './features/pharmacy-practice/practiceRoute';
 
 export const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: true, staleTime: 10_000 } },
@@ -229,6 +232,7 @@ function LoginPanel({
             {t.mfaCode}
             <input
               name="code"
+              data-testid="mfa-code"
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={6}
@@ -238,7 +242,7 @@ function LoginPanel({
           </label>
         ) : null}
         {message ? (
-          <p ref={alertRef} tabIndex={-1} role="alert">
+          <p ref={alertRef} tabIndex={-1} role="alert" data-testid="login-error">
             {message}
           </p>
         ) : null}
@@ -287,6 +291,7 @@ function SessionPanel({ locale, onSignedOut }: { locale: Locale; onSignedOut: ()
       </ul>
       <button
         type="button"
+        data-testid="sign-out"
         onClick={() => {
           void window.clinic.auth.logout().then(() => onSignedOut());
         }}
@@ -709,6 +714,14 @@ function VerificationWorkspace({
 
 function PharmacyWorkspace({ locale, onSignedOut }: { locale: Locale; onSignedOut: () => void }) {
   const t = pharmacyStrings[locale];
+  const [route, setRoute] = useState(() => parsePracticeHash(window.location.hash));
+
+  useEffect(() => {
+    const onChange = () => setRoute(parsePracticeHash(window.location.hash));
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+
   const meQuery = useQuery({
     queryKey: ['auth', 'me', locale],
     queryFn: async () => {
@@ -732,6 +745,18 @@ function PharmacyWorkspace({ locale, onSignedOut }: { locale: Locale; onSignedOu
   });
 
   const me: AuthMe | undefined = meQuery.data;
+  const organization =
+    organizationQuery.data?.present === true ? organizationQuery.data.organization : undefined;
+  const canManage = canManagePharmacyBranches(me, organization);
+
+  useEffect(() => {
+    if (organizationQuery.isPending || meQuery.isPending) {
+      return;
+    }
+    if (!canManage && route.name !== 'home') {
+      window.location.hash = '';
+    }
+  }, [canManage, route.name, organizationQuery.isPending, meQuery.isPending]);
 
   if (meQuery.isPending) {
     return <Typography aria-busy="true">{t.workspace}</Typography>;
@@ -759,7 +784,34 @@ function PharmacyWorkspace({ locale, onSignedOut }: { locale: Locale; onSignedOu
         {t.workspace}
       </Typography>
       {organizationQuery.data?.present === true ? (
-        <VerificationWorkspace locale={locale} organization={organizationQuery.data.organization} />
+        <>
+          {canManage ? (
+            <nav data-testid="practice-branches-nav">
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+                <Button
+                  type="button"
+                  data-testid="open-verification"
+                  onClick={() => navigatePractice({ name: 'home' })}
+                >
+                  {t.practice.verificationNav}
+                </Button>
+                <Button
+                  type="button"
+                  data-testid="open-practice-branches"
+                  onClick={() => navigatePractice({ name: 'branches' })}
+                >
+                  {t.practice.nav}
+                </Button>
+              </Stack>
+            </nav>
+          ) : null}
+          {canManage && route.name !== 'home' ? (
+            <PracticeWorkspace locale={locale} route={route} />
+          ) : (
+            <VerificationWorkspace locale={locale} organization={organizationQuery.data.organization} />
+          )}
+          <Typography data-testid="no-phase10-nav">{t.practice.noPhase10}</Typography>
+        </>
       ) : (
         <OnboardingWizard
           locale={locale}
@@ -794,6 +846,9 @@ export function App() {
   function signOut(): void {
     setSignedIn(false);
     client.clear();
+    if (window.location.hash.startsWith('#/practice') || window.location.hash.startsWith('/practice')) {
+      window.location.hash = '';
+    }
   }
 
   return (

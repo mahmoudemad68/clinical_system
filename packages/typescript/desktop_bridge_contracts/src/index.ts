@@ -411,6 +411,19 @@ export {
   pharmacyVerificationStatusResponseSchema,
   pharmacyVerificationSubmitRequestSchema,
   pharmacyVerificationSubmitResponseSchema,
+  pharmacyBranchPrivateViewSchema,
+  pharmacyBranchesListRequestSchema,
+  pharmacyBranchesListResponseSchema,
+  pharmacyBranchCreateRequestSchema,
+  pharmacyBranchCreateResponseSchema,
+  pharmacyBranchGetRequestSchema,
+  pharmacyBranchUpdateRequestSchema,
+  pharmacyBranchInviteOperatorRequestSchema,
+  pharmacyBranchInviteOperatorResponseSchema,
+  pharmacyBranchMembershipViewSchema,
+  pharmacyBranchMembershipsRequestSchema,
+  pharmacyBranchMembershipsResponseSchema,
+  pharmacyBranchRevokeMembershipRequestSchema,
   type PharmacyChannelName,
   type PharmacyEvidenceSelectResponse,
   type PharmacyOnboardRequest,
@@ -421,6 +434,17 @@ export {
   type PharmacyVerificationOpenResponse,
   type PharmacyVerificationStatus,
   type PharmacyVerificationSubmitResponse,
+  type PharmacyBranchPrivateView,
+  type PharmacyBranchesListRequest,
+  type PharmacyBranchesListResponse,
+  type PharmacyBranchCreateRequest,
+  type PharmacyBranchCreateResponse,
+  type PharmacyBranchUpdateRequest,
+  type PharmacyBranchInviteOperatorRequest,
+  type PharmacyBranchInviteOperatorResponse,
+  type PharmacyBranchMembershipView,
+  type PharmacyBranchMembershipsResponse,
+  type PharmacyBranchRevokeMembershipRequest,
 } from './pharmacy';
 
 export {
@@ -489,6 +513,17 @@ import type {
   PharmacyVerificationOpenResponse,
   PharmacyVerificationStatus,
   PharmacyVerificationSubmitResponse,
+  PharmacyBranchPrivateView,
+  PharmacyBranchesListRequest,
+  PharmacyBranchesListResponse,
+  PharmacyBranchCreateRequest,
+  PharmacyBranchCreateResponse,
+  PharmacyBranchUpdateRequest,
+  PharmacyBranchInviteOperatorRequest,
+  PharmacyBranchInviteOperatorResponse,
+  PharmacyBranchMembershipView,
+  PharmacyBranchMembershipsResponse,
+  PharmacyBranchRevokeMembershipRequest,
 } from './pharmacy';
 import { PHARMACY_CHANNEL_LIST } from './pharmacy';
 import type {
@@ -551,6 +586,25 @@ export interface PharmacyClinicBridge extends ClinicBridge {
       caseId: string;
     }): Promise<BridgeResult<PharmacyUploadStatus>>;
     uploadStatus(uploadId: string): Promise<BridgeResult<PharmacyUploadStatus>>;
+    listBranches(
+      input: PharmacyBranchesListRequest,
+    ): Promise<BridgeResult<PharmacyBranchesListResponse>>;
+    createBranch(
+      input: PharmacyBranchCreateRequest,
+    ): Promise<BridgeResult<PharmacyBranchCreateResponse>>;
+    getBranch(input: { branchId: string }): Promise<BridgeResult<PharmacyBranchPrivateView>>;
+    updateBranch(
+      input: PharmacyBranchUpdateRequest,
+    ): Promise<BridgeResult<PharmacyBranchPrivateView>>;
+    inviteOperator(
+      input: PharmacyBranchInviteOperatorRequest,
+    ): Promise<BridgeResult<PharmacyBranchInviteOperatorResponse>>;
+    listMemberships(input: {
+      branchId: string;
+    }): Promise<BridgeResult<PharmacyBranchMembershipsResponse>>;
+    revokeMembership(
+      input: PharmacyBranchRevokeMembershipRequest,
+    ): Promise<BridgeResult<PharmacyBranchMembershipView>>;
   };
 }
 

@@ -19,6 +19,11 @@ import {
   pharmacyOnboardRequestSchema,
   pharmacyOrganizationViewSchema,
   pharmacyUploadStatusResponseSchema,
+  pharmacyBranchPrivateViewSchema,
+  pharmacyBranchCreateRequestSchema,
+  pharmacyBranchUpdateRequestSchema,
+  pharmacyBranchInviteOperatorRequestSchema,
+  pharmacyBranchMembershipViewSchema,
 } from './index';
 
 describe('desktop bridge contracts', () => {
@@ -206,5 +211,73 @@ describe('desktop bridge contracts', () => {
         phone: '01000000000',
       }).success,
     ).toBe(false);
+  });
+
+  it('rejects mass-assigned pharmacy branch and membership fields', () => {
+    const branch = {
+      branchId: '0199a5c8-0000-7000-8000-0000000000aa',
+      publicName: 'Cairo Pharmacy',
+      countryCode: 'EG' as const,
+      status: 'active' as const,
+      version: 1,
+      createdAt: '2026-09-21T00:00:00Z',
+      updatedAt: '2026-09-21T00:00:00Z',
+      address: '1 Tahrir Square, Cairo',
+      latitude: 30.0444,
+      longitude: 31.2357,
+    };
+    expect(pharmacyBranchPrivateViewSchema.safeParse(branch).success).toBe(true);
+    expect(
+      pharmacyBranchPrivateViewSchema.safeParse({
+        ...branch,
+        phone: '01000000000',
+        phoneHmac: 'hmac',
+        organizationId: '0199a5c8-0000-7000-8000-000000000010',
+      }).success,
+    ).toBe(false);
+
+    expect(
+      pharmacyBranchCreateRequestSchema.safeParse({
+        publicName: 'Cairo Pharmacy',
+        address: '1 Tahrir Square, Cairo',
+        countryCode: 'EG',
+        latitude: 30.0444,
+        longitude: 31.2357,
+        phone: '01000000000',
+        status: 'active',
+        role: 'owner',
+      }).success,
+    ).toBe(false);
+
+    expect(
+      pharmacyBranchUpdateRequestSchema.safeParse({
+        branchId: branch.branchId,
+        publicName: 'Renamed',
+      }).success,
+    ).toBe(false);
+
+    expect(
+      pharmacyBranchInviteOperatorRequestSchema.safeParse({
+        branchId: branch.branchId,
+        phone: '01000000000',
+        role: 'pharmacist',
+      }).success,
+    ).toBe(false);
+
+    expect(
+      pharmacyBranchMembershipViewSchema.safeParse({
+        membershipId: '0199a5c8-0000-7000-8000-0000000000bb',
+        role: 'owner',
+        status: 'active',
+        version: 1,
+        invitedAt: '2026-09-21T00:00:00Z',
+        acceptedAt: '2026-09-21T00:01:00Z',
+        revokedAt: null,
+      }).success,
+    ).toBe(false);
+
+    expect(PHARMACY_ALL_CHANNELS).toContain(PHARMACY_CHANNELS.branchInviteOperator);
+    expect(DOCTOR_ALL_CHANNELS).not.toContain(PHARMACY_CHANNELS.branchInviteOperator);
+    expect(ALL_CHANNELS).not.toContain(PHARMACY_CHANNELS.branchesList);
   });
 });

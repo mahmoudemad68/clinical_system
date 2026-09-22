@@ -41,6 +41,9 @@ desktop:
   - 'scripts/desktop/**'
   - 'apps/core-api/tests/Support/bin/seed-chunk12-doctor-practice.php'
   - 'apps/core-api/tests/Support/bin/accept-chunk12-invitation.php'
+  - 'apps/core-api/tests/Support/bin/seed-chunk15-pharmacy-practice.php'
+  - 'apps/core-api/tests/Support/bin/accept-chunk15-pharmacy-invitation.php'
+  - 'apps/core-api/tests/Support/bin/bump-chunk15-pharmacy-branch.php'
   - 'package.json'
   - 'package-lock.json'
 
