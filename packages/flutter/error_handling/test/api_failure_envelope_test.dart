@@ -27,7 +27,7 @@ void main() {
   });
 
   test('redacts an echoed national id from a validation message', () {
-    const canary = '29201011234567';
+    const canary = '29901011234567';
     final failure = ApiFailure.fromEnvelope(422, {
       'errors': [
         {

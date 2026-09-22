@@ -9,7 +9,7 @@ import 'package:test/test.dart';
 
 import 'fakes.dart';
 
-const canaryNid = '29201011234567';
+const canaryNid = '29901011234567';
 
 Map<String, dynamic> profileData({int version = 1, String name = 'Own Name'}) {
   return {

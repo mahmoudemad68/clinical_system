@@ -37,9 +37,10 @@ Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 - **Implementation HEAD (live Core E2E green):** `87c6a59b8cdedeab7b747aef57f17b17ba0f36d9`
 - **Evidence / final HEAD:** the tip of this branch (commit that contains this
   file). GitHub CI is the `pull-request` workflow on that SHA.
-- **GitHub CI (final HEAD):** pending at evidence-commit time; the Draft PR
-  and a follow-up evidence line record the exact `pull-request` run after
-  GitHub completes. Do not infer SUCCESS from this local note.
+- **GitHub CI:** prior `pull-request` runs on superseded SHAs:
+  - `a806e0b` run [35707183388](https://github.com/mahmoudemad68/clinical_system/actions/runs/35707183388) **failure** (Core API, Flutter, Security scans)
+  - `23e7c15` run [35708352576](https://github.com/mahmoudemad68/clinical_system/actions/runs/35708352576) **failure** (Core API, Security scans; Flutter **SUCCESS**)
+  Security scans: Gitleaks `clinic-egyptian-national-id` flagged the unpublished synthetic canary `29201011234567` in Flutter tests. Tests now use the already-allowlisted `29901011234567`; the old literal remains an exact global allowlist entry so PR history does not fail closed on a test canary. Core API: `SeedPatientFlutterFixtureTest` 403 was Laravel HTTP-test session reuse; HEAD isolates logins via `patientFlutterDeviceLogin`. Final-HEAD CI is the `pull-request` workflow after this gitleaks fix.
 - **Recorded:** 2026-09-22
 - **Environment:** Flutter 3.47.1 / Dart 3.13.1, PHP 8.3, PostgreSQL 16 +
   PostGIS, Redis. Patient-app widget tests on the host. Live Core

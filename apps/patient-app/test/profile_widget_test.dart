@@ -45,7 +45,7 @@ void main() {
     expect(find.byKey(const Key('profile-full-name')), findsOneWidget);
     expect(find.text('Own Name'), findsOneWidget);
     expect(find.text('Self-reported'), findsWidgets);
-    expect(find.textContaining('2920101'), findsNothing);
+    expect(find.textContaining('2990101'), findsNothing);
     expect(find.byKey(const Key('profile-edit')), findsOneWidget);
   });
 
@@ -121,7 +121,7 @@ void main() {
     );
     expect(find.byKey(const Key('onboarding-national-id')), findsNothing);
     expect(find.textContaining('National ID'), findsNothing);
-    expect(find.textContaining('2920101'), findsNothing);
+    expect(find.textContaining('2990101'), findsNothing);
   });
 
   testWidgets('Arabic profile is RTL and still omits national id', (

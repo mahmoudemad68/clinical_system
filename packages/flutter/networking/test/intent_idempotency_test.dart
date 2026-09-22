@@ -21,10 +21,10 @@ void main() {
 
   test('does not derive the key from the fingerprint string', () {
     final store = IntentIdempotencyStore(random: Random(3));
-    const fingerprint = '29201011234567|Ada Lovelace|female';
+    const fingerprint = '29901011234567|Ada Lovelace|female';
     final key = store.keyFor(fingerprint);
     expect(key, isNot(fingerprint));
-    expect(key.contains('29201011234567'), isFalse);
+    expect(key.contains('29901011234567'), isFalse);
     expect(key.contains('Ada'), isFalse);
   });
 

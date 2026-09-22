@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/harness.dart';
 
-const canary = '29201011234567';
+const canary = '29901011234567';
 
 void main() {
   late MemoryVault vault;
