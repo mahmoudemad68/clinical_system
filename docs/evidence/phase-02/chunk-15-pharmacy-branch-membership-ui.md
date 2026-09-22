@@ -44,17 +44,21 @@ Core test helper `apps/core-api/tests/Support/bin/accept-chunk15-pharmacy-invita
 Core test helpers seed/accept/bump synthetic actors for Forge GUI E2E only.
 
 Chunk 14 is CLOSED (merged PR #24). **Phase 02 remains NOT PASS.**
+This PR is **NOT READY_TO_MERGE**. Independent review re-checks the
+branch-create idempotency remediation.
 
 - **Branch:** `cursor/phase-02-chunk-15-pharmacy-branch-membership-ui-cc7f`
 - **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/25
 - **Baseline (GitHub `main`):** `cc8f9be7df683624ed9323f2dd357fadc9bc7d13`
-- **CI-proven implementation HEAD:** `0dd78616885947bd00830996cac7c7b5bc572ea3`
+- **Blocking-finding HEAD (independent review):** `0c2dd37b527a393b1d582375a493d91a44d0a9f2`
+- **Remediation SHA:** `4f5d5a3c371c092747048b0dc670935c71ee36c0`
+  (product + tests: fingerprint includes address and phone; incorrect
+  idempotency test replaced)
+- **Pre-remediation CI-proven implementation HEAD:** `0dd78616885947bd00830996cac7c7b5bc572ea3`
   (`pull-request` run **35766687221** SUCCESS)
-- **Evidence HEAD (GitHub CI SUCCESS):** `f2304fee104f0f772f03cdc5ccef47e154028a1d`
+- **Pre-remediation evidence HEAD:** `f2304fee104f0f772f03cdc5ccef47e154028a1d`
   (`pull-request` run **35767496247** SUCCESS)
-  https://github.com/mahmoudemad68/clinical_system/actions/runs/35767496247
-  — 17 success, 1 skipped (AI service path filter). Forge Pharmacy practice
-  E2E passed with `skipped=false` and all mandatory journey booleans true.
+- **Final-head GitHub CI:** pending the commit that records this note.
 
 Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 
@@ -172,14 +176,68 @@ claim.
 Edit sends `expected_version` from the loaded projection. Phone is write-only
 replacement input and is never prefilled.
 
+## Blocking independent-review finding
+
+Independent review of Draft PR #25 HEAD
+`0c2dd37b527a393b1d582375a493d91a44d0a9f2` found one blocking Chunk 15
+defect. `pharmacyGateway.createBranch()` fingerprinted only
+`{organizationId, publicName, countryCode, latitude, longitude}` and
+intentionally omitted `address` and `phone`. The gateway test then changed
+only address/phone after an uncertain network result and expected the same
+`Idempotency-Key`.
+
+That is incorrect. Chunk 15 requires:
+
+```text
+same complete logical branch-create payload
+→ same key after uncertain retry
+
+materially changed branch-create payload
+→ new logical intent
+→ new key
+```
+
+Address and phone are material request fields. With the defective
+implementation, attempt 1 can reach Core, the caller can lose the response,
+the user can change address and/or phone, and the retry can reuse the same
+`Idempotency-Key` with a different body. Core may then return 409
+`IDEMPOTENCY_KEY_REUSED`.
+
+**Remediation SHA:** `4f5d5a3c371c092747048b0dc670935c71ee36c0`
+
 ## Branch-create idempotency
 
-Main-process `IntentKeyStore` intent `pharmacy.branch.create`. Fingerprint is
-`{organizationId, publicName, countryCode, latitude, longitude}` — not phone
-or address. Same logical create reuses the key across uncertain retry.
-Materially changed name/coords mint a new key. The key is retired on delivered
-success or `VALIDATION_FAILED` / `PERMISSION_DENIED`. Timeout/upstream keeps
-the key.
+Main-process `IntentKeyStore` intent `pharmacy.branch.create`. Intent identity
+is the existing `IntentKeyStore.fingerprint()` SHA-256 canonical digest of
+the complete logical payload:
+
+```text
+{organizationId, publicName, address, countryCode, latitude, longitude, phone}
+```
+
+The actual `Idempotency-Key` remains a random UUID (`randomUUID()`). The
+in-memory map stores only `intent:sha256hex` → UUID. Raw address and phone
+are not stored in that map, are not logged, and are not serialized into the
+compact IPC create response `{branchId, status, version}`. Plaintext
+concatenation is not used.
+
+Corrected proofs in `pharmacy-gateway.test.ts` / `intent-keys.test.ts`
+(synthetic canaries `CANARY-BRANCH-ADDRESS-99 Nile St` and
+`CANARY-OPERATOR-PHONE-01099999999`):
+
+| Case | Result |
+| --- | --- |
+| Same full payload after uncertain transport | same `Idempotency-Key` |
+| Late IPC success after deadline | original key is **not** retired; exact same-payload retry continues using it until caller-delivered |
+| Address-only change after uncertain result | new fingerprint and new UUID |
+| Phone-only change after uncertain result | new fingerprint and new UUID |
+| Public name change after uncertain result | new fingerprint and new UUID |
+| Coordinate change after uncertain result | new fingerprint and new UUID |
+| Privacy | map JSON, UUID header, and console spies omit the canaries; fingerprint is 64-hex SHA-256 |
+
+The key is retired on delivered success or `VALIDATION_FAILED` /
+`PERMISSION_DENIED`. Timeout/upstream keeps the key. Chunk 14 Core
+idempotency was not redesigned.
 
 ## Invite idempotency
 
@@ -322,6 +380,8 @@ apps/core-api/tests/Support/bin/accept-chunk15-pharmacy-invitation.php
 apps/core-api/tests/Support/bin/bump-chunk15-pharmacy-branch.php
 apps/core-api/tests/Support/bin/seed-chunk15-pharmacy-practice.php
 apps/pharmacy-desktop/src/main/capabilities.ts
+apps/pharmacy-desktop/src/main/intent-keys.test.ts
+apps/pharmacy-desktop/src/main/intent-keys.ts
 apps/pharmacy-desktop/src/main/pharmacy-gateway.test.ts
 apps/pharmacy-desktop/src/main/pharmacy-gateway.ts
 apps/pharmacy-desktop/src/main/platform-gateway.ts
@@ -367,19 +427,23 @@ Host Node 22 / PHP 8.3, this agent:
 
 | Suite | Result |
 | --- | --- |
-| `apps/pharmacy-desktop` Vitest | 15 files, **165 passed** |
+| `apps/pharmacy-desktop` Vitest | 15 files, **171 passed** (was 165; +6 branch-create idempotency/privacy cases) |
 | `apps/doctor-desktop` Vitest (regression) | 15 files, **182 passed** |
 | `@clinic/desktop-bridge-contracts` | 1 file, **7 passed** |
-| `npm run packages:test` | admin 46, doctor 182, pharmacy 165, api-client 2, bridge 7, encrypted-local-store 16, error-handling 3, localization 2 — all passed |
 | `node --test scripts/desktop/forge-pharmacy-practice-e2e.test.mjs` | **6 passed** |
 | `npm run typecheck` pharmacy + doctor | pass |
-| PHP lint of three Chunk 15 helpers | pass |
 
-Dedicated Core-backed Forge Pharmacy practice E2E ran in GitHub job
-`desktop-pharmacy-practice-e2e` on runs **35766687221** (`0dd7861`) and
-**35767496247** (`f2304fe`) (required mode, `skipped=false`).
+Dedicated Core-backed Forge Pharmacy practice E2E previously passed in GitHub
+job `desktop-pharmacy-practice-e2e` on runs **35766687221** (`0dd7861`) and
+**35767496247** (`f2304fe`) (required mode, `skipped=false`). Remediation SHA
+`4f5d5a3` must re-prove that job plus packaged ubuntu/macos/windows,
+Contracts, Core API, and Security scans; exact final-head run is recorded
+below when GitHub CI on this evidence HEAD is terminal.
 
 ## Exact final-head GitHub CI
+
+Pending this evidence commit. Pre-remediation SUCCESS runs (do not treat as
+proof of the address/phone fingerprint fix):
 
 Evidence HEAD `f2304fee104f0f772f03cdc5ccef47e154028a1d` has GitHub
 `pull-request` run **35767496247** SUCCESS
@@ -438,8 +502,9 @@ not merge.
   development CSP without `'unsafe-eval'`, packaged CSP only when packaged.
 - Coordinate confirmation is a local checkbox plus numeric fields; there is no
   approved map provider.
-- Invitation phone is write-only in the UI, but main-process idempotency
-  fingerprints still hash the phone in memory (never logged).
+- Invitation phone is write-only in the UI. Branch-create and invite
+  fingerprints hash phone (and create also hashes address) in memory as
+  SHA-256 only; plaintext is not stored in the key map and is not logged.
 - Recipient acceptance UI remains deferred (no pending-invitation list API,
   no SMS/email).
 - Revoked `branch_operator` cannot be re-invited while UNIQUE(org, user)
