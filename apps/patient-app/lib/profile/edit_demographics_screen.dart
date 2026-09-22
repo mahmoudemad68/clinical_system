@@ -1,13 +1,11 @@
 import 'package:clinic_common_models/clinic_common_models.dart';
-import 'package:clinic_error_handling/clinic_error_handling.dart';
 import 'package:clinic_localization/clinic_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../onboarding/onboarding_draft.dart';
-import '../providers.dart';
-import '../session/patient_session.dart';
 import '../widgets/patient_chrome.dart';
+import 'edit_demographics_controller.dart';
 
 class EditDemographicsScreen extends ConsumerStatefulWidget {
   const EditDemographicsScreen({super.key, required this.profile});
@@ -21,132 +19,93 @@ class EditDemographicsScreen extends ConsumerStatefulWidget {
 
 class _EditDemographicsScreenState
     extends ConsumerState<EditDemographicsScreen> {
-  late PatientProfile _profile;
   late final TextEditingController _fullName;
   late final TextEditingController _height;
   late final TextEditingController _weight;
-  String? _gender;
-  DateTime? _dateOfBirth;
-  String? _maritalStatus;
-  String? _bloodType;
-  FieldErrors _errors = const FieldErrors({});
-  ApiFailure? _failure;
-  bool _conflict = false;
-  bool _busy = false;
 
   @override
   void initState() {
     super.initState();
-    _profile = widget.profile;
-    _fullName = TextEditingController(text: _profile.fullName);
-    _height = TextEditingController(text: _profile.heightCm ?? '');
-    _weight = TextEditingController(text: _profile.weightKg ?? '');
-    _gender = _profile.gender;
-    _dateOfBirth = _parseDate(_profile.dateOfBirth);
-    _maritalStatus = _profile.maritalStatus;
-    _bloodType = _profile.bloodType;
+    _fullName = TextEditingController(text: widget.profile.fullName);
+    _height = TextEditingController(text: widget.profile.heightCm ?? '');
+    _weight = TextEditingController(text: widget.profile.weightKg ?? '');
+    _fullName.addListener(_syncName);
+    _height.addListener(_syncHeight);
+    _weight.addListener(_syncWeight);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      ref.read(editDemographicsProvider.notifier).load(widget.profile);
+    });
+  }
+
+  void _syncName() {
+    ref.read(editDemographicsProvider.notifier).setFullName(_fullName.text);
+  }
+
+  void _syncHeight() {
+    ref.read(editDemographicsProvider.notifier).setHeight(_height.text);
+  }
+
+  void _syncWeight() {
+    ref.read(editDemographicsProvider.notifier).setWeight(_weight.text);
+  }
+
+  void _applyControllers(EditDemographicsViewState next) {
+    if (_fullName.text != next.fullName) {
+      _fullName.value = TextEditingValue(
+        text: next.fullName,
+        selection: TextSelection.collapsed(offset: next.fullName.length),
+      );
+    }
+    if (_height.text != next.heightCm) {
+      _height.value = TextEditingValue(
+        text: next.heightCm,
+        selection: TextSelection.collapsed(offset: next.heightCm.length),
+      );
+    }
+    if (_weight.text != next.weightKg) {
+      _weight.value = TextEditingValue(
+        text: next.weightKg,
+        selection: TextSelection.collapsed(offset: next.weightKg.length),
+      );
+    }
   }
 
   @override
   void dispose() {
-    _fullName.dispose();
-    _height.dispose();
-    _weight.dispose();
+    _fullName
+      ..removeListener(_syncName)
+      ..dispose();
+    _height
+      ..removeListener(_syncHeight)
+      ..dispose();
+    _weight
+      ..removeListener(_syncWeight)
+      ..dispose();
     super.dispose();
-  }
-
-  DateTime? _parseDate(String? raw) {
-    if (raw == null || raw.isEmpty) {
-      return null;
-    }
-    return DateTime.tryParse(raw);
-  }
-
-  Future<void> _refreshAuthoritative() async {
-    setState(() => _busy = true);
-    try {
-      final latest = await ref.read(patientApiProvider).getOwnProfile();
-      await ref.read(patientSessionProvider.notifier).replaceProfile(latest);
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _profile = latest;
-        _fullName.text = latest.fullName;
-        _height.text = latest.heightCm ?? '';
-        _weight.text = latest.weightKg ?? '';
-        _gender = latest.gender;
-        _dateOfBirth = _parseDate(latest.dateOfBirth);
-        _maritalStatus = latest.maritalStatus;
-        _bloodType = latest.bloodType;
-        _conflict = false;
-        _failure = null;
-        _busy = false;
-      });
-    } on ApiFailure catch (failure) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _failure = failure;
-        _busy = false;
-      });
-    }
-  }
-
-  Future<void> _save() async {
-    final strings = ClinicStrings.of(context);
-    final errors = validateDemographicPatch(
-      fullName: _fullName.text,
-      gender: _gender,
-      dateOfBirth: _dateOfBirth,
-      heightCm: _height.text,
-      weightKg: _weight.text,
-      maritalStatus: _maritalStatus,
-      bloodType: _bloodType,
-      strings: strings,
-    );
-    if (!errors.isEmpty) {
-      setState(() => _errors = errors);
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _failure = null;
-      _errors = const FieldErrors({});
-    });
-    try {
-      final updated = await ref
-          .read(patientApiProvider)
-          .updateDemographics(
-            version: _profile.version,
-            fullName: _fullName.text.trim(),
-            gender: _gender,
-            dateOfBirth: _dateOfBirth == null ? null : isoDate(_dateOfBirth!),
-            heightCm: parseOptionalNumber(_height.text),
-            weightKg: parseOptionalNumber(_weight.text),
-            maritalStatus: _maritalStatus,
-            bloodType: _bloodType,
-          );
-      await ref.read(patientSessionProvider.notifier).replaceProfile(updated);
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-    } on ApiFailure catch (failure) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _busy = false;
-        _failure = failure;
-        _conflict = failure.code == ApiErrorCode.versionConflict;
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final strings = ClinicStrings.of(context);
+    final current = ref.watch(editDemographicsProvider);
+    final editor = current.loaded
+        ? current
+        : EditDemographicsViewState.fromProfile(widget.profile);
+    ref.listen(editDemographicsProvider, (previous, next) {
+      _applyControllers(next);
+      if (next.saved &&
+          previous?.saved != true &&
+          mounted &&
+          Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    });
+    final conflict = editor.conflict;
+    final busy = editor.busy;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(strings.editDemographicsTitle),
@@ -158,7 +117,7 @@ class _EditDemographicsScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_conflict)
+              if (conflict)
                 Card(
                   key: const Key('version-conflict'),
                   color: Theme.of(context).colorScheme.errorContainer,
@@ -180,10 +139,10 @@ class _EditDemographicsScreenState
               TextField(
                 key: const Key('edit-full-name'),
                 controller: _fullName,
-                enabled: !_conflict,
+                enabled: !conflict,
                 decoration: InputDecoration(
                   labelText: strings.fullName,
-                  errorText: _errors['full_name'],
+                  errorText: editor.errors['full_name'],
                 ),
               ),
               const SizedBox(height: 12),
@@ -195,38 +154,44 @@ class _EditDemographicsScreenState
                   ),
                   ButtonSegment(value: 'male', label: Text(strings.genderMale)),
                 ],
-                selected: {?_gender},
-                onSelectionChanged: _conflict
+                selected: {?editor.gender},
+                onSelectionChanged: conflict
                     ? null
-                    : (value) => setState(() => _gender = value.first),
+                    : (value) => ref
+                          .read(editDemographicsProvider.notifier)
+                          .setGender(value.first),
               ),
-              FieldErrorText(_errors['gender']),
+              FieldErrorText(editor.errors['gender']),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                enabled: !_conflict,
+                enabled: !conflict,
                 title: Text(strings.dateOfBirth),
                 subtitle: Text(
-                  _dateOfBirth == null
+                  editor.dateOfBirth == null
                       ? strings.optionalField
-                      : isoDate(_dateOfBirth!),
+                      : isoDate(editor.dateOfBirth!),
                 ),
-                onTap: _conflict
+                onTap: conflict
                     ? null
                     : () async {
                         final now = DateTime.now();
                         final picked = await showDatePicker(
                           context: context,
-                          initialDate: _dateOfBirth ?? DateTime(1990, 1, 15),
+                          initialDate:
+                              editor.dateOfBirth ?? DateTime(1990, 1, 15),
                           firstDate: DateTime(1850, 1, 1),
                           lastDate: DateTime(now.year, now.month, now.day),
                         );
                         if (picked != null) {
-                          setState(() => _dateOfBirth = picked);
+                          ref
+                              .read(editDemographicsProvider.notifier)
+                              .setDateOfBirth(picked);
                         }
                       },
               ),
               DropdownButtonFormField<String>(
-                initialValue: _maritalStatus,
+                key: ValueKey('marital-${editor.maritalStatus}'),
+                initialValue: editor.maritalStatus,
                 decoration: InputDecoration(labelText: strings.maritalStatus),
                 items: [
                   DropdownMenuItem(
@@ -246,9 +211,11 @@ class _EditDemographicsScreenState
                     child: Text(strings.maritalWidowed),
                   ),
                 ],
-                onChanged: _conflict
+                onChanged: conflict
                     ? null
-                    : (value) => setState(() => _maritalStatus = value),
+                    : (value) => ref
+                          .read(editDemographicsProvider.notifier)
+                          .setMaritalStatus(value),
               ),
               const SizedBox(height: 12),
               Text(strings.selfReportedHint),
@@ -256,33 +223,34 @@ class _EditDemographicsScreenState
               TextField(
                 key: const Key('edit-height'),
                 controller: _height,
-                enabled: !_conflict,
+                enabled: !conflict,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
                 decoration: InputDecoration(
                   labelText:
                       '${strings.heightCm} (${strings.selfReportedLabel})',
-                  errorText: _errors['height_cm'],
+                  errorText: editor.errors['height_cm'],
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 key: const Key('edit-weight'),
                 controller: _weight,
-                enabled: !_conflict,
+                enabled: !conflict,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
                 decoration: InputDecoration(
                   labelText:
                       '${strings.weightKg} (${strings.selfReportedLabel})',
-                  errorText: _errors['weight_kg'],
+                  errorText: editor.errors['weight_kg'],
                 ),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _bloodType,
+                key: ValueKey('blood-${editor.bloodType}'),
+                initialValue: editor.bloodType,
                 decoration: InputDecoration(
                   labelText:
                       '${strings.bloodType} (${strings.selfReportedLabel})',
@@ -290,14 +258,16 @@ class _EditDemographicsScreenState
                 items: const ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
                     .map((v) => DropdownMenuItem(value: v, child: Text(v)))
                     .toList(),
-                onChanged: _conflict
+                onChanged: conflict
                     ? null
-                    : (value) => setState(() => _bloodType = value),
+                    : (value) => ref
+                          .read(editDemographicsProvider.notifier)
+                          .setBloodType(value),
               ),
-              if (_failure != null && !_conflict) ...[
+              if (editor.failure != null && !conflict) ...[
                 const SizedBox(height: 12),
                 Text(
-                  _failure!.message,
+                  editor.failure!.message,
                   key: const Key('edit-error'),
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
@@ -308,19 +278,20 @@ class _EditDemographicsScreenState
         ),
       ),
       bottomNavigationBar: PrimaryBottomBar(
-        primaryLabel: _conflict ? strings.refreshAction : strings.saveAction,
-        onPrimary: _busy
+        primaryLabel: conflict ? strings.refreshAction : strings.saveAction,
+        onPrimary: busy
             ? null
-            : () async {
-                if (_conflict) {
-                  await _refreshAuthoritative();
+            : () {
+                final notifier = ref.read(editDemographicsProvider.notifier);
+                if (conflict) {
+                  notifier.refresh();
                   return;
                 }
-                await _save();
+                notifier.save(strings);
               },
         secondaryLabel: strings.cancelAction,
-        onSecondary: _busy ? null : () => Navigator.of(context).pop(),
-        busy: _busy,
+        onSecondary: busy ? null : () => Navigator.of(context).pop(),
+        busy: busy,
       ),
     );
   }
