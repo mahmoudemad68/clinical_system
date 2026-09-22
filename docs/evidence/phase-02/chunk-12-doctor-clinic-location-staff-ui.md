@@ -34,30 +34,35 @@ Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 - **Branch:** `cursor/phase-02-chunk-12-doctor-clinic-locations-staff-ui-cc7f`
 - **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/21
 - **Baseline (GitHub `main`):** `a667231847484482edef4e087425e369ab4dcbce`
-- **Product UI HEAD:** `5b98f934bdbb959e72e2fe32f16032525b769297`
-- **CI-gate implementation HEAD:** `59116459bcb45d9a04b73a3eec5c91f1efd3f6e9`
-- **GitHub CI (CI-gate HEAD):** `pull-request` run **35696845966** SUCCESS
-  on that exact SHA
+- **Implementation HEAD:** `59116459bcb45d9a04b73a3eec5c91f1efd3f6e9`
+- **GitHub CI (implementation HEAD):** `pull-request` run **35696845966**
+  overall **SUCCESS** on that exact SHA
   (https://github.com/mahmoudemad68/clinical_system/actions/runs/35696845966)
-  — 15 success, 1 skipped by path filter (`AI service`)
+  — 15 success, 1 skipped by path filter (`AI service` only)
 
 Jobs on that run: Detect changed areas, Supply-chain policy, Contracts,
 Security scans, Core API, Secure-file providers, Admin web, Flutter, Electron
-desktops, **Forge Doctor practice E2E** (executed, not skipped), Packaged
-Electron E2E (ubuntu/macos/windows), Runtime image scan (core-api), Runtime
-image scan (ai-service). `AI service` skipped. Core API Tests step succeeded
+desktops, dedicated **Forge Doctor practice E2E** (**SUCCESS**, executed),
+Packaged Electron E2E (ubuntu/macos/windows **SUCCESS**), Runtime image scan
+(core-api), Runtime image scan (ai-service). Core API Tests step succeeded
 (Chunk 10 Clinics suite included in the full Core Pest run).
 
-Run **35694988078** on `5b98f93` is **not** practice-E2E proof: that desktop
-job wrote `skipped=true` because Core was unreachable and still exited 0.
+The dedicated Core-backed `Forge Doctor practice E2E` job provisioned
+PostgreSQL/PostGIS, Redis, Core migrations, Core HTTP on
+`http://localhost:8080`, Doctor Forge dependencies, and a Linux
+GNOME/libsecret (`gnome-keyring` / `dbus-run-session`) keystore so Electron
+`safeStorage` can select `gnome_libsecret`. It ran with
+`CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E=1`. Core unavailability in that required
+mode is a CI **failure**. An evidence-assertion step rejects
+`skipped=true`, so a silent skip cannot pass the gate.
 
 - **Recorded:** 2026-09-22
 - **Environment:** host Node 22 workspace, PHP 8.3 Core Pest against local
   PostgreSQL `clinic_test`. Forge Doctor GUI used live Core at
   `http://localhost:8080` (`/api/v1/health` HTTP 200, `core=operational`,
   `ai=degraded`). Packaged Electron E2E is the GitHub `desktop-packaged-e2e`
-  matrix; packaged Doctor is not required to connect to local HTTP
-  (`DOC-PKG-HTTP-001` remains expected / by design).
+  matrix on the same implementation HEAD; packaged Doctor does not connect to
+  local HTTP (`DOC-PKG-HTTP-001`, by design).
 
 ## Baseline
 
@@ -237,12 +242,17 @@ Coordinates are a local SVG pin (`CoordinatePreview`). No network map provider.
 
 ## Forge GUI E2E result
 
-Required mode (`CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E=1`) is the CI gate. Optional
-local skip remains only when that flag is unset. `CI=true` does not imply
-required mode.
+GitHub required mode (`CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E=1`) is the CI gate.
+`CI=true` does not imply required mode. A local optional skip exists only when
+the flag is unset; it is not used by the GitHub job. Core unreachable, fixture
+failure, Forge launch failure, keystore-unavailable, and journey failure all
+exit non-zero when the flag is enabled. `npm run desktop:forge-doctor-practice-e2e:assert`
+fails if evidence `skipped !== false` or any mandatory journey boolean is not
+`true`.
 
-Authoritative GitHub proof is job **Forge Doctor practice E2E** on run
-**35696845966** / SHA `5911645`
+Authoritative GitHub proof is dedicated job **Forge Doctor practice E2E**
+**SUCCESS** on run **35696845966** / implementation HEAD
+`59116459bcb45d9a04b73a3eec5c91f1efd3f6e9`
 (https://github.com/mahmoudemad68/clinical_system/actions/runs/35696845966/job/106645568056):
 
 - log: `Forge Doctor practice E2E passed. Evidence: .../doctor-forge-practice-e2e.json`
@@ -283,7 +293,8 @@ unprovisioned Electron desktops job. Packaged Doctor remains HTTP-free.
 
 ## Packaged E2E result
 
-GitHub `desktop-packaged-e2e` on CI-gate HEAD `5911645` (run **35696845966**):
+GitHub `desktop-packaged-e2e` on implementation HEAD
+`59116459bcb45d9a04b73a3eec5c91f1efd3f6e9` (run **35696845966**):
 
 | OS | Job | Result |
 | --- | --- | --- |
@@ -292,10 +303,10 @@ GitHub `desktop-packaged-e2e` on CI-gate HEAD `5911645` (run **35696845966**):
 | windows-latest | Packaged Doctor and Pharmacy WebdriverIO | success |
 
 The spec requires Doctor clinic operations (`listLocations` …
-`revokeMembership`) and forbids `schedule` / `invoke`. Packaged Doctor is
-still not required to connect to local HTTP (`DOC-PKG-HTTP-001` remains
-expected / by design). Forge development remains the approved local-HTTP GUI
-integration path. The Forge practice job is a separate Core-backed gate.
+`revokeMembership`) and forbids `schedule` / `invoke`. Packaged Doctor does
+not connect to local HTTP by design (`DOC-PKG-HTTP-001`). Packaged GUI
+coverage is trust-boundary / bridge runtime coverage. The real clinic
+workflow executes through Forge development against local Core.
 
 ## Core regression
 
@@ -390,18 +401,20 @@ tests/desktop-e2e/specs/packaged-runtime.spec.mjs
 docs/evidence/phase-02/chunk-12-doctor-clinic-location-staff-ui.md
 ```
 
-This evidence file is the evidence commit after GitHub CI SUCCESS on
-CI-gate HEAD `5911645` (run **35696845966**) with Forge practice
-`skipped=false`.
+This evidence file records GitHub CI SUCCESS on implementation HEAD
+`59116459bcb45d9a04b73a3eec5c91f1efd3f6e9` (run **35696845966**): overall
+SUCCESS, dedicated Forge Doctor practice E2E SUCCESS, `skipped=false`, all
+mandatory journey booleans true. Packaged Electron E2E Linux/macOS/Windows
+passed on that same HEAD. Phase 03 remains excluded. Chunk 12 does not
+complete Phase 02.
 
 ## Remaining risks
 
-- Packaged-window clinic operations are asserted by bridge-key presence, not a
-  packaged GUI login against Core (`DOC-PKG-HTTP-001`).
-- Headless GitHub Linux login depends on `gnome-keyring` + `dbus-run-session`
-  so Electron `safeStorage` can select `gnome_libsecret`. Linux `basic_text`
-  remains fail-closed; a keystore outage fails the required gate instead of
-  skipping.
+- Packaged Doctor does not connect to local HTTP by design
+  (`DOC-PKG-HTTP-001`). Packaged GUI coverage is trust-boundary / bridge
+  runtime coverage. The real clinic workflow executes through Forge
+  development against local Core (the GitHub `Forge Doctor practice E2E`
+  job).
 - Coordinate confirmation is a local checkbox plus numeric fields; there is no
   approved map provider.
 - Invitation phone is write-only in the UI, but main-process idempotency
