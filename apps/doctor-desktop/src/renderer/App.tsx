@@ -66,6 +66,9 @@ export function App() {
   function signOut(): void {
     setSignedIn(false);
     client.clear();
+    if (window.location.hash.startsWith('#/practice')) {
+      window.location.hash = '';
+    }
   }
 
   return (

@@ -641,6 +641,11 @@ jobs:
       - name: Forge development Doctor smoke
         run: npm run desktop:forge-doctor-smoke
 
+      - name: Forge Doctor clinic location practice E2E
+        # Requires local Core. The script skips with evidence when Core is
+        # unreachable so GitHub desktop jobs without Postgres still pass.
+        run: npm run desktop:forge-doctor-practice-e2e
+
       # Unsigned packaged-window evidence is G-02-10 (desktop-packaged-e2e).
       # Signing credentials stay out of pull requests (Phase 23).
 

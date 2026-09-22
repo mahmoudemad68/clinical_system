@@ -23,6 +23,13 @@ export const DOCTOR_CHANNELS = {
   evidenceClear: 'clinic:doctor.evidence.clear',
   evidenceUpload: 'clinic:doctor.evidence.upload',
   uploadStatus: 'clinic:doctor.upload.status',
+  locationsList: 'clinic:doctor.locations.list',
+  locationsCreate: 'clinic:doctor.locations.create',
+  locationsGet: 'clinic:doctor.locations.get',
+  locationsUpdate: 'clinic:doctor.locations.update',
+  locationsInviteStaff: 'clinic:doctor.locations.inviteStaff',
+  locationsMemberships: 'clinic:doctor.locations.memberships',
+  locationsRevokeMembership: 'clinic:doctor.locations.revokeMembership',
 } as const;
 
 export type DoctorChannelName = (typeof DOCTOR_CHANNELS)[keyof typeof DOCTOR_CHANNELS];
@@ -272,6 +279,164 @@ export const doctorUploadStatusRequestSchema = z
   })
   .strict();
 
+export const doctorClinicCountryCodeSchema = z.literal('EG');
+
+export const doctorClinicLocationStatusSchema = z.enum([
+  'draft',
+  'pending',
+  'active',
+  'suspended',
+  'closed',
+]);
+
+export const doctorClinicMembershipRoleSchema = z.enum(['doctor', 'secretary']);
+
+export const doctorClinicMembershipStatusSchema = z.enum([
+  'pending',
+  'active',
+  'suspended',
+  'revoked',
+]);
+
+export const doctorClinicLatitudeSchema = z.number().finite().gte(-90).lte(90);
+export const doctorClinicLongitudeSchema = z.number().finite().gte(-180).lte(180);
+
+export const doctorClinicLocationViewSchema = z
+  .object({
+    locationId: z.string().uuid(),
+    publicName: z.string().min(1).max(200),
+    countryCode: doctorClinicCountryCodeSchema,
+    status: doctorClinicLocationStatusSchema,
+    version: z.number().int().positive(),
+    createdAt: z.string().max(64),
+    updatedAt: z.string().max(64),
+    address: z.string().min(1).max(500).optional(),
+    latitude: doctorClinicLatitudeSchema.optional(),
+    longitude: doctorClinicLongitudeSchema.optional(),
+  })
+  .strict();
+
+export type DoctorClinicLocationView = z.infer<typeof doctorClinicLocationViewSchema>;
+
+export const doctorClinicLocationsListRequestSchema = z
+  .object({
+    cursor: z.string().min(1).max(4096).optional(),
+    limit: z.number().int().min(1).max(100).optional(),
+  })
+  .strict();
+
+export type DoctorClinicLocationsListRequest = z.infer<typeof doctorClinicLocationsListRequestSchema>;
+
+export const doctorClinicLocationsListResponseSchema = z
+  .object({
+    locations: z.array(doctorClinicLocationViewSchema).max(100),
+    hasMore: z.boolean(),
+    nextCursor: z.string().min(1).max(4096).nullable(),
+  })
+  .strict();
+
+export type DoctorClinicLocationsListResponse = z.infer<typeof doctorClinicLocationsListResponseSchema>;
+
+export const doctorClinicLocationCreateRequestSchema = z
+  .object({
+    publicName: z.string().min(1).max(200),
+    address: z.string().min(1).max(500),
+    countryCode: doctorClinicCountryCodeSchema,
+    latitude: doctorClinicLatitudeSchema,
+    longitude: doctorClinicLongitudeSchema,
+  })
+  .strict();
+
+export type DoctorClinicLocationCreateRequest = z.infer<typeof doctorClinicLocationCreateRequestSchema>;
+
+export const doctorClinicLocationCreateResponseSchema = z
+  .object({
+    locationId: z.string().uuid(),
+    status: z.literal('active'),
+    version: z.number().int().positive(),
+  })
+  .strict();
+
+export type DoctorClinicLocationCreateResponse = z.infer<typeof doctorClinicLocationCreateResponseSchema>;
+
+export const doctorClinicLocationGetRequestSchema = z
+  .object({
+    locationId: z.string().uuid(),
+  })
+  .strict();
+
+export const doctorClinicLocationUpdateRequestSchema = z
+  .object({
+    locationId: z.string().uuid(),
+    expectedVersion: z.number().int().positive(),
+    publicName: z.string().min(1).max(200).optional(),
+    address: z.string().min(1).max(500).optional(),
+    countryCode: doctorClinicCountryCodeSchema.optional(),
+    latitude: doctorClinicLatitudeSchema.optional(),
+    longitude: doctorClinicLongitudeSchema.optional(),
+  })
+  .strict();
+
+export type DoctorClinicLocationUpdateRequest = z.infer<typeof doctorClinicLocationUpdateRequestSchema>;
+
+export const doctorClinicInviteStaffRequestSchema = z
+  .object({
+    locationId: z.string().uuid(),
+    phone: z.string().min(8).max(32),
+  })
+  .strict();
+
+export type DoctorClinicInviteStaffRequest = z.infer<typeof doctorClinicInviteStaffRequestSchema>;
+
+export const doctorClinicInviteStaffResponseSchema = z
+  .object({
+    invitationId: z.string().uuid(),
+    locationId: z.string().uuid(),
+    status: z.literal('pending'),
+    expiresAt: z.string().max(64),
+    existingPending: z.boolean(),
+  })
+  .strict();
+
+export type DoctorClinicInviteStaffResponse = z.infer<typeof doctorClinicInviteStaffResponseSchema>;
+
+export const doctorClinicMembershipViewSchema = z
+  .object({
+    membershipId: z.string().uuid(),
+    role: doctorClinicMembershipRoleSchema,
+    status: doctorClinicMembershipStatusSchema,
+    version: z.number().int().positive(),
+    invitedAt: z.string().max(64).nullable(),
+    acceptedAt: z.string().max(64).nullable(),
+    revokedAt: z.string().max(64).nullable(),
+  })
+  .strict();
+
+export type DoctorClinicMembershipView = z.infer<typeof doctorClinicMembershipViewSchema>;
+
+export const doctorClinicMembershipsRequestSchema = z
+  .object({
+    locationId: z.string().uuid(),
+  })
+  .strict();
+
+export const doctorClinicMembershipsResponseSchema = z
+  .object({
+    memberships: z.array(doctorClinicMembershipViewSchema).max(200),
+  })
+  .strict();
+
+export type DoctorClinicMembershipsResponse = z.infer<typeof doctorClinicMembershipsResponseSchema>;
+
+export const doctorClinicRevokeMembershipRequestSchema = z
+  .object({
+    locationId: z.string().uuid(),
+    membershipId: z.string().uuid(),
+  })
+  .strict();
+
+export type DoctorClinicRevokeMembershipRequest = z.infer<typeof doctorClinicRevokeMembershipRequestSchema>;
+
 const FILE_DIALOG_TIMEOUT_MS = 300_000;
 const UPLOAD_TIMEOUT_MS = 120_000;
 
@@ -324,6 +489,41 @@ export const DOCTOR_CAPABILITY_REGISTRY = {
   [DOCTOR_CHANNELS.uploadStatus]: {
     request: doctorUploadStatusRequestSchema,
     response: doctorUploadStatusResponseSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [DOCTOR_CHANNELS.locationsList]: {
+    request: doctorClinicLocationsListRequestSchema,
+    response: doctorClinicLocationsListResponseSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [DOCTOR_CHANNELS.locationsCreate]: {
+    request: doctorClinicLocationCreateRequestSchema,
+    response: doctorClinicLocationCreateResponseSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [DOCTOR_CHANNELS.locationsGet]: {
+    request: doctorClinicLocationGetRequestSchema,
+    response: doctorClinicLocationViewSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [DOCTOR_CHANNELS.locationsUpdate]: {
+    request: doctorClinicLocationUpdateRequestSchema,
+    response: doctorClinicLocationViewSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [DOCTOR_CHANNELS.locationsInviteStaff]: {
+    request: doctorClinicInviteStaffRequestSchema,
+    response: doctorClinicInviteStaffResponseSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [DOCTOR_CHANNELS.locationsMemberships]: {
+    request: doctorClinicMembershipsRequestSchema,
+    response: doctorClinicMembershipsResponseSchema,
+    timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
+  },
+  [DOCTOR_CHANNELS.locationsRevokeMembership]: {
+    request: doctorClinicRevokeMembershipRequestSchema,
+    response: doctorClinicMembershipViewSchema,
     timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
   },
 } as const satisfies Record<

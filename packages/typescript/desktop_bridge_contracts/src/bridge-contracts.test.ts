@@ -8,6 +8,11 @@ import {
   PHARMACY_ALL_CHANNELS,
   PHARMACY_CHANNELS,
   bridgeErrorSchema,
+  doctorClinicLocationViewSchema,
+  doctorClinicLocationCreateRequestSchema,
+  doctorClinicLocationUpdateRequestSchema,
+  doctorClinicInviteStaffRequestSchema,
+  doctorClinicMembershipViewSchema,
   doctorOnboardRequestSchema,
   doctorProfileViewSchema,
   doctorUploadStatusResponseSchema,
@@ -136,6 +141,69 @@ describe('desktop bridge contracts', () => {
         professionalDisplayName: 'A',
         specialtyId: 'not-a-uuid',
         syndicateNumber: null,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects unknown fields and client-owned clinic identifiers', () => {
+    const location = {
+      locationId: '0199a5c8-0000-7000-8000-0000000000aa',
+      publicName: 'Cairo Clinic',
+      countryCode: 'EG' as const,
+      status: 'active' as const,
+      version: 1,
+      createdAt: '2026-09-21T00:00:00Z',
+      updatedAt: '2026-09-21T00:00:00Z',
+    };
+    expect(doctorClinicLocationViewSchema.safeParse(location).success).toBe(true);
+    expect(
+      doctorClinicLocationViewSchema.safeParse({
+        ...location,
+        phone: '01000000000',
+        phoneHmac: 'hmac',
+        staff_count: 3,
+        doctor_id: '0199a5c8-0000-7000-8000-000000000010',
+      }).success,
+    ).toBe(false);
+
+    expect(
+      doctorClinicLocationCreateRequestSchema.safeParse({
+        publicName: 'Cairo Clinic',
+        address: '1 Tahrir Square, Cairo',
+        countryCode: 'EG',
+        latitude: 30.0444,
+        longitude: 31.2357,
+        doctorId: '0199a5c8-0000-7000-8000-000000000010',
+        status: 'active',
+        version: 1,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      doctorClinicLocationUpdateRequestSchema.safeParse({
+        locationId: location.locationId,
+        publicName: 'Renamed',
+      }).success,
+    ).toBe(false);
+
+    expect(
+      doctorClinicInviteStaffRequestSchema.safeParse({
+        locationId: location.locationId,
+        phone: '01000000000',
+        role: 'secretary',
+      }).success,
+    ).toBe(false);
+
+    expect(
+      doctorClinicMembershipViewSchema.safeParse({
+        membershipId: '0199a5c8-0000-7000-8000-0000000000bb',
+        role: 'secretary',
+        status: 'active',
+        version: 1,
+        invitedAt: '2026-09-21T00:00:00Z',
+        acceptedAt: '2026-09-21T00:01:00Z',
+        revokedAt: null,
+        phone: '01000000000',
       }).success,
     ).toBe(false);
   });
