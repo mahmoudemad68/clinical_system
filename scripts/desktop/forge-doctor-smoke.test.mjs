@@ -33,6 +33,7 @@ describe('Forge Doctor smoke helpers', () => {
       keystore: false,
       clinicType: 'object',
       doctorType: 'object',
+      doctorKeys: ['getOwnProfile', 'listLocations', 'inviteStaff'],
       pharmacyType: 'undefined',
       requireType: 'undefined',
       processType: 'undefined',

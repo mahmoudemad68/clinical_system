@@ -36,6 +36,7 @@ function fail(
   code:
     | 'UNAUTHENTICATED'
     | 'PERMISSION_DENIED'
+    | 'NOT_FOUND'
     | 'VERSION_CONFLICT'
     | 'STATE_CONFLICT'
     | 'VALIDATION_FAILED'
@@ -174,6 +175,13 @@ function installBridge(
         expiresAt: '2026-09-21T00:10:00Z',
         completedAt: '2026-09-21T00:01:00Z',
       }),
+    listLocations: () => ok({ locations: [], hasMore: false, nextCursor: null }),
+    createLocation: () => fail('NOT_FOUND'),
+    getLocation: () => fail('NOT_FOUND'),
+    updateLocation: () => fail('NOT_FOUND'),
+    inviteStaff: () => fail('NOT_FOUND'),
+    listMemberships: () => ok({ memberships: [] }),
+    revokeMembership: () => fail('NOT_FOUND'),
     ...overrides,
   };
 
@@ -292,6 +300,7 @@ describe('doctor renderer workspace', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+    window.location.hash = '';
   });
 
   it('shows the signed-out login shell', async () => {
@@ -543,7 +552,10 @@ describe('doctor renderer workspace', () => {
     renderApp();
     expect(await screen.findByTestId('approved-status')).toBeTruthy();
     expect(screen.getByTestId('doctor-profile').textContent).toContain('Synthetic Doctor');
+    expect(screen.getByTestId('practice-locations-nav')).toBeTruthy();
     assertNoClinicalNav();
+    expect(screen.queryByTestId('tab-schedule')).toBeNull();
+    expect(screen.queryByTestId('tab-appointment-types')).toBeNull();
   });
 
   it('refreshes authoritative status on version conflict instead of overwriting', async () => {

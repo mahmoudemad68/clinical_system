@@ -95,6 +95,13 @@ const bridge: DoctorClinicBridge = {
     clearEvidence: (handleId) => call(DOCTOR_CHANNELS.evidenceClear, { handleId }),
     uploadEvidence: (input) => call(DOCTOR_CHANNELS.evidenceUpload, input),
     uploadStatus: (uploadId) => call(DOCTOR_CHANNELS.uploadStatus, { uploadId }),
+    listLocations: (input) => call(DOCTOR_CHANNELS.locationsList, input),
+    createLocation: (input) => call(DOCTOR_CHANNELS.locationsCreate, input),
+    getLocation: (input) => call(DOCTOR_CHANNELS.locationsGet, input),
+    updateLocation: (input) => call(DOCTOR_CHANNELS.locationsUpdate, input),
+    inviteStaff: (input) => call(DOCTOR_CHANNELS.locationsInviteStaff, input),
+    listMemberships: (input) => call(DOCTOR_CHANNELS.locationsMemberships, input),
+    revokeMembership: (input) => call(DOCTOR_CHANNELS.locationsRevokeMembership, input),
   },
 };
 

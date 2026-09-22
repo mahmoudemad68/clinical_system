@@ -95,7 +95,15 @@ describe(`Packaged ${PRODUCT} runtime`, () => {
         'clearEvidence',
         'uploadEvidence',
         'uploadStatus',
+        'listLocations',
+        'createLocation',
+        'getLocation',
+        'updateLocation',
+        'inviteStaff',
+        'listMemberships',
+        'revokeMembership',
       ]));
+      expect(isolation.doctorKeys).not.toEqual(expect.arrayContaining(['schedule', 'invoke']));
     }
   });
 

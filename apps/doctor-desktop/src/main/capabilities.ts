@@ -96,6 +96,27 @@ export function registerCapabilities(): void {
   handle(DOCTOR_CHANNELS.uploadStatus, async (payload: { uploadId: string }) =>
     doctorGateway.uploadStatus(localeState, payload.uploadId),
   );
+  handle(DOCTOR_CHANNELS.locationsList, async (payload) =>
+    doctorGateway.listLocations(localeState, payload),
+  );
+  handle(DOCTOR_CHANNELS.locationsCreate, async (payload) =>
+    doctorGateway.createLocation(localeState, payload),
+  );
+  handle(DOCTOR_CHANNELS.locationsGet, async (payload: { locationId: string }) =>
+    doctorGateway.getLocation(localeState, payload.locationId),
+  );
+  handle(DOCTOR_CHANNELS.locationsUpdate, async (payload) =>
+    doctorGateway.updateLocation(localeState, payload),
+  );
+  handle(DOCTOR_CHANNELS.locationsInviteStaff, async (payload) =>
+    doctorGateway.inviteStaff(localeState, payload),
+  );
+  handle(DOCTOR_CHANNELS.locationsMemberships, async (payload: { locationId: string }) =>
+    doctorGateway.listMemberships(localeState, payload.locationId),
+  );
+  handle(DOCTOR_CHANNELS.locationsRevokeMembership, async (payload) =>
+    doctorGateway.revokeMembership(localeState, payload),
+  );
 }
 
 async function selectEvidence(event: IpcMainInvokeEvent) {

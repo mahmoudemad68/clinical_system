@@ -442,6 +442,19 @@ export {
   doctorVerificationStatusResponseSchema,
   doctorVerificationSubmitRequestSchema,
   doctorVerificationSubmitResponseSchema,
+  doctorClinicLocationViewSchema,
+  doctorClinicLocationsListRequestSchema,
+  doctorClinicLocationsListResponseSchema,
+  doctorClinicLocationCreateRequestSchema,
+  doctorClinicLocationCreateResponseSchema,
+  doctorClinicLocationGetRequestSchema,
+  doctorClinicLocationUpdateRequestSchema,
+  doctorClinicInviteStaffRequestSchema,
+  doctorClinicInviteStaffResponseSchema,
+  doctorClinicMembershipViewSchema,
+  doctorClinicMembershipsRequestSchema,
+  doctorClinicMembershipsResponseSchema,
+  doctorClinicRevokeMembershipRequestSchema,
   type DoctorChannelName,
   type DoctorEvidenceSelectResponse,
   type DoctorOnboardRequest,
@@ -453,6 +466,17 @@ export {
   type DoctorVerificationOpenResponse,
   type DoctorVerificationStatus,
   type DoctorVerificationSubmitResponse,
+  type DoctorClinicLocationView,
+  type DoctorClinicLocationsListRequest,
+  type DoctorClinicLocationsListResponse,
+  type DoctorClinicLocationCreateRequest,
+  type DoctorClinicLocationCreateResponse,
+  type DoctorClinicLocationUpdateRequest,
+  type DoctorClinicInviteStaffRequest,
+  type DoctorClinicInviteStaffResponse,
+  type DoctorClinicMembershipView,
+  type DoctorClinicMembershipsResponse,
+  type DoctorClinicRevokeMembershipRequest,
 } from './doctor';
 
 import type {
@@ -478,6 +502,17 @@ import type {
   DoctorVerificationOpenResponse,
   DoctorVerificationStatus,
   DoctorVerificationSubmitResponse,
+  DoctorClinicLocationView,
+  DoctorClinicLocationsListRequest,
+  DoctorClinicLocationsListResponse,
+  DoctorClinicLocationCreateRequest,
+  DoctorClinicLocationCreateResponse,
+  DoctorClinicLocationUpdateRequest,
+  DoctorClinicInviteStaffRequest,
+  DoctorClinicInviteStaffResponse,
+  DoctorClinicMembershipView,
+  DoctorClinicMembershipsResponse,
+  DoctorClinicRevokeMembershipRequest,
 } from './doctor';
 import { DOCTOR_CHANNEL_LIST } from './doctor';
 
@@ -540,5 +575,22 @@ export interface DoctorClinicBridge extends ClinicBridge {
       caseId: string;
     }): Promise<BridgeResult<DoctorUploadStatus>>;
     uploadStatus(uploadId: string): Promise<BridgeResult<DoctorUploadStatus>>;
+    listLocations(
+      input: DoctorClinicLocationsListRequest,
+    ): Promise<BridgeResult<DoctorClinicLocationsListResponse>>;
+    createLocation(
+      input: DoctorClinicLocationCreateRequest,
+    ): Promise<BridgeResult<DoctorClinicLocationCreateResponse>>;
+    getLocation(input: { locationId: string }): Promise<BridgeResult<DoctorClinicLocationView>>;
+    updateLocation(
+      input: DoctorClinicLocationUpdateRequest,
+    ): Promise<BridgeResult<DoctorClinicLocationView>>;
+    inviteStaff(
+      input: DoctorClinicInviteStaffRequest,
+    ): Promise<BridgeResult<DoctorClinicInviteStaffResponse>>;
+    listMemberships(input: { locationId: string }): Promise<BridgeResult<DoctorClinicMembershipsResponse>>;
+    revokeMembership(
+      input: DoctorClinicRevokeMembershipRequest,
+    ): Promise<BridgeResult<DoctorClinicMembershipView>>;
   };
 }

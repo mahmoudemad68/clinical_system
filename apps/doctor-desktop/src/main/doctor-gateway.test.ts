@@ -1060,3 +1060,250 @@ describe('doctor verification transport without cookie or Host workarounds', () 
     expect(JSON.stringify(uploaded)).not.toContain(CANARIES.signedUrl);
   });
 });
+
+const LOCATION_ID = '0199a5c8-0000-7000-8000-0000000000aa';
+const MEMBERSHIP_ID = '0199a5c8-0000-7000-8000-0000000000bb';
+const INVITATION_ID = '0199a5c8-0000-7000-8000-0000000000cc';
+const ADDRESS_CANARY = 'CANARY-ADDRESS-1-TAHRIR-SQUARE';
+const PHONE_CANARY = 'CANARY-SECRETARY-PHONE-01099999999';
+const HMAC_CANARY = 'CANARY-PHONE-HMAC';
+
+function apiLocation(overrides: Record<string, unknown> = {}) {
+  return {
+    location_id: LOCATION_ID,
+    public_name: 'Cairo Clinic',
+    country_code: 'EG',
+    status: 'active',
+    version: 1,
+    created_at: '2026-09-21T00:00:00Z',
+    updated_at: '2026-09-21T00:00:00Z',
+    address: ADDRESS_CANARY,
+    latitude: 30.0444,
+    longitude: 31.2357,
+    ...overrides,
+  };
+}
+
+describe('doctor gateway clinic locations and staff', () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    appState.isPackaged = false;
+    resetPlatformGatewaySession();
+    resetDoctorGatewayState();
+    process.env['CLINIC_API_BASE_URL'] = 'http://localhost:8080';
+    fetchMock.mockResolvedValueOnce(
+      envelope(200, {
+        user_id: '0199a5c8-0000-7000-8000-000000000001',
+        account_type: 'doctor',
+        status: 'active',
+        language: 'en',
+        assurance_level: 'aal2_totp',
+        profile_links: [],
+      }),
+    );
+    fetchMock.mockResolvedValueOnce(envelope(200, { capabilities: [] }));
+  });
+
+  afterEach(() => {
+    delete process.env['CLINIC_API_BASE_URL'];
+  });
+
+  it('lists owner locations from envelope pagination and drops invented fields', async () => {
+    fetchMock.mockResolvedValueOnce({
+      status: 200,
+      json: async () => ({
+        data: [
+          {
+            ...apiLocation(),
+            staff_count: 4,
+            phone: PHONE_CANARY,
+            phone_hmac: HMAC_CANARY,
+            next_availability: 'tomorrow',
+          },
+        ],
+        meta: { pagination: { has_more: true, next: 'opaque-cursor', limit: 25 } },
+        errors: [],
+        request_id: '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c01',
+      }),
+    });
+
+    const listed = await doctorGateway.listLocations('en', {});
+    expect(listed.hasMore).toBe(true);
+    expect(listed.nextCursor).toBe('opaque-cursor');
+    expect(listed.locations[0]?.publicName).toBe('Cairo Clinic');
+    expect(listed.locations[0]?.address).toBe(ADDRESS_CANARY);
+    const serialized = JSON.stringify(listed);
+    expect(serialized).not.toContain(PHONE_CANARY);
+    expect(serialized).not.toContain(HMAC_CANARY);
+    expect(serialized).not.toContain('staff_count');
+    expect(serialized).not.toContain('next_availability');
+    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toContain('/api/v1/clinic-locations');
+  });
+
+  it('creates with idempotency and without client-owned identifiers', async () => {
+    fetchMock.mockResolvedValueOnce(
+      envelope(201, { location_id: LOCATION_ID, status: 'active', version: 1 }),
+    );
+    const created = await doctorGateway.createLocation('en', {
+      publicName: 'Cairo Clinic',
+      address: ADDRESS_CANARY,
+      countryCode: 'EG',
+      latitude: 30.0444,
+      longitude: 31.2357,
+    });
+    expect(created).toEqual({ locationId: LOCATION_ID, status: 'active', version: 1 });
+    const request = fetchMock.mock.calls.at(-1);
+    const init = request?.[1] as { body?: string; headers?: Record<string, string> };
+    const body = JSON.parse(init.body ?? '{}') as Record<string, unknown>;
+    expect(body).toEqual({
+      public_name: 'Cairo Clinic',
+      address: ADDRESS_CANARY,
+      country_code: 'EG',
+      latitude: 30.0444,
+      longitude: 31.2357,
+    });
+    expect(body).not.toHaveProperty('doctor_id');
+    expect(body).not.toHaveProperty('status');
+    expect(body).not.toHaveProperty('version');
+    expect(init.headers?.['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(init.headers?.['Idempotency-Key']?.length).toBeGreaterThanOrEqual(16);
+  });
+
+  it('reuses the create idempotency key until a delivered success', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('network'));
+    await expect(
+      doctorGateway.createLocation('en', {
+        publicName: 'Cairo Clinic',
+        address: ADDRESS_CANARY,
+        countryCode: 'EG',
+        latitude: 30.0444,
+        longitude: 31.2357,
+      }),
+    ).rejects.toBeTruthy();
+    const firstKey = (fetchMock.mock.calls.at(-1)?.[1] as { headers?: Record<string, string> }).headers?.[
+      'Idempotency-Key'
+    ];
+    fetchMock.mockResolvedValueOnce(
+      envelope(201, { location_id: LOCATION_ID, status: 'active', version: 1 }),
+    );
+    await doctorGateway.createLocation('en', {
+      publicName: 'Cairo Clinic',
+      address: ADDRESS_CANARY,
+      countryCode: 'EG',
+      latitude: 30.0444,
+      longitude: 31.2357,
+    });
+    const secondKey = (fetchMock.mock.calls.at(-1)?.[1] as { headers?: Record<string, string> }).headers?.[
+      'Idempotency-Key'
+    ];
+    expect(secondKey).toBe(firstKey);
+  });
+
+  it('requires expected_version on update and maps VERSION_CONFLICT', async () => {
+    fetchMock.mockResolvedValueOnce({
+      status: 409,
+      json: async () => ({
+        data: null,
+        meta: {},
+        errors: [{ code: 'VERSION_CONFLICT', message: 'stale' }],
+        request_id: '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c01',
+      }),
+    });
+    await expect(
+      doctorGateway.updateLocation('en', {
+        locationId: LOCATION_ID,
+        expectedVersion: 1,
+        publicName: 'Cairo Nile Clinic',
+      }),
+    ).rejects.toMatchObject({ failureCode: 'VERSION_CONFLICT' });
+    const body = JSON.parse(
+      (fetchMock.mock.calls.at(-1)?.[1] as { body?: string }).body ?? '{}',
+    ) as Record<string, unknown>;
+    expect(body['expected_version']).toBe(1);
+    expect(body).not.toHaveProperty('status');
+  });
+
+  it('returns the authoritative location after a successful patch', async () => {
+    fetchMock.mockResolvedValueOnce(envelope(200, apiLocation({ public_name: 'Cairo Nile Clinic', version: 2 })));
+    const updated = await doctorGateway.updateLocation('en', {
+      locationId: LOCATION_ID,
+      expectedVersion: 1,
+      publicName: 'Cairo Nile Clinic',
+    });
+    expect(updated.version).toBe(2);
+    expect(updated.publicName).toBe('Cairo Nile Clinic');
+  });
+
+  it('marks a 200 invitation replay as existingPending without echoing phone', async () => {
+    fetchMock.mockResolvedValueOnce({
+      status: 200,
+      json: async () => ({
+        data: {
+          invitation_id: INVITATION_ID,
+          location_id: LOCATION_ID,
+          status: 'pending',
+          expires_at: '2026-09-22T00:00:00Z',
+          phone: PHONE_CANARY,
+        },
+        meta: {},
+        errors: [],
+        request_id: '0199a5c8-1f2e-7c3a-9b41-2f6d0c5e7c01',
+      }),
+    });
+    const invited = await doctorGateway.inviteStaff('en', { locationId: LOCATION_ID, phone: PHONE_CANARY });
+    expect(invited.existingPending).toBe(true);
+    expect(invited.status).toBe('pending');
+    expect(JSON.stringify(invited)).not.toContain(PHONE_CANARY);
+    const body = JSON.parse(
+      (fetchMock.mock.calls.at(-1)?.[1] as { body?: string }).body ?? '{}',
+    ) as Record<string, unknown>;
+    expect(body).toEqual({ phone: PHONE_CANARY });
+    expect(body).not.toHaveProperty('role');
+  });
+
+  it('lists and revokes memberships without clinical or identity fields', async () => {
+    fetchMock.mockResolvedValueOnce(
+      envelope(200, [
+        {
+          membership_id: MEMBERSHIP_ID,
+          role: 'secretary',
+          status: 'active',
+          version: 1,
+          invited_at: '2026-09-21T00:04:00Z',
+          accepted_at: '2026-09-21T00:05:00Z',
+          revoked_at: null,
+          phone: PHONE_CANARY,
+          phone_hmac: HMAC_CANARY,
+          national_id: '29801011234567',
+        },
+      ]),
+    );
+    const listed = await doctorGateway.listMemberships('en', LOCATION_ID);
+    expect(listed.memberships[0]?.membershipId).toBe(MEMBERSHIP_ID);
+    expect(JSON.stringify(listed)).not.toContain(PHONE_CANARY);
+    expect(JSON.stringify(listed)).not.toContain(HMAC_CANARY);
+    expect(JSON.stringify(listed)).not.toContain('29801011234567');
+
+    fetchMock.mockResolvedValueOnce(
+      envelope(200, {
+        membership_id: MEMBERSHIP_ID,
+        role: 'secretary',
+        status: 'revoked',
+        version: 2,
+        invited_at: '2026-09-21T00:04:00Z',
+        accepted_at: '2026-09-21T00:05:00Z',
+        revoked_at: '2026-09-21T00:06:00Z',
+      }),
+    );
+    const revoked = await doctorGateway.revokeMembership('en', {
+      locationId: LOCATION_ID,
+      membershipId: MEMBERSHIP_ID,
+    });
+    expect(revoked.status).toBe('revoked');
+    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toContain(
+      `/api/v1/clinic-locations/${LOCATION_ID}/memberships/${MEMBERSHIP_ID}`,
+    );
+    expect((fetchMock.mock.calls.at(-1)?.[1] as { method?: string }).method).toBe('DELETE');
+  });
+});
+

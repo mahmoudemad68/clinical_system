@@ -425,6 +425,13 @@ describe('Clinic Doctor — IPC contract', () => {
         DOCTOR_CHANNELS.evidenceClear,
         DOCTOR_CHANNELS.evidenceSelect,
         DOCTOR_CHANNELS.evidenceUpload,
+        DOCTOR_CHANNELS.locationsCreate,
+        DOCTOR_CHANNELS.locationsGet,
+        DOCTOR_CHANNELS.locationsInviteStaff,
+        DOCTOR_CHANNELS.locationsList,
+        DOCTOR_CHANNELS.locationsMemberships,
+        DOCTOR_CHANNELS.locationsRevokeMembership,
+        DOCTOR_CHANNELS.locationsUpdate,
         DOCTOR_CHANNELS.profileGetOwn,
         DOCTOR_CHANNELS.profileOnboard,
         DOCTOR_CHANNELS.specialtiesList,
@@ -454,6 +461,12 @@ describe('Clinic Doctor — IPC contract', () => {
     expect(renderer).not.toContain('clinic:doctor.schedule');
     expect(renderer).not.toContain('clinic:doctor.queue');
     expect(renderer).not.toContain('data-testid="clinical-nav"');
+    expect(renderer).not.toContain('data-testid="tab-schedule"');
+    expect(renderer).not.toContain('data-testid="tab-appointment-types"');
+    expect(renderer).not.toContain('maps.google');
+    expect(renderer).not.toContain('mapbox');
+    expect(renderer).not.toContain('openstreetmap');
+    expect(renderer).not.toContain('Nominatim');
     expect(capabilities).toContain("fail('INTERNAL_ERROR'");
     expect(readCode('src/main/doctor-gateway.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);
     expect(readCode('src/main/upload-target.ts')).not.toMatch(/console\.(log|info|debug|error|warn)/);

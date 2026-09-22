@@ -83,6 +83,13 @@ export function assertSmokeSnapshot(snapshot) {
   if (snapshot.hasInvoke) {
     throw new Error('generic invoke exposed on window.clinic');
   }
+  const doctorKeys = Array.isArray(snapshot.doctorKeys) ? snapshot.doctorKeys : [];
+  if (!doctorKeys.includes('listLocations') || !doctorKeys.includes('inviteStaff')) {
+    throw new Error('Doctor clinic location operations missing from Forge bridge');
+  }
+  if (doctorKeys.includes('schedule') || doctorKeys.includes('invoke')) {
+    throw new Error('Doctor bridge exposed a forbidden operation');
+  }
 }
 
 function sleep(ms) {
@@ -191,6 +198,7 @@ const SNAPSHOT_EXPRESSION = `(() => ({
   healthBusy: Boolean(document.querySelector('[aria-busy="true"]')),
   clinicType: typeof window.clinic,
   doctorType: typeof window.clinic?.doctor,
+  doctorKeys: window.clinic?.doctor ? Object.keys(window.clinic.doctor) : [],
   pharmacyType: typeof window.clinic?.pharmacy,
   requireType: typeof window.require,
   processType: typeof window.process,
@@ -225,7 +233,7 @@ async function probeCoreApi(baseUrl) {
   }
 }
 
-function electronSandboxPath() {
+export function electronSandboxPath() {
   for (const dir of [join(repoRoot, 'node_modules', 'electron'), join(doctorApp, 'node_modules', 'electron')]) {
     const helper = join(dir, 'dist', 'chrome-sandbox');
     if (existsSync(helper)) {
@@ -235,7 +243,7 @@ function electronSandboxPath() {
   return null;
 }
 
-function ensureElectronRuntime() {
+export function ensureElectronRuntime() {
   if (electronSandboxPath()) {
     return;
   }
