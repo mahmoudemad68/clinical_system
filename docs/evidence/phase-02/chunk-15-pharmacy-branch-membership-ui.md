@@ -48,8 +48,8 @@ Chunk 14 is CLOSED (merged PR #24). **Phase 02 remains NOT PASS.**
 - **Branch:** `cursor/phase-02-chunk-15-pharmacy-branch-membership-ui-cc7f`
 - **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/25
 - **Baseline (GitHub `main`):** `cc8f9be7df683624ed9323f2dd357fadc9bc7d13`
-- **Implementation HEAD:** (this evidence commit's SHA after push; recorded in the next evidence update with CI)
-- **GitHub CI (implementation HEAD):** pending `pull-request` on Draft PR #25
+- **Implementation HEAD:** `ffc7f50944e3e9e81342deac9ea032b012ea3d84` (code); this evidence file may receive a later SHA that records CI
+- **GitHub CI (implementation HEAD):** pending Draft PR #25 `pull-request`
 
 Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 
@@ -338,10 +338,11 @@ when `skipped !== false`.
 
 ## Remaining risks
 
-- Packaged Pharmacy does not connect to local HTTP by design. Packaged GUI
-  coverage is trust-boundary / bridge runtime coverage. The real branch
-  workflow executes through Forge development against local Core (the GitHub
-  `Forge Pharmacy practice E2E` job).
+- Forge development previously overwrote webpack-dev-server CSP with the
+  packaged `connect-src 'none'` / `script-src 'self' clinic-pharmacy-app:`
+  policy and used eval-source-map, which blanked the login shell (CI run
+  35761681211). Pharmacy now matches Doctor: `devtool: 'source-map'`,
+  development CSP without `'unsafe-eval'`, packaged CSP only when packaged.
 - Coordinate confirmation is a local checkbox plus numeric fields; there is no
   approved map provider.
 - Invitation phone is write-only in the UI, but main-process idempotency

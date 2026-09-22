@@ -4,14 +4,16 @@
     <meta charset="UTF-8" />
     <title>Clinic Pharmacy</title>
     <!--
-      The main process sets the authoritative CSP on every response. This meta
-      tag is a second line for the packaged document itself, so a missing
-      response header cannot silently relax the policy.
+      Packaged documents keep a CSP meta tag as defense in depth for the
+      custom scheme. Forge development must not ship that packaged policy in
+      the HTML — webpack-dev-server already sets DEVELOPMENT_CONTENT_SECURITY_POLICY.
     -->
+    <% if (typeof webpackConfig !== 'undefined' && webpackConfig.mode === 'production') { %>
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' clinic-pharmacy-app:; style-src 'self' clinic-pharmacy-app: 'unsafe-inline'; img-src 'self' clinic-pharmacy-app: data:; font-src 'self' clinic-pharmacy-app: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+      content="default-src 'none'; script-src 'self' clinic-pharmacy-app:; style-src 'self' clinic-pharmacy-app: 'unsafe-inline'; img-src 'self' clinic-pharmacy-app: data:; font-src 'self' clinic-pharmacy-app: data:; connect-src 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
     />
+    <% } %>
   </head>
   <body>
     <div id="root"></div>

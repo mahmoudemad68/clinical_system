@@ -8,6 +8,7 @@ import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-nati
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { createRequire } from 'node:module';
 
+import { DEVELOPMENT_CONTENT_SECURITY_POLICY } from './src/shared/content-security-policy';
 import { mainConfig } from './webpack.main.config';
 import { rendererConfig } from './webpack.renderer.config';
 
@@ -75,11 +76,10 @@ const config: ForgeConfig = {
           },
         ],
       },
-      // The dev-server CSP still forbids remote script. A permissive
-      // development policy trains the app to work in a way production forbids,
-      // and the difference only surfaces after packaging.
-      devContentSecurityPolicy:
-        "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws:; img-src 'self' data:",
+      // Non-eval development CSP. Packaged CSP is applied only when
+      // `app.isPackaged` (see rendererResponseSecurityHeaders). Do not add
+      // 'unsafe-eval' back — the renderer webpack uses source-map, not eval.
+      devContentSecurityPolicy: DEVELOPMENT_CONTENT_SECURITY_POLICY,
     }),
 
     /**

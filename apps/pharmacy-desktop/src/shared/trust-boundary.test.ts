@@ -234,10 +234,34 @@ describe('Clinic Pharmacy — window security configuration', () => {
   });
 
   it('declares a CSP that forbids remote script and any renderer connection', () => {
-    expect(main).toContain("default-src 'none'");
-    expect(main).toContain("connect-src 'none'");
-    expect(main).toContain("frame-ancestors 'none'");
-    expect(main).not.toContain("script-src 'unsafe-inline'");
+    const csp = read('src/shared/content-security-policy.ts');
+
+    expect(csp).toContain("default-src 'none'");
+    expect(csp).toContain("connect-src 'none'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).not.toContain("script-src 'unsafe-inline'");
+    expect(main).toContain('rendererResponseSecurityHeaders(!isDevelopment)');
+  });
+
+  it('does not overwrite Forge development CSP with the packaged policy', () => {
+    const mainCode = readCode('src/main/index.ts');
+    const forge = readCode('forge.config.ts');
+    const html = read('src/renderer/index.html');
+    const webpackRenderer = readCode('webpack.renderer.config.ts');
+
+    expect(forge).toContain('DEVELOPMENT_CONTENT_SECURITY_POLICY');
+    expect(forge).not.toContain('unsafe-eval');
+    expect(forge).not.toMatch(/connect-src 'self' ws:/);
+
+    expect(mainCode).toContain('rendererResponseSecurityHeaders(!isDevelopment)');
+    expect(mainCode).not.toMatch(/Content-Security-Policy['":\s]*\[contentSecurityPolicy/);
+
+    expect(webpackRenderer).toContain("devtool: 'source-map'");
+    expect(webpackRenderer).not.toMatch(/eval-source-map|eval-cheap-module-source-map/);
+    expect(webpackRenderer).not.toMatch(/devtool:\s*'eval'/);
+
+    expect(html).toContain("webpackConfig.mode === 'production'");
+    expect(html).toContain("connect-src 'none'");
   });
 });
 
