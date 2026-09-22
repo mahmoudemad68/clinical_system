@@ -6,4 +6,5 @@
 /// "Client architecture").
 library;
 
+export 'src/patient_profile.dart';
 export 'src/platform_health.dart';

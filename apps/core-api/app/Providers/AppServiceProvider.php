@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Console\SeedAdminVerificationBrowserFixtureCommand;
+use App\Console\SeedPatientFlutterFixtureCommand;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Telescope\TelescopeServiceProvider as LaravelTelescopeServiceProvider;
 use Modules\Platform\Services\Telemetry\RedactingLogTap;
@@ -16,7 +17,10 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([SeedAdminVerificationBrowserFixtureCommand::class]);
+            $this->commands([
+                SeedAdminVerificationBrowserFixtureCommand::class,
+                SeedPatientFlutterFixtureCommand::class,
+            ]);
         }
 
         if ($this->app->environment('local') && class_exists(LaravelTelescopeServiceProvider::class)) {

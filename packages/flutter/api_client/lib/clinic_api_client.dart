@@ -8,5 +8,6 @@
 /// Phase 00 exposes health and version only.
 library;
 
+export 'src/patient_api.dart';
 export 'src/platform_api.dart';
 export 'src/generated/openapi_contract.dart';

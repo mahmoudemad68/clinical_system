@@ -28,8 +28,13 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
   bool _registering = false;
   bool _busy = false;
 
+  void _clearNationalId() {
+    _nationalId.clear();
+  }
+
   @override
   void dispose() {
+    _clearNationalId();
     _phone.dispose();
     _password.dispose();
     _name.dispose();
@@ -53,8 +58,10 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
               ? 'ios'
               : 'android',
           deviceLabel: 'patient-mobile',
-          idempotencyKey: 'otp-${DateTime.now().toUtc().millisecondsSinceEpoch}',
+          idempotencyKey:
+              'otp-${DateTime.now().toUtc().millisecondsSinceEpoch}',
         );
+        _clearNationalId();
         widget.onAuthenticated();
         return;
       }
@@ -69,6 +76,7 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
           idempotencyKey:
               'reg-${DateTime.now().toUtc().millisecondsSinceEpoch}',
         );
+        _clearNationalId();
         setState(() => _challengeId = challenge.challengeId);
         return;
       }
@@ -81,13 +89,14 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
             : 'android',
         deviceLabel: 'patient-mobile',
       );
+      _clearNationalId();
       if (outcome.mfaRequired) {
         setState(() => _challengeId = outcome.challengeId);
         return;
       }
       widget.onAuthenticated();
     } on ApiFailure catch (failure) {
-      setState(() => _message = failure.message);
+      setState(() => _message = failure.redacting(_nationalId.text).message);
     } catch (_) {
       setState(() => _message = strings.authFailed);
     } finally {
@@ -106,22 +115,29 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
       children: [
         if (_registering) ...[
           TextField(
+            key: const Key('auth-name'),
             controller: _name,
             decoration: InputDecoration(labelText: strings.name),
           ),
           TextField(
+            key: const Key('auth-national-id'),
             controller: _nationalId,
             decoration: InputDecoration(labelText: strings.nationalId),
             keyboardType: TextInputType.number,
+            obscureText: true,
+            enableSuggestions: false,
+            autocorrect: false,
           ),
         ],
         TextField(
+          key: const Key('auth-phone'),
           controller: _phone,
           decoration: InputDecoration(labelText: strings.phone),
           keyboardType: TextInputType.phone,
           autofillHints: const [AutofillHints.username],
         ),
         TextField(
+          key: const Key('auth-password'),
           controller: _password,
           decoration: InputDecoration(labelText: strings.password),
           obscureText: true,
@@ -129,6 +145,7 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
         ),
         if (_challengeId != null)
           TextField(
+            key: const Key('auth-otp'),
             controller: _code,
             decoration: InputDecoration(labelText: strings.otpCode),
             keyboardType: TextInputType.number,
@@ -137,19 +154,22 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
         if (_message != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text(_message!),
+            child: Text(_message!, key: const Key('auth-message')),
           ),
         const SizedBox(height: 12),
         FilledButton(
+          key: const Key('auth-submit'),
           onPressed: _busy ? null : _submit,
           child: Text(_registering ? strings.register : strings.signIn),
         ),
         TextButton(
+          key: const Key('auth-toggle'),
           onPressed: _busy
               ? null
               : () => setState(() {
                   _registering = !_registering;
                   _challengeId = null;
+                  _clearNationalId();
                 }),
           child: Text(_registering ? strings.signIn : strings.register),
         ),

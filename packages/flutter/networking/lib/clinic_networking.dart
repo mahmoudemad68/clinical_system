@@ -9,3 +9,4 @@ library;
 export 'src/clinic_http_client.dart';
 export 'src/correlation_interceptor.dart';
 export 'src/failure_interceptor.dart';
+export 'src/intent_idempotency.dart';

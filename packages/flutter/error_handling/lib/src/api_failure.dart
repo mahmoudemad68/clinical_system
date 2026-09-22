@@ -91,6 +91,63 @@ class ApiFailure implements Exception {
       code == ApiErrorCode.idempotencyKeyReused ||
       code == ApiErrorCode.idempotencyInProgress;
 
+  /// Map a status + envelope body into one failure.
+  ///
+  /// Unknown shapes become a generic internal error. The message is never the
+  /// raw transport body: that is how SQL and provider detail leak into UI.
+  factory ApiFailure.fromEnvelope(int statusCode, Object? body) {
+    if (body is Map<String, dynamic>) {
+      final errors = body['errors'];
+      final requestId = body['request_id'] as String?;
+      if (errors is List && errors.isNotEmpty) {
+        final first = errors.first;
+        if (first is Map<String, dynamic>) {
+          return ApiFailure(
+            code: ApiErrorCode.fromWire(first['code'] as String?),
+            message: (first['message'] as String?) ?? 'The request failed.',
+            statusCode: statusCode,
+            field: first['field'] as String?,
+            requestId: requestId,
+          );
+        }
+      }
+      if (requestId is String && requestId.isNotEmpty) {
+        return ApiFailure(
+          code: ApiErrorCode.internalError,
+          message: 'The request failed.',
+          statusCode: statusCode,
+          requestId: requestId,
+        );
+      }
+    }
+    return ApiFailure(
+      code: ApiErrorCode.internalError,
+      message: 'The request failed.',
+      statusCode: statusCode,
+    );
+  }
+
+  /// Drop an echoed secret from [message] if a buggy server included it.
+  ///
+  /// National ID must never reach confirmation copy, profile UI, or logs via
+  /// this object. [toString] already omits the message; this protects the
+  /// user-visible field.
+  ApiFailure redacting(String? secret) {
+    if (secret == null || secret.isEmpty) {
+      return this;
+    }
+    if (!message.contains(secret) && field != secret) {
+      return this;
+    }
+    return ApiFailure(
+      code: code,
+      message: 'The request could not be completed.',
+      statusCode: statusCode,
+      field: field == secret ? null : field,
+      requestId: requestId,
+    );
+  }
+
   @override
   String toString() => 'ApiFailure($code, status: $statusCode)';
 }
