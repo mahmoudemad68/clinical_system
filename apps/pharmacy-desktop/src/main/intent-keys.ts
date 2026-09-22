@@ -93,6 +93,15 @@ export class IntentKeyStore {
     this.keys.clear();
   }
 
+  /**
+   * In-memory lookup pairs only: SHA-256 fingerprint keys and random UUID
+   * values. Tests use this to prove raw address/phone never enter the map.
+   * Production must not log this snapshot.
+   */
+  snapshot(): ReadonlyArray<readonly [string, string]> {
+    return [...this.keys.entries()];
+  }
+
   private clearIfCurrent(intent: string, fingerprint: string, key: string): void {
     const mapKey = `${intent}:${fingerprint}`;
     if (this.keys.get(mapKey) === key) {

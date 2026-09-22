@@ -42,6 +42,30 @@ export const BRANCH_INVITE_INTENT = 'pharmacy.branch.inviteOperator';
 
 export const pharmacyIntentKeys = new IntentKeyStore();
 
+/**
+ * Canonical branch-create intent identity. Address and phone are material
+ * request fields, so they participate in the SHA-256 fingerprint. The store
+ * retains only that digest plus a random UUID Idempotency-Key — never the
+ * plaintext fields.
+ */
+export function pharmacyBranchCreateIntentFingerprint(
+  organizationId: string,
+  input: Pick<
+    PharmacyBranchCreateRequest,
+    'publicName' | 'address' | 'countryCode' | 'latitude' | 'longitude' | 'phone'
+  >,
+): string {
+  return pharmacyIntentKeys.fingerprint({
+    organizationId,
+    publicName: input.publicName,
+    address: input.address,
+    countryCode: input.countryCode,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    phone: input.phone,
+  });
+}
+
 type ApiOrganization = {
   organization_id: string;
   public_name: string;
@@ -554,13 +578,7 @@ export const pharmacyGateway = {
     input: PharmacyBranchCreateRequest,
   ): Promise<PharmacyBranchCreateResponse> {
     const organizationId = await requireOwnOrganizationId(locale);
-    const fingerprint = pharmacyIntentKeys.fingerprint({
-      organizationId,
-      publicName: input.publicName,
-      countryCode: input.countryCode,
-      latitude: input.latitude,
-      longitude: input.longitude,
-    });
+    const fingerprint = pharmacyBranchCreateIntentFingerprint(organizationId, input);
     const key = pharmacyIntentKeys.keyFor(BRANCH_CREATE_INTENT, fingerprint);
     try {
       const data = await coreJsonRequest<{
