@@ -373,28 +373,36 @@ anonymous object access.
 10 (operating mode, payment methods, and business capability tenancy).
 **Owner:** pharmacy domain.
 **Public services:** `RegisterPharmacyOrganization`, `GetOwnPharmacyOrganization`,
+`CreatePharmacyBranch`, `UpdatePharmacyBranch`, `GetOwnPharmacyBranches`,
+`InvitePharmacyStaff`, `AcceptPharmacyStaffInvitation`,
+`ManagePharmacyMemberships`, `ResolveActivePharmacyMembership`,
 `PharmacyApplicantService` (narrow Verification-facing applicant projection and
 verification-driven organization/branch/membership transitions; no
 National-ID-equivalent fields), `PharmacyReviewerService` (narrow reviewer-facing public name,
 verification/lifecycle status, and initial-branch public identity; no legal
 registration, legal name, address, phone, or coordinates),
 `PharmacySubjectPrivacy` (Identity erasure/export adapter).
-Phase 10 later adds `CreateBranch`, `AssignEmployeeRole`, `GetBranch`, and
-branch-authorization/operating-mode services on this same module. There is no
+Phase 02 chunk 14 delivers additional-branch create/read/update and the
+fixed-scope `branch_operator` invitation/accept/list/revoke foundation on this
+same module. Phase 10 later adds operating mode, payment methods, and the
+OWNER/PHARMACIST/CASHIER capability matrix. There is no
 separate `PharmacyOrganizations` module.
-**Events:** `pharmacy.organization_created` (personal identifier-only).
+**Events:** `pharmacy.organization_created` (personal identifier-only),
+`pharmacy.branch_changed` (personal identifier-only),
+`pharmacy.membership_changed` (personal identifier-only).
 `pharmacy.verification_decided` is owned by `Verification`.
-`pharmacy.branch_created` and `pharmacy.role_assigned` are not implemented
-in this slice.
 **Tables:** `pharmacy_organizations`, `pharmacy_branches`,
-`pharmacy_memberships`. Phase 10 later adds `branch_payment_methods` and
+`pharmacy_memberships`, `pharmacy_staff_invitations`. Phase 10 later adds `branch_payment_methods` and
 branch-role capability rows to this module; it does not create a second
 organization aggregate.
 **Classification:** sensitive. Peak is the protected legal registration
 identifier and legal-name ciphertext stored with Identity protection services.
 `pharmacy.organization_created` remains a personal identifier-only projection.
-HTTP projections never return legal registration, legal name, address, phone,
-coordinates, ciphertext, HMAC, or key versions.
+HTTP projections never return legal registration, legal name, phone,
+ciphertext, HMAC, or key versions. Compact onboarding remains identifier-only.
+Owner-private branch GET/PATCH may include decrypted address and coordinates;
+operator GET omits them. Phone remains write-only. This is not a public
+directory.
 **Prohibited:** cross-tenant reads. Every query is organization- or
 membership-scoped by a server-owned predicate. Granting inventory, purchasing,
 POS, catalog-administration, clinical, or public-activation capability from

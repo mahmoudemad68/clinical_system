@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/pharmacy/membership_changed.v1.schema.json",
+  "title": "pharmacy.membership_changed v1",
+  "description": "A pharmacy membership changed. No phone, HMAC, invitation target, user identity details, inventory, POS, or operating-mode fields. scope_type is bounded to pharmacy_branch for this slice.",
+  "type": "object",
+  "required": ["membership_id", "scope_type", "scope_id", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "membership_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "scope_type": {
+      "type": "string",
+      "enum": ["pharmacy_branch"]
+    },
+    "scope_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "active", "suspended", "revoked"]
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Pharmacies",
+    "classification": "personal",
+    "consumers": ["audit.identity"],
+    "retention_days": 365
+  }
+}

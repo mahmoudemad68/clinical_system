@@ -9,7 +9,9 @@ use Modules\Clinics\Http\Controllers\ClinicLocationController;
 use Modules\Clinics\Http\Controllers\ClinicStaffInvitationController;
 use Modules\Doctors\Http\Controllers\DoctorProfileController;
 use Modules\Patients\Http\Controllers\PatientProfileController;
+use Modules\Pharmacies\Http\Controllers\PharmacyBranchController;
 use Modules\Pharmacies\Http\Controllers\PharmacyOrganizationController;
+use Modules\Pharmacies\Http\Controllers\PharmacyStaffInvitationController;
 use Modules\Platform\Http\Controllers\DiagnosticsController;
 use Modules\Platform\Http\Controllers\PlatformHealthController;
 use Modules\Verification\Http\Controllers\DoctorVerificationController;
@@ -146,6 +148,33 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/pharmacy-organizations/me', [PharmacyOrganizationController::class, 'me'])
             ->name('api.v1.pharmacy-organizations.me');
 
+        Route::get('/pharmacy-organizations/{organizationId}/branches', [PharmacyBranchController::class, 'index'])
+            ->name('api.v1.pharmacy-organizations.branches.index');
+
+        Route::middleware('platform.idempotency')
+            ->post('/pharmacy-organizations/{organizationId}/branches', [PharmacyBranchController::class, 'store'])
+            ->name('api.v1.pharmacy-organizations.branches.store');
+
+        Route::get('/pharmacy-organizations/{organizationId}/branches/{branchId}', [PharmacyBranchController::class, 'show'])
+            ->name('api.v1.pharmacy-organizations.branches.show');
+
+        Route::patch('/pharmacy-organizations/{organizationId}/branches/{branchId}', [PharmacyBranchController::class, 'update'])
+            ->name('api.v1.pharmacy-organizations.branches.update');
+
+        Route::middleware('platform.idempotency')
+            ->post('/pharmacy-organizations/{organizationId}/branches/{branchId}/staff-invitations', [PharmacyBranchController::class, 'invite'])
+            ->name('api.v1.pharmacy-organizations.branches.staff-invitations');
+
+        Route::get('/pharmacy-organizations/{organizationId}/branches/{branchId}/memberships', [PharmacyBranchController::class, 'memberships'])
+            ->name('api.v1.pharmacy-organizations.branches.memberships.index');
+
+        Route::delete('/pharmacy-organizations/{organizationId}/branches/{branchId}/memberships/{membershipId}', [PharmacyBranchController::class, 'revokeMembership'])
+            ->name('api.v1.pharmacy-organizations.branches.memberships.destroy');
+
+        Route::middleware('platform.idempotency')
+            ->post('/pharmacy-staff-invitations/{invitationId}/accept', [PharmacyStaffInvitationController::class, 'accept'])
+            ->name('api.v1.pharmacy-staff-invitations.accept');
+
         Route::get('/clinic-locations', [ClinicLocationController::class, 'index'])
             ->name('api.v1.clinic-locations.index');
 
@@ -183,6 +212,9 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/pharmacy-organizations/me/verification-status', [PharmacyVerificationController::class, 'status'])
             ->name('api.v1.pharmacy-organizations.me.verification-status');
+
+        Route::get('/pharmacy-organizations/{organizationId}/verification-status', [PharmacyVerificationController::class, 'statusForOrganization'])
+            ->name('api.v1.pharmacy-organizations.verification-status');
 
         Route::middleware('platform.idempotency')
             ->post('/doctors/me/verification-cases', [DoctorVerificationController::class, 'open'])

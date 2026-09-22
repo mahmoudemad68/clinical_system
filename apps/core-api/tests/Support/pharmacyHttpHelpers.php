@@ -3,13 +3,20 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\DB;
+use Modules\Access\Support\Capabilities;
 use Modules\Auth\Contracts\PasswordHasher;
 use Modules\Auth\Contracts\TotpVerifier;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Enums\AccountType;
+use Modules\Identity\Enums\AssuranceLevel;
+use Modules\Identity\Enums\LanguagePreference;
 use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Services\Testing\SyntheticEgyptianData;
+use Modules\Platform\Support\Identifier;
 
 /**
  * @return array{name: string, phone: string, national_id: string, password: string, registration: string}
@@ -178,4 +185,107 @@ function pharmaciesActiveSession(string $key, string $status = 'active'): array
         'user_id' => $userId,
         'totp_secret' => $secret,
     ];
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function pharmaciesBranchBody(
+    string $phone,
+    string $publicName = 'Nasr City Branch',
+    string $address = '5 Abbas El Akkad, Cairo',
+    float $latitude = 30.0444,
+    float $longitude = 31.2357,
+    string $countryCode = 'EG',
+): array {
+    return [
+        'public_name' => $publicName,
+        'address' => $address,
+        'country_code' => $countryCode,
+        'latitude' => $latitude,
+        'longitude' => $longitude,
+        'phone' => $phone,
+    ];
+}
+
+function pharmaciesApproveOrganization(string $organizationId): void
+{
+    $now = now('UTC');
+    $org = DB::table('pharmacy_organizations')->where('id', $organizationId)->first();
+    assert($org !== null);
+    DB::table('pharmacy_organizations')->where('id', $organizationId)->update([
+        'verification_status' => 'approved',
+        'status' => 'active',
+        'version' => ((int) $org->version) + 1,
+        'updated_at' => $now,
+    ]);
+    $branch = DB::table('pharmacy_branches')->where('organization_id', $organizationId)->orderBy('created_at')->orderBy('id')->first();
+    assert($branch !== null);
+    DB::table('pharmacy_branches')->where('id', $branch->id)->update([
+        'status' => 'active',
+        'version' => ((int) $branch->version) + 1,
+        'updated_at' => $now,
+    ]);
+    $membership = DB::table('pharmacy_memberships')
+        ->where('organization_id', $organizationId)
+        ->where('role', 'owner')
+        ->first();
+    assert($membership !== null);
+    DB::table('pharmacy_memberships')->where('id', $membership->id)->update([
+        'status' => 'active',
+        'version' => ((int) $membership->version) + 1,
+        'updated_at' => $now,
+    ]);
+}
+
+/**
+ * @return array{
+ *     token: string,
+ *     payload: array<string, string>,
+ *     user_id: string,
+ *     totp_secret: string,
+ *     organization_id: string,
+ *     branch_id: string,
+ *     membership_id: string
+ * }
+ */
+function pharmaciesApprovedOrganization(string $key): array
+{
+    $session = pharmaciesActiveSession($key);
+    $response = test()->postJson(
+        '/api/v1/pharmacy-organizations/onboarding',
+        pharmaciesOnboardingBody($session['payload']['registration'], $session['payload']['phone']),
+        pharmaciesAuth($session['token']) + pharmaciesIdem('pbr-onboard-'.$key),
+    );
+    $response->assertCreated();
+    $organizationId = (string) $response->json('data.organization_id');
+    pharmaciesApproveOrganization($organizationId);
+
+    return [
+        ...$session,
+        'organization_id' => $organizationId,
+        'branch_id' => (string) $response->json('data.branch_id'),
+        'membership_id' => (string) $response->json('data.membership_id'),
+    ];
+}
+
+function pharmaciesPharmacyActor(string $userId): ActorContext
+{
+    return new ActorContext(
+        Identifier::fromTrusted($userId),
+        AccountType::Pharmacy,
+        AccountStatus::Active,
+        LanguagePreference::English,
+        AssuranceLevel::Aal2Totp,
+        1,
+        null,
+        Identifier::fromTrusted($userId),
+        [],
+        Capabilities::AUTHENTICATED_SELF,
+    );
+}
+
+function pharmaciesUseHmacCurrentVersion(int $version): void
+{
+    clinicUseHmacCurrentVersion($version);
 }

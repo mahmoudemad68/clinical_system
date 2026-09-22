@@ -228,7 +228,7 @@ final class ArchitectureBoundaryTest extends TestCase
                 $file.' Identity must not read or write Doctors tables.',
             );
             $this->assertDoesNotMatchRegularExpression(
-                '/table\([\'"](pharmacy_organizations|pharmacy_branches|pharmacy_memberships)/',
+                '/table\([\'"](pharmacy_organizations|pharmacy_branches|pharmacy_memberships|pharmacy_staff_invitations)/',
                 $contents,
                 $file.' Identity must not read or write Pharmacies tables.',
             );
@@ -364,7 +364,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions|pharmacy_organizations|pharmacy_branches|pharmacy_memberships|clinic_locations|clinic_staff_profiles|clinic_staff_memberships|clinic_staff_invitations)/',
+                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions|pharmacy_organizations|pharmacy_branches|pharmacy_memberships|pharmacy_staff_invitations|clinic_locations|clinic_staff_profiles|clinic_staff_memberships|clinic_staff_invitations)/',
                 $contents,
                 $file.' Verification must not query Doctors, Patients, Pharmacies, or Clinics tables.',
             );
@@ -400,7 +400,7 @@ final class ArchitectureBoundaryTest extends TestCase
                 $file.' Admin must call Verification public services rather than query verification tables.',
             );
             $this->assertDoesNotMatchRegularExpression(
-                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions|pharmacy_organizations|pharmacy_branches|pharmacy_memberships|clinic_locations|clinic_staff_profiles|clinic_staff_memberships|clinic_staff_invitations)/',
+                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions|pharmacy_organizations|pharmacy_branches|pharmacy_memberships|pharmacy_staff_invitations|clinic_locations|clinic_staff_profiles|clinic_staff_memberships|clinic_staff_invitations)/',
                 $contents,
                 $file.' Admin must not query Doctors, Patients, Pharmacies, or Clinics persistence.',
             );
@@ -438,6 +438,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $this->assertStringNotContainsString('pharmacy_organizations', $contents);
             $this->assertStringNotContainsString('pharmacy_branches', $contents);
             $this->assertStringNotContainsString('pharmacy_memberships', $contents);
+            $this->assertStringNotContainsString('pharmacy_staff_invitations', $contents);
             $this->assertStringNotContainsString('clinic_locations', $contents);
             $this->assertStringNotContainsString('clinic_staff_profiles', $contents);
             $this->assertStringNotContainsString('clinic_staff_memberships', $contents);
@@ -485,7 +486,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/table\([\'"](?!pharmacy_organizations|pharmacy_branches|pharmacy_memberships)[a-z_]+/',
+                '/table\([\'"](?!pharmacy_organizations|pharmacy_branches|pharmacy_memberships|pharmacy_staff_invitations)[a-z_]+/',
                 $contents,
                 $file.' Pharmacies must not query another module\'s tables.',
             );
@@ -524,7 +525,7 @@ final class ArchitectureBoundaryTest extends TestCase
                 $contents = (string) file_get_contents($file);
 
                 $this->assertDoesNotMatchRegularExpression(
-                    '/table\([\'"](pharmacy_organizations|pharmacy_branches|pharmacy_memberships)/',
+                    '/table\([\'"](pharmacy_organizations|pharmacy_branches|pharmacy_memberships|pharmacy_staff_invitations)/',
                     $contents,
                     $file.' '.$module.' must not read or write Pharmacies tables.',
                 );

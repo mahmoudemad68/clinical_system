@@ -94,6 +94,12 @@ final class DefaultDenyAuthorizer implements Authorize
             || $action === Capabilities::DOCTORS_SPECIALTIES_READ
             || $action === Capabilities::PHARMACIES_ONBOARDING
             || $action === Capabilities::PHARMACIES_ORGANIZATION_READ_OWN
+            || $action === Capabilities::PHARMACIES_BRANCH_WRITE
+            || $action === Capabilities::PHARMACIES_BRANCH_READ_OWN
+            || $action === Capabilities::PHARMACIES_STAFF_INVITE
+            || $action === Capabilities::PHARMACIES_STAFF_ACCEPT
+            || $action === Capabilities::PHARMACIES_MEMBERSHIP_READ_OWN
+            || $action === Capabilities::PHARMACIES_MEMBERSHIP_REVOKE
             || $action === Capabilities::CLINICS_LOCATION_WRITE
             || $action === Capabilities::CLINICS_LOCATION_READ_OWN
             || $action === Capabilities::CLINICS_STAFF_INVITE

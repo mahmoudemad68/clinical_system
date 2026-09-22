@@ -15,7 +15,7 @@ it('keeps worker and reporter off pharmacy tables', function () {
             $this->markTestSkipped($role.' is not present on this cluster');
         }
 
-        foreach (['pharmacy_organizations', 'pharmacy_branches', 'pharmacy_memberships'] as $table) {
+        foreach (['pharmacy_organizations', 'pharmacy_branches', 'pharmacy_memberships', 'pharmacy_staff_invitations'] as $table) {
             $select = DB::selectOne("SELECT has_table_privilege('{$role}', '{$table}', 'SELECT') AS allowed");
             $insert = DB::selectOne("SELECT has_table_privilege('{$role}', '{$table}', 'INSERT') AS allowed");
             $update = DB::selectOne("SELECT has_table_privilege('{$role}', '{$table}', 'UPDATE') AS allowed");
@@ -35,7 +35,7 @@ it('lets clinic_app mutate pharmacy tables and backup only select', function () 
         $this->markTestSkipped('clinic_app is not present on this cluster');
     }
 
-    foreach (['pharmacy_organizations', 'pharmacy_branches', 'pharmacy_memberships'] as $table) {
+    foreach (['pharmacy_organizations', 'pharmacy_branches', 'pharmacy_memberships', 'pharmacy_staff_invitations'] as $table) {
         $update = DB::selectOne("SELECT has_table_privilege('clinic_app', '{$table}', 'UPDATE') AS allowed");
         $insert = DB::selectOne("SELECT has_table_privilege('clinic_app', '{$table}', 'INSERT') AS allowed");
         expect((bool) $update->allowed)->toBeTrue()
@@ -47,9 +47,11 @@ it('lets clinic_app mutate pharmacy tables and backup only select', function () 
         return;
     }
 
-    $backupSelect = DB::selectOne("SELECT has_table_privilege('clinic_backup', 'pharmacy_organizations', 'SELECT') AS allowed");
-    $backupInsert = DB::selectOne("SELECT has_table_privilege('clinic_backup', 'pharmacy_organizations', 'INSERT') AS allowed");
+    foreach (['pharmacy_organizations', 'pharmacy_branches', 'pharmacy_memberships', 'pharmacy_staff_invitations'] as $table) {
+        $backupSelect = DB::selectOne("SELECT has_table_privilege('clinic_backup', '{$table}', 'SELECT') AS allowed");
+        $backupInsert = DB::selectOne("SELECT has_table_privilege('clinic_backup', '{$table}', 'INSERT') AS allowed");
 
-    expect((bool) $backupSelect->allowed)->toBeTrue()
-        ->and((bool) $backupInsert->allowed)->toBeFalse();
+        expect((bool) $backupSelect->allowed)->toBeTrue()
+            ->and((bool) $backupInsert->allowed)->toBeFalse();
+    }
 });
