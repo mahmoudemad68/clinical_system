@@ -40,6 +40,9 @@ class AuthInterceptor extends Interceptor {
       options.headers['Authorization'] = 'Bearer $token';
       _client.setAuthToken(token);
     }
+    if (_isRefreshRequest(options)) {
+      options.extra['clinicIsRefresh'] = true;
+    }
     handler.next(options);
   }
 
@@ -88,7 +91,9 @@ class AuthInterceptor extends Interceptor {
     required void Function(Response<dynamic> response) onResolved,
     required void Function(DioException err) onGiveUp,
   }) async {
-    if (_isRefreshRequest(failed) || failed.extra[_retriedExtra] == true) {
+    if (_isRefreshRequest(failed) ||
+        failed.extra['clinicIsRefresh'] == true ||
+        failed.extra[_retriedExtra] == true) {
       onGiveUp(_unauthorized(failed, original));
       return;
     }
@@ -142,7 +147,9 @@ class AuthInterceptor extends Interceptor {
   }
 
   bool _isRefreshRequest(RequestOptions options) {
-    return options.path.contains('/auth/token/refresh');
+    final path = options.path;
+    final uriPath = options.uri.path;
+    return path.contains('token/refresh') || uriPath.contains('token/refresh');
   }
 
   DioException _unauthorized(

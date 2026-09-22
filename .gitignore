@@ -93,6 +93,11 @@ apps/admin-web/src/api/generated/
 packages/flutter/api_client/lib/src/generated/
 
 # ---------------------------------------------------------------------------
+# Flutter Patient Core E2E evidence (written by CI / local Core runs)
+# ---------------------------------------------------------------------------
+tests/flutter-e2e/logs/
+
+# ---------------------------------------------------------------------------
 # Local infrastructure state, evidence scratch, and tooling output
 # ---------------------------------------------------------------------------
 infra/docker/**/data/

@@ -6,4 +6,6 @@
 /// "Client architecture").
 library;
 
+export 'src/identity_snapshot.dart';
+export 'src/patient_profile.dart';
 export 'src/platform_health.dart';

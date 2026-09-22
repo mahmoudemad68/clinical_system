@@ -53,8 +53,11 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
               ? 'ios'
               : 'android',
           deviceLabel: 'patient-mobile',
-          idempotencyKey: 'otp-${DateTime.now().toUtc().millisecondsSinceEpoch}',
+          idempotencyKey:
+              'otp-${DateTime.now().toUtc().millisecondsSinceEpoch}',
         );
+        _nationalId.clear();
+        _code.clear();
         widget.onAuthenticated();
         return;
       }
@@ -69,6 +72,7 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
           idempotencyKey:
               'reg-${DateTime.now().toUtc().millisecondsSinceEpoch}',
         );
+        _nationalId.clear();
         setState(() => _challengeId = challenge.challengeId);
         return;
       }
@@ -85,6 +89,7 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
         setState(() => _challengeId = outcome.challengeId);
         return;
       }
+      _nationalId.clear();
       widget.onAuthenticated();
     } on ApiFailure catch (failure) {
       setState(() => _message = failure.message);
@@ -141,6 +146,7 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
           ),
         const SizedBox(height: 12),
         FilledButton(
+          key: const Key('sign-in'),
           onPressed: _busy ? null : _submit,
           child: Text(_registering ? strings.register : strings.signIn),
         ),
@@ -150,6 +156,9 @@ class _PatientAuthPanelState extends State<PatientAuthPanel> {
               : () => setState(() {
                   _registering = !_registering;
                   _challengeId = null;
+                  if (!_registering) {
+                    _nationalId.clear();
+                  }
                 }),
           child: Text(_registering ? strings.signIn : strings.register),
         ),
