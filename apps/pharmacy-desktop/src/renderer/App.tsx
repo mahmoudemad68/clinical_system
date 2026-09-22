@@ -242,7 +242,7 @@ function LoginPanel({
           </label>
         ) : null}
         {message ? (
-          <p ref={alertRef} tabIndex={-1} role="alert">
+          <p ref={alertRef} tabIndex={-1} role="alert" data-testid="login-error">
             {message}
           </p>
         ) : null}

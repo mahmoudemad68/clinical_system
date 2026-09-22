@@ -297,6 +297,7 @@ async function waitSnapshot(wsUrl, test, timeoutMs, label) {
         conflict: Boolean(document.querySelector('[data-testid="version-conflict"]')),
         unavailable: Boolean(document.querySelector('[data-testid="branch-unavailable"]')),
         denied: Boolean(document.querySelector('[data-testid="account-denied"]')),
+        loginError: document.querySelector('[data-testid="login-error"]')?.textContent ?? null,
         hash: location.hash,
         body: document.body?.innerText ?? '',
         inventory: Boolean(document.querySelector('[data-testid="inventory-nav"]')),
@@ -339,6 +340,34 @@ async function signIn(ws, phone, password, totpSecret, label) {
   await waitSnapshot(ws, (snap) => snap.mfa, 15_000, `${label} mfa`);
   await evalAction(ws, setReactValueExpression('[data-testid="mfa-code"]', totpCode(totpSecret)));
   await evalAction(ws, `document.querySelector('[data-testid="sign-in"]')?.click(); true`);
+}
+
+/**
+ * Core `pharmacy_desktop` is compatible only with pharmacy accounts. A doctor
+ * or patient password attempt is AuthenticationFailed before MFA, so the
+ * renderer must stay on the login form — not wait for an MFA prompt or an
+ * authenticated `account-denied` workspace.
+ */
+async function signInIncompatibleAccount(ws, phone, password, label) {
+  await evalAction(ws, setReactValueExpression('input[name="phone"]', phone));
+  await evalAction(ws, setReactValueExpression('input[name="password"]', password));
+  await evalAction(ws, `document.querySelector('[data-testid="sign-in"]')?.click(); true`);
+  const snap = await waitSnapshot(
+    ws,
+    (state) =>
+      state.login === true &&
+      state.mfa === false &&
+      state.workspace === false &&
+      state.practiceNav === false &&
+      state.branches === false &&
+      Boolean(state.loginError),
+    15_000,
+    `${label} client mismatch`,
+  );
+  if (snap.denied) {
+    throw new Error(`${label} reached an authenticated Pharmacy shell`);
+  }
+  return snap;
 }
 
 function fillBranchForm(ws, name, address, phone) {
@@ -620,8 +649,7 @@ async function main() {
 
     await evalAction(ws, `document.querySelector('[data-testid="sign-out"]')?.click(); true`);
     await waitSnapshot(ws, (snap) => snap.login, 15_000, 'signed out pending');
-    await signIn(ws, fixtures.doctor.phone, fixtures.password, fixtures.doctor.totp_secret, 'doctor');
-    await waitSnapshot(ws, (snap) => snap.denied, 20_000, 'doctor denied');
+    await signInIncompatibleAccount(ws, fixtures.doctor.phone, fixtures.password, 'doctor');
 
     const logs = Buffer.concat(stdoutChunks).toString('utf8');
     if (logs.includes(fixtures.operator.phone) || /CANARY-OPERATOR-PHONE|CANARY-BRANCH-ADDRESS/.test(logs)) {

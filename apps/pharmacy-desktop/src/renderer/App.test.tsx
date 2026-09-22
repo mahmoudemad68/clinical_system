@@ -354,6 +354,23 @@ describe('pharmacy renderer workspace', () => {
     expect(JSON.stringify(await clinic.pharmacy.selectEvidence())).not.toContain(CANARIES.path);
   });
 
+  it('keeps a doctor login on the sign-in form without pharmacy workspace', async () => {
+    const clinic = installBridge();
+    clinic.auth.login = () => fail('UNAUTHENTICATED', 'The session is no longer valid.');
+
+    renderApp();
+    expect(await screen.findByTestId('login-form')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Mobile number'), { target: { value: '01900000099' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'correct-horse-battery' } });
+    fireEvent.click(screen.getByTestId('sign-in'));
+
+    expect(await screen.findByTestId('login-error')).toBeTruthy();
+    expect(screen.queryByTestId('mfa-code')).toBeNull();
+    expect(screen.queryByTestId('pharmacy-workspace')).toBeNull();
+    expect(screen.queryByTestId('practice-branches-nav')).toBeNull();
+    expect(screen.queryByTestId('account-denied')).toBeNull();
+  });
+
   it('fail-closes a non-pharmacy account', async () => {
     const clinic = installBridge();
     clinic.auth.me = () =>

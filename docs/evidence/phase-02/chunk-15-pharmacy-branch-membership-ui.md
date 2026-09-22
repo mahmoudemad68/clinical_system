@@ -48,8 +48,8 @@ Chunk 14 is CLOSED (merged PR #24). **Phase 02 remains NOT PASS.**
 - **Branch:** `cursor/phase-02-chunk-15-pharmacy-branch-membership-ui-cc7f`
 - **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/25
 - **Baseline (GitHub `main`):** `cc8f9be7df683624ed9323f2dd357fadc9bc7d13`
-- **Implementation HEAD:** `ffc7f50944e3e9e81342deac9ea032b012ea3d84` (code); this evidence file may receive a later SHA that records CI
-- **GitHub CI (implementation HEAD):** pending Draft PR #25 `pull-request`
+- **Implementation HEAD:** recorded after the doctor client-class E2E fix on this branch
+- **GitHub CI:** run `35762899892` on `c57c2b848f9a6b46d7b93e2f38db49eedaecaa68` was 17 success / 1 skipped (AI service) / Forge Pharmacy practice E2E failed only after the owner journey, because a Doctor password on `pharmacy_desktop` is Core `AuthenticationFailed` (client mismatch) and never reaches MFA or `account-denied`. Successor HEAD re-records exact CI.
 
 Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 
@@ -304,7 +304,13 @@ apps/pharmacy-desktop/src/renderer/features/pharmacy-practice/egyptCoordinates.t
 apps/pharmacy-desktop/src/renderer/features/pharmacy-practice/eligibility.ts
 apps/pharmacy-desktop/src/renderer/features/pharmacy-practice/practiceRoute.ts
 apps/pharmacy-desktop/src/renderer/strings.ts
+apps/pharmacy-desktop/src/shared/content-security-policy.test.ts
+apps/pharmacy-desktop/src/shared/content-security-policy.ts
 apps/pharmacy-desktop/src/shared/trust-boundary.test.ts
+apps/pharmacy-desktop/src/renderer/index.html
+apps/pharmacy-desktop/webpack.renderer.config.ts
+apps/pharmacy-desktop/forge.config.ts
+apps/pharmacy-desktop/src/main/index.ts
 docs/evidence/phase-02/chunk-15-pharmacy-branch-membership-ui.md
 package.json
 packages/typescript/desktop_bridge_contracts/src/bridge-contracts.test.ts
@@ -314,6 +320,7 @@ scripts/desktop/assert-forge-pharmacy-practice-e2e-evidence.mjs
 scripts/desktop/forge-pharmacy-practice-e2e.test.mjs
 scripts/desktop/run-forge-pharmacy-practice-e2e.mjs
 scripts/desktop/with-linux-os-keystore.sh
+tests/desktop-e2e/specs/packaged-runtime.spec.mjs
 ```
 
 `designs/**` was not modified.
@@ -324,10 +331,10 @@ Host Node 22 / PHP 8.3, this agent:
 
 | Suite | Result |
 | --- | --- |
-| `apps/pharmacy-desktop` Vitest | 14 files, **158 passed** |
+| `apps/pharmacy-desktop` Vitest | 15 files, **165 passed** |
 | `apps/doctor-desktop` Vitest (regression) | 15 files, **182 passed** |
 | `@clinic/desktop-bridge-contracts` | 1 file, **7 passed** |
-| `npm run packages:test` | admin 46, doctor 182, pharmacy 158, api-client 2, bridge 7, encrypted-local-store 16, error-handling 3, localization 2 — all passed |
+| `npm run packages:test` | admin 46, doctor 182, pharmacy 165, api-client 2, bridge 7, encrypted-local-store 16, error-handling 3, localization 2 — all passed |
 | `node --test scripts/desktop/forge-pharmacy-practice-e2e.test.mjs` | **6 passed** |
 | `npm run typecheck` pharmacy + doctor | pass |
 | PHP lint of three Chunk 15 helpers | pass |
@@ -351,8 +358,11 @@ when `skipped !== false`.
   no SMS/email).
 - Revoked `branch_operator` cannot be re-invited while UNIQUE(org, user)
   includes revoked rows (Chunk 14 residual).
-- Patient denial is renderer-tested on the Pharmacy binary; Forge E2E also
-  signs a Doctor account into Pharmacy desktop and expects `account-denied`.
+- Patient and hypothetical authenticated non-pharmacy sessions are
+  renderer-tested (`account-denied`). Forge E2E proves a real Doctor password
+  against Pharmacy Electron cannot mint a `pharmacy_desktop` session: Core
+  `ClientClass::compatibleWith` fails closed before MFA, and the login form
+  shows `login-error` with no workspace, practice nav, or MFA.
 
 ## Explicit status
 
