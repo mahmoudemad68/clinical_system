@@ -40,6 +40,9 @@ Chunk 13 is CLOSED (merged PR #23). **Phase 02 remains NOT PASS.**
   `bdf9da87cee59597fa27a959e0d1d03379c4640a`
 - **Implementation SHA (pre-evidence):**
   `2eaeaadd17e6ed83cef28279beb63df2d59553ea`
+- **Evidence HEAD (GitHub CI SUCCESS):**
+  `5a54c9b8af5583accddb890edaebba0896c12b9a`
+  (`pull-request` run **35732670294** SUCCESS)
 - **Recorded:** 2026-09-22
 - **Environment:** host PHP 8.3 with `pdo_pgsql`, PostgreSQL + PostGIS
   `clinic_test`, role `clinic_migrator`. No Docker Compose. Redis/MinIO were
@@ -513,8 +516,37 @@ No `apps/pharmacy-desktop` UI or bridge operations. No `designs/**` edits.
 
 ## Exact final-head GitHub CI
 
-Pending the evidence-commit HEAD on Draft PR #24. Local Core API static
-analysis and Pest above are recorded. Independent review decides
+Evidence HEAD `5a54c9b8af5583accddb890edaebba0896c12b9a` has GitHub
+`pull-request` run **35732670294** SUCCESS
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35732670294).
+
+Required checks that ran:
+
+| Job | Conclusion |
+| --- | --- |
+| Detect changed areas | success |
+| Core API | success |
+| Contracts | success |
+| Admin web | success |
+| Electron desktops | success |
+| Secure-file providers | success |
+| Security scans | success |
+| Supply-chain policy | success |
+| Forge Doctor practice E2E | success |
+| Packaged Electron E2E (ubuntu/macos/windows) | success |
+| Runtime image scan (core-api) | success |
+| Runtime image scan (ai-service) | success |
+| Flutter / Flutter Patient profile E2E / AI service | skipped (path filters) |
+
+Earlier on this PR:
+
+- `e2e91b9abad9f13f8ec62edb5d1e82589e624186` (**35731191253**) failed Core API
+  (idempotency replay 201 vs 200, anonymous leftover session 403 vs 401,
+  erasure HTTP accept after disable, and owner-scoped verification-status
+  now returning 200). Fixed in `2eaeaad`.
+- `2eaeaadd17e6ed83cef28279beb63df2d59553ea` (**35732013915**) SUCCESS.
+
+Chunk-only evidence. Phase 02 is **NOT PASS**. Independent review decides
 `READY_TO_MERGE`. This chunk does not mark READY_TO_MERGE and does not merge.
 
 ## Residuals (keep visible)
