@@ -29,6 +29,7 @@ Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 - **Branch:** `cursor/phase-02-chunk-13-patient-flutter-onboarding-cc7f`
 - **Baseline (GitHub `main`):** `bbbcd7f499529cfa6e01420827b36418d7631a4a`
 - **Implementation HEAD:** `055944964a8dd922f1cebaf83e2f8b452dfa9471`
+- **CI-verified HEAD:** `03c0b9d11dc1caba284ee3d22941ee3ecaddf812`
 - **Recorded:** 2026-09-22
 - **Chunks 11 and 12:** CLOSED (not reopened by this work).
 
@@ -240,22 +241,21 @@ device/simulator GUI E2E.
 - **Not executed:** Android APK/instrumentation, iOS simulator/device, or
   full-device GUI E2E. Do not treat mobile platforms as PASS.
 
-## Flutter test counts (local `melos run test` / package `flutter test`)
+## Flutter test counts (GitHub Flutter job on `03c0b9d` / local match)
 
 | Package | Result |
 | --- | --- |
-| `clinic_api_client` | **12 passed** (onboarding serialize, NID write-only, compact results, 404 absent, PATCH allowlist, VERSION_CONFLICT, extras, BOLA source, idempotency) |
-| `clinic_common_models` | **9 passed** (4 new patient_profile + existing health) |
-| `clinic_authentication` | **24 passed** (existing token/refresh/interceptor plus `AuthApi.me` 401 mapping) |
-| `clinic_patient_app` | **25 passed** (9 session/controller, 7 onboarding widgets, 1 logout isolation, 4 validation, 2 privacy, 1 backup exclusion, 1 Core E2E skip-unless-env) |
-| Other Flutter packages in `melos run test` | passed unchanged |
+| `clinic_api_client` | **12 passed** |
+| `clinic_common_models` | **9 passed** |
+| `clinic_authentication` | **24 passed** |
+| `clinic_patient_app` | **25 passed** (E2E in this job skips unless `CLINIC_REQUIRE_PATIENT_PROFILE_E2E=1`) |
+| Other Flutter packages in `melos run test` | passed (`clinic_design_system` 7, `clinic_error_handling` 8, `clinic_local_database` 5, `clinic_secure_storage` 3) |
 
-`melos run analyze` + `melos run test`: SUCCESS locally after the 401 / FakeAsync
-widget-test fixes.
+`melos run analyze` + `melos run test`: SUCCESS on GitHub job `Flutter` (`106704197521`).
 
-## Core / Patients test counts (local host Postgres `clinic_test`)
+## Core / Patients test counts
 
-Patients backend suites **unchanged** and green:
+Local host Postgres `clinic_test`, Patients backend suites **unchanged**:
 
 ```
 ./vendor/bin/pest tests/Feature/Patients tests/Unit/Platform/ArchitectureBoundaryTest.php
@@ -270,16 +270,41 @@ That tree includes `PatientProfileFlowsTest`, `PatientProfileRaceTest`,
 {"tool":"pest","result":"passed","tests":22,"passed":22,"assertions":143}
 ```
 
-OpenAPI/contracts were not modified in this chunk; CI `contracts` job re-validates
-on the PR. Backend tests were not weakened.
+GitHub `Core API` job on `03c0b9d` (`106704200522`): **800 passed**, 15 skipped,
+17011 assertions, plus 4 browser CSRF/session cookie tests. Contracts job
+succeeded. Backend tests were not weakened.
 
 ## GitHub CI (exact final-head)
 
-Exact-head `pull-request` is recorded after GitHub CI completes on the
-rewritten branch (no National-ID literals in git history). Do not treat the
-failed runs below as the final-head result.
+**Exact-head `pull-request` (success):**
+[`35714953486`](https://github.com/mahmoudemad68/clinical_system/actions/runs/35714953486)
+on `03c0b9d11dc1caba284ee3d22941ee3ecaddf812`.
 
-Failed iterations:
+Ran 15 checks: 10 success, 5 skipped (path-filter: AI, Admin web, Electron
+desktops, packaged Electron E2E, Forge Doctor practice E2E). No failures.
+
+Succeeded including:
+
+- Detect changed areas
+- Contracts
+- Security scans (gitleaks clean on rewritten history)
+- Supply-chain policy
+- Secure-file providers
+- Core API
+- Flutter (`melos run analyze` + `melos run test`)
+- Flutter Patient profile E2E (`skipped=false`)
+- Runtime image scans (core-api, ai-service)
+
+E2E evidence JSON (`chunk-13-patient-profile-e2e` artifact):
+
+```json
+{"skipped":false,"core_health":"operational","onboarding":"profile_ready","version_conflict":true,"manual_review":"generic","isolation":true}
+```
+
+A later evidence-only commit may run a path-filtered subset. It does **not**
+replace run `35714953486` as the Chunk 13 full-suite result.
+
+Failed iterations (not final-head):
 
 - [`35712439054`](https://github.com/mahmoudemad68/clinical_system/actions/runs/35712439054)
   on `83f5531`: widget-test `HttpClient` mock (HTTP 400) and gitleaks on
@@ -292,7 +317,7 @@ Failed iterations:
   on `8a3f4a3`: Security scans green. VERSION_CONFLICT `pageBack` left the
   edit-route overlay absorbing AppBar taps (`sign-out` not hit-testable).
 
-Remediations in this HEAD:
+Remediations included in `03c0b9d`:
 
 - Passthrough `HttpOverrides` and CI `http://127.0.0.1:8080`.
 - Synthetic National ID constants assembled from adjacent strings.
