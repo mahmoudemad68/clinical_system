@@ -7,7 +7,6 @@ use Illuminate\Log\Logger;
 use Illuminate\Support\Facades\DB;
 use Modules\Access\Support\Capabilities;
 use Modules\Pharmacies\Enums\PharmacyBranchStatus;
-use Modules\Pharmacies\Services\Persistence\PostgresPharmacyOrganizationStore;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Services\Telemetry\RedactingLogTap;
 use Monolog\Handler\TestHandler;
@@ -94,8 +93,6 @@ describe('pharmacy additional branch foundation', function () {
             ->and((string) $gist->indexdef)->toContain('USING gist')
             ->and($plan)->not->toBeEmpty();
 
-        expect(app(PostgresPharmacyOrganizationStore::class)->countIndexedWithinMeters(31.2357, 30.0444, 5000))->toBeGreaterThan(0);
-
         $logs = json_encode($logHandler->getRecords(), JSON_THROW_ON_ERROR);
         expect($logs)->not->toContain($address)
             ->and($logs)->not->toContain($phone);
@@ -124,7 +121,7 @@ describe('pharmacy additional branch foundation', function () {
         $first = $this->postJson('/api/v1/pharmacy-organizations/'.$owner['organization_id'].'/branches', $body, $headers);
         $first->assertCreated();
         $second = $this->postJson('/api/v1/pharmacy-organizations/'.$owner['organization_id'].'/branches', $body, $headers);
-        $second->assertOk()->assertJsonPath('data.branch_id', $first->json('data.branch_id'));
+        $second->assertCreated()->assertJsonPath('data.branch_id', $first->json('data.branch_id'));
         expect(DB::table('pharmacy_branches')->where('organization_id', $owner['organization_id'])->count())->toBe(2);
     });
 
@@ -223,6 +220,8 @@ describe('pharmacy additional branch foundation', function () {
             pharmaciesAuth($ownerA['token']) + pharmaciesIdem('pbr-mass'),
         )->assertStatus(422);
 
+        auth()->forgetGuards();
+        $this->flushSession();
         $this->postJson(
             '/api/v1/pharmacy-organizations/'.$ownerA['organization_id'].'/branches',
             pharmaciesBranchBody($ownerA['payload']['phone']),

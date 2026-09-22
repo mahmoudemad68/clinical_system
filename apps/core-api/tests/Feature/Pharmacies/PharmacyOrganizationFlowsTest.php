@@ -372,6 +372,8 @@ describe('own pharmacy organization', function () {
             ->assertJsonMissingPath('data.legal_registration_identifier');
 
         $other = pharmaciesActiveSession('other');
+        auth()->forgetGuards();
+        $this->flushSession();
         $this->getJson('/api/v1/pharmacy-organizations/me', pharmaciesAuth($other['token']))
             ->assertNotFound();
 
@@ -380,8 +382,12 @@ describe('own pharmacy organization', function () {
             ->assertNotFound();
         $this->getJson('/api/v1/pharmacy-organizations/'.$organizationId, pharmaciesAuth($session['token']))
             ->assertNotFound();
-        $this->getJson('/api/v1/pharmacy-organizations/'.$organizationId.'/verification-status', pharmaciesAuth($session['token']))
+        $this->getJson('/api/v1/pharmacy-organizations/'.$organizationId.'/verification-status', pharmaciesAuth($other['token']))
             ->assertNotFound();
+        $this->getJson('/api/v1/pharmacy-organizations/'.$organizationId.'/verification-status', pharmaciesAuth($session['token']))
+            ->assertOk()
+            ->assertJsonPath('data.organization_id', $organizationId)
+            ->assertJsonMissingPath('data.legal_name');
     });
 });
 

@@ -8,9 +8,11 @@ use Illuminate\Support\Facades\DB;
 use Modules\Identity\Services\EraseSubjectService;
 use Modules\Identity\Services\ExportSubjectDataService;
 use Modules\Pharmacies\Enums\PharmacyMembershipStatus;
+use Modules\Pharmacies\Services\AcceptPharmacyStaffInvitation;
 use Modules\Pharmacies\Services\InvitePharmacyStaff;
 use Modules\Pharmacies\Services\ResolveActivePharmacyMembership;
 use Modules\Platform\Contracts\IdentityGenerator;
+use Modules\Platform\Exceptions\AuthorizationDenied;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Support\Identifier;
 use Tests\TestCase;
@@ -251,6 +253,20 @@ describe('pharmacy staff invitation foundation', function () {
         )->assertNotFound();
 
         DB::table('pharmacy_staff_invitations')->where('id', $invitationId)->update([
+            'status' => 'cancelled',
+        ]);
+        $this->postJson(
+            '/api/v1/pharmacy-staff-invitations/'.$invitationId.'/accept',
+            [],
+            pharmaciesAuth($intended['token']) + pharmaciesIdem('psi-sec-cancel'),
+        )->assertNotFound();
+
+        $invitationId = $this->postJson(
+            '/api/v1/pharmacy-organizations/'.$owner['organization_id'].'/branches/'.$branchId.'/staff-invitations',
+            ['phone' => $intended['payload']['phone']],
+            pharmaciesAuth($owner['token']) + pharmaciesIdem('psi-sec-reopen'),
+        )->json('data.invitation_id');
+        DB::table('pharmacy_staff_invitations')->where('id', $invitationId)->update([
             'expires_at' => now('UTC')->subHour(),
         ]);
         $this->postJson(
@@ -324,11 +340,10 @@ describe('pharmacy staff invitation foundation', function () {
             'subject_erasure',
         );
         expect((string) DB::table('pharmacy_staff_invitations')->where('id', $invitationId)->value('status'))->toBe('cancelled');
-        $this->postJson(
-            '/api/v1/pharmacy-staff-invitations/'.$invitationId.'/accept',
-            [],
-            pharmaciesAuth($operator['token']) + pharmaciesIdem('psi-er-acc'),
-        )->assertNotFound();
+        expect(fn () => app(AcceptPharmacyStaffInvitation::class)->handle(
+            pharmaciesPharmacyActor($operator['user_id']),
+            Identifier::fromTrusted($invitationId),
+        ))->toThrow(AuthorizationDenied::class);
     });
 
     it('rejects BOLA invite/list/revoke across organizations', function () {
@@ -347,6 +362,11 @@ describe('pharmacy staff invitation foundation', function () {
         )->assertNotFound();
         $this->getJson(
             '/api/v1/pharmacy-organizations/'.$ownerA['organization_id'].'/branches/'.$branchA.'/memberships',
+            pharmaciesAuth($ownerB['token']),
+        )->assertNotFound();
+        $this->deleteJson(
+            '/api/v1/pharmacy-organizations/'.$ownerA['organization_id'].'/branches/'.$branchA.'/memberships/'.$ownerA['membership_id'],
+            [],
             pharmaciesAuth($ownerB['token']),
         )->assertNotFound();
     });

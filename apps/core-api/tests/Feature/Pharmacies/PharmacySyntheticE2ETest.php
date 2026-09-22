@@ -66,6 +66,20 @@ it('runs the synthetic pharmacy additional-branch and branch_operator membership
     $membershipId = $accepted->json('data.membership_id');
 
     $this->getJson(
+        '/api/v1/pharmacy-organizations/'.$ownerA['organization_id'].'/branches/'.$branchB,
+        pharmaciesAuth($operator['token']),
+    )->assertOk()
+        ->assertJsonPath('data.branch_id', $branchB)
+        ->assertJsonMissingPath('data.address')
+        ->assertJsonMissingPath('data.phone')
+        ->assertJsonMissingPath('data.latitude')
+        ->assertJsonMissingPath('data.longitude');
+    $this->getJson(
+        '/api/v1/pharmacy-organizations/'.$ownerA['organization_id'].'/branches/'.$branchB.'/memberships',
+        pharmaciesAuth($operator['token']),
+    )->assertNotFound();
+
+    $this->getJson(
         '/api/v1/pharmacy-organizations/'.$ownerA['organization_id'].'/branches/'.$branchB.'/memberships',
         pharmaciesAuth($ownerA['token']),
     )->assertOk()->assertJsonPath('data.0.membership_id', $membershipId);
