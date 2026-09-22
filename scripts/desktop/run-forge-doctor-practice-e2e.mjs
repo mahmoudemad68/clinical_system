@@ -2,8 +2,17 @@
 /**
  * Forge development GUI E2E for Phase 02 Chunk 12 clinic locations/staff.
  *
- * Requires local Core. When Core is unreachable the script records a skip
- * and exits 0 so GitHub desktop jobs without Postgres still pass.
+ * Optional local smoke (default): Core unreachable → write skipped evidence
+ * and exit 0. This is developer convenience only. It is not a CI gate.
+ *
+ * Required mode: set CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E=1 (or true/yes/on).
+ * Do not infer required mode from CI=true. When the flag is enabled, Core
+ * unavailability, fixture failure, Forge launch failure, and journey failure
+ * all exit non-zero. Evidence skipped=true is a failure.
+ *
+ * Headless Linux CI must wrap this process with
+ * scripts/desktop/with-linux-os-keystore.sh so Electron safeStorage can
+ * select gnome_libsecret. Linux basic_text remains fail-closed.
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { createHmac, randomUUID } from 'node:crypto';
@@ -28,6 +37,61 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..');
 const doctorApp = join(repoRoot, 'apps', 'doctor-desktop');
 const coreApi = join(repoRoot, 'apps', 'core-api');
+
+export const PRACTICE_E2E_REQUIRED_FLAG = 'CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E';
+export const PRACTICE_E2E_JOURNEY_KEYS = Object.freeze([
+  'created',
+  'edited',
+  'invited',
+  'accepted',
+  'revoked',
+  'crossOwner',
+  'pendingGated',
+  'pharmacyAbsent',
+  'noScheduleTab',
+  'noGenericInvoke',
+]);
+
+export function practiceE2EEvidencePath(root = repoRoot) {
+  return join(root, 'tests', 'desktop-e2e', 'logs', 'doctor-forge-practice-e2e.json');
+}
+
+/**
+ * Match Core `clinicProviderRequired()` / PHP FILTER_VALIDATE_BOOLEAN for
+ * "1", "true", "yes", and "on". Empty and unknown values are false.
+ * CI=true is ignored on purpose.
+ */
+export function envFlagEnabled(name, env = process.env) {
+  const value = env[name];
+  if (value === undefined || value === '') {
+    return false;
+  }
+  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
+}
+
+export function isDoctorPracticeE2ERequired(env = process.env) {
+  return envFlagEnabled(PRACTICE_E2E_REQUIRED_FLAG, env);
+}
+
+export function assertDoctorPracticeE2EEvidence(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('Practice E2E evidence is missing');
+  }
+  if (payload.kind !== 'forge-development-practice-e2e') {
+    throw new Error(`Unexpected practice E2E evidence kind: ${JSON.stringify(payload.kind)}`);
+  }
+  if (payload.skipped !== false) {
+    throw new Error(
+      `Practice E2E evidence skipped=${JSON.stringify(payload.skipped)}; required mode must execute the journey`,
+    );
+  }
+  for (const key of PRACTICE_E2E_JOURNEY_KEYS) {
+    if (payload[key] !== true) {
+      throw new Error(`Practice E2E evidence ${key}=${JSON.stringify(payload[key])}; expected true`);
+    }
+  }
+  return payload;
+}
 
 function sleep(ms) {
   return new Promise((resolveSleep) => {
@@ -252,17 +316,25 @@ async function main() {
     process.exit(rerun.status ?? 1);
   }
 
-  const evidencePath = join(repoRoot, 'tests', 'desktop-e2e', 'logs', 'doctor-forge-practice-e2e.json');
+  const evidencePath = practiceE2EEvidencePath();
+  const required = isDoctorPracticeE2ERequired();
   const apiBase = process.env.CLINIC_API_BASE_URL?.trim() || 'http://localhost:8080';
   const core = await probeCoreApi(apiBase);
   if (!core.reachable) {
-    writeEvidence(evidencePath, {
+    const skipped = {
       kind: 'forge-development-practice-e2e',
       skipped: true,
+      required,
       reason: 'Core API was not reachable',
       apiBase,
       coreApi: core,
-    });
+    };
+    writeEvidence(evidencePath, skipped);
+    if (required) {
+      throw new Error(
+        `Core API was not reachable at ${apiBase} while ${PRACTICE_E2E_REQUIRED_FLAG} is enabled. Evidence: ${evidencePath}`,
+      );
+    }
     process.stdout.write(`Forge Doctor practice E2E skipped. Evidence: ${evidencePath}\n`);
     return;
   }
@@ -298,6 +370,9 @@ async function main() {
       '--',
       `--remote-debugging-port=${debugPort}`,
       `--remote-allow-origins=http://127.0.0.1:${debugPort}`,
+      ...(process.platform === 'linux' && process.env.GNOME_KEYRING_CONTROL
+        ? ['--password-store=gnome-libsecret']
+        : []),
     ],
     {
       cwd: doctorApp,
@@ -307,6 +382,9 @@ async function main() {
         CLINIC_DESKTOP_PROTOCOL_LOG: protocolLog,
         CLINIC_API_BASE_URL: apiBase,
         ELECTRON_ENABLE_LOGGING: '1',
+        ...(process.platform === 'linux'
+          ? { XDG_CURRENT_DESKTOP: process.env.XDG_CURRENT_DESKTOP || 'GNOME' }
+          : {}),
       },
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: true,
@@ -329,6 +407,7 @@ async function main() {
   const proof = {
     kind: 'forge-development-practice-e2e',
     skipped: false,
+    required,
     apiBase,
     coreApi: core,
     created: false,
@@ -357,7 +436,12 @@ async function main() {
     }
     const ws = page.webSocketDebuggerUrl;
 
-    await waitSnapshot(ws, (snap) => snap.login || snap.keystore, 45_000, 'login shell');
+    const shell = await waitSnapshot(ws, (snap) => snap.login || snap.keystore, 45_000, 'login shell');
+    if (shell.keystore && !shell.login) {
+      throw new Error(
+        'OS keystore unavailable; Linux basic_text/unavailable remains fail-closed',
+      );
+    }
     await evalAction(ws, setReactValueExpression('input[name="phone"]', fixtures.doctorA.phone));
     await evalAction(ws, setReactValueExpression('input[name="password"]', fixtures.password));
     await evalAction(ws, `document.querySelector('[data-testid="sign-in"]')?.click(); true`);
@@ -464,6 +548,7 @@ async function main() {
       throw new Error('Forge practice logs contained a protected canary');
     }
 
+    assertDoctorPracticeE2EEvidence(proof);
     writeEvidence(evidencePath, proof);
     process.stdout.write(`Forge Doctor practice E2E passed. Evidence: ${evidencePath}\n`);
   } catch (error) {

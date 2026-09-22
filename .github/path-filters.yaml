@@ -37,6 +37,8 @@ desktop:
   - 'packages/contracts/openapi/**'
   - 'tests/desktop-e2e/**'
   - 'scripts/desktop/**'
+  - 'apps/core-api/tests/Support/bin/seed-chunk12-doctor-practice.php'
+  - 'apps/core-api/tests/Support/bin/accept-chunk12-invitation.php'
   - 'package.json'
   - 'package-lock.json'
 
