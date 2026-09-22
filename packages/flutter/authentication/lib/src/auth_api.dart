@@ -116,6 +116,10 @@ class AuthApi {
       final response = await _client.dio.get<Map<String, dynamic>>(
         '/api/v1/me',
       );
+      final status = response.statusCode ?? 0;
+      if (status < 200 || status >= 300) {
+        throw apiFailureFromResponse(status, response.data);
+      }
       final body = response.data;
       final data = body?['data'];
       if (data is Map<String, dynamic>) {
@@ -124,12 +128,16 @@ class AuthApi {
       throw ApiFailure(
         code: ApiErrorCode.internalError,
         message: 'The service returned an unexpected response.',
-        statusCode: response.statusCode ?? 0,
+        statusCode: status,
       );
     } on DioException catch (e) {
       final failure = e.error;
       if (failure is ApiFailure) {
         throw failure;
+      }
+      final status = e.response?.statusCode ?? 0;
+      if (status != 0) {
+        throw apiFailureFromResponse(status, e.response?.data);
       }
       rethrow;
     }

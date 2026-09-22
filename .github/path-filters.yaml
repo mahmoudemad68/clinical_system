@@ -28,6 +28,8 @@ flutter:
   - 'packages/flutter/**'
   - 'package.json'
   - 'package-lock.json'
+  - 'scripts/flutter/**'
+  - 'apps/core-api/tests/Support/bin/seed-chunk13-patient-flutter.php'
 
 desktop:
   - 'apps/doctor-desktop/**'
