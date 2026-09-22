@@ -49,8 +49,10 @@ Chunk 14 is CLOSED (merged PR #24). **Phase 02 remains NOT PASS.**
 - **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/25
 - **Baseline (GitHub `main`):** `cc8f9be7df683624ed9323f2dd357fadc9bc7d13`
 - **CI-proven implementation HEAD:** `0dd78616885947bd00830996cac7c7b5bc572ea3`
-- **GitHub CI (implementation HEAD):** `pull-request` run **35766687221** SUCCESS
-  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35766687221)
+  (`pull-request` run **35766687221** SUCCESS)
+- **Evidence HEAD (GitHub CI SUCCESS):** `f2304fee104f0f772f03cdc5ccef47e154028a1d`
+  (`pull-request` run **35767496247** SUCCESS)
+  https://github.com/mahmoudemad68/clinical_system/actions/runs/35767496247
   — 17 success, 1 skipped (AI service path filter). Forge Pharmacy practice
   E2E passed with `skipped=false` and all mandatory journey booleans true.
 
@@ -374,35 +376,43 @@ Host Node 22 / PHP 8.3, this agent:
 | PHP lint of three Chunk 15 helpers | pass |
 
 Dedicated Core-backed Forge Pharmacy practice E2E ran in GitHub job
-`desktop-pharmacy-practice-e2e` on run **35766687221** (required mode,
-`skipped=false`).
+`desktop-pharmacy-practice-e2e` on runs **35766687221** (`0dd7861`) and
+**35767496247** (`f2304fe`) (required mode, `skipped=false`).
 
 ## Exact final-head GitHub CI
 
-CI-proven implementation HEAD `0dd78616885947bd00830996cac7c7b5bc572ea3`
-has GitHub `pull-request` run **35766687221** SUCCESS
+Evidence HEAD `f2304fee104f0f772f03cdc5ccef47e154028a1d` has GitHub
+`pull-request` run **35767496247** SUCCESS
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35767496247).
+
+Implementation HEAD `0dd78616885947bd00830996cac7c7b5bc572ea3` has GitHub
+`pull-request` run **35766687221** SUCCESS
 (https://github.com/mahmoudemad68/clinical_system/actions/runs/35766687221).
 
-| Job | Conclusion |
-| --- | --- |
-| Detect changed areas | success |
-| Supply-chain policy | success |
-| Security scans | success |
-| Contracts | success |
-| Core API | success |
-| Electron desktops | success |
-| Admin web | success |
-| Secure-file providers | success |
-| Forge Pharmacy practice E2E | success |
-| Forge Doctor practice E2E | success |
-| Packaged Electron E2E (ubuntu-latest) | success |
-| Packaged Electron E2E (macos-latest) | success |
-| Packaged Electron E2E (windows-latest) | success |
-| Flutter | success |
-| Flutter Patient profile E2E | success |
-| Runtime image scan (core-api) | success |
-| Runtime image scan (ai-service) | success |
-| AI service | skipped (path filter) |
+Both runs: 17 success, 1 skipped (AI service). Forge Pharmacy practice E2E
+required-mode passed (`skipped=false`). Packaged Electron E2E passed on
+ubuntu/macos/windows.
+
+| Job | 35766687221 (`0dd7861`) | 35767496247 (`f2304fe`) |
+| --- | --- | --- |
+| Detect changed areas | success | success |
+| Supply-chain policy | success | success |
+| Security scans | success | success |
+| Contracts | success | success |
+| Core API | success | success |
+| Electron desktops | success | success |
+| Admin web | success | success |
+| Secure-file providers | success | success |
+| Forge Pharmacy practice E2E | success | success |
+| Forge Doctor practice E2E | success | success |
+| Packaged Electron E2E (ubuntu-latest) | success | success |
+| Packaged Electron E2E (macos-latest) | success | success |
+| Packaged Electron E2E (windows-latest) | success | success |
+| Flutter | success | success |
+| Flutter Patient profile E2E | success | success |
+| Runtime image scan (core-api) | success | success |
+| Runtime image scan (ai-service) | success | success |
+| AI service | skipped | skipped |
 
 Earlier on this PR:
 
@@ -414,7 +424,7 @@ Earlier on this PR:
   because `pharmacy_desktop` is not compatible with doctor accounts
   (`AuthenticationFailed` / client mismatch). Fixed in `0dd7861`.
 
-This evidence-recording commit follows `0dd7861` and does not change product
+This SHA-recording commit follows `f2304fe` and does not change product
 code. Chunk-only evidence. Phase 02 is **NOT PASS**. Independent review
 decides `READY_TO_MERGE`. This chunk does not mark READY_TO_MERGE and does
 not merge.
