@@ -34,18 +34,22 @@ Do **not** mark READY_TO_MERGE from this note. Independent review decides that.
 - **Branch:** `cursor/phase-02-chunk-12-doctor-clinic-locations-staff-ui-cc7f`
 - **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/21
 - **Baseline (GitHub `main`):** `a667231847484482edef4e087425e369ab4dcbce`
-- **Implementation HEAD:** `5b98f934bdbb959e72e2fe32f16032525b769297`
-- **GitHub CI (implementation HEAD):** `pull-request` run
-  **35694988078** SUCCESS on that exact SHA
-  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35694988078)
-  — 14 success, 1 skipped by path filter (`AI service`)
+- **Product UI HEAD:** `5b98f934bdbb959e72e2fe32f16032525b769297`
+- **CI-gate implementation HEAD:** `59116459bcb45d9a04b73a3eec5c91f1efd3f6e9`
+- **GitHub CI (CI-gate HEAD):** `pull-request` run **35696845966** SUCCESS
+  on that exact SHA
+  (https://github.com/mahmoudemad68/clinical_system/actions/runs/35696845966)
+  — 15 success, 1 skipped by path filter (`AI service`)
 
 Jobs on that run: Detect changed areas, Supply-chain policy, Contracts,
 Security scans, Core API, Secure-file providers, Admin web, Flutter, Electron
-desktops (including skipped-without-Core practice E2E), Packaged Electron E2E
-(ubuntu/macos/windows), Runtime image scan (core-api), Runtime image scan
-(ai-service). `AI service` skipped. Core API Tests step succeeded (Chunk 10
-Clinics suite included in the full Core Pest run).
+desktops, **Forge Doctor practice E2E** (executed, not skipped), Packaged
+Electron E2E (ubuntu/macos/windows), Runtime image scan (core-api), Runtime
+image scan (ai-service). `AI service` skipped. Core API Tests step succeeded
+(Chunk 10 Clinics suite included in the full Core Pest run).
+
+Run **35694988078** on `5b98f93` is **not** practice-E2E proof: that desktop
+job wrote `skipped=true` because Core was unreachable and still exited 0.
 
 - **Recorded:** 2026-09-22
 - **Environment:** host Node 22 workspace, PHP 8.3 Core Pest against local
@@ -233,41 +237,53 @@ Coordinates are a local SVG pin (`CoordinatePreview`). No network map provider.
 
 ## Forge GUI E2E result
 
-`npm run desktop:forge-doctor-practice-e2e` against live Core
-`http://localhost:8080`:
+Required mode (`CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E=1`) is the CI gate. Optional
+local skip remains only when that flag is unset. `CI=true` does not imply
+required mode.
 
-`tests/desktop-e2e/logs/doctor-forge-practice-e2e.json`
+Authoritative GitHub proof is job **Forge Doctor practice E2E** on run
+**35696845966** / SHA `5911645`
+(https://github.com/mahmoudemad68/clinical_system/actions/runs/35696845966/job/106645568056):
 
+- log: `Forge Doctor practice E2E passed. Evidence: .../doctor-forge-practice-e2e.json`
+- log: `Practice E2E evidence executed (skipped=false).`
+- artifact `chunk-12-doctor-practice-e2e`:
+
+```json
+{
+  "kind": "forge-development-practice-e2e",
+  "skipped": false,
+  "required": true,
+  "apiBase": "http://localhost:8080",
+  "coreApi": { "reachable": true, "status": 200 },
+  "created": true,
+  "edited": true,
+  "invited": true,
+  "accepted": true,
+  "revoked": true,
+  "crossOwner": true,
+  "pendingGated": true,
+  "pharmacyAbsent": true,
+  "noScheduleTab": true,
+  "noGenericInvoke": true
+}
 ```
-created=true
-edited=true
-invited=true
-accepted=true
-revoked=true
-crossOwner=true
-pendingGated=true
-pharmacyAbsent=true
-noScheduleTab=true
-noGenericInvoke=true
-skipped=false
-```
+
+Local required-mode rerun against live Core `http://localhost:8080` matched
+the same booleans.
 
 Doctor-facing create / edit / invite / refresh / revoke ran through the real
-desktop contracts and UI. Secretary accept used the existing Core service, not
-a Doctor screen and not a direct membership UPDATE. Patient/Pharmacy GUI
-denial is covered by renderer tests (`account-denied` / no practice nav).
+desktop contracts and UI against Core/PostgreSQL. Secretary accept used the
+existing Core service, not a Doctor screen and not a direct membership UPDATE.
+Patient/Pharmacy GUI denial is covered by renderer tests (`account-denied` /
+no practice nav).
 
-Forge development smoke (`npm run desktop:forge-doctor-smoke`) passed:
-
-`tests/desktop-e2e/logs/doctor-forge-dev-smoke.json`
-
-Doctor bridge present, Pharmacy absent, no Node globals, no generic invoke,
-login shell mounted on loopback `http://localhost:3000`, Core health reachable.
+Forge development smoke (`npm run desktop:forge-doctor-smoke`) passed on the
+unprovisioned Electron desktops job. Packaged Doctor remains HTTP-free.
 
 ## Packaged E2E result
 
-GitHub `desktop-packaged-e2e` on implementation HEAD `5b98f93` (run
-**35694988078**):
+GitHub `desktop-packaged-e2e` on CI-gate HEAD `5911645` (run **35696845966**):
 
 | OS | Job | Result |
 | --- | --- | --- |
@@ -279,11 +295,7 @@ The spec requires Doctor clinic operations (`listLocations` …
 `revokeMembership`) and forbids `schedule` / `invoke`. Packaged Doctor is
 still not required to connect to local HTTP (`DOC-PKG-HTTP-001` remains
 expected / by design). Forge development remains the approved local-HTTP GUI
-integration path.
-
-GitHub Electron desktops also ran `desktop:forge-doctor-practice-e2e`. That
-step succeeded by skip (`Core API was not reachable` in GitHub desktop
-runners). The real GUI path is the local Forge result above.
+integration path. The Forge practice job is a separate Core-backed gate.
 
 ## Core regression
 
@@ -314,17 +326,32 @@ architecture boundaries. No Clinics business-rule test was weakened.
 | `@clinic/encrypted-local-store` | 16 passed |
 | `@clinic/error-handling` | 3 passed |
 | `@clinic/localization` | 2 passed |
-| `node --test scripts/desktop/forge-doctor-smoke.test.mjs scripts/desktop/cookieless-electron-transport.test.mjs` | **5 passed** |
+| `node --test scripts/desktop/forge-doctor-practice-e2e.test.mjs scripts/desktop/forge-doctor-smoke.test.mjs` | **8 passed** |
 | `npm run desktop:forge-doctor-smoke` | passed |
-| `npm run desktop:forge-doctor-practice-e2e` | passed |
-| Clinics Pest (Feature + Unit) | **33 passed**, 633 assertions |
-| ArchitectureBoundary Pest | **25 passed**, 4926 assertions |
+| `CLINIC_REQUIRE_DOCTOR_PRACTICE_E2E=1 npm run desktop:forge-doctor-practice-e2e` | passed, `skipped=false` |
+| `npm run desktop:forge-doctor-practice-e2e:assert` | passed |
+| Clinics Pest (Feature + Unit) + ArchitectureBoundary | **58 passed**, 5559 assertions |
+
+## Exact changed files since product UI HEAD `5b98f93`
+
+```
+.github/path-filters.yaml
+.github/workflows/pull-request.yaml
+package.json
+scripts/desktop/assert-forge-doctor-practice-e2e-evidence.mjs
+scripts/desktop/forge-doctor-practice-e2e.test.mjs
+scripts/desktop/run-forge-doctor-practice-e2e.mjs
+scripts/desktop/run-forge-doctor-smoke.mjs
+scripts/desktop/with-linux-os-keystore.sh
+docs/evidence/phase-02/chunk-12-doctor-clinic-location-staff-ui.md
+```
 
 ## Exact changed files
 
 Relative to `a667231847484482edef4e087425e369ab4dcbce`:
 
 ```
+.github/path-filters.yaml
 .github/workflows/pull-request.yaml
 apps/core-api/tests/Support/bin/accept-chunk12-invitation.php
 apps/core-api/tests/Support/bin/seed-chunk12-doctor-practice.php
@@ -353,22 +380,28 @@ package.json
 packages/typescript/desktop_bridge_contracts/src/bridge-contracts.test.ts
 packages/typescript/desktop_bridge_contracts/src/doctor.ts
 packages/typescript/desktop_bridge_contracts/src/index.ts
+scripts/desktop/assert-forge-doctor-practice-e2e-evidence.mjs
+scripts/desktop/forge-doctor-practice-e2e.test.mjs
 scripts/desktop/forge-doctor-smoke.test.mjs
 scripts/desktop/run-forge-doctor-practice-e2e.mjs
 scripts/desktop/run-forge-doctor-smoke.mjs
+scripts/desktop/with-linux-os-keystore.sh
 tests/desktop-e2e/specs/packaged-runtime.spec.mjs
 docs/evidence/phase-02/chunk-12-doctor-clinic-location-staff-ui.md
 ```
 
 This evidence file is the evidence commit after GitHub CI SUCCESS on
-implementation HEAD `5b98f93` (run **35694988078**).
+CI-gate HEAD `5911645` (run **35696845966**) with Forge practice
+`skipped=false`.
 
 ## Remaining risks
 
 - Packaged-window clinic operations are asserted by bridge-key presence, not a
   packaged GUI login against Core (`DOC-PKG-HTTP-001`).
-- GitHub desktop jobs skip Forge practice E2E when Core is unreachable
-  (exit 0 + evidence `skipped: true`). Local Core is the real GUI proof.
+- Headless GitHub Linux login depends on `gnome-keyring` + `dbus-run-session`
+  so Electron `safeStorage` can select `gnome_libsecret`. Linux `basic_text`
+  remains fail-closed; a keystore outage fails the required gate instead of
+  skipping.
 - Coordinate confirmation is a local checkbox plus numeric fields; there is no
   approved map provider.
 - Invitation phone is write-only in the UI, but main-process idempotency
