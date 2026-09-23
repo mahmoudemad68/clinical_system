@@ -9,6 +9,7 @@ import {
   sessionKeys,
   verificationKeys,
   VERIFICATION_REVIEW_CAPABILITY,
+  CREATE_DOCTOR_CAPABILITY,
   type SessionStatus,
 } from '@/session/keys';
 import { SessionContext, type SessionValue } from '@/session/sessionContext';
@@ -200,6 +201,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       me: meQuery.data ?? null,
       capabilities: capsQuery.data?.capabilities ?? [],
       canReviewVerification: status === 'authorized_reviewer',
+      canCreateDoctor:
+        status === 'authorized_reviewer' && (capsQuery.data?.capabilities ?? []).includes(CREATE_DOCTOR_CAPABILITY),
       refresh,
       logout,
       expireSession,

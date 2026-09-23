@@ -126,6 +126,8 @@ cookies. TOTP enrolment HTTP is not exposed; bootstrap inserts a verified factor
 **Built in:** 01–02. **Owner:** backend + security.
 **Public services:** `ResolveActorContext`, `NationalIdProtector`,
 `AuditedSensitiveDecryptor`, `RotateIdentityKeysService` (`identity:rotate-keys`),
+`ProvisionDoctorApplicantAccount` (privileged doctor applicant provisioning;
+Identity owns user and National-ID rows; callers wrap it in their transaction),
 `PatientIdentityRegistry` (Patients adapter; claim still off), `PatientSubjectPrivacy`
 (Identity contract; Patients adapter only), `DoctorSubjectPrivacy`
 (Identity contract; Doctors adapter only), `PharmacySubjectPrivacy`
@@ -180,7 +182,7 @@ are Access-gated and default-denied. `FEATURE_IDENTITY_PROFILE_CLAIM` remains of
 ## `Doctors` — clinician profiles and specialties
 
 **Built in:** 02 (chunk 02: Doctors profile foundation). **Owner:** backend + clinical.
-**Public services:** `RegisterDoctor`, `GetDoctorProfile`, `ListSpecialties`,
+**Public services:** `RegisterDoctor`, `CreateAdminDoctorApplicant`, `GetDoctorProfile`, `ListSpecialties`,
 `DoctorApplicantService` (narrow Verification-facing applicant projection and
 status transition; no National ID/HMAC/key-version fields),
 `DoctorReviewerService` (narrow reviewer-facing professional display, specialty
@@ -190,7 +192,8 @@ fields),
 `PracticeOwnerEligibilityService` (narrow Clinics-facing owner projection:
 doctor_id, user_id, verification_status, profile version only; no National ID,
 syndicate, ciphertext, HMAC, specialty internals, documents, or public_status).
-**Events:** `doctor.profile_created` (personal identifier-only).
+**Events:** `doctor.profile_created` (personal identifier-only;
+`source_type` is `self_onboarding` or `admin_created`).
 `doctor.verification_submitted` and `doctor.verification_decided` are owned by
 `Verification`.
 **Tables:** `doctor_profiles`, `specialties`.
@@ -203,17 +206,22 @@ syndicate number, ciphertext, HMAC, or key versions.
 assignment, or decisions (`Verification` owns that pipeline). Granting clinical
 access. Making a doctor `listed` or clinically capable from profile creation.
 `verification_status` is not an access grant. Direct access to Identity/Access
-tables. Fabricating a medical-specialty seed catalogue without an approved
-reference dataset. Onboarding HTTP is compact (`status`, `doctor_id`,
+tables. Inventing government or syndicate certification claims in specialty
+labels. The approved specialty catalogue is seeded from
+`database/data/approved_specialties.v1.php` through a versioned migration.
+Onboarding HTTP is compact (`status`, `doctor_id`,
 `version`); `GET /doctors/me/profile` is the canonical projection. Collisions
-return generic `manual_review_required`. `ListSpecialties` is an in-process
-public service in this slice (no HTTP catalogue endpoint).
+return generic `manual_review_required`. `ListSpecialties` is the in-process
+catalogue service. Authenticated doctors read it at `GET /api/v1/doctors/specialties`.
+Privileged Admins read the same catalogue at `GET /api/v1/admin/doctor-applicants/specialties`
+when creating an applicant. Admin-created doctors reuse `CreateAdminDoctorApplicant`
+plus Verification; they are not a verification bypass.
 
 ## `Verification` — cases, documents, decisions, and secure upload intents
 
 **Built in:** 02 (chunk 03 foundation, chunk 04 secure verification files,
 chunk 05 Admin verification review backend, chunk 06 React Admin review UI,
-chunk 08 pharmacy verification backend). **Owner:** backend + security.
+chunk 08 pharmacy verification backend, chunk 16 Admin-created doctor). **Owner:** backend + security.
 **Public services:** `VerificationService`, `VerificationDocumentService`,
 `VerificationUploadService`, `VerificationUploadProcessor`.
 Platform owns generic `StoreObject` / `ScanObject` adapters. Verification owns
@@ -254,8 +262,9 @@ validity, or legal approval. Upload limits are also `ENGINEERING_DEFAULT`
 Unknown case types, requirement codes, decisions, and reason codes deny. This
 is not an approved product/security catalogue.
 **Prohibited:** querying Doctors/Patients/Pharmacies/clinical tables directly
-(Doctors is reached only through `DoctorApplicantService` and
-`DoctorReviewerService`; Pharmacies is reached only through
+(Doctors is reached only through `DoctorApplicantService`,
+`DoctorReviewerService`, `CreateAdminDoctorApplicant`, and `ListSpecialties`;
+Pharmacies is reached only through
 `PharmacyApplicantService` and `PharmacyReviewerService`); exposing object keys
 or document bodies on public URLs, events, logs, or DTOs; letting Doctors or
 Pharmacies own the verification pipeline; granting clinical capabilities or
@@ -527,11 +536,13 @@ retrieval leakage.
 ## `Admin`
 
 **Built in:** 02 (chunk 05 verification review HTTP, chunk 06 React Admin
-review UI) and 20. **Owner:** backend.
+review UI, chunk 16 Admin-created doctor) and 20. **Owner:** backend.
 **Public services:** `AdminVerificationReviewService` (HTTP facade for the
-verification queue, case detail, claim, decision, and document-access grant).
-Controllers map transport input/output only and call `VerificationService` and
-`VerificationDocumentService`. Safe professional fields come from
+verification queue, case detail, claim, decision, and document-access grant),
+`AdminDoctorApplicantService` (HTTP facade for privileged Admin-created doctor
+applicants; delegates to Verification public services only).
+Controllers map transport input/output only and call `VerificationService`,
+`VerificationUploadService`, and `VerificationDocumentService`. Safe professional fields come from
 `DoctorReviewerService` and `PharmacyReviewerService` through Verification;
 Admin does not query Doctors, Pharmacies, or Verification persistence.
 **Events:** none. Admin does not emit `admin.verification_decided`. The

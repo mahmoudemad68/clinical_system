@@ -1,6 +1,7 @@
 import type { components } from '@clinic/api-client/schema';
 
 export const REVIEW_CAPABILITY = 'verification.case.review';
+export const CREATE_DOCTOR_CAPABILITY = 'doctors.admin.create';
 
 export const CANARIES = {
   nationalId: 'NID-CANARY-DO-NOT-RENDER',
@@ -61,6 +62,7 @@ export function specialty() {
     code: 'general_practice',
     label_ar: 'طب الأسرة',
     label_en: 'General Practice',
+    sort_order: 10,
   };
 }
 

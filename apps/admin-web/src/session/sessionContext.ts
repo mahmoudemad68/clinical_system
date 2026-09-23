@@ -9,6 +9,7 @@ export interface SessionValue {
   me: MeResult | null;
   capabilities: readonly string[];
   canReviewVerification: boolean;
+  canCreateDoctor: boolean;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
   expireSession: () => void;

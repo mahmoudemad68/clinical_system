@@ -1,4 +1,5 @@
 export const VERIFICATION_REVIEW_CAPABILITY = 'verification.case.review';
+export const CREATE_DOCTOR_CAPABILITY = 'doctors.admin.create';
 
 export const sessionKeys = {
   all: ['session'] as const,

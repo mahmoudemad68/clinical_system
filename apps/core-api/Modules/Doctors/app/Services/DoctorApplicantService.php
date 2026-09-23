@@ -87,6 +87,7 @@ final class DoctorApplicantService
         return new DoctorApplicantProjection(
             $row->id,
             $row->userId,
+            $row->createdByUserId,
             $row->verificationStatus,
             $row->publicStatus,
             $row->version,

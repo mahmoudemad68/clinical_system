@@ -39,8 +39,35 @@ function doctorsSyntheticIdentity(): array
  */
 function doctorsSeedSpecialty(string $code = 'general_practice', array $overrides = []): array
 {
-    $ids = app(IdentityGenerator::class);
     $now = now('UTC');
+    $existing = isset($overrides['id'])
+        ? null
+        : DB::table('specialties')->where('code', $code)->first();
+
+    if ($existing !== null) {
+        $updates = [];
+        foreach (['label_ar', 'label_en', 'active', 'sort_order'] as $field) {
+            if (array_key_exists($field, $overrides)) {
+                $updates[$field] = $overrides[$field];
+            }
+        }
+        if ($updates !== []) {
+            $updates['updated_at'] = $now;
+            DB::table('specialties')->where('id', $existing->id)->update($updates);
+            $existing = DB::table('specialties')->where('id', $existing->id)->first();
+        }
+
+        return [
+            'id' => (string) $existing->id,
+            'code' => (string) $existing->code,
+            'label_ar' => (string) $existing->label_ar,
+            'label_en' => (string) $existing->label_en,
+            'active' => (bool) $existing->active,
+            'sort_order' => (int) $existing->sort_order,
+        ];
+    }
+
+    $ids = app(IdentityGenerator::class);
     $row = array_merge([
         'id' => $ids->next()->value,
         'code' => $code,

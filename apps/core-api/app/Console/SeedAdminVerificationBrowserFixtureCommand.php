@@ -25,7 +25,6 @@ use Modules\Platform\Contracts\StoreObject;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Services\Testing\SyntheticEgyptianData;
 use Modules\Platform\Support\Identifier;
-use Modules\Platform\Support\ScanVerdict;
 use Modules\Platform\Support\StoredObjectRef;
 use Modules\Verification\Services\VerificationService;
 use Modules\Verification\Services\VerificationUploadProcessor;
@@ -81,6 +80,7 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
 
         $password = 'correct-horse-battery';
         $reviewer = $this->insertStaff($ids, $protector, $hasher, $totp, 'reviewer', AccountType::Admin);
+        $creator = $this->insertStaff($ids, $protector, $hasher, $totp, 'creator', AccountType::Admin);
         // Secretary can use admin_web cookies and /me, but Capabilities::forActor
         // never grants verification.case.review. password_must_change admins
         // cannot read /me (DenyPendingBusinessAccess), so they cannot exercise
@@ -220,11 +220,20 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
             $pharmacyCanaries,
         );
 
+        $applicantPhone = $synthetic->mobileNumber();
+        $applicantNationalId = $synthetic->nationalId();
+        $applicantName = 'Dr Admin Created E2E';
+
         $payload = [
             'reviewer' => [
                 'phone' => $reviewer['phone'],
                 'password' => $password,
                 'totp_secret' => $reviewer['totp_secret'],
+            ],
+            'creator' => [
+                'phone' => $creator['phone'],
+                'password' => $password,
+                'totp_secret' => $creator['totp_secret'],
             ],
             'unauthorized' => [
                 'phone' => $unauthorized['phone'],
@@ -233,6 +242,13 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
             ],
             'case' => [
                 'professional_display_name' => 'Dr E2E Review',
+            ],
+            'applicant' => [
+                'phone' => $applicantPhone,
+                'national_id' => $applicantNationalId,
+                'password' => $password,
+                'professional_display_name' => $applicantName,
+                'evidence_source' => 'in_person_originals',
             ],
             'pharmacy_case' => [
                 'public_name' => $pharmacyPublicName,
@@ -427,27 +443,5 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
             'phone' => $phone,
             'totp_secret' => $secret,
         ];
-    }
-}
-
-/**
- * Opt-in clean scanner for the browser fixture seeder. Not a production adapter.
- */
-final class E2eCleanScanObject implements ScanObject
-{
-    public function scanStream(mixed $stream, int $sizeBytes): ScanVerdict
-    {
-        if (is_resource($stream)) {
-            while (! feof($stream)) {
-                $chunk = fread($stream, 65_536);
-                if ($chunk === false || $chunk === '') {
-                    break;
-                }
-            }
-        }
-
-        unset($sizeBytes);
-
-        return ScanVerdict::clean('e2e-fixture', 'test');
     }
 }

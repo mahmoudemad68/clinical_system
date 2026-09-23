@@ -511,6 +511,13 @@ final class VerificationDocumentService
         if ($ownerUserId instanceof Identifier && $ownerUserId->equals($reviewer->userId)) {
             throw new AuthorizationDenied;
         }
+
+        if ($case->applicantType === ApplicantType::Doctor) {
+            $createdBy = $this->doctors->findById($case->applicantId, false)?->createdByUserId;
+            if ($createdBy instanceof Identifier && $createdBy->equals($reviewer->userId)) {
+                throw new AuthorizationDenied;
+            }
+        }
     }
 
     private function assertAssignedReviewer(ActorContext $reviewer, VerificationCaseRecord $case): void

@@ -33,6 +33,7 @@ use Modules\Verification\Enums\VerificationCaseStatus;
 use Modules\Verification\Enums\VerificationUploadState;
 use Modules\Verification\Events\VerificationUploadCompleted;
 use Modules\Verification\Services\Persistence\PostgresVerificationStore;
+use Modules\Verification\Support\PrivilegedAdminDoctorCreateGuard;
 use Modules\Verification\Support\VerificationCaseRecord;
 use Modules\Verification\Support\VerificationPolicy;
 use Modules\Verification\Support\VerificationUploadIntentRecord;
@@ -57,6 +58,7 @@ final class VerificationUploadService
         private readonly PostgresVerificationStore $store,
         private readonly DoctorApplicantService $doctors,
         private readonly PharmacyApplicantService $pharmacies,
+        private readonly PrivilegedAdminDoctorCreateGuard $adminCreate,
         private readonly VerificationPolicy $policy,
         private readonly Authorize $authorize,
         private readonly StoreObject $objects,
@@ -177,6 +179,121 @@ final class VerificationUploadService
     }
 
     /**
+     * @param  array{
+     *     case_id: string,
+     *     requirement_code: string,
+     *     expected_size_bytes: int,
+     *     declared_media_type: string,
+     *     sha256?: string|null
+     * }  $input
+     * @return CreateResult
+     */
+    public function createRepresentedDoctorUpload(ActorContext $actor, Identifier $doctorId, array $input): array
+    {
+        $this->adminCreate->assert($actor, $doctorId, 'doctor_profile');
+
+        $caseId = Identifier::fromString((string) $input['case_id']);
+        $requirement = (string) $input['requirement_code'];
+        $expectedSize = (int) $input['expected_size_bytes'];
+        $declaredMime = (string) $input['declared_media_type'];
+        $expectedSha = isset($input['sha256']) && is_string($input['sha256']) && $input['sha256'] !== ''
+            ? $input['sha256']
+            : null;
+
+        if (! $this->policy->isAllowedMime($declaredMime)) {
+            throw ValidationException::withMessages(['declared_media_type' => 'Declared media type is not allowed.']);
+        }
+        if ($expectedSize < 1 || $expectedSize > $this->policy->maxDocumentBytes()) {
+            throw ValidationException::withMessages(['expected_size_bytes' => 'Expected size is outside the allowed bound.']);
+        }
+
+        return $this->transactions->run(function (TransactionContext $tx) use (
+            $actor,
+            $doctorId,
+            $caseId,
+            $requirement,
+            $expectedSize,
+            $declaredMime,
+            $expectedSha,
+        ): array {
+            $this->store->lockCase($caseId);
+            $case = $this->requireRepresentedDraftCase($actor, $doctorId, $caseId);
+            if (! $this->policy->isKnownRequirement($case->caseType->value, $requirement)) {
+                throw ValidationException::withMessages(['requirement_code' => 'Requirement code is not allowed.']);
+            }
+
+            if ($this->store->countActiveUploads($case->id, $requirement) >= $this->policy->maxActiveUploadsPerRequirement()) {
+                throw new StateConflict;
+            }
+
+            $now = $this->clock->now();
+            $expires = $now->modify('+'.$this->policy->uploadExpirySeconds().' seconds');
+            $uploadId = $this->ids->next();
+            $objectId = $this->ids->next();
+            $grant = $this->objects->createUploadGrant(
+                $this->policy->objectNamespace(),
+                $objectId->value,
+                $expectedSize,
+                $declaredMime,
+                $expires,
+            );
+
+            $stamp = $now->format('Y-m-d H:i:s.uP');
+            $this->store->insertUpload([
+                'id' => $uploadId->value,
+                'case_id' => $case->id->value,
+                'created_by_user_id' => $actor->userId->value,
+                'requirement_code' => $requirement,
+                'object_id' => $objectId->value,
+                'storage_locator' => $grant->storageLocator,
+                'canonical_storage_locator' => null,
+                'state' => VerificationUploadState::Uploading->value,
+                'expected_size_bytes' => $expectedSize,
+                'declared_media_type' => $declaredMime,
+                'expected_sha256' => $expectedSha,
+                'object_version' => null,
+                'observed_size_bytes' => null,
+                'observed_sha256' => null,
+                'detected_mime' => null,
+                'scanner_identity' => null,
+                'scanner_version' => null,
+                'rejection_reason' => null,
+                'expires_at' => $expires->format('Y-m-d H:i:s.uP'),
+                'completed_at' => null,
+                'available_at' => null,
+                'cleanup_eligible_at' => null,
+                'cleanup_completed_at' => null,
+                'processing_attempts' => 0,
+                'version' => 1,
+                'created_at' => $stamp,
+                'updated_at' => $stamp,
+            ]);
+
+            $this->audit->append(
+                $tx,
+                'verification.upload_intent_created',
+                'verification_upload_intent',
+                $uploadId,
+                [
+                    'reason_code' => 'upload_requested',
+                    'requirement_code' => $requirement,
+                    'state' => VerificationUploadState::Uploading->value,
+                ],
+                $actor->userId,
+                'user',
+            );
+
+            $row = $this->store->findUploadById($uploadId, false);
+            assert($row instanceof VerificationUploadIntentRecord);
+
+            return [
+                'projection' => $this->project($row),
+                'grant' => $grant,
+            ];
+        });
+    }
+
+    /**
      * Reconstruct a usable create outcome for the same upload intent.
      * Never stores or logs a signed URL. Grant expiry cannot exceed the
      * intent's expires_at.
@@ -185,18 +302,13 @@ final class VerificationUploadService
      */
     public function replayDoctorUploadCreate(ActorContext $actor, Identifier $uploadId): array
     {
-        $this->assertApplicantActor($actor);
-        $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN);
-        if (! $decision->allowed) {
-            throw new AuthorizationDenied;
-        }
-
+        $this->assertUploadActor($actor);
         $upload = $this->store->findUploadById($uploadId, false);
         if (! $upload instanceof VerificationUploadIntentRecord) {
             throw new AuthorizationDenied;
         }
 
-        $this->assertOwnsCase($actor, $upload->caseId);
+        $this->assertCanAccessUpload($actor, $upload);
 
         $projection = $this->project($upload);
         $data = $projection->toArray();
@@ -228,11 +340,7 @@ final class VerificationUploadService
 
     public function completeDoctorUpload(ActorContext $actor, Identifier $uploadId): VerificationUploadProjection
     {
-        $this->assertApplicantActor($actor);
-        $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN);
-        if (! $decision->allowed) {
-            throw new AuthorizationDenied;
-        }
+        $this->assertUploadActor($actor);
 
         $failure = null;
         /** @var array{outcome: 'replay'|'seal'|'rejected', projection: VerificationUploadProjection, ingress: StoredObjectRef|null, canonical: StoredObjectRef|null} $prepared */
@@ -244,7 +352,7 @@ final class VerificationUploadService
             }
 
             $this->store->lockCase($upload->caseId);
-            $this->requireOwnDraftCase($actor, $upload->caseId);
+            $this->requireWritableDraftCase($actor, $upload->caseId);
 
             $now = $this->clock->now();
             if ($upload->state->isProcessable() || $upload->state === VerificationUploadState::Available) {
@@ -350,7 +458,7 @@ final class VerificationUploadService
             }
 
             $this->store->lockCase($upload->caseId);
-            $this->requireOwnDraftCase($actor, $upload->caseId);
+            $this->requireWritableDraftCase($actor, $upload->caseId);
 
             if ($upload->state->isProcessable() || $upload->state === VerificationUploadState::Available) {
                 return $this->project($upload);
@@ -407,18 +515,14 @@ final class VerificationUploadService
 
     public function doctorUploadStatus(ActorContext $actor, Identifier $uploadId): VerificationUploadProjection
     {
-        $this->assertApplicantActor($actor);
-        $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_STATUS_READ_OWN);
-        if (! $decision->allowed) {
-            throw new AuthorizationDenied;
-        }
+        $this->assertUploadActor($actor);
 
         $upload = $this->store->findUploadById($uploadId, false);
         if (! $upload instanceof VerificationUploadIntentRecord) {
             throw new AuthorizationDenied;
         }
 
-        $this->assertOwnsCase($actor, $upload->caseId);
+        $this->assertCanAccessUpload($actor, $upload);
 
         return $this->project($upload);
     }
@@ -459,6 +563,79 @@ final class VerificationUploadService
             null,
             'system',
         );
+    }
+
+    private function assertUploadActor(ActorContext $actor): void
+    {
+        if ($actor->accountType === AccountType::Admin) {
+            $this->adminCreate->assert($actor, $actor->userId, 'user');
+
+            return;
+        }
+
+        $this->assertApplicantActor($actor);
+        $decision = $this->authorize->decide($actor, Capabilities::VERIFICATION_SUBMIT_OWN);
+        if (! $decision->allowed) {
+            throw new AuthorizationDenied;
+        }
+    }
+
+    private function requireWritableDraftCase(ActorContext $actor, Identifier $caseId): VerificationCaseRecord
+    {
+        if ($actor->accountType === AccountType::Admin) {
+            $case = $this->store->findCaseById($caseId, true);
+            if (! $case instanceof VerificationCaseRecord || $case->applicantType !== ApplicantType::Doctor) {
+                throw new AuthorizationDenied;
+            }
+            $this->assertRepresentsDoctorCase($actor, $case);
+            if ($case->status !== VerificationCaseStatus::Draft) {
+                throw new StateConflict;
+            }
+
+            return $case;
+        }
+
+        return $this->requireOwnDraftCase($actor, $caseId);
+    }
+
+    private function requireRepresentedDraftCase(ActorContext $actor, Identifier $doctorId, Identifier $caseId): VerificationCaseRecord
+    {
+        $case = $this->store->findCaseById($caseId, true);
+        if (! $case instanceof VerificationCaseRecord) {
+            throw new AuthorizationDenied;
+        }
+        if ($case->applicantType !== ApplicantType::Doctor || ! $case->applicantId->equals($doctorId)) {
+            throw new AuthorizationDenied;
+        }
+        $this->assertRepresentsDoctorCase($actor, $case);
+        if ($case->status !== VerificationCaseStatus::Draft) {
+            throw new StateConflict;
+        }
+
+        return $case;
+    }
+
+    private function assertCanAccessUpload(ActorContext $actor, VerificationUploadIntentRecord $upload): void
+    {
+        if ($actor->accountType === AccountType::Admin) {
+            $case = $this->store->findCaseById($upload->caseId, false);
+            if (! $case instanceof VerificationCaseRecord || $case->applicantType !== ApplicantType::Doctor) {
+                throw new AuthorizationDenied;
+            }
+            $this->assertRepresentsDoctorCase($actor, $case);
+
+            return;
+        }
+
+        $this->assertOwnsCase($actor, $upload->caseId);
+    }
+
+    private function assertRepresentsDoctorCase(ActorContext $actor, VerificationCaseRecord $case): void
+    {
+        $doctor = $this->doctors->findById($case->applicantId, true);
+        if (! $doctor instanceof DoctorApplicantProjection || ! $doctor->createdByUserId->equals($actor->userId)) {
+            throw new AuthorizationDenied;
+        }
     }
 
     private function requireOwnDraftCase(ActorContext $actor, Identifier $caseId): VerificationCaseRecord

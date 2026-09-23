@@ -17,7 +17,7 @@
     },
     "source_type": {
       "type": "string",
-      "enum": ["self_onboarding"]
+            "enum": ["self_onboarding", "admin_created"]
     }
   },
   "x-clinic": {

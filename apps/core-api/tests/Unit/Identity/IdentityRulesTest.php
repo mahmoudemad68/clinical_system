@@ -122,6 +122,8 @@ describe('default-deny authorizer', function () {
         expect($authorizer->decide($actor, Capabilities::VERIFICATION_STATUS_READ_OWN)->allowed)->toBeTrue();
         expect($authorizer->decide($actor, Capabilities::VERIFICATION_REVIEW)->allowed)->toBeFalse()
             ->and($authorizer->decide($actor, Capabilities::VERIFICATION_REVIEW)->reasonCode)->toBe('insufficient_assurance');
+        expect($authorizer->decide($actor, Capabilities::DOCTORS_ADMIN_CREATE)->allowed)->toBeFalse()
+            ->and($authorizer->decide($actor, Capabilities::DOCTORS_ADMIN_CREATE)->reasonCode)->toBe('insufficient_assurance');
         expect($authorizer->decide($actor, Capabilities::PATIENTS_UNLINKED_CREATE)->allowed)->toBeFalse()
             ->and($authorizer->decide($actor, Capabilities::PATIENTS_UNLINKED_CREATE)->reasonCode)->toBe('capability_absent');
         expect(Capabilities::isKnown(Capabilities::PATIENTS_UNLINKED_RESOLVE))->toBeTrue();
@@ -198,6 +200,8 @@ describe('default-deny authorizer', function () {
             ->and($authorizer->decide($actor, Capabilities::ACCESS_GRANT_ISSUE)->reasonCode)->toBe('password_change_required');
         expect($authorizer->decide($actor, Capabilities::VERIFICATION_REVIEW)->allowed)->toBeFalse()
             ->and($authorizer->decide($actor, Capabilities::VERIFICATION_REVIEW)->reasonCode)->toBe('password_change_required');
+        expect($authorizer->decide($actor, Capabilities::DOCTORS_ADMIN_CREATE)->allowed)->toBeFalse()
+            ->and($authorizer->decide($actor, Capabilities::DOCTORS_ADMIN_CREATE)->reasonCode)->toBe('password_change_required');
     });
 
     it('allows privileged verification review only for admin AAL2', function () {
@@ -229,5 +233,7 @@ describe('default-deny authorizer', function () {
 
         expect($authorizer->decide($admin, Capabilities::VERIFICATION_REVIEW)->allowed)->toBeTrue();
         expect($authorizer->decide($weak, Capabilities::VERIFICATION_REVIEW)->reasonCode)->toBe('insufficient_assurance');
+        expect($authorizer->decide($admin, Capabilities::DOCTORS_ADMIN_CREATE)->allowed)->toBeTrue();
+        expect($authorizer->decide($weak, Capabilities::DOCTORS_ADMIN_CREATE)->reasonCode)->toBe('insufficient_assurance');
     });
 });

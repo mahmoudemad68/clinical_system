@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Platform;
 
 use Modules\Auth\Services\RegisterAccountService;
+use Modules\Doctors\Services\CreateAdminDoctorApplicant;
 use Modules\Doctors\Services\RegisterDoctor;
 use Modules\Identity\Services\DisableIdentityService;
 use Modules\Identity\Services\EraseSubjectService;
@@ -70,6 +71,10 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             RegisterDoctor::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            CreateAdminDoctorApplicant::class,
             ApprovedCoordinators::classes(),
         );
         $this->assertContains(
@@ -345,6 +350,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $routes,
         );
         $this->assertStringContainsString('admin/verification-cases', $routes);
+        $this->assertStringContainsString('admin/doctor-applicants', $routes);
         $this->assertMatchesRegularExpression(
             '/AdminVerificationController::class, [\'"]index[\'"]/',
             $routes,

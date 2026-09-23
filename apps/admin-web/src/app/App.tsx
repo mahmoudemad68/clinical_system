@@ -10,6 +10,7 @@ import { AppTheme } from '@/app/AppTheme';
 import { ADMIN_ROUTE_PATHS } from '@/app/routes';
 import { LoginPanel } from '@/features/auth/LoginPanel';
 import { UnauthorizedPanel } from '@/features/auth/UnauthorizedPanel';
+import { CreateDoctorPage } from '@/features/doctor-applicants/CreateDoctorPage';
 import { VerificationCasePage } from '@/features/verification/VerificationCasePage';
 import { VerificationQueuePage } from '@/features/verification/VerificationQueuePage';
 import { SessionProvider } from '@/session/SessionProvider';
@@ -111,6 +112,14 @@ function AppRoutes() {
           element={
             <VerificationGate>
               <VerificationCasePage />
+            </VerificationGate>
+          }
+        />
+        <Route
+          path={ADMIN_ROUTE_PATHS.createDoctor}
+          element={
+            <VerificationGate>
+              <CreateDoctorPage />
             </VerificationGate>
           }
         />

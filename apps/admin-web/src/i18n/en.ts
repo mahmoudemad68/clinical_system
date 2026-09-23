@@ -42,6 +42,7 @@ export const en = {
   },
   shell: {
     verification: 'Verification review',
+    createDoctor: 'Create doctor applicant',
     workspace: 'Verification workspace',
   },
   queue: {
@@ -73,6 +74,7 @@ export const en = {
     verificationStatus: 'Organization verification status',
     specialty: 'Specialty',
     openCase: 'Open case',
+    createDoctor: 'Create doctor applicant',
     cursorRecovered: 'The previous page token was no longer valid. Showing the first page.',
     disappeared: 'This case is no longer in the pending queue. Another reviewer may have claimed or decided it.',
     catalogueNote:
@@ -180,5 +182,28 @@ export const en = {
   notFound: {
     title: 'Page not found',
     body: 'That path is not part of the verification workspace.',
+  },
+  createDoctor: {
+    title: 'Create doctor applicant',
+    intro:
+      'Creates a doctor applicant for the existing verification workflow. This is not an approval, a public listing, or a clinical capability grant.',
+    displayName: 'Professional display name',
+    phone: 'Mobile number',
+    nationalId: 'National ID',
+    syndicate: 'Syndicate number (optional)',
+    specialty: 'Specialty',
+    evidenceSource: 'Evidence source',
+    inPersonOriginals: 'In-person originals',
+    certifiedCopy: 'Certified copy',
+    password: 'Initial password',
+    submitCreate: 'Create applicant',
+    draftReady: 'A draft verification case is ready. Upload the required professional identity document, then submit for review.',
+    chooseFile: 'Choose evidence file',
+    uploadEvidence: 'Upload evidence',
+    evidenceReady: 'Evidence is ready for review.',
+    submitReview: 'Submit for review',
+    submitted: 'The case is in the verification queue. A different privileged reviewer must claim and decide it.',
+    backToQueue: 'Back to queue',
+    capabilityNote: 'Pending applicants receive no clinical or business capability.',
   },
 } as const;

@@ -32,6 +32,7 @@ final class ApprovedCoordinators
             'Modules\\Patients\\Services\\CreateUnlinkedPatientProfile',
             'Modules\\Patients\\Services\\ResolvePatientHandle',
             'Modules\\Doctors\\Services\\RegisterDoctor',
+            'Modules\\Doctors\\Services\\CreateAdminDoctorApplicant',
             'Modules\\Pharmacies\\Services\\RegisterPharmacyOrganization',
             'Modules\\Pharmacies\\Services\\CreatePharmacyBranch',
             'Modules\\Pharmacies\\Services\\UpdatePharmacyBranch',

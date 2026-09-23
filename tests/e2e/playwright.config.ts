@@ -22,7 +22,7 @@ export default defineConfig({
     },
     {
       name: 'admin-verification',
-      testMatch: 'admin-verification.spec.ts',
+      testMatch: /admin-(verification|created-doctor)\.spec\.ts/,
       timeout: 120_000,
       use: {
         baseURL: adminWebBaseURL,

@@ -21,7 +21,7 @@ function walk(dir: string): string[] {
 
 describe('prohibited clinical navigation', () => {
   it('registers only verification workspace routes', () => {
-    expect(ADMIN_ROUTE_LIST).toEqual(['/', '/verification', '/verification/:caseId']);
+    expect(ADMIN_ROUTE_LIST).toEqual(['/', '/verification', '/verification/:caseId', '/doctor-applicants/new']);
     for (const path of PROHIBITED_ADMIN_PATHS) {
       expect(ADMIN_ROUTE_LIST).not.toContain(path);
     }

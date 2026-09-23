@@ -1421,6 +1421,101 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/doctor-applicants/specialties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Active specialty catalogue for Admin-created doctor applicants
+         * @description Privileged Admin projection of the same Doctors-owned active specialty
+         *     catalogue used by doctor onboarding. Labels only. Inactive rows,
+         *     encryption metadata, and internal database columns are never returned.
+         *     This is not a public directory and does not grant clinical capability.
+         */
+        get: operations["listAdminDoctorApplicantSpecialties"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/doctor-applicants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a doctor applicant for canonical verification
+         * @description Privileged Admin session creates a doctor Identity account and a draft
+         *     hidden doctor profile, then opens the existing doctor verification
+         *     case. This is not a verification bypass. The server owns verification
+         *     status, public status, capabilities, cryptographic fields, and
+         *     reviewer state. National ID and syndicate number are write-only and
+         *     never echoed. Duplicate protected identity returns generic
+         *     `manual_review_required`. The creating Admin cannot later review the
+         *     same applicant.
+         */
+        post: operations["createAdminDoctorApplicant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/doctor-applicants/{doctor_id}/verification-uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a represented doctor verification upload intent
+         * @description The Admin who created the applicant opens a bounded upload grant on
+         *     the applicant's draft verification case. Same quarantine, scan, and
+         *     AVAILABLE-only evidence rules as self-registered doctors. Object keys
+         *     and locators are never returned on later status reads.
+         */
+        post: operations["createAdminDoctorApplicantUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/doctor-applicants/{doctor_id}/verification-submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit a represented doctor verification case
+         * @description The Admin who created the applicant submits the existing doctor
+         *     verification case after required AVAILABLE evidence is present.
+         *     Optimistic version semantics match self-registered doctor submit.
+         */
+        post: operations["submitAdminDoctorApplicantVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/verification-review-files/{case_id}/{document_id}": {
         parameters: {
             query?: never;
@@ -1892,6 +1987,34 @@ export interface components {
             status: "profile_ready" | "manual_review_required";
             doctor_id?: components["schemas"]["Uuid"];
             version?: number;
+        };
+        AdminDoctorApplicantRequest: {
+            /** @description Write-only. Canonicalized server-side. Never echoed. */
+            phone: string;
+            /** @description Write-only. Canonicalized server-side. Never echoed. */
+            national_id: string;
+            professional_display_name: string;
+            specialty_id: components["schemas"]["Uuid"];
+            /** @description Optional write-only professional identifier. Never echoed. */
+            syndicate_number?: string | null;
+            /** @description Write-only initial password for the created doctor account. Never echoed. */
+            password: string;
+            /**
+             * @description How the Admin obtained the verification evidence. Provenance only.
+             *     Not a bootstrap flag and not a certification claim.
+             * @enum {string}
+             */
+            evidence_source: "in_person_originals" | "certified_copy";
+        };
+        AdminDoctorApplicantResult: {
+            /** @enum {string} */
+            status: "created" | "already_exists" | "manual_review_required";
+            doctor_id?: components["schemas"]["Uuid"];
+            profile_version?: number;
+            case_id?: components["schemas"]["Uuid"];
+            case_version?: number;
+            /** @enum {string} */
+            case_status?: "draft" | "pending_review";
         };
         DoctorProfile: {
             doctor_id: components["schemas"]["Uuid"];
@@ -5208,6 +5331,188 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    listAdminDoctorApplicantSpecialties: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active specialties in server order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["DoctorSpecialtyCatalogue"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createAdminDoctorApplicant: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminDoctorApplicantRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay or collision pending-review outcome. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["AdminDoctorApplicantResult"];
+                    };
+                };
+            };
+            /** @description Applicant and draft verification case created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["AdminDoctorApplicantResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    createAdminDoctorApplicantUpload: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                doctor_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationUploadCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Upload intent created with a bounded upload grant. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["VerificationUploadCreateResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    submitAdminDoctorApplicantVerification: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Client-supplied correlation identifier. When absent the server assigns
+                 *     one. Always echoed in the response body and the `X-Request-Id` header.
+                 */
+                "X-Request-Id"?: components["parameters"]["RequestId"];
+                /** @description Language negotiation. Supported tags are `ar` and `en`. */
+                "Accept-Language"?: components["parameters"]["AcceptLanguage"];
+                /**
+                 * @description Cryptographically random key generated per user intent and reused only
+                 *     for retries of the identical request. Scoped server-side to the
+                 *     authenticated actor/device, the operation, and the tenant where
+                 *     applicable.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                doctor_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DoctorVerificationSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Compact submitted case pointer. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"] & {
+                        data?: components["schemas"]["DoctorVerificationSubmissionResult"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["UnprocessableEntity"];
         };
     };

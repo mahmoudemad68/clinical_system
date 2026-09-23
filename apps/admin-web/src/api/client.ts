@@ -138,3 +138,24 @@ export function isAuthFailure(failure: ApiFailure): boolean {
 export function isAuthError(error: unknown): boolean {
   return error instanceof ApiError && isAuthFailure(error.failure);
 }
+
+/**
+ * PUT bytes to a one-time object-storage grant. Must not use the cookie/CSRF
+ * session client: the grant URL is not an Admin API and must not receive
+ * credentials, cookies, or CSRF headers.
+ */
+export async function putBoundedUploadGrant(
+  url: string,
+  method: 'PUT',
+  headers: Record<string, string>,
+  body: Blob,
+): Promise<Response> {
+  return globalThis.fetch(url, {
+    method,
+    headers,
+    body,
+    credentials: 'omit',
+    cache: 'no-store',
+    referrerPolicy: 'no-referrer',
+  });
+}
