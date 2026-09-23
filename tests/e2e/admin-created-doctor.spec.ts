@@ -163,7 +163,12 @@ test.describe('admin-created doctor', () => {
     await expect(page.locator('body')).not.toContainText(fixture.applicant.national_id);
 
     const pdf = Buffer.from(
-      '%PDF-1.4\n1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n%%EOF\n',
+      '%PDF-1.4\n'
+        + '1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n'
+        + '2 0 obj<< /Type /Pages /Count 1 /Kids [3 0 R] >>endobj\n'
+        + '3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 3 3] >>endobj\n'
+        + 'trailer<< /Root 1 0 R >>\n'
+        + '%%EOF\n',
       'utf8',
     );
     await page.locator('input[type="file"]').setInputFiles({
