@@ -67,7 +67,10 @@ No public-directory implementation.
 - **Baseline (GitHub `main`):** `3401017e08f2ec60cedb44c5b638d465426ad1a2`
 - **CH16-SPECIALTY-REFERENCE-001 remediation:** withdraws the unapproved
   production specialty seed. Do not treat pre-remediation `301d39a` as current.
-  GitHub CI on the remediation HEAD is recorded after push.
+- **Remediation code commit:** `48361005d006c59e6f5cd4b5e469dfd441afd217`
+- **Follow-up:** BinaryColumn `hex2bin` fail-closed when raw HMAC/ciphertext
+  starts with `\x` (CI Core API 500 on `PharmacySyntheticE2ETest`; not a
+  specialty-catalogue change).
 - **Prior product CI (withdrawn specialty seed, not current HEAD):**
   `301d39a658d782152d8a309520878cb81f3e12bb`
   (`pull-request` run **35808624502** SUCCESS)
@@ -217,6 +220,8 @@ FK and active-specialty checks are unchanged.
 - `packages/typescript/api_client/src/generated/schema.d.ts`
 - `docs/architecture/module-catalog.md`
 - `docs/evidence/phase-02/chunk-16-admin-created-doctor.md`
+- `apps/core-api/Modules/Platform/app/Services/Persistence/BinaryColumn.php`
+- `apps/core-api/tests/Unit/Platform/BinaryColumnTest.php`
 
 ## Security / privacy behavior proven
 
@@ -258,25 +263,24 @@ php artisan test --compact \
   tests/Feature/Admin/AdminCreatedDoctorHttpTest.php \
   tests/Unit/Platform/ArchitectureBoundaryTest.php \
   tests/Feature/Verification/DoctorVerificationSyntheticE2ETest.php
-# 55 passed, 5956 assertions
+# 57 passed, 6016 assertions
 ```
 
 Relevant Core subset (Admin, Doctors, Verification, Clinics, Identity,
-Pharmacies, architecture, Identity unit):
+Pharmacies, architecture, Identity/Doctors/Verification unit):
 
 ```text
 php artisan test --compact tests/Feature/Admin tests/Feature/Doctors \
   tests/Feature/Verification tests/Feature/Clinics tests/Feature/Identity \
   tests/Feature/Pharmacies tests/Unit/Platform/ArchitectureBoundaryTest.php \
-  tests/Unit/Identity
-# 367 passed, 10679 assertions
+  tests/Unit/Identity tests/Unit/Doctors tests/Unit/Verification
+# 384 passed, 10816 assertions
 ```
 
-Admin vitest (CI `npm run admin:test`): 10 files, **48 passed**.
+Admin vitest (CI `npm run admin:test`): 10 files, **49 passed**.
 
-Contracts: OpenAPI lint + event schemas valid in CI Contracts job (25 event
-schemas historically; generated TypeScript client committed and stale-check
-passed).
+Contracts: `npm run contracts:lint` valid; `npm run contracts:events` 25 schemas.
+Deptrac: 0 violations / 0 uncovered.
 
 `AdminCreatedDoctorHttpTest` covers: happy path + pending capability denial,
 duplicate protected identity, unauthorized/low-assurance, BOLA + self-review,
@@ -292,7 +296,7 @@ not in parallel with Pest RefreshDatabase):
 ```text
 npx --prefix tests/e2e playwright test --config tests/e2e/playwright.config.ts \
   --project=admin-verification
-# 2 passed (14.0s local; 18.5s in CI)
+# 2 passed (15.4s local)
 ```
 
 Specs:
@@ -313,6 +317,19 @@ Packaged Electron: no product work in this chunk. Path filter still ran the
 matrix because OpenAPI/TypeScript client changed. CI packaged Doctor +
 Pharmacy WebdriverIO passed on ubuntu-latest, macos-latest, and windows-latest.
 Forge Doctor practice E2E and Forge Pharmacy practice E2E jobs succeeded.
+
+## GitHub CI — run 35811818017 on `4836100` (Core API failure)
+
+https://github.com/mahmoudemad68/clinical_system/actions/runs/35811818017
+
+CH16-SPECIALTY-REFERENCE-001 HEAD. Contracts, Security scans, Admin web
+(including Playwright), Doctor/Pharmacy packaged and Forge E2E succeeded.
+Core API failed **one** existing pharmacy regression:
+`PharmacySyntheticE2ETest` invitation accept returned 500 because
+`BinaryColumn::asString` called `hex2bin()` on raw HMAC bytes that happened
+to start with `\x`. PHP 8 warns instead of returning false. That is not a
+specialty-catalogue defect. Follow-up commit decodes only even-length
+`ctype_xdigit` payloads.
 
 ## GitHub CI — historical run 35808624502 (SUCCESS) on withdrawn `301d39a`
 
@@ -401,6 +418,7 @@ apps/core-api/Modules/Doctors/app/Support/DoctorProfileRowFactory.php
 apps/core-api/Modules/Identity/app/Providers/IdentityServiceProvider.php
 apps/core-api/Modules/Identity/app/Services/ProvisionDoctorApplicantAccount.php
 apps/core-api/Modules/Platform/app/Services/Coordinators/ApprovedCoordinators.php
+apps/core-api/Modules/Platform/app/Services/Persistence/BinaryColumn.php
 apps/core-api/Modules/Verification/app/Services/VerificationDocumentService.php
 apps/core-api/Modules/Verification/app/Services/VerificationService.php
 apps/core-api/Modules/Verification/app/Services/VerificationUploadService.php
@@ -418,6 +436,7 @@ apps/core-api/tests/Support/bin/auth-race-worker.php
 apps/core-api/tests/Support/doctorHttpHelpers.php
 apps/core-api/tests/Unit/Identity/IdentityRulesTest.php
 apps/core-api/tests/Unit/Platform/ArchitectureBoundaryTest.php
+apps/core-api/tests/Unit/Platform/BinaryColumnTest.php
 docs/architecture/module-catalog.md
 docs/evidence/phase-02/chunk-16-admin-created-doctor.md
 packages/contracts/events/doctor/profile_created.v1.schema.json
