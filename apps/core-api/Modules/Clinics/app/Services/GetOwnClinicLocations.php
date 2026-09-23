@@ -10,9 +10,6 @@ use Modules\Clinics\Services\Persistence\PostgresClinicStore;
 use Modules\Clinics\Support\ClinicLocationPrivateProjection;
 use Modules\Clinics\Support\ClinicLocationProjector;
 use Modules\Clinics\Support\ClinicOwnerGuard;
-use Modules\Doctors\Enums\DoctorVerificationStatus;
-use Modules\Doctors\Services\PracticeOwnerEligibilityService;
-use Modules\Doctors\Support\PracticeOwnerEligibility;
 use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\CursorSigner;
@@ -30,7 +27,6 @@ final class GetOwnClinicLocations
         private readonly PostgresClinicStore $store,
         private readonly ClinicLocationProjector $projector,
         private readonly ClinicOwnerGuard $guard,
-        private readonly PracticeOwnerEligibilityService $owners,
         private readonly CursorSigner $cursors,
     ) {}
 
@@ -56,10 +52,7 @@ final class GetOwnClinicLocations
         $after = $this->after($request, $scope);
 
         if ($actor->accountType === AccountType::Doctor) {
-            $this->guard->requireApprovedPrivilegedDoctor($actor, Capabilities::CLINICS_LOCATION_READ_OWN);
-            $owner = $this->owners->findByUserId($actor->userId, false);
-            assert($owner instanceof PracticeOwnerEligibility
-                && $owner->verificationStatus === DoctorVerificationStatus::Approved);
+            $owner = $this->guard->requireApprovedPrivilegedDoctor($actor, Capabilities::CLINICS_LOCATION_READ_OWN);
             $rows = $this->store->listLocationsForDoctor($owner->doctorId, $limit + 1, $after);
             $hasMore = count($rows) > $limit;
             $page = $hasMore ? array_slice($rows, 0, $limit) : $rows;

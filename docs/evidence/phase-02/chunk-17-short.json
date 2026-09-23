@@ -1,9 +1,9 @@
 {
   "gate": "P02-AUDIT-002",
   "mode": "short",
-  "candidate_sha": "5806684f5778691c5bbafee3cc2f520fb4701aa7",
-  "recorded_at": "2026-09-23T13:17:06Z",
-  "image": "clinic-core-api:chunk17",
+  "candidate_sha": "8b7fc5d665e44ad890e5a67c1ca164fd76fbe91c",
+  "recorded_at": "2026-09-23T13:43:11Z",
+  "image": "clinic-core-api:chunk17-after",
   "runtime": {
     "server": "octane:frankenphp",
     "workers": 16,
@@ -14,77 +14,81 @@
     "duration": "90s"
   },
   "k6_exit_code": 0,
-  "http_reqs": 8838,
-  "achieved_rps": 92.77877526142996,
-  "dropped_iterations": 13663,
-  "http_req_failed_rate": 0.23998642226748132,
-  "unexpected_request_failure_rate": 0.20864448970355284,
+  "http_reqs": 11046,
+  "achieved_rps": 113.15016490398091,
+  "dropped_iterations": 11455,
+  "http_req_failed_rate": 0.1022089444142676,
+  "unexpected_request_failure_rate": 0,
+  "http_2xx": 9917,
+  "http_4xx": 1129,
+  "http_5xx": 0,
+  "expected_conflict_409": 1129,
   "latency_ms": {
-    "p50": 7393.091976,
-    "p95": 11571.900170899997,
-    "p99": null,
-    "max": 14840.316576
+    "p50": 7899.7128585,
+    "p95": 13222.666822,
+    "p99": 13866.9957079,
+    "max": 15974.02302
   },
   "operations": {
     "op_patient_profile_read": {
       "count": null,
-      "p50": 7312.842321,
-      "p95": 11207.7839888,
-      "p99": null
+      "p50": 7663.966292,
+      "p95": 13140.44256075,
+      "p99": 13640.736261299999
     },
     "op_doctor_profile_read": {
       "count": null,
-      "p50": 7335.072007000001,
-      "p95": 11579.8448785,
-      "p99": null
+      "p50": 7791.827569,
+      "p95": 13180.460005500001,
+      "p99": 13660.2153875
     },
     "op_clinic_locations_read": {
       "count": null,
-      "p50": 7328.692102499999,
-      "p95": 11305.619706099997,
-      "p99": null
+      "p50": 7766.2432465,
+      "p95": 13139.7579339,
+      "p99": 13664.44914267
     },
     "op_pharmacy_org_read": {
       "count": null,
-      "p50": 7298.213578,
-      "p95": 11148.993664099999,
-      "p99": null
+      "p50": 7793.099624,
+      "p95": 13261.8461014,
+      "p99": 13672.42612746
     },
     "op_pharmacy_branches_read": {
       "count": null,
-      "p50": 7192.182885,
-      "p95": 11157.968922799999,
-      "p99": null
+      "p50": 7806.831885,
+      "p95": 13127.097228,
+      "p99": 13665.1204072
     },
     "op_verification_read": {
       "count": null,
-      "p50": 8923.937884,
-      "p95": 13484.175853,
-      "p99": null
+      "p50": 9260.111438,
+      "p95": 14652.6440871,
+      "p99": 15427.829556840003
     },
     "op_patient_demographic_update": {
       "count": null,
-      "p50": 7415.407385,
-      "p95": 11188.851420699999,
-      "p99": null
+      "p50": 7549.203138,
+      "p95": 13208.652121149998,
+      "p99": 13673.60179873
     },
     "op_doctor_onboarding_status": {
       "count": null,
-      "p50": 7474.836343000001,
-      "p95": 11185.0933346,
-      "p99": null
+      "p50": 8297.707453,
+      "p95": 13193.336384,
+      "p99": 13672.741333520002
     },
     "op_clinic_location_update": {
       "count": null,
-      "p50": 7360.2454915,
-      "p95": 11202.997282149998,
-      "p99": null
+      "p50": 7811.930469,
+      "p95": 13046.841112400001,
+      "p99": 13481.619329600004
     },
     "op_membership_operations": {
       "count": null,
-      "p50": 7288.423422,
-      "p95": 11244.3497968,
-      "p99": null
+      "p50": 7629.491773,
+      "p95": 13183.8872324,
+      "p99": 13689.94758516
     }
   }
 }

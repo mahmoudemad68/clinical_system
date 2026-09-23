@@ -323,4 +323,27 @@ describe('clinic location foundation', function () {
         expect(fn () => DB::table('clinic_locations')->update(['version' => 0]))
             ->toThrow(QueryException::class);
     });
+
+    it('lists own locations with a single doctor_profiles lookup', function () {
+        $session = clinicApprovedDoctor('list-sql');
+        $this->postJson(
+            '/api/v1/clinic-locations',
+            clinicLocationBody(),
+            doctorsAuth($session['token']) + clinicIdem('cl-list-sql'),
+        )->assertCreated();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->getJson('/api/v1/clinic-locations', doctorsAuth($session['token']))->assertOk();
+        $sql = array_map(static fn (array $query): string => (string) $query['query'], DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $doctorLookups = array_values(array_filter(
+            $sql,
+            static fn (string $query): bool => str_contains($query, 'from "doctor_profiles"')
+                || str_contains($query, 'from doctor_profiles'),
+        ));
+
+        expect($doctorLookups)->toHaveCount(1);
+    });
 });
