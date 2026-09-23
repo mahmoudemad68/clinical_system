@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -18,6 +20,17 @@ function bearerIdentitySessionCookieNames($response): array
     return collect($response->headers->getCookies())
         ->map(static fn ($cookie): string => $cookie->getName())
         ->filter(static fn (string $name): bool => $name === $session || str_starts_with($name, 'laravel_session'))
+        ->values()
+        ->all();
+}
+
+/**
+ * @return list<string>
+ */
+function bearerIdentityCookieHeaderNames($response): array
+{
+    return collect($response->headers->getCookies())
+        ->map(static fn ($cookie): string => $cookie->getName())
         ->values()
         ->all();
 }
@@ -108,12 +121,94 @@ describe('bearer identity session HTTP', function () {
     it('still issues the csrf cookie when no bearer token is present', function () {
         $response = $this->getJson('/api/v1/auth/csrf');
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertJsonPath('data.csrf', true);
 
-        $names = collect($response->headers->getCookies())
-            ->map(static fn ($cookie): string => $cookie->getName())
-            ->all();
+        expect(bearerIdentityCookieHeaderNames($response))->toContain('XSRF-TOKEN');
+    });
 
-        expect($names)->toContain('XSRF-TOKEN');
+    it('rejects a valid bearer on csrf with MALFORMED_REQUEST and no session cookie', function () {
+        $session = patientsActiveSession('csrf-valid-bearer');
+
+        $response = $this->getJson('/api/v1/auth/csrf', patientsAuth($session['token']));
+
+        $response->assertStatus(400)
+            ->assertJsonPath('errors.0.code', 'MALFORMED_REQUEST');
+
+        expect(bearerIdentitySessionCookieNames($response))->toBe([])
+            ->and(bearerIdentityCookieHeaderNames($response))->not->toContain('XSRF-TOKEN');
+    });
+
+    it('rejects an invalid bearer on csrf with MALFORMED_REQUEST rather than 500', function () {
+        $response = $this->getJson('/api/v1/auth/csrf', patientsAuth('not-a-device-token'));
+
+        $response->assertStatus(400)
+            ->assertJsonPath('errors.0.code', 'MALFORMED_REQUEST');
+
+        expect(bearerIdentitySessionCookieNames($response))->toBe([])
+            ->and(bearerIdentityCookieHeaderNames($response))->not->toContain('XSRF-TOKEN');
+    });
+
+    it('does not fall back to a browser cookie identity when an invalid bearer is also supplied', function () {
+        $admin = adminVerificationInsertAdmin('csrf-xor-bearer');
+        adminVerificationLogin($admin);
+        adminVerificationPinCookie();
+
+        $csrf = $this->getJson('/api/v1/auth/csrf', patientsAuth('not-a-device-token'));
+        $csrf->assertStatus(400)
+            ->assertJsonPath('errors.0.code', 'MALFORMED_REQUEST');
+        expect(bearerIdentityCookieHeaderNames($csrf))->not->toContain('XSRF-TOKEN');
+
+        $me = $this->getJson('/api/v1/me', patientsAuth('not-a-device-token'));
+        $me->assertUnauthorized()
+            ->assertJsonPath('errors.0.code', 'UNAUTHENTICATED')
+            ->assertJsonMissingPath('data.account_type');
+    });
+
+    it('still rejects an unsafe cookie request without a valid csrf token', function () {
+        $admin = adminVerificationInsertAdmin('csrf-mismatch-logout');
+        adminVerificationLogin($admin);
+        Auth::guard('web')->forgetUser();
+
+        $this->withCredentials()
+            ->withCookie((string) config('session.cookie'), (string) session()->getId())
+            ->postJson('/api/v1/auth/logout', [])
+            ->assertForbidden()
+            ->assertJsonPath('errors.0.code', 'CSRF_MISMATCH');
+    });
+
+    it('does not write a redis session key for an ordinary bearer profile request', function () {
+        try {
+            Redis::connection()->ping();
+        } catch (Throwable) {
+            test()->markTestSkipped('Redis is not reachable.');
+        }
+
+        $session = patientsActiveSession('csrf-redis-bearer');
+        $this->postJson(
+            '/api/v1/patients/onboarding',
+            patientsDemographics($session['payload']['national_id'], 'Redis Patient'),
+            patientsAuth($session['token']) + patientsIdem('pon-redis-bearer'),
+        )->assertCreated();
+
+        $previousDriver = (string) config('session.driver');
+        config(['session.driver' => 'redis']);
+        $this->app->forgetInstance('session');
+        $this->app->forgetInstance('session.store');
+
+        try {
+            $before = collect(Redis::connection()->keys('*'))->sort()->values()->all();
+
+            $me = $this->getJson('/api/v1/patients/me/profile', patientsAuth($session['token']));
+            $me->assertOk();
+            expect(bearerIdentitySessionCookieNames($me))->toBe([]);
+
+            $after = collect(Redis::connection()->keys('*'))->sort()->values()->all();
+            expect($after)->toBe($before);
+        } finally {
+            config(['session.driver' => $previousDriver]);
+            $this->app->forgetInstance('session');
+            $this->app->forgetInstance('session.store');
+        }
     });
 });

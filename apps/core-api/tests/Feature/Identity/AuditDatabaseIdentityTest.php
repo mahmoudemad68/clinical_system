@@ -11,6 +11,7 @@ use Modules\Audit\Services\Persistence\PostgresAuditStore;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
+use Modules\Platform\Services\Persistence\AuditWriterConnectionLimit;
 use Modules\Platform\Services\Persistence\WorkerDatabaseIdentity;
 use Modules\Platform\Support\Identifier;
 use Tests\TestCase;
@@ -164,14 +165,9 @@ it('does not open pgsql_audit until an audit event is appended', function () {
         ->and(DB::connection('pgsql_audit')->table('audit_events')->where('id', $eventId->value)->exists())->toBeTrue();
 });
 
-it('records clinic_audit_writer connection limit of 40 when the role is alterable', function () {
+it('records clinic_audit_writer connection limit of 40 when the role exists', function () {
     skipUnlessAuditWriterConnection();
 
-    $row = DB::selectOne("select rolconnlimit as n from pg_roles where rolname = 'clinic_audit_writer'");
-    $limit = is_object($row) ? (int) $row->n : 0;
-    if ($limit < 40) {
-        test()->markTestSkipped('clinic_audit_writer CONNECTION LIMIT was not alterable on this cluster');
-    }
-
-    expect($limit)->toBeGreaterThanOrEqual(40);
+    expect(app(AuditWriterConnectionLimit::class)->currentLimit())
+        ->toBeGreaterThanOrEqual(40);
 });

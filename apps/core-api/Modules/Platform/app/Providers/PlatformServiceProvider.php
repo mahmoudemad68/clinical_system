@@ -24,6 +24,7 @@ use Laravel\Pennant\Feature;
 use Modules\Platform\Console\CacheWarmCommand;
 use Modules\Platform\Console\OutboxWorkCommand;
 use Modules\Platform\Console\PlatformPruneCommand;
+use Modules\Platform\Console\ProvisionPostgresRolesCommand;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\CorrelationScope;
 use Modules\Platform\Contracts\CursorSigner;
@@ -398,7 +399,12 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->observeDatabaseQueries();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([OutboxWorkCommand::class, PlatformPruneCommand::class, CacheWarmCommand::class]);
+            $this->commands([
+                OutboxWorkCommand::class,
+                PlatformPruneCommand::class,
+                CacheWarmCommand::class,
+                ProvisionPostgresRolesCommand::class,
+            ]);
         }
     }
 
