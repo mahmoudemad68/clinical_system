@@ -156,7 +156,9 @@ final class AuthController
     {
         $handler->logoutCurrent($this->actor($request));
         Auth::guard('web')->logout();
-        $request->session()?->invalidate();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+        }
 
         return Envelope::ok(['revoked' => true], $this->requestId($request));
     }

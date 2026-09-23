@@ -35,7 +35,7 @@ final class AuthenticateActor
 
         if (is_string($bearer) && $bearer !== '') {
             $actor = $this->resolver->fromAccessToken($bearer);
-            $this->attach($request, $actor);
+            $this->attachContext($request, $actor);
 
             return $next($request);
         }
@@ -72,13 +72,23 @@ final class AuthenticateActor
 
     private function attach(Request $request, ActorContext $actor): void
     {
-        $request->attributes->set(ActorContext::class, $actor);
-        $request->attributes->set('actor_id', $actor->userId);
+        $this->attachContext($request, $actor);
 
         $user = User::query()->find($actor->userId->value);
         if ($user instanceof User) {
             Auth::guard('web')->setUser($user);
         }
+    }
+
+    private function attachContext(Request $request, ActorContext $actor): void
+    {
+        $request->attributes->set(ActorContext::class, $actor);
+        $request->attributes->set('actor_id', $actor->userId);
+
+        $user = new User;
+        $user->setRawAttributes(['id' => $actor->userId->value], true);
+        $user->exists = true;
+        Auth::guard('web')->setUser($user);
     }
 
     private function traceCookieMiss(Request $request, string $laravelSessionId, bool $webUser): void

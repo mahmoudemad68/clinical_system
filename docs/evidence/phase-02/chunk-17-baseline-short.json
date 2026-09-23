@@ -1,0 +1,95 @@
+{
+  "gate": "P02-AUDIT-002",
+  "mode": "short-baseline-pre-remediation",
+  "candidate_sha": "5806684f5778691c5bbafee3cc2f520fb4701aa7",
+  "recorded_at": "2026-09-23T13:17:06Z",
+  "image": "clinic-core-api:chunk17",
+  "image_digest": "sha256:58b593ba556b792f173c0e28403c904037dcef41e5f159ca543f83b21b42380a",
+  "runtime": {
+    "server": "octane:frankenphp",
+    "workers": 16,
+    "host_nproc": 4,
+    "approved_benchmark_cpus": 8,
+    "app_debug": false,
+    "log_level": "warning",
+    "requested_rps": 250,
+    "warmup": "30s",
+    "duration": "90s",
+    "max_vus": 800
+  },
+  "k6_exit_code": 0,
+  "http_reqs": 8838,
+  "achieved_rps": 92.77877526142996,
+  "dropped_iterations": 13663,
+  "http_req_failed_rate": 0.23998642226748132,
+  "unexpected_request_failure_rate": 0.20864448970355284,
+  "http_2xx": 6717,
+  "http_4xx": 277,
+  "http_5xx": 1844,
+  "expected_conflict_409": 277,
+  "latency_ms": {
+    "p50": 7393.091976,
+    "p95": 11571.900170899997,
+    "p99": null,
+    "max": 14840.316576
+  },
+  "operations": {
+    "op_patient_profile_read": {
+      "p50": 7312.842321,
+      "p95": 11207.7839888
+    },
+    "op_doctor_profile_read": {
+      "p50": 7335.072007000001,
+      "p95": 11579.8448785
+    },
+    "op_clinic_locations_read": {
+      "p50": 7328.692102499999,
+      "p95": 11305.619706099997
+    },
+    "op_pharmacy_org_read": {
+      "p50": 7298.213578,
+      "p95": 11148.993664099999
+    },
+    "op_pharmacy_branches_read": {
+      "p50": 7192.182885,
+      "p95": 11157.968922799999
+    },
+    "op_verification_read": {
+      "p50": 8923.937884,
+      "p95": 13484.175853
+    },
+    "op_patient_demographic_update": {
+      "p50": 7415.407385,
+      "p95": 11188.851420699999
+    },
+    "op_doctor_onboarding_status": {
+      "p50": 7474.836343000001,
+      "p95": 11185.0933346
+    },
+    "op_clinic_location_update": {
+      "p50": 7360.2454915,
+      "p95": 11202.997282149998
+    },
+    "op_membership_operations": {
+      "p50": 7288.423422,
+      "p95": 11244.3497968
+    }
+  },
+  "resources_note": "In-run docker stats were not sampled during this baseline (idle samples after the run are not representative). Core API saturation is evidenced by achieved 92.8 HTTP/s vs requested 250, p95 11.6s, 13663 dropped iterations, and 1844 HTTP 5xx. Hardware is 4 CPUs vs the approved 8-CPU machine; per-CPU class matches the canonical ~205 HTTP/s / 8 CPU finding.",
+  "unloaded_serial_ms": {
+    "patient_doctor_clinic_pharmacy_reads": "6-9",
+    "verification_status": "180-190",
+    "verification_queue": "500 ~178ms"
+  },
+  "redis_after_load": {
+    "keys": 11942,
+    "hits": 0,
+    "misses": 11942,
+    "note": "one unused Laravel session key per bearer request"
+  },
+  "postgres_after_load": {
+    "clinic_app_idle": 16,
+    "clinic_audit_writer_idle": 10,
+    "audit_role_connection_limit_then": 10
+  }
+}

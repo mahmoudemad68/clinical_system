@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Audit\Contracts\AppendAuditEvent;
 use Modules\Audit\Contracts\VerifyAuditChain;
 use Modules\Audit\Services\Persistence\AuditDatabaseIdentity;
+use Modules\Audit\Services\Persistence\PostgresAuditStore;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
@@ -128,4 +129,49 @@ it('appends audit events as clinic_audit_writer while the default worker identit
 
     $identity->restore();
     expect(app(VerifyAuditChain::class)->verify()['ok'])->toBeTrue();
+});
+
+it('does not open pgsql_audit until an audit event is appended', function () {
+    skipUnlessAuditWriterConnection();
+
+    DB::purge('pgsql_audit');
+    app()->forgetInstance(AuditDatabaseIdentity::class);
+
+    $store = new PostgresAuditStore(
+        app(AuditDatabaseIdentity::class),
+        app(IdentityGenerator::class),
+    );
+
+    expect(array_keys(DB::getConnections()))->not->toContain('pgsql_audit');
+
+    $objectId = app(IdentityGenerator::class)->next();
+    $eventId = app(TransactionRunner::class)->run(
+        function (TransactionContext $tx) use ($store, $objectId): Identifier {
+            return $store->append(
+                $tx,
+                'test.audit.lazy_writer_connect',
+                'user',
+                $objectId,
+                ['reason_code' => 'lazy_writer_connect'],
+                $objectId,
+                'system',
+            );
+        },
+    );
+
+    expect(array_keys(DB::getConnections()))->toContain('pgsql_audit')
+        ->and(auditConnectionCurrentUser())->toBe('clinic_audit_writer')
+        ->and(DB::connection('pgsql_audit')->table('audit_events')->where('id', $eventId->value)->exists())->toBeTrue();
+});
+
+it('records clinic_audit_writer connection limit of 40 when the role is alterable', function () {
+    skipUnlessAuditWriterConnection();
+
+    $row = DB::selectOne("select rolconnlimit as n from pg_roles where rolname = 'clinic_audit_writer'");
+    $limit = is_object($row) ? (int) $row->n : 0;
+    if ($limit < 40) {
+        test()->markTestSkipped('clinic_audit_writer CONNECTION LIMIT was not alterable on this cluster');
+    }
+
+    expect($limit)->toBeGreaterThanOrEqual(40);
 });

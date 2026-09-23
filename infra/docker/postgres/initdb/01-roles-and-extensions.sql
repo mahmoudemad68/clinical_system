@@ -84,10 +84,13 @@ REVOKE CREATE ON SCHEMA public FROM clinic_app, clinic_worker, clinic_reporter, 
 -- Bound each role so a runaway worker pool cannot exhaust connections and take
 -- the serving path down with it. Production uses PgBouncer in front of these
 -- (plan.md section 138); the per-role cap is a second line of defence.
+-- clinic_audit_writer matches clinic_app: Octane workers may persist the audit
+-- connection when DisconnectFromDatabases is disabled, so the cap must be at
+-- least the serving worker count (canonical FrankenPHP uses 16 workers).
 ALTER ROLE clinic_app           CONNECTION LIMIT 40;
 ALTER ROLE clinic_worker        CONNECTION LIMIT 30;
 ALTER ROLE clinic_reporter      CONNECTION LIMIT 10;
-ALTER ROLE clinic_audit_writer  CONNECTION LIMIT 10;
+ALTER ROLE clinic_audit_writer  CONNECTION LIMIT 40;
 ALTER ROLE clinic_backup        CONNECTION LIMIT 5;
 
 -- The migrator cap exists to stop a runaway migration job from exhausting the

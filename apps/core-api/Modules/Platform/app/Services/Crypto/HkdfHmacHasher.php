@@ -12,6 +12,9 @@ use RuntimeException;
  */
 final class HkdfHmacHasher implements HmacHasher
 {
+    /** @var array<string, string> */
+    private array $purposeKeys = [];
+
     /**
      * @param  array<int, string>  $keys
      */
@@ -71,15 +74,18 @@ final class HkdfHmacHasher implements HmacHasher
             throw new RuntimeException('Identity HMAC key is missing.');
         }
 
-        $purposeKey = hash_hkdf(
-            'sha256',
-            $master,
-            32,
-            $purpose,
-            'clinic-identity-v'.$version,
-        );
+        $cacheKey = $version."\0".$purpose;
+        if (! isset($this->purposeKeys[$cacheKey])) {
+            $this->purposeKeys[$cacheKey] = hash_hkdf(
+                'sha256',
+                $master,
+                32,
+                $purpose,
+                'clinic-identity-v'.$version,
+            );
+        }
 
-        return hash_hmac('sha256', $canonical, $purposeKey, true);
+        return hash_hmac('sha256', $canonical, $this->purposeKeys[$cacheKey], true);
     }
 
     private function assertKey(string $master): void

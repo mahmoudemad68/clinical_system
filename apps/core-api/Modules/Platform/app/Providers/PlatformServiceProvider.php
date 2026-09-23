@@ -218,7 +218,7 @@ final class PlatformServiceProvider extends ServiceProvider
             }
 
             return new S3StoreObject(
-                $app['filesystem']->disk('s3'),
+                static fn () => $app['filesystem']->disk('s3'),
                 (int) config('platform.object_store.max_bytes', 20_971_520),
             );
         });

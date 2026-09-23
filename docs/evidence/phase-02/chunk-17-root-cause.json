@@ -1,0 +1,52 @@
+{
+  "gate": "P02-AUDIT-002",
+  "classification": "PRODUCT_PERFORMANCE_FINDING",
+  "requires_product_code_change": true,
+  "base_sha": "5806684f5778691c5bbafee3cc2f520fb4701aa7",
+  "postgis_dense_sparse_gist": "already PASS; location queries are doctor_id scoped; not rewritten",
+  "hotspots": [
+    {
+      "hotspot": "identity.session StartSession+EncryptCookies+CSRF on every bearer API request",
+      "evidence": "Redis after 90s load: 11942 keys, 0 hits, 11942 misses. Successful 200s returned Set-Cookie. bootstrap/app.php already documents device API as stateless. Unrelated Dataset v1 operations share multi-second p95 while unloaded serial reads are 6-9ms — queueing, not SQL.",
+      "affected_operations": "all authenticated Dataset v1 routes",
+      "approx_cost": "one Redis session write plus cookie encryption per request; 11k+ unread session keys in 90s",
+      "proposed_correction": "StartIdentitySession skips session/cookie/CSRF when a bearer token is present; cookie/admin path unchanged"
+    },
+    {
+      "hotspot": "AuthenticateActor User::find after ResolveActorContext already loaded users",
+      "evidence": "HTTP kernel profiler: every bearer read issues two users lookups (users.id then Eloquent users.id). Policies use ActorContext, not Auth::user().",
+      "affected_operations": "all bearer Dataset v1 routes",
+      "approx_cost": "one extra users primary-key round-trip and Eloquent hydration per request",
+      "proposed_correction": "bearer path attachContext only; cookie path still attach()+User::find for the web guard"
+    },
+    {
+      "hotspot": "clinic_audit_writer CONNECTION LIMIT 10 vs 16 sticky Octane workers",
+      "evidence": "Octane logs FATAL too many connections for role clinic_audit_writer. After load, 10 idle audit connections (the cap). Writes and admin queue returned HTTP 500. 1844 http_5xx of 8838 requests (20.86% unexpected) matches this class, not token TTL.",
+      "affected_operations": "all audit-appending writes; verification queue/status when VerificationService resolves AppendAuditEvent",
+      "approx_cost": "hard 500s once 10 workers hold sticky audit connections; remaining workers cannot append",
+      "proposed_correction": "lazy connect on append(); raise role limit to 40 to match clinic_app / 16 workers"
+    },
+    {
+      "hotspot": "Eager S3 StoreObject construction on verification/admin paths",
+      "evidence": "Admin queue 500 INTERNAL_ERROR with only auth SQLs. Octane logs InvalidArgumentException missing AWS region. Failed singleton is not cached so the AWS SDK can re-init on every resolving request.",
+      "affected_operations": "verification_read (admin queue and any path constructing StoreObject)",
+      "approx_cost": "hundreds of ms plus 500s when region/disk construction throws",
+      "proposed_correction": "S3StoreObject accepts a Closure disk and resolves on first method; PlatformServiceProvider binds the closure"
+    },
+    {
+      "hotspot": "Uncached hash_hkdf per HMAC digest",
+      "evidence": "Every bearer auth calls HmacHasher::digest('session_token', token). HKDF-Extract/Expand is CPU on the shared path. Purpose keys are not request-scoped or actor-scoped.",
+      "affected_operations": "all HMAC lookups (auth, national-id, phone)",
+      "approx_cost": "small per-request CPU; process-local memo is safe",
+      "proposed_correction": "memoize purpose keys keyed by version+purpose on the hasher singleton"
+    }
+  ],
+  "not_claimed": [
+    "N+1 as the API p95 cause (clinic list has one duplicate doctor_profiles query; unloaded clinic is 16ms)",
+    "PostgreSQL/PostGIS as the API saturation cause (SQL time 2-14ms vs p95 11s)",
+    "crypto as the multi-second p95 cause",
+    "authorization policy evaluation as the saturation cause",
+    "serialization as the saturation cause",
+    "Octane/FrankenPHP misconfiguration as the primary defect (OPcache/JIT already active)"
+  ]
+}
