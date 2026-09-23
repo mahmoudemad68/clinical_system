@@ -9,12 +9,11 @@ use Modules\Auth\Contracts\PasswordHasher;
 
 final class Argon2idPasswordHasher implements PasswordHasher
 {
-    private readonly string $dummyHash;
+    private const DUMMY_PLAIN = 'timing-balanced-unknown-user';
 
-    public function __construct(private readonly Hasher $hasher)
-    {
-        $this->dummyHash = $this->hasher->make('timing-balanced-unknown-user');
-    }
+    private ?string $dummyHash = null;
+
+    public function __construct(private readonly Hasher $hasher) {}
 
     public function hash(string $plain): string
     {
@@ -28,6 +27,17 @@ final class Argon2idPasswordHasher implements PasswordHasher
 
     public function dummyVerify(string $plain): void
     {
-        $this->hasher->check($plain, $this->dummyHash);
+        $this->hasher->check($plain, $this->dummyHash());
+    }
+
+    /**
+     * Argon2id of the dummy plaintext is only needed for unknown-user timing
+     * balance. Computing it in the constructor made every Octane sandbox that
+     * first-resolved PasswordHasher (including doctor verification-status,
+     * which constructs CreateAdminDoctorApplicant) pay a full KDF per request.
+     */
+    private function dummyHash(): string
+    {
+        return $this->dummyHash ??= $this->hasher->make(self::DUMMY_PLAIN);
     }
 }
