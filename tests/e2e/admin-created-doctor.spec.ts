@@ -158,7 +158,7 @@ test.describe('admin-created doctor', () => {
     expect(created.ok(), `create HTTP ${String(created.status())}`).toBeTruthy();
     const createdJson = (await created.json()) as { data?: { doctor_id?: string } };
     capturedDoctorId = createdJson.data?.doctor_id ?? '';
-    expect(capturedDoctorId).toMatch(/^019/);
+    expect(capturedDoctorId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     await expect(page.getByText(/A draft verification case is ready|مسودة حالة التحقق جاهزة/)).toBeVisible();
     await expect(page.locator('body')).not.toContainText(fixture.applicant.national_id);
 
@@ -189,7 +189,7 @@ test.describe('admin-created doctor', () => {
     expect(uploadResponse.ok(), `upload HTTP ${String(uploadResponse.status())}`).toBeTruthy();
     const uploadJson = (await uploadResponse.json()) as { data?: { upload_id?: string } };
     capturedUploadId = uploadJson.data?.upload_id ?? '';
-    expect(capturedUploadId).toMatch(/^019/);
+    expect(capturedUploadId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     const completeResponse = await completeWait;
     expect(completeResponse.ok(), `complete HTTP ${String(completeResponse.status())}`).toBeTruthy();
     artisan(['e2e:process-verification-upload', capturedUploadId]);
