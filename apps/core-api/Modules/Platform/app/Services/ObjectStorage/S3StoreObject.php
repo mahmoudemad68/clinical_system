@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Platform\Services\ObjectStorage;
 
+use Closure;
 use DateTimeImmutable;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Modules\Platform\Contracts\StoreObject;
@@ -26,10 +27,22 @@ final class S3StoreObject implements StoreObject
 {
     private const CONDITIONAL_COPY_ATTEMPTS = 3;
 
+    /**
+     * @param  Closure(): Filesystem|Filesystem  $disk
+     */
     public function __construct(
-        private readonly Filesystem $disk,
+        private Closure|Filesystem $disk,
         private readonly int $maxBytes = 20_971_520,
     ) {}
+
+    private function filesystem(): Filesystem
+    {
+        if ($this->disk instanceof Closure) {
+            $this->disk = ($this->disk)();
+        }
+
+        return $this->disk;
+    }
 
     public function put(string $namespace, string $objectId, string $contentType, string $bytes): StoredObjectRef
     {
@@ -49,29 +62,29 @@ final class S3StoreObject implements StoreObject
 
     public function exists(StoredObjectRef $ref): bool
     {
-        return $this->disk->exists($ref->key());
+        return $this->filesystem()->exists($ref->key());
     }
 
     public function temporaryUrl(StoredObjectRef $ref, DateTimeImmutable $expiresAt): string
     {
-        if (! $this->disk->exists($ref->key())) {
+        if (! $this->filesystem()->exists($ref->key())) {
             throw new RuntimeException('Object does not exist.');
         }
 
-        return $this->disk->temporaryUrl($ref->key(), $expiresAt);
+        return $this->filesystem()->temporaryUrl($ref->key(), $expiresAt);
     }
 
     public function metadata(StoredObjectRef $ref): array
     {
-        if (! $this->disk->exists($ref->key())) {
+        if (! $this->filesystem()->exists($ref->key())) {
             throw new RuntimeException('Object does not exist.');
         }
 
-        $mime = $this->disk->mimeType($ref->key());
+        $mime = $this->filesystem()->mimeType($ref->key());
 
         return [
             'content_type' => is_string($mime) && $mime !== '' ? $mime : 'application/octet-stream',
-            'size_bytes' => $this->disk->size($ref->key()),
+            'size_bytes' => $this->filesystem()->size($ref->key()),
             'encrypted' => true,
         ];
     }
@@ -126,12 +139,12 @@ final class S3StoreObject implements StoreObject
             throw new InvalidValueObject('Upload grants are only issued for ingress locators.');
         }
 
-        if (! method_exists($this->disk, 'temporaryUploadUrl')) {
+        if (! method_exists($this->filesystem(), 'temporaryUploadUrl')) {
             throw new RuntimeException('Object store does not support upload grants.');
         }
 
         /** @var array{url?: string, headers?: array<string, mixed>} $signed */
-        $signed = $this->disk->temporaryUploadUrl($ref->key(), $expiresAt, [
+        $signed = $this->filesystem()->temporaryUploadUrl($ref->key(), $expiresAt, [
             'ContentType' => $declaredMediaType,
             'ContentLength' => $expectedSizeBytes,
         ]);
@@ -188,20 +201,20 @@ final class S3StoreObject implements StoreObject
         }
 
         try {
-            $this->disk->setVisibility($destination->key(), 'private');
+            $this->filesystem()->setVisibility($destination->key(), 'private');
         } catch (Throwable) {
         }
     }
 
     public function providerVersionId(StoredObjectRef $ref): ?string
     {
-        if (! method_exists($this->disk, 'getClient')) {
+        if (! method_exists($this->filesystem(), 'getClient')) {
             return null;
         }
 
         try {
-            $client = $this->disk->getClient();
-            $config = method_exists($this->disk, 'getConfig') ? $this->disk->getConfig() : [];
+            $client = $this->filesystem()->getClient();
+            $config = method_exists($this->filesystem(), 'getConfig') ? $this->filesystem()->getConfig() : [];
             $bucket = is_array($config) ? (string) ($config['bucket'] ?? '') : '';
             if ($bucket === '' || ! is_object($client) || ! is_callable([$client, 'headObject'])) {
                 return null;
@@ -229,7 +242,7 @@ final class S3StoreObject implements StoreObject
             throw new InvalidValueObject('Object exceeds the configured size bound.');
         }
 
-        $this->disk->put($ref->key(), $bytes, [
+        $this->filesystem()->put($ref->key(), $bytes, [
             'visibility' => 'private',
             'ContentType' => $contentType,
             'Metadata' => [
@@ -265,11 +278,11 @@ final class S3StoreObject implements StoreObject
      */
     public function openStream(StoredObjectRef $ref)
     {
-        if (! $this->disk->exists($ref->key())) {
+        if (! $this->filesystem()->exists($ref->key())) {
             throw new RuntimeException('Object does not exist.');
         }
 
-        $stream = $this->disk->readStream($ref->key());
+        $stream = $this->filesystem()->readStream($ref->key());
         if (! is_resource($stream)) {
             throw new RuntimeException('Object stream could not be opened.');
         }
@@ -279,8 +292,8 @@ final class S3StoreObject implements StoreObject
 
     public function deleteIfPresent(StoredObjectRef $ref): void
     {
-        if ($this->disk->exists($ref->key())) {
-            $this->disk->delete($ref->key());
+        if ($this->filesystem()->exists($ref->key())) {
+            $this->filesystem()->delete($ref->key());
         }
     }
 
@@ -337,13 +350,13 @@ final class S3StoreObject implements StoreObject
     private function nativeCopyClient(): ?array
     {
         $client = null;
-        if (method_exists($this->disk, 'getClient')) {
-            $resolved = $this->disk->getClient();
+        if (method_exists($this->filesystem(), 'getClient')) {
+            $resolved = $this->filesystem()->getClient();
             $client = is_object($resolved) ? $resolved : null;
         }
 
-        if ($client === null && method_exists($this->disk, 'getAdapter')) {
-            $adapter = $this->disk->getAdapter();
+        if ($client === null && method_exists($this->filesystem(), 'getAdapter')) {
+            $adapter = $this->filesystem()->getAdapter();
             if (is_object($adapter) && method_exists($adapter, 'getClient')) {
                 $resolved = $adapter->getClient();
                 $client = is_object($resolved) ? $resolved : null;
@@ -351,8 +364,8 @@ final class S3StoreObject implements StoreObject
         }
 
         $bucket = '';
-        if (method_exists($this->disk, 'getConfig')) {
-            $config = $this->disk->getConfig();
+        if (method_exists($this->filesystem(), 'getConfig')) {
+            $config = $this->filesystem()->getConfig();
             $bucket = is_array($config) ? (string) ($config['bucket'] ?? '') : '';
         }
 

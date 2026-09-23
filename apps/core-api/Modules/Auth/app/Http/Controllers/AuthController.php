@@ -31,6 +31,8 @@ use Modules\Identity\Services\MeQuery;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Http\Responses\Envelope;
+use Modules\Platform\Http\Responses\ErrorCode;
+use Modules\Platform\Http\Responses\ErrorEnvelope;
 use Modules\Platform\Http\Support\ClosedJsonValidator;
 use Modules\Platform\Support\Identifier;
 
@@ -38,6 +40,11 @@ final class AuthController
 {
     public function csrf(Request $request): JsonResponse
     {
+        $bearer = $request->bearerToken();
+        if ((is_string($bearer) && $bearer !== '') || ! $request->hasSession()) {
+            return ErrorEnvelope::of(ErrorCode::MalformedRequest, $this->requestId($request));
+        }
+
         $request->session()->regenerateToken();
 
         return Envelope::ok(['csrf' => true], $this->requestId($request));
@@ -156,7 +163,9 @@ final class AuthController
     {
         $handler->logoutCurrent($this->actor($request));
         Auth::guard('web')->logout();
-        $request->session()?->invalidate();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+        }
 
         return Envelope::ok(['revoked' => true], $this->requestId($request));
     }

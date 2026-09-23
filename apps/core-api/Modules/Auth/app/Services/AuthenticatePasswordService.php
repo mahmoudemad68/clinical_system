@@ -40,6 +40,11 @@ final class AuthenticatePasswordService
         $hmac = $this->protector->phoneHmac($parsed);
         $this->rates->hitLogin($hmac, $ipPrefix ?? '0.0.0.0');
 
+        // Prime before the known/unknown branch. Octane WorkerStarting already
+        // did this; FPM/CLI/Pest have no worker hook, so both classes still
+        // execute one dummy make() plus one Argon2id check in-process.
+        $this->hasher->primeUnknownUserDummy();
+
         $user = $this->identities->findByPhoneHmacs($this->protector->phoneLookupHmacs($parsed));
 
         if ($user === null) {

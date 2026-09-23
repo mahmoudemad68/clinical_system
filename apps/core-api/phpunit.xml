@@ -78,6 +78,9 @@
         <env name="DB_WORKER_PASSWORD" value="local_dev_only_not_a_secret" force="true"/>
         <env name="DB_URL" value="" force="true"/>
         <env name="DB_AUDIT_URL" value="" force="true"/>
+        <env name="DB_OWNER_URL" value="" force="true"/>
+        <env name="DB_OWNER_USERNAME" value="" force="true"/>
+        <env name="DB_OWNER_PASSWORD" value="" force="true"/>
         <env name="APP_VERSION" value="0.0.0-test"/>
         <env name="APP_BUSINESS_TIMEZONE" value="Africa/Cairo"/>
         <env name="APP_SUPPORTED_LOCALES" value="ar,en"/>

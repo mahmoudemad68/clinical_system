@@ -1,0 +1,157 @@
+{
+  "recorded_at": "2026-09-23T14:28:04+00:00",
+  "operations": {
+    "patient_profile_read": {
+      "status": 200,
+      "wall_ms": 32.798,
+      "sql_count": 4,
+      "sql_time_ms": 13.76,
+      "duplicate_sql": 0,
+      "sql": [
+        "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+        "select * from \"users\" where \"id\" = ? limit 1",
+        "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+        "select * from \"patient_profiles\" where \"user_id\" = ? limit 1"
+      ],
+      "payload_bytes": 417
+    },
+    "doctor_profile_read": {
+      "status": 200,
+      "wall_ms": 6.359,
+      "sql_count": 5,
+      "sql_time_ms": 4.08,
+      "duplicate_sql": 0,
+      "sql": [
+        "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+        "select * from \"users\" where \"id\" = ? limit 1",
+        "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+        "select * from \"doctor_profiles\" where \"user_id\" = ? limit 1",
+        "select * from \"specialties\" where \"id\" = ? limit 1"
+      ],
+      "payload_bytes": 575
+    },
+    "clinic_locations_read": {
+      "status": 200,
+      "wall_ms": 14.515,
+      "sql_count": 5,
+      "sql_time_ms": 11.06,
+      "duplicate_sql": 0,
+      "sql": [
+        "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+        "select * from \"users\" where \"id\" = ? limit 1",
+        "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+        "select * from \"doctor_profiles\" where \"user_id\" = ? limit 1",
+        "select \"clinic_locations\".*, ST_Y(clinic_locations.geography_point::geometry) AS latitude, ST_X(clinic_locations.geography_point::geometry) AS longitude from \"clinic_locations\" where \"clinic_locations\".\"doctor_id\" = ? order by \"clinic_locations\".\"created_at\" asc, \"clinic_locations\".\"id\" asc limit 26"
+      ],
+      "payload_bytes": 1286
+    },
+    "pharmacy_org_read": {
+      "status": 200,
+      "wall_ms": 8.89,
+      "sql_count": 6,
+      "sql_time_ms": 6.05,
+      "duplicate_sql": 0,
+      "sql": [
+        "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+        "select * from \"users\" where \"id\" = ? limit 1",
+        "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+        "select * from \"pharmacy_memberships\" where \"user_id\" = ? and \"role\" = ? and \"status\" in (?, ?) limit 1",
+        "select * from \"pharmacy_organizations\" where \"id\" = ? limit 1",
+        "select \"pharmacy_branches\".*, ST_Y(pharmacy_branches.geography_point::geometry) AS latitude, ST_X(pharmacy_branches.geography_point::geometry) AS longitude from \"pharmacy_branches\" where \"pharmacy_branches\".\"organization_id\" = ? order by \"pharmacy_branches\".\"created_at\" asc, \"pharmacy_branches\".\"id\" asc limit 1"
+      ],
+      "payload_bytes": 575
+    },
+    "pharmacy_branches_read": {
+      "status": 200,
+      "wall_ms": 3.758,
+      "sql_count": 6,
+      "sql_time_ms": 1.52,
+      "duplicate_sql": 0,
+      "sql": [
+        "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+        "select * from \"users\" where \"id\" = ? limit 1",
+        "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+        "select * from \"pharmacy_memberships\" where \"user_id\" = ? and \"role\" = ? and \"status\" in (?, ?) limit 1",
+        "select * from \"pharmacy_organizations\" where \"id\" = ? limit 1",
+        "select \"pharmacy_branches\".*, ST_Y(pharmacy_branches.geography_point::geometry) AS latitude, ST_X(pharmacy_branches.geography_point::geometry) AS longitude from \"pharmacy_branches\" where \"pharmacy_branches\".\"organization_id\" = ? order by \"pharmacy_branches\".\"created_at\" asc, \"pharmacy_branches\".\"id\" asc limit 26"
+      ],
+      "payload_bytes": 1175
+    },
+    "verification_status_read": {
+      "status": 200,
+      "wall_ms": 169.287,
+      "sql_count": 7,
+      "sql_time_ms": 4.7,
+      "duplicate_sql": 0,
+      "sql": [
+        "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+        "select * from \"users\" where \"id\" = ? limit 1",
+        "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+        "select * from \"doctor_profiles\" where \"user_id\" = ? limit 1",
+        "select * from \"verification_cases\" where \"applicant_type\" = ? and \"applicant_id\" = ? and \"case_type\" = ? order by \"created_at\" desc limit 1",
+        "select * from \"verification_decisions\" where \"case_id\" = ? limit 1",
+        "select * from \"verification_documents\" where \"case_id\" = ? order by \"uploaded_at\" asc"
+      ],
+      "payload_bytes": 479
+    },
+    "verification_queue_read": {
+      "status": 200,
+      "wall_ms": 23.368,
+      "sql_count": 8,
+      "sql_time_ms": 13.43,
+      "duplicate_sql": 0,
+      "sql": [
+        "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+        "select * from \"users\" where \"id\" = ? limit 1",
+        "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+        "select * from \"verification_cases\" where \"case_type\" = ? and \"status\" = ? and \"assigned_reviewer_id\" is null order by \"submitted_at\" asc, \"id\" asc limit 26",
+        "select * from \"doctor_profiles\" where \"id\" in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "select * from \"specialties\" where \"id\" in (?)",
+        "select current_user as username",
+        "SELECT clinic_append_audit_event(?, ?, ?, ?, ?, ?, ?::jsonb, ?::timestamptz)"
+      ],
+      "payload_bytes": 15599
+    },
+    "verification_status_read_repeat": {
+      "status": 200,
+      "wall_ms": 3.758,
+      "sql_count": 7,
+      "sql_time_ms": 1.89,
+      "duplicate_sql": 0,
+      "sql": [
+        "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+        "select * from \"users\" where \"id\" = ? limit 1",
+        "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+        "select * from \"doctor_profiles\" where \"user_id\" = ? limit 1",
+        "select * from \"verification_cases\" where \"applicant_type\" = ? and \"applicant_id\" = ? and \"case_type\" = ? order by \"created_at\" desc limit 1",
+        "select * from \"verification_decisions\" where \"case_id\" = ? limit 1",
+        "select * from \"verification_documents\" where \"case_id\" = ? order by \"uploaded_at\" asc"
+      ],
+      "payload_bytes": 479
+    },
+    "patient_profile_read_repeat": {
+      "status": 200,
+      "wall_ms": 2.305,
+      "sql_count": 4,
+      "sql_time_ms": 0.99,
+      "duplicate_sql": 0,
+      "sql": [
+        "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+        "select * from \"users\" where \"id\" = ? limit 1",
+        "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+        "select * from \"patient_profiles\" where \"user_id\" = ? limit 1"
+      ],
+      "payload_bytes": 417
+    }
+  },
+  "shared_path_notes": [
+    "bearer identity.session skips StartSession/EncryptCookies/CSRF",
+    "auth.actor bearer attaches ActorContext without a second users Eloquent find",
+    "HkdfHmacHasher memoizes hash_hkdf purpose keys in-process",
+    "PostgresAuditStore connects clinic_audit_writer lazily on append",
+    "S3StoreObject resolves the filesystem disk lazily",
+    "GetOwnClinicLocations reuses ClinicOwnerGuard doctor_profiles row (no duplicate lookup)"
+  ],
+  "redis_reachable": true,
+  "note": "Unloaded kernel profile against Dataset v1 after both remediation commits. Clinic locations duplicate_sql=0 (was 1)."
+}

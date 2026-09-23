@@ -210,6 +210,37 @@ return [
             'sslkey' => env('DB_SSLKEY') ?: null,
         ],
 
+        /*
+        |----------------------------------------------------------------------
+        | Privileged owner connection
+        |----------------------------------------------------------------------
+        |
+        | clinic_owner (or an equivalent cluster owner) for PostgreSQL
+        | role-level provisioning such as ALTER ROLE. Do not inherit DB_URL:
+        | a serving or migrator URL would silently run privileged DDL as the
+        | wrong identity. HTTP, Octane, queue workers, and readiness never
+        | select this connection. Leave DB_OWNER_USERNAME empty on serving
+        | processes.
+        |
+        */
+        'pgsql_owner' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_OWNER_URL'),
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'laravel'),
+            'username' => env('DB_OWNER_USERNAME'),
+            'password' => env('DB_OWNER_PASSWORD'),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', env('APP_ENV') === 'production' ? 'verify-full' : 'prefer'),
+            'sslrootcert' => env('DB_SSLROOTCERT', env('PGSSLROOTCERT')) ?: null,
+            'sslcert' => env('DB_SSLCERT') ?: null,
+            'sslkey' => env('DB_SSLKEY') ?: null,
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

@@ -38,6 +38,9 @@ env:
   NODE_VERSION: '22'
   PYTHON_VERSION: '3.12'
   CANDIDATE_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
+  # CI postgres is the image superuser clinic_migrator. There is no clinic_owner.
+  DB_OWNER_USERNAME: ''
+  DB_OWNER_PASSWORD: ''
 
 jobs:
 
@@ -230,7 +233,7 @@ jobs:
           DB_PASSWORD: ci_only_not_a_secret
           DB_MIGRATION_USERNAME: clinic_migrator
           DB_MIGRATION_PASSWORD: ci_only_not_a_secret
-        run: php artisan migrate --database=pgsql_migrator --force
+        run: php artisan platform:provision-postgres-roles && php artisan migrate --database=pgsql_migrator --force
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
@@ -331,7 +334,7 @@ jobs:
           DB_PASSWORD: ci_only_not_a_secret
           DB_MIGRATION_USERNAME: clinic_migrator
           DB_MIGRATION_PASSWORD: ci_only_not_a_secret
-        run: php artisan migrate --database=pgsql_migrator --force
+        run: php artisan platform:provision-postgres-roles && php artisan migrate --database=pgsql_migrator --force
       - name: Start digest-pinned MinIO and clamd
         working-directory: ${{ github.workspace }}
         run: |
@@ -481,7 +484,7 @@ jobs:
           DB_PASSWORD: ci_only_not_a_secret
           DB_MIGRATION_USERNAME: clinic_migrator
           DB_MIGRATION_PASSWORD: ci_only_not_a_secret
-        run: php artisan migrate --database=pgsql_migrator --force
+        run: php artisan platform:provision-postgres-roles && php artisan migrate --database=pgsql_migrator --force
 
       - name: Browser admin verification
         env:
@@ -647,7 +650,7 @@ jobs:
           DB_PASSWORD: ci_only_not_a_secret
           DB_MIGRATION_USERNAME: clinic_migrator
           DB_MIGRATION_PASSWORD: ci_only_not_a_secret
-        run: php artisan migrate --database=pgsql_migrator --force
+        run: php artisan platform:provision-postgres-roles && php artisan migrate --database=pgsql_migrator --force
 
       - uses: subosito/flutter-action@f2c4f6686ca8e8d6e6d0f28410eeef506ed66aff  # v2.18.0
         with:
@@ -859,7 +862,7 @@ jobs:
           DB_PASSWORD: ci_only_not_a_secret
           DB_MIGRATION_USERNAME: clinic_migrator
           DB_MIGRATION_PASSWORD: ci_only_not_a_secret
-        run: php artisan migrate --database=pgsql_migrator --force
+        run: php artisan platform:provision-postgres-roles && php artisan migrate --database=pgsql_migrator --force
 
       - name: Linux runtime libraries, OS keystore, and Forge Chromium
         run: |
@@ -1021,7 +1024,7 @@ jobs:
           DB_PASSWORD: ci_only_not_a_secret
           DB_MIGRATION_USERNAME: clinic_migrator
           DB_MIGRATION_PASSWORD: ci_only_not_a_secret
-        run: php artisan migrate --database=pgsql_migrator --force
+        run: php artisan platform:provision-postgres-roles && php artisan migrate --database=pgsql_migrator --force
 
       - name: Linux runtime libraries, OS keystore, and Forge Chromium
         run: |

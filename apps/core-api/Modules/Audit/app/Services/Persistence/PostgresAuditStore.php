@@ -15,7 +15,7 @@ use Modules\Platform\Support\Identifier;
 final class PostgresAuditStore implements AppendAuditEvent
 {
     public function __construct(
-        private readonly ConnectionInterface $connection,
+        private readonly ConnectionInterface|AuditDatabaseIdentity $connection,
         private readonly IdentityGenerator $identities,
     ) {}
 
@@ -36,7 +36,7 @@ final class PostgresAuditStore implements AppendAuditEvent
         $occurredAt = $occurred->format('Y-m-d H:i:s.uP');
         $payload = self::canonicalMetadata($metadata);
 
-        $this->connection->statement(
+        $this->writer()->statement(
             'SELECT clinic_append_audit_event(?, ?, ?, ?, ?, ?, ?::jsonb, ?::timestamptz)',
             [
                 $id->value,
@@ -51,6 +51,13 @@ final class PostgresAuditStore implements AppendAuditEvent
         );
 
         return $id;
+    }
+
+    private function writer(): ConnectionInterface
+    {
+        return $this->connection instanceof AuditDatabaseIdentity
+            ? $this->connection->connection()
+            : $this->connection;
     }
 
     /**

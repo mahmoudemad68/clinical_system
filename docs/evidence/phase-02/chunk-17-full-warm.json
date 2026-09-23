@@ -1,0 +1,116 @@
+{
+  "gate": "P02-AUDIT-002",
+  "mode": "full-warm",
+  "candidate_sha": "0ff4605bc2f3a73fa5a0afd04f42888b896680ab",
+  "recorded_at": "2026-09-23T14:26:50Z",
+  "runtime_image_name": "clinic-core-api",
+  "runtime_image_tag": "chunk17-after",
+  "runtime": {
+    "server": "octane:frankenphp",
+    "workers": 16,
+    "host_nproc": 4,
+    "app_debug": false,
+    "log_level": "warning",
+    "requested_rps": 250,
+    "duration": "15m"
+  },
+  "k6_exit_code": 0,
+  "http_reqs": 109294,
+  "achieved_rps": 120.42699151933336,
+  "dropped_iterations": 115706,
+  "http_req_failed_rate": 0.13089465112448992,
+  "unexpected_request_failure_rate": 0,
+  "http_2xx": 94988,
+  "http_4xx": 14306,
+  "http_5xx": 0,
+  "expected_conflict_409": 14306,
+  "latency_ms": {
+    "p50": 11682.2026245,
+    "p95": 13270.23941035,
+    "p99": 14125.92708296,
+    "max": 15919.735422
+  },
+  "operations": {
+    "op_patient_profile_read": {
+      "count": null,
+      "p50": 11603.4403755,
+      "p95": 12988.60563235,
+      "p99": 13397.22223573
+    },
+    "op_doctor_profile_read": {
+      "count": null,
+      "p50": 11610.605297,
+      "p95": 12986.7758188,
+      "p99": 13413.047670040001
+    },
+    "op_clinic_locations_read": {
+      "count": null,
+      "p50": 11612.0459905,
+      "p95": 12981.11566755,
+      "p99": 13383.736448310001
+    },
+    "op_pharmacy_org_read": {
+      "count": null,
+      "p50": 11611.595151,
+      "p95": 12977.1737218,
+      "p99": 13425.112704840003
+    },
+    "op_pharmacy_branches_read": {
+      "count": null,
+      "p50": 11622.955693,
+      "p95": 12978.652906,
+      "p99": 13409.714068199995
+    },
+    "op_verification_read": {
+      "count": null,
+      "p50": 13235.927831,
+      "p95": 14540.127326,
+      "p99": 15008.761974640001
+    },
+    "op_patient_demographic_update": {
+      "count": null,
+      "p50": 11623.443310499999,
+      "p95": 12983.447849099999,
+      "p99": 13427.106373239998
+    },
+    "op_doctor_onboarding_status": {
+      "count": null,
+      "p50": 11631.235352,
+      "p95": 13000.61240425,
+      "p99": 13406.6296269
+    },
+    "op_clinic_location_update": {
+      "count": null,
+      "p50": 11622.471459,
+      "p95": 12978.730322,
+      "p99": 13380.20263275
+    },
+    "op_membership_operations": {
+      "count": null,
+      "p50": 11625.899258,
+      "p95": 13009.1373243,
+      "p99": 13442.945533679998
+    }
+  },
+  "in_run_cpu": {
+    "core_api_pct_steady": {
+      "min": 0.64,
+      "median": 195.25,
+      "max": 309.89
+    },
+    "postgres_pct_steady": {
+      "min": 0.03,
+      "median": 17.99,
+      "max": 38.03
+    },
+    "redis_pct_steady": {
+      "min": 0.3,
+      "median": 0.34,
+      "max": 0.42
+    },
+    "host_nproc": 4,
+    "host_mem_available_min_kb": 4555868,
+    "note": "full docker stats retained in tmp/phase-02-perf/full-warm-resource.txt; k6 colocated on the same 4 CPUs"
+  },
+  "note": "Warm 250 RPS 15m measured after 3m warmup on the same Dataset v1. Unexpected failures 0. Achieved RPS remains queueing-limited on this 4-CPU nested host vs approved 8-CPU machine. Do not treat as P02-AUDIT-002 closed."
+}

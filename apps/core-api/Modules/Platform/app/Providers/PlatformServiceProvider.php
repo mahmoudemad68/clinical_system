@@ -24,6 +24,7 @@ use Laravel\Pennant\Feature;
 use Modules\Platform\Console\CacheWarmCommand;
 use Modules\Platform\Console\OutboxWorkCommand;
 use Modules\Platform\Console\PlatformPruneCommand;
+use Modules\Platform\Console\ProvisionPostgresRolesCommand;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\CorrelationScope;
 use Modules\Platform\Contracts\CursorSigner;
@@ -218,7 +219,7 @@ final class PlatformServiceProvider extends ServiceProvider
             }
 
             return new S3StoreObject(
-                $app['filesystem']->disk('s3'),
+                static fn () => $app['filesystem']->disk('s3'),
                 (int) config('platform.object_store.max_bytes', 20_971_520),
             );
         });
@@ -398,7 +399,12 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->observeDatabaseQueries();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([OutboxWorkCommand::class, PlatformPruneCommand::class, CacheWarmCommand::class]);
+            $this->commands([
+                OutboxWorkCommand::class,
+                PlatformPruneCommand::class,
+                CacheWarmCommand::class,
+                ProvisionPostgresRolesCommand::class,
+            ]);
         }
     }
 

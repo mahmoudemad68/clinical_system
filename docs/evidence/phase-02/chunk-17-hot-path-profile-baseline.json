@@ -1,0 +1,150 @@
+{
+    "recorded_at": "2026-09-23T13:23:52+00:00",
+    "operations": {
+        "patient_profile_read": {
+            "status": 200,
+            "wall_ms": 42.51,
+            "sql_count": 5,
+            "sql_time_ms": 13.7,
+            "duplicate_sql": 0,
+            "sql": [
+                "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+                "select * from \"users\" where \"id\" = ? limit 1",
+                "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+                "select * from \"users\" where \"users\".\"id\" = ? limit 1",
+                "select * from \"patient_profiles\" where \"user_id\" = ? limit 1"
+            ],
+            "payload_bytes": 417
+        },
+        "doctor_profile_read": {
+            "status": 200,
+            "wall_ms": 7.364,
+            "sql_count": 6,
+            "sql_time_ms": 4.23,
+            "duplicate_sql": 0,
+            "sql": [
+                "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+                "select * from \"users\" where \"id\" = ? limit 1",
+                "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+                "select * from \"users\" where \"users\".\"id\" = ? limit 1",
+                "select * from \"doctor_profiles\" where \"user_id\" = ? limit 1",
+                "select * from \"specialties\" where \"id\" = ? limit 1"
+            ],
+            "payload_bytes": 575
+        },
+        "clinic_locations_read": {
+            "status": 200,
+            "wall_ms": 16.47,
+            "sql_count": 7,
+            "sql_time_ms": 12.23,
+            "duplicate_sql": 1,
+            "sql": [
+                "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+                "select * from \"users\" where \"id\" = ? limit 1",
+                "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+                "select * from \"users\" where \"users\".\"id\" = ? limit 1",
+                "select * from \"doctor_profiles\" where \"user_id\" = ? limit 1",
+                "select * from \"doctor_profiles\" where \"user_id\" = ? limit 1",
+                "select \"clinic_locations\".*, ST_Y(clinic_locations.geography_point::geometry) AS latitude, ST_X(clinic_locations.geography_point::geometry) AS longitude from \"clinic_locations\" where \"clinic_locations\".\"doctor_id\" = ? order by \"clinic_locations\".\"created_at\" asc, \"clinic_locations\".\"id\" asc limit 26"
+            ],
+            "payload_bytes": 1286
+        },
+        "pharmacy_org_read": {
+            "status": 200,
+            "wall_ms": 10.604,
+            "sql_count": 7,
+            "sql_time_ms": 6.67,
+            "duplicate_sql": 0,
+            "sql": [
+                "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+                "select * from \"users\" where \"id\" = ? limit 1",
+                "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+                "select * from \"users\" where \"users\".\"id\" = ? limit 1",
+                "select * from \"pharmacy_memberships\" where \"user_id\" = ? and \"role\" = ? and \"status\" in (?, ?) limit 1",
+                "select * from \"pharmacy_organizations\" where \"id\" = ? limit 1",
+                "select \"pharmacy_branches\".*, ST_Y(pharmacy_branches.geography_point::geometry) AS latitude, ST_X(pharmacy_branches.geography_point::geometry) AS longitude from \"pharmacy_branches\" where \"pharmacy_branches\".\"organization_id\" = ? order by \"pharmacy_branches\".\"created_at\" asc, \"pharmacy_branches\".\"id\" asc limit 1"
+            ],
+            "payload_bytes": 575
+        },
+        "pharmacy_branches_read": {
+            "status": 200,
+            "wall_ms": 4.766,
+            "sql_count": 7,
+            "sql_time_ms": 1.82,
+            "duplicate_sql": 0,
+            "sql": [
+                "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+                "select * from \"users\" where \"id\" = ? limit 1",
+                "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+                "select * from \"users\" where \"users\".\"id\" = ? limit 1",
+                "select * from \"pharmacy_memberships\" where \"user_id\" = ? and \"role\" = ? and \"status\" in (?, ?) limit 1",
+                "select * from \"pharmacy_organizations\" where \"id\" = ? limit 1",
+                "select \"pharmacy_branches\".*, ST_Y(pharmacy_branches.geography_point::geometry) AS latitude, ST_X(pharmacy_branches.geography_point::geometry) AS longitude from \"pharmacy_branches\" where \"pharmacy_branches\".\"organization_id\" = ? order by \"pharmacy_branches\".\"created_at\" asc, \"pharmacy_branches\".\"id\" asc limit 26"
+            ],
+            "payload_bytes": 1175
+        },
+        "verification_status_read": {
+            "status": 500,
+            "wall_ms": 237.457,
+            "sql_count": 4,
+            "sql_time_ms": 1,
+            "duplicate_sql": 0,
+            "sql": [
+                "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+                "select * from \"users\" where \"id\" = ? limit 1",
+                "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+                "select * from \"users\" where \"users\".\"id\" = ? limit 1"
+            ],
+            "payload_bytes": 171
+        },
+        "verification_queue_read": {
+            "status": 500,
+            "wall_ms": 7.995,
+            "sql_count": 4,
+            "sql_time_ms": 2.11,
+            "duplicate_sql": 0,
+            "sql": [
+                "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+                "select * from \"users\" where \"id\" = ? limit 1",
+                "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+                "select * from \"users\" where \"users\".\"id\" = ? limit 1"
+            ],
+            "payload_bytes": 171
+        },
+        "verification_status_read_repeat": {
+            "status": 500,
+            "wall_ms": 6.844,
+            "sql_count": 4,
+            "sql_time_ms": 1.66,
+            "duplicate_sql": 0,
+            "sql": [
+                "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+                "select * from \"users\" where \"id\" = ? limit 1",
+                "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+                "select * from \"users\" where \"users\".\"id\" = ? limit 1"
+            ],
+            "payload_bytes": 171
+        },
+        "patient_profile_read_repeat": {
+            "status": 200,
+            "wall_ms": 5.346,
+            "sql_count": 5,
+            "sql_time_ms": 2.25,
+            "duplicate_sql": 0,
+            "sql": [
+                "select * from \"user_devices\" where \"token_hash\" = ? and \"revoked_at\" is null limit 1",
+                "select * from \"users\" where \"id\" = ? limit 1",
+                "select * from \"auth_sessions\" where \"device_id\" = ? and \"revoked_at\" is null order by \"created_at\" desc limit 1",
+                "select * from \"users\" where \"users\".\"id\" = ? limit 1",
+                "select * from \"patient_profiles\" where \"user_id\" = ? limit 1"
+            ],
+            "payload_bytes": 417
+        }
+    },
+    "shared_path_notes": [
+        "auth.actor bearer does User::find after ResolveActorContext user lookup",
+        "identity.session StartSession+EncryptCookies wraps every authenticated API route",
+        "HkdfHmacHasher hash_hkdf is not memoized per purpose"
+    ],
+    "redis_reachable": true
+}

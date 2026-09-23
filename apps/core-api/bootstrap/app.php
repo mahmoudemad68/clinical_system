@@ -2,19 +2,17 @@
 
 declare(strict_types=1);
 
-use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
-use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
-use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 use Modules\Auth\Http\Middleware\AuthenticateActor;
 use Modules\Auth\Http\Middleware\AuthenticateDevice;
 use Modules\Auth\Http\Middleware\DenyPendingBusinessAccess;
+use Modules\Auth\Http\Middleware\StartIdentitySession;
 use Modules\Auth\Http\Middleware\ValidateAlwaysCsrf;
 use Modules\Auth\Http\Middleware\ValidateCookieCsrf;
 use Modules\Platform\Http\Middleware\AssignCorrelationId;
@@ -88,10 +86,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->group('identity.session', [
-            EncryptCookies::class,
-            AddQueuedCookiesToResponse::class,
-            StartSession::class,
-            ValidateCookieCsrf::class,
+            StartIdentitySession::class,
         ]);
 
         $proxies = array_values(array_filter(array_map(

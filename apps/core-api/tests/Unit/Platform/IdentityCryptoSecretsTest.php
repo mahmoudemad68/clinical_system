@@ -101,6 +101,34 @@ it('hashes when hmac key material is at least 32 characters', function () {
     expect(strlen($hasher->digest('phone_lookup', '+201012345678')))->toBe(32);
 });
 
+it('returns a stable hmac digest when the same purpose is hashed twice', function () {
+    $hasher = new HkdfHmacHasher([
+        1 => 'test_identity_hmac_v1_not_a_secret_value!!',
+    ], 1);
+
+    $first = $hasher->digest('session_token', 'synthetic-device-token');
+    $second = $hasher->digest('session_token', 'synthetic-device-token');
+
+    expect($first)->toBe($second)
+        ->and(strlen($first))->toBe(32)
+        ->and($hasher->digest('session_token', 'different-device-token'))->not->toBe($first);
+});
+
+it('returns stable lookup digests for every configured hmac version', function () {
+    $hasher = new HkdfHmacHasher([
+        1 => 'test_identity_hmac_v1_not_a_secret_value!!',
+        2 => 'test_identity_hmac_v2_not_a_secret_value!!',
+    ], 2);
+
+    $first = $hasher->lookupDigests('national_id_lookup', '30001010100011');
+    $second = $hasher->lookupDigests('national_id_lookup', '30001010100011');
+
+    expect($first)->toHaveCount(2)
+        ->and($second)->toBe($first)
+        ->and($first[0])->not->toBe($first[1])
+        ->and($hasher->digest('national_id_lookup', '30001010100011'))->toBe($first[1]);
+});
+
 it('fails closed when the configured current encryption version has no key', function () {
     $encryptor = new AesGcmEnvelopeEncryptor([1 => str_repeat('k', 32), 2 => ''], 2);
 

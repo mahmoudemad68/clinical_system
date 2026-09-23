@@ -29,7 +29,7 @@ final class AuditServiceProvider extends ServiceProvider
         $this->app->singleton(AppendAuditEvent::class, static function ($app): AppendAuditEvent {
             $connection = $app->environment('testing')
                 ? $app->make(ConnectionInterface::class)
-                : $app->make(AuditDatabaseIdentity::class)->connection();
+                : $app->make(AuditDatabaseIdentity::class);
 
             return new PostgresAuditStore(
                 $connection,

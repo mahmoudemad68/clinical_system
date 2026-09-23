@@ -67,4 +67,7 @@ regexes = [
   '''eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiJ0ZXN0In0''',
   '''sk_live_abc123''',
   '''unique/partial/exclusion''',
+  # Local FrankenPHP image refs look like "api:<tag>" to generic-api-key.
+  '''clinic-core-api:chunk17(?:-after)?''',
+  '''chunk17-after''',
 ]

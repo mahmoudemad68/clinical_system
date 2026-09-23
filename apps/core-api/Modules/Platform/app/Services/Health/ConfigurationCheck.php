@@ -59,7 +59,7 @@ final class ConfigurationCheck implements DependencyCheck
                 return CheckStatus::Fail;
             }
 
-            foreach (['pgsql', 'pgsql_migrator', 'pgsql_worker', 'pgsql_reporter', 'pgsql_audit'] as $connection) {
+            foreach ($this->productionSslConnections() as $connection) {
                 $sslMode = (string) config('database.connections.'.$connection.'.sslmode');
                 if (! in_array($sslMode, ['require', 'verify-ca', 'verify-full'], true)) {
                     return CheckStatus::Fail;
@@ -84,6 +84,20 @@ final class ConfigurationCheck implements DependencyCheck
         }
 
         return CheckStatus::Pass;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function productionSslConnections(): array
+    {
+        $connections = ['pgsql', 'pgsql_migrator', 'pgsql_worker', 'pgsql_reporter', 'pgsql_audit'];
+        $owner = trim((string) config('database.connections.pgsql_owner.username', ''));
+        if ($owner !== '') {
+            $connections[] = 'pgsql_owner';
+        }
+
+        return $connections;
     }
 
     private function productionReverbIsSafe(): bool

@@ -67,6 +67,8 @@ beforeEach(function () {
         'identity.encryption.current_version' => config('identity.encryption.current_version'),
         'identity.hmac.keys' => config('identity.hmac.keys'),
         'identity.encryption.keys' => config('identity.encryption.keys'),
+        'database.connections.pgsql_owner.username' => config('database.connections.pgsql_owner.username'),
+        'database.connections.pgsql_owner.sslmode' => config('database.connections.pgsql_owner.sslmode'),
     ];
 });
 
@@ -160,6 +162,26 @@ it('fails closed when production PostgreSQL sslmode is prefer, allow, or disable
 
     expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
 })->with(['prefer', 'allow', 'disable']);
+
+it('does not require pgsql_owner ssl when the owner username is unset', function () {
+    config(productionReverbBaseline());
+    config([
+        'database.connections.pgsql_owner.username' => '',
+        'database.connections.pgsql_owner.sslmode' => 'prefer',
+    ]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Pass);
+});
+
+it('fails closed when production pgsql_owner is configured with a weak sslmode', function () {
+    config(productionReverbBaseline());
+    config([
+        'database.connections.pgsql_owner.username' => 'clinic_owner',
+        'database.connections.pgsql_owner.sslmode' => 'prefer',
+    ]);
+
+    expect(configurationCheck()->run())->toBe(CheckStatus::Fail);
+});
 
 it('fails closed when production CORS origins are empty', function () {
     config(productionReverbBaseline());

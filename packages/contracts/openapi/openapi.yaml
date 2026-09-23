@@ -410,6 +410,12 @@ paths:
       tags: [auth]
       operationId: createAuthCsrfCookie
       summary: Establish CSRF cookie for admin browser sessions
+      description: |
+        Browser cookie clients only. Issues the CSRF cookie used by admin
+        login. A device bearer `Authorization` header is rejected with
+        `MALFORMED_REQUEST`. This endpoint does not authenticate a device
+        session, does not create a Laravel session for bearer traffic, and
+        does not fall back to a cookie identity when a bearer is present.
       security: []
       parameters:
         - $ref: '#/components/parameters/RequestId'
@@ -428,6 +434,8 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/CsrfResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   /api/v1/auth/registrations:
     post:

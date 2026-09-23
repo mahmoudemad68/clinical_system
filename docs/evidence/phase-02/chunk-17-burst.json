@@ -1,0 +1,112 @@
+{
+  "gate": "P02-AUDIT-002",
+  "mode": "burst",
+  "candidate_sha": "e5e395d316fca973862c395234b79bdac62a65b4",
+  "recorded_at": "2026-09-23T13:48:20Z",
+  "runtime_image_name": "clinic-core-api",
+  "runtime_image_tag": "chunk17-after",
+  "runtime": {
+    "server": "octane:frankenphp",
+    "workers": 16,
+    "host_nproc": 4,
+    "app_debug": false,
+    "log_level": "warning",
+    "requested_rps": 750,
+    "duration": "60s"
+  },
+  "k6_exit_code": 0,
+  "http_reqs": 7672,
+  "achieved_rps": 117.58878294103425,
+  "dropped_iterations": 37290,
+  "http_req_failed_rate": 0.11496350364963503,
+  "unexpected_request_failure_rate": 0,
+  "http_2xx": 6790,
+  "http_4xx": 882,
+  "http_5xx": 0,
+  "expected_conflict_409": 882,
+  "latency_ms": {
+    "p50": 4173.0120315,
+    "p95": 6576.9406911999995,
+    "p99": 7651.80525823,
+    "max": 9320.824989
+  },
+  "operations": {
+    "op_patient_profile_read": {
+      "count": null,
+      "p50": 4112.2390565000005,
+      "p95": 6496.437545,
+      "p99": 6774.38665185
+    },
+    "op_doctor_profile_read": {
+      "count": null,
+      "p50": 4180.1691455,
+      "p95": 6493.504269550001,
+      "p99": 6760.12871187
+    },
+    "op_clinic_locations_read": {
+      "count": null,
+      "p50": 4112.81193,
+      "p95": 6470.928184,
+      "p99": 6739.516088399999
+    },
+    "op_pharmacy_org_read": {
+      "count": null,
+      "p50": 4136.878372,
+      "p95": 6483.4916992,
+      "p99": 6755.546066239998
+    },
+    "op_pharmacy_branches_read": {
+      "count": null,
+      "p50": 4118.9355255,
+      "p95": 6523.4074964500005,
+      "p99": 6730.27876835
+    },
+    "op_verification_read": {
+      "count": null,
+      "p50": 5571.203884500001,
+      "p95": 8273.510104199999,
+      "p99": 8834.59378758
+    },
+    "op_patient_demographic_update": {
+      "count": null,
+      "p50": 4134.123328,
+      "p95": 6415.868736650001,
+      "p99": 6715.98730766
+    },
+    "op_doctor_onboarding_status": {
+      "count": null,
+      "p50": 4163.214503,
+      "p95": 6542.6849708,
+      "p99": 6772.4456394399995
+    },
+    "op_clinic_location_update": {
+      "count": null,
+      "p50": 4058.0537215,
+      "p95": 6488.576658749999,
+      "p99": 6670.43127564
+    },
+    "op_membership_operations": {
+      "count": null,
+      "p50": 4087.690712,
+      "p95": 6432.855439999999,
+      "p99": 6657.031246590001
+    }
+  },
+  "in_run_cpu": {
+    "core_api_samples": [
+      "0.52%",
+      "156.23%",
+      "201.71%",
+      "189.99%",
+      "192.17%",
+      "178.34%",
+      "190.38%",
+      "199.72%",
+      "193.49%",
+      "190.13%",
+      "145.19%",
+      "0.63%"
+    ],
+    "note": "full docker stats retained in tmp/phase-02-perf/burst-resource.txt"
+  }
+}

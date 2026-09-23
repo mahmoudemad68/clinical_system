@@ -9,6 +9,7 @@ use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Octane\Events\WorkerStarting;
 use Modules\Auth\Console\ApplyDueRecoveriesCommand;
 use Modules\Auth\Console\BootstrapAdminCommand;
 use Modules\Auth\Console\PruneExpiredAuthStateCommand;
@@ -54,6 +55,7 @@ use Modules\Auth\Services\VerifyOtpService;
 use Modules\Platform\Contracts\RandomBytes;
 use Modules\Platform\Services\Crypto\PhpRandomBytes;
 use Modules\Platform\Services\Outbox\OutboxDispatcher;
+use RuntimeException;
 
 final class AuthServiceProvider extends ServiceProvider
 {
@@ -143,6 +145,16 @@ final class AuthServiceProvider extends ServiceProvider
         });
 
         Event::listen(CommandStarting::class, [ReverbSessionDisconnectListener::class, 'subscribe']);
+
+        // Closure (not a new class) so WorkerStarting still primes when an
+        // authoritative classmap has not yet been dumped for Listeners/*.
+        Event::listen(WorkerStarting::class, function (WorkerStarting $event): void {
+            $hasher = $event->app->make(PasswordHasher::class);
+            $hasher->primeUnknownUserDummy();
+            if (! $hasher->unknownUserDummyIsPrimed()) {
+                throw new RuntimeException('Octane worker started without an unknown-user Argon2id dummy.');
+            }
+        });
 
         if ($this->app->runningInConsole()) {
             $this->commands([
