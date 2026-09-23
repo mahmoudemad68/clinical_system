@@ -22,6 +22,7 @@ use Laravel\Octane\Listeners\FlushUploadedFiles;
 use Laravel\Octane\Listeners\ReportException;
 use Laravel\Octane\Listeners\StopWorkerIfNecessary;
 use Laravel\Octane\Octane;
+use Modules\Auth\Contracts\PasswordHasher;
 
 return [
 
@@ -148,7 +149,7 @@ return [
         // Resolve on the root worker so the sandbox clone reuses it. The hasher
         // is a singleton; resolving it only inside a request-cloned container
         // used to re-run Argon2id dummy hashing on every verification read.
-        \Modules\Auth\Contracts\PasswordHasher::class,
+        PasswordHasher::class,
     ],
 
     'flush' => [
