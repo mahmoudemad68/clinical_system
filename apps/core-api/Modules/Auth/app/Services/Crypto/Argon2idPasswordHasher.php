@@ -31,12 +31,6 @@ final class Argon2idPasswordHasher implements PasswordHasher
             return;
         }
 
-        if (! $this->sharesDummyAcrossOctaneWorkers()) {
-            $this->dummyHash = $this->hasher->make(self::DUMMY_PLAIN);
-
-            return;
-        }
-
         $this->primeSerializedAcrossWorkers();
     }
 
@@ -67,32 +61,24 @@ final class Argon2idPasswordHasher implements PasswordHasher
         return $this->dummyHash ?? throw new \LogicException('unknown-user dummy was not primed');
     }
 
-    private function sharesDummyAcrossOctaneWorkers(): bool
-    {
-        $flag = $_SERVER['LARAVEL_OCTANE'] ?? $_ENV['LARAVEL_OCTANE'] ?? getenv('LARAVEL_OCTANE');
-
-        return filter_var($flag, FILTER_VALIDATE_BOOLEAN);
-    }
-
     private function primeSerializedAcrossWorkers(): void
     {
         $path = $this->cachePath();
-        $handle = fopen($path, 'c+b');
-        if ($handle === false) {
+        $lock = fopen($path.'.lock', 'c+b');
+        if ($lock === false) {
             $this->dummyHash = $this->hasher->make(self::DUMMY_PLAIN);
 
             return;
         }
 
         try {
-            if (! flock($handle, LOCK_EX)) {
+            if (! flock($lock, LOCK_EX)) {
                 $this->dummyHash = $this->hasher->make(self::DUMMY_PLAIN);
 
                 return;
             }
 
-            rewind($handle);
-            $existing = $this->validatedDummyHash(trim((string) stream_get_contents($handle)));
+            $existing = $this->readCachedDummyHash($path);
             if (is_string($existing)) {
                 $this->dummyHash = $existing;
 
@@ -100,18 +86,16 @@ final class Argon2idPasswordHasher implements PasswordHasher
             }
 
             $this->dummyHash = $this->hasher->make(self::DUMMY_PLAIN);
-            if ($this->validatedDummyHash($this->dummyHash) === null) {
+            $valid = $this->validatedDummyHash($this->dummyHash);
+            if ($valid === null) {
                 return;
             }
 
-            ftruncate($handle, 0);
-            rewind($handle);
-            fwrite($handle, $this->dummyHash);
-            fflush($handle);
+            file_put_contents($path, $valid);
             @chmod($path, 0600);
         } finally {
-            flock($handle, LOCK_UN);
-            fclose($handle);
+            flock($lock, LOCK_UN);
+            fclose($lock);
         }
     }
 
@@ -122,6 +106,17 @@ final class Argon2idPasswordHasher implements PasswordHasher
         $threads = (string) config('hashing.argon.threads', 1);
 
         return sys_get_temp_dir().'/clinic-argon-dummy-'.$memory.'-'.$time.'-'.$threads.'.hash';
+    }
+
+    private function readCachedDummyHash(string $path): ?string
+    {
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $raw = file_get_contents($path);
+
+        return $this->validatedDummyHash(is_string($raw) ? trim($raw) : '');
     }
 
     private function validatedDummyHash(string $hash): ?string

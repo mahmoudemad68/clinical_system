@@ -74,23 +74,15 @@ function argonPlantedDummyHash(): string
     return '$argon2id$v=19$m=16384,t=1,p=1$c29tZXNhbHRzb21lc2FsdA$c29tZWhhc2hzb21laGFzaHNvbWVoYXNoc29tZWhhc2g';
 }
 
-function argonClearOctaneFlag(): void
-{
-    putenv('LARAVEL_OCTANE');
-    unset($_SERVER['LARAVEL_OCTANE'], $_ENV['LARAVEL_OCTANE']);
-}
-
-function argonEnableOctaneFlag(): void
-{
-    putenv('LARAVEL_OCTANE=1');
-    $_SERVER['LARAVEL_OCTANE'] = '1';
-    $_ENV['LARAVEL_OCTANE'] = '1';
-}
-
 describe('argon2id password hasher', function () {
-    afterEach(function () {
-        argonClearOctaneFlag();
+    beforeEach(function () {
         @unlink(argonDummyCachePath());
+        @unlink(argonDummyCachePath().'.lock');
+    });
+
+    afterEach(function () {
+        @unlink(argonDummyCachePath());
+        @unlink(argonDummyCachePath().'.lock');
     });
     it('does not kdf in the constructor', function () {
         $probe = argonProbe();
@@ -153,23 +145,7 @@ describe('argon2id password hasher', function () {
             ->and($probe->checks)->toBe(2);
     });
 
-    it('ignores a leftover dummy file outside Octane so FPM classes stay equal', function () {
-        argonClearOctaneFlag();
-        $path = argonDummyCachePath();
-        file_put_contents($path, argonPlantedDummyHash());
-
-        $probe = argonProbe();
-        $passwords = new Argon2idPasswordHasher(argonProbeHasher($probe));
-        $passwords->primeUnknownUserDummy();
-
-        expect($probe->makes)->toBe(1)
-            ->and($passwords->unknownUserDummyIsPrimed())->toBeTrue();
-
-        @unlink($path);
-    });
-
-    it('reuses the Octane worker cache file without another make', function () {
-        argonEnableOctaneFlag();
+    it('reuses a valid dummy cache file without another make', function () {
         $path = argonDummyCachePath();
         file_put_contents($path, argonPlantedDummyHash());
 
@@ -182,9 +158,18 @@ describe('argon2id password hasher', function () {
             ->and($probe->checks)->toBe(1)
             ->and($probe->checked[0][1])->toBe(argonPlantedDummyHash())
             ->and($passwords->unknownUserDummyIsPrimed())->toBeTrue();
+    });
 
+    it('does not persist a non-argon2id probe hash into the worker cache', function () {
+        $path = argonDummyCachePath();
         @unlink($path);
-        argonClearOctaneFlag();
+
+        $probe = argonProbe();
+        $passwords = new Argon2idPasswordHasher(argonProbeHasher($probe));
+        $passwords->primeUnknownUserDummy();
+
+        expect($probe->makes)->toBe(1)
+            ->and(is_file($path))->toBeFalse();
     });
 
     it('keeps the Phase 01 Argon2id parameter defaults', function () {
@@ -201,8 +186,8 @@ describe('argon2id password hasher', function () {
 
 describe('octane worker dummy priming', function () {
     afterEach(function () {
-        argonClearOctaneFlag();
         @unlink(argonDummyCachePath());
+        @unlink(argonDummyCachePath().'.lock');
         config()->set('octane.worker_probe', false);
     });
 
@@ -229,6 +214,17 @@ describe('octane worker dummy priming', function () {
 
         (new PrimeUnknownUserPasswordDummy)->handle(new WorkerStarting(app()));
         expect($probe->makes)->toBe(1);
+    });
+
+    it('also primes from the Auth service provider WorkerStarting registration', function () {
+        $probe = argonProbe();
+        $passwords = new Argon2idPasswordHasher(argonProbeHasher($probe));
+        app()->instance(PasswordHasher::class, $passwords);
+
+        event(new WorkerStarting(app()));
+
+        expect($passwords->unknownUserDummyIsPrimed())->toBeTrue()
+            ->and($probe->makes)->toBe(1);
     });
 
     it('exposes dummy priming on the local worker-probe header', function () {
