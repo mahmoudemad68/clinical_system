@@ -205,5 +205,7 @@ export const en = {
     submitted: 'The case is in the verification queue. A different privileged reviewer must claim and decide it.',
     backToQueue: 'Back to queue',
     capabilityNote: 'Pending applicants receive no clinical or business capability.',
+    catalogueUnavailable:
+      'An approved specialty catalogue is not available. A doctor applicant cannot be created until an approved specialty reference is supplied.',
   },
 } as const;

@@ -72,9 +72,10 @@ info:
     `GET /api/v1/admin/doctor-applicants/specialties`,
     `POST /api/v1/admin/doctor-applicants/{doctor_id}/verification-uploads`,
     `POST /api/v1/admin/doctor-applicants/{doctor_id}/verification-submissions`)
-    on the existing Verification pipeline, plus the approved specialty seed
-    for `GET /api/v1/doctors/specialties`. Admin-created doctors are not a
-    verification bypass. Public doctor directory remains absent.
+    on the existing Verification pipeline. Admin-created doctors are not a
+    verification bypass. The specialty catalogue remains empty until an
+    independently approved reference dataset is supplied. Public doctor
+    directory remains absent.
 
     Compatibility rules (ADR 0003):
       * Additive optional fields are compatible within a version.
@@ -1237,7 +1238,9 @@ paths:
         Authenticated doctor-only projection of the Doctors-owned active
         specialty catalogue, ordered by the authoritative in-process service.
         Labels only. Inactive rows, encryption metadata, and internal database
-        columns are never returned. Patient, pharmacy, and secretary actors
+        columns are never returned. The list is empty until an independently
+        approved specialty reference dataset is supplied. This endpoint never
+        fabricates catalogue rows. Patient, pharmacy, and secretary actors
         cannot obtain Doctor business privileges through this read. Creating
         a profile still requires a subsequent onboarding write.
       security:
@@ -2851,6 +2854,8 @@ paths:
         Privileged Admin projection of the same Doctors-owned active specialty
         catalogue used by doctor onboarding. Labels only. Inactive rows,
         encryption metadata, and internal database columns are never returned.
+        The list is empty until an independently approved specialty reference
+        dataset is supplied. This endpoint never fabricates catalogue rows.
         This is not a public directory and does not grant clinical capability.
       security:
         - adminSession: []
@@ -2887,7 +2892,9 @@ paths:
         reviewer state. National ID and syndicate number are write-only and
         never echoed. Duplicate protected identity returns generic
         `manual_review_required`. The creating Admin cannot later review the
-        same applicant.
+        same applicant. `specialty_id` must identify an active specialty.
+        Unknown or inactive IDs fail closed. The server does not invent a
+        catalogue when none is configured.
       security:
         - adminSession: []
       parameters:

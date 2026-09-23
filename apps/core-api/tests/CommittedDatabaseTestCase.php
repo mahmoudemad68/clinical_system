@@ -18,9 +18,7 @@ use Illuminate\Foundation\Testing\DatabaseTruncation;
  * outbox, users, patient, or other durable rows into later suites.
  *
  * migrations stays excepted so the schema is not dropped. clinic_migrator can
- * TRUNCATE audit_events (DELETE is blocked by the append-only trigger). The
- * approved specialty catalogue is reference data: restore it after truncate
- * so later RefreshDatabase tests still see a clean migrated catalog.
+ * TRUNCATE audit_events (DELETE is blocked by the append-only trigger).
  */
 abstract class CommittedDatabaseTestCase extends TestCase
 {
@@ -33,17 +31,10 @@ abstract class CommittedDatabaseTestCase extends TestCase
         'migrations',
     ];
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        doctorsSeedApprovedSpecialtyCatalogue();
-    }
-
     protected function tearDown(): void
     {
         if ($this->app !== null) {
             $this->truncateTablesForAllConnections();
-            doctorsSeedApprovedSpecialtyCatalogue();
         }
 
         parent::tearDown();

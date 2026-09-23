@@ -87,6 +87,23 @@ export function CreateDoctorPage() {
     return <UnauthorizedPanel />;
   }
 
+  if (specialties !== null && specialties.length === 0 && created === null) {
+    return (
+      <Stack spacing={2} sx={{ maxWidth: 560 }}>
+        <Typography variant="h4" component="h1">
+          {t('createDoctor.title')}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {t('createDoctor.intro')}
+        </Typography>
+        {failure ? <SafeError failure={failure} /> : null}
+        <Alert severity="warning" role="status">
+          {t('createDoctor.catalogueUnavailable')}
+        </Alert>
+      </Stack>
+    );
+  }
+
   async function createApplicant(event: SubmitEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setBusy(true);

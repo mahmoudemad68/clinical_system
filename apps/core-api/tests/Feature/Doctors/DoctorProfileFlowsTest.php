@@ -395,23 +395,14 @@ describe('own doctor profile', function () {
 
 describe('specialty catalogue', function () {
     it('lists active specialties only through the Doctors-owned service', function () {
-        doctorsSeedApprovedSpecialtyCatalogue();
         doctorsSeedSpecialty('alpha_gp', ['sort_order' => 20, 'label_en' => 'Alpha']);
         doctorsSeedSpecialty('beta_card', ['sort_order' => 10, 'label_en' => 'Beta', 'label_ar' => 'قلب']);
         doctorsSeedSpecialty('zzz_inactive', ['active' => false, 'sort_order' => 1, 'label_en' => 'Hidden']);
 
         $listed = app(ListSpecialties::class)->handle();
-        $codes = array_map(static fn ($row) => $row->code, $listed);
-        expect($codes)->toContain('beta_card')
-            ->and($codes)->toContain('alpha_gp')
-            ->and($codes)->not->toContain('zzz_inactive')
-            ->and(count($listed))->toBeGreaterThanOrEqual(12);
-
-        $betaIndex = array_search('beta_card', $codes, true);
-        $alphaIndex = array_search('alpha_gp', $codes, true);
-        expect($betaIndex)->toBeInt()
-            ->and($alphaIndex)->toBeInt()
-            ->and($betaIndex)->toBeLessThan($alphaIndex);
+        expect($listed)->toHaveCount(2)
+            ->and($listed[0]->code)->toBe('beta_card')
+            ->and($listed[1]->code)->toBe('alpha_gp');
 
         $blob = json_encode(array_map(static fn ($row) => $row->toArray(), $listed), JSON_THROW_ON_ERROR);
         expect($blob)->not->toContain('zzz_inactive')
@@ -421,7 +412,6 @@ describe('specialty catalogue', function () {
     });
 
     it('projects the active catalogue over HTTP for doctor actors only', function () {
-        doctorsSeedApprovedSpecialtyCatalogue();
         doctorsSeedSpecialty('alpha_http', ['sort_order' => 20, 'label_en' => 'Alpha HTTP']);
         $beta = doctorsSeedSpecialty('beta_http', ['sort_order' => 10, 'label_en' => 'Beta HTTP', 'label_ar' => 'قلب']);
         doctorsSeedSpecialty('zzz_http_inactive', ['active' => false, 'sort_order' => 1, 'label_en' => 'Hidden HTTP']);
@@ -431,24 +421,19 @@ describe('specialty catalogue', function () {
         $session = doctorsActiveSession('spec-http');
         $response = $this->getJson('/api/v1/doctors/specialties', doctorsAuth($session['token']));
         $response->assertOk()
+            ->assertJsonPath('data.specialties.0.code', 'beta_http')
+            ->assertJsonPath('data.specialties.0.specialty_id', $beta['id'])
+            ->assertJsonPath('data.specialties.0.label_en', 'Beta HTTP')
+            ->assertJsonPath('data.specialties.1.code', 'alpha_http')
             ->assertJsonMissingPath('data.specialties.0.created_at')
             ->assertJsonMissingPath('data.specialties.0.updated_at')
             ->assertJsonMissingPath('data.specialties.0.active')
             ->assertJsonMissingPath('data.specialties.0.id');
 
-        $codes = collect($response->json('data.specialties'))->pluck('code')->all();
-        expect($codes)->toContain('beta_http')
-            ->and($codes)->toContain('alpha_http')
-            ->and($codes)->toContain('general_practice')
-            ->and($codes)->not->toContain('zzz_http_inactive')
-            ->and(count($response->json('data.specialties')))->toBeGreaterThanOrEqual(12)
+        expect($response->json('data.specialties'))->toHaveCount(2)
             ->and($response->getContent())->not->toContain('zzz_http_inactive')
             ->and($response->getContent())->not->toContain('Hidden HTTP')
             ->and($response->getContent())->not->toContain('hmac');
-
-        $projectedBeta = collect($response->json('data.specialties'))->firstWhere('code', 'beta_http');
-        expect($projectedBeta['specialty_id'] ?? null)->toBe($beta['id'])
-            ->and($projectedBeta['label_en'] ?? null)->toBe('Beta HTTP');
 
         $pending = doctorsActiveSession('spec-pend', 'pending_phone');
         $this->getJson('/api/v1/doctors/specialties', doctorsAuth($pending['token']))->assertNotFound();

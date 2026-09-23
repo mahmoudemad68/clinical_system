@@ -24,7 +24,7 @@ uses(TestCase::class, RefreshDatabase::class);
 
 describe('admin-created doctor HTTP', function () {
     beforeEach(function () {
-        doctorsSeedApprovedSpecialtyCatalogue();
+        doctorsSeedSpecialty('gp_admin_created_fixture');
     });
 
     it('creates a draft hidden applicant, opens the canonical case, and denies pending capability', function () {
@@ -48,7 +48,6 @@ describe('admin-created doctor HTTP', function () {
         $catalogue = adminVerificationGetJson('/api/v1/admin/doctor-applicants/specialties')->assertOk();
         $codes = collect($catalogue->json('data.specialties'))->pluck('code')->all();
         expect($codes)->toContain('general_practice')
-            ->and(count($catalogue->json('data.specialties')))->toBeGreaterThanOrEqual(12)
             ->and($catalogue->json('data.specialties.0'))->not->toHaveKey('active')
             ->and($catalogue->getContent())->not->toContain('certified')
             ->and($catalogue->getContent())->not->toContain($canaryNid);
@@ -482,17 +481,7 @@ describe('admin-created doctor HTTP', function () {
             ->and(DB::table('clinic_locations')->count())->toBe(0);
     });
 
-    it('returns the seeded specialty catalogue and rejects inactive specialties', function () {
-        doctorsSeedApprovedSpecialtyCatalogue();
-        $doctor = doctorsActiveSession('spec-cat');
-        $listed = $this->getJson('/api/v1/doctors/specialties', doctorsAuth($doctor['token']))->assertOk();
-        $codes = collect($listed->json('data.specialties'))->pluck('code')->all();
-        expect($codes)->toContain('general_practice')
-            ->and($codes)->toContain('cardiology')
-            ->and($codes)->toContain('pulmonology')
-            ->and(count($listed->json('data.specialties')))->toBeGreaterThanOrEqual(12);
-
-        clinicClearBrowserSession();
+    it('rejects inactive specialties without creating a profile', function () {
         $inactive = doctorsSeedSpecialty('inactive_admin_create', ['active' => false, 'sort_order' => 999]);
         $admin = adminVerificationInsertAdmin('spec-inactive');
         adminVerificationLogin($admin);
@@ -520,6 +509,29 @@ describe('admin-created doctor HTTP', function () {
             ->and((string) $row->verification_status)->toBe(DoctorVerificationStatus::Draft->value)
             ->and((string) $row->public_status)->toBe(DoctorPublicStatus::Hidden->value);
     });
+});
+
+it('returns an empty specialty catalogue after clean migrate and rejects Admin create without an active specialty', function () {
+    expect(DB::table('specialties')->count())->toBe(0);
+
+    $doctor = doctorsActiveSession('empty-cat');
+    $listed = $this->getJson('/api/v1/doctors/specialties', doctorsAuth($doctor['token']))->assertOk();
+    expect($listed->json('data.specialties'))->toBe([]);
+
+    clinicClearBrowserSession();
+    $admin = adminVerificationInsertAdmin('empty-spec');
+    adminVerificationLogin($admin);
+    $catalogue = adminVerificationGetJson('/api/v1/admin/doctor-applicants/specialties')->assertOk();
+    expect($catalogue->json('data.specialties'))->toBe([]);
+
+    $missingId = app(IdentityGenerator::class)->next()->value;
+    adminVerificationPostJson(
+        '/api/v1/admin/doctor-applicants',
+        adminCreatedDoctorApplicantBody(['specialty_id' => $missingId]),
+        adminVerificationIdem('acd-empty-cat'),
+    )->assertUnprocessable();
+    expect(DB::table('doctor_profiles')->count())->toBe(0)
+        ->and(DB::table('specialties')->count())->toBe(0);
 });
 
 it('rolls back Admin-created doctor writes when profile audit fails', function () {

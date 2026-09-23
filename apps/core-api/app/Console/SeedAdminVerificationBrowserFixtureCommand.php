@@ -125,6 +125,7 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
             $now,
         );
 
+        // Synthetic E2E fixture only — not a production specialty catalogue.
         $specialtyId = $ids->next();
         DB::table('specialties')->insert([
             'id' => $specialtyId->value,

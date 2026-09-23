@@ -154,4 +154,23 @@ describe('create doctor applicant', () => {
     expect(await screen.findByRole('heading', { name: 'Verification review is not available' })).toBeInTheDocument();
     expect(fetchMock.mock.calls.some((call) => requestUrl(call).includes('/admin/doctor-applicants'))).toBe(false);
   });
+
+  it('presents unavailable when the specialty catalogue is empty', async () => {
+    stubApi({
+      'GET /api/v1/me': () => jsonResponse(meBody()),
+      'GET /api/v1/me/capabilities': () =>
+        jsonResponse(capabilitiesBody([REVIEW_CAPABILITY, CREATE_DOCTOR_CAPABILITY])),
+      'GET /api/v1/health': () => health(),
+      'GET /api/v1/admin/verification-cases': () =>
+        jsonResponse(envelope([], { meta: { locale: 'en', pagination: { has_more: false, next: null, limit: 25 } } })),
+      'GET /api/v1/admin/doctor-applicants/specialties': () => jsonResponse(envelope({ specialties: [] })),
+    });
+
+    renderApp('/doctor-applicants/new');
+    expect(
+      await screen.findByText(/An approved specialty catalogue is not available/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create applicant' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Specialty/)).not.toBeInTheDocument();
+  });
 });

@@ -207,8 +207,10 @@ assignment, or decisions (`Verification` owns that pipeline). Granting clinical
 access. Making a doctor `listed` or clinically capable from profile creation.
 `verification_status` is not an access grant. Direct access to Identity/Access
 tables. Inventing government or syndicate certification claims in specialty
-labels. The approved specialty catalogue is seeded from
-`database/data/approved_specialties.v1.php` through a versioned migration.
+labels. The specialties table remains empty until an independently approved
+medical-specialty reference dataset exists. Tests and E2E insert synthetic
+rows only; they are not production reference data. Chunk 16 does not install
+a production catalogue.
 Onboarding HTTP is compact (`status`, `doctor_id`,
 `version`); `GET /doctors/me/profile` is the canonical projection. Collisions
 return generic `manual_review_required`. `ListSpecialties` is the in-process

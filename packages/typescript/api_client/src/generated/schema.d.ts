@@ -663,7 +663,9 @@ export interface paths {
          * @description Authenticated doctor-only projection of the Doctors-owned active
          *     specialty catalogue, ordered by the authoritative in-process service.
          *     Labels only. Inactive rows, encryption metadata, and internal database
-         *     columns are never returned. Patient, pharmacy, and secretary actors
+         *     columns are never returned. The list is empty until an independently
+         *     approved specialty reference dataset is supplied. This endpoint never
+         *     fabricates catalogue rows. Patient, pharmacy, and secretary actors
          *     cannot obtain Doctor business privileges through this read. Creating
          *     a profile still requires a subsequent onboarding write.
          */
@@ -1433,6 +1435,8 @@ export interface paths {
          * @description Privileged Admin projection of the same Doctors-owned active specialty
          *     catalogue used by doctor onboarding. Labels only. Inactive rows,
          *     encryption metadata, and internal database columns are never returned.
+         *     The list is empty until an independently approved specialty reference
+         *     dataset is supplied. This endpoint never fabricates catalogue rows.
          *     This is not a public directory and does not grant clinical capability.
          */
         get: operations["listAdminDoctorApplicantSpecialties"];
@@ -1462,7 +1466,9 @@ export interface paths {
          *     reviewer state. National ID and syndicate number are write-only and
          *     never echoed. Duplicate protected identity returns generic
          *     `manual_review_required`. The creating Admin cannot later review the
-         *     same applicant.
+         *     same applicant. `specialty_id` must identify an active specialty.
+         *     Unknown or inactive IDs fail closed. The server does not invent a
+         *     catalogue when none is configured.
          */
         post: operations["createAdminDoctorApplicant"];
         delete?: never;

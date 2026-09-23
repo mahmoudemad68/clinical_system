@@ -1,14 +1,20 @@
-# Phase 02 chunk 16 — Admin-created doctor + approved specialty seed (not phase PASS)
+# Phase 02 chunk 16 — Admin-created doctor (not phase PASS)
 
 Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 **not** claim the branch is READY_TO_MERGE.
 
-**Scope implemented:** privileged Admin-created Doctor applicant plus the
-approved specialty catalogue seed required by Phase 02. Product rule:
-Admin-created is **not** a verification bypass. The same Doctor profile,
-protected-identifier, specialty, quarantine/malware/AVAILABLE-only evidence,
-reviewer-separation, decision, audit/outbox, pending-capability-denial, and
-canonical approval path used by self-registered Doctors applies.
+**Scope implemented:** privileged Admin-created Doctor applicant. Product
+rule: Admin-created is **not** a verification bypass. The same Doctor
+profile, protected-identifier, specialty **validation**, quarantine/malware/
+AVAILABLE-only evidence, reviewer-separation, decision, audit/outbox,
+pending-capability-denial, and canonical approval path used by
+self-registered Doctors applies.
+
+**CH16-SPECIALTY-REFERENCE-001 (independent review):** the engineering-default
+12-row file previously added as a production seed is withdrawn. There is no
+independently approved specialty reference dataset in repository
+source-of-truth. Production catalogue remains empty until product/domain
+supplies an approved source.
 
 Observable Admin browser journey:
 
@@ -48,6 +54,9 @@ bootstrap command was not required and was not added.
 - G-08-04 / ADR 0014
 - DEF-SEC-MFA-001 (this chunk did not reproduce a new regression of that finding)
 - Staging provisioning / production promotion
+- **Approved specialty reference dataset** — still pending product/domain
+  approval; production catalogue intentionally remains empty until an
+  approved source is supplied (CH16-SPECIALTY-REFERENCE-001)
 - Phase 02 PASS
 
 `designs/**` was not modified. No generic IPC. No clinical-data expansion.
@@ -56,21 +65,21 @@ No public-directory implementation.
 - **Branch:** `cursor/phase-02-chunk-16-admin-created-doctor-cc7f`
 - **Draft PR:** https://github.com/mahmoudemad68/clinical_system/pull/26
 - **Baseline (GitHub `main`):** `3401017e08f2ec60cedb44c5b638d465426ad1a2`
-- **CI-proven implementation HEAD:** `301d39a658d782152d8a309520878cb81f3e12bb`
+- **CH16-SPECIALTY-REFERENCE-001 remediation:** withdraws the unapproved
+  production specialty seed. Do not treat pre-remediation `301d39a` as current.
+  GitHub CI on the remediation HEAD is recorded after push.
+- **Prior product CI (withdrawn specialty seed, not current HEAD):**
+  `301d39a658d782152d8a309520878cb81f3e12bb`
   (`pull-request` run **35808624502** SUCCESS)
   https://github.com/mahmoudemad68/clinical_system/actions/runs/35808624502
-  — 15 success, 3 skipped (Flutter, Flutter Patient profile E2E, AI service
-  path filters). Core API, Admin web Playwright, packaged Electron
-  ubuntu/macos/windows, Forge Doctor/Pharmacy practice E2E, Contracts, and
-  Security scans succeeded.
-- **Evidence document commit:** `aaf36b27e3ac562e2e0962bca1539870f6bb9848`
-  (adds this file; SHA-recording commit follows).
 - **Prior implementation HEAD (failed Core API Tests only):** `b71126b0d633089c10c70a924b81dc232bf492a4`
   (`pull-request` run **35807826004** FAILURE)
   https://github.com/mahmoudemad68/clinical_system/actions/runs/35807826004
   — `DoctorProfileFlowsTest` specialty catalogue assertions saw 2 rows after
-  `CommittedDatabaseTestCase` truncated `specialties`. Fix is `301d39a`
-  (restore versioned catalogue after truncation).
+  `CommittedDatabaseTestCase` truncated `specialties`. `301d39a` then restored
+  a 12-row engineering-default catalogue after truncation. Independent review
+  rejected that catalogue (CH16-SPECIALTY-REFERENCE-001). This revision removes
+  it; tests/E2E insert synthetic specialty rows only.
 - **Recorded:** 2026-09-23
 - **Environment:** host PHP 8.3 Core against local PostgreSQL `clinic_test`;
   Admin Playwright against `php -S 127.0.0.1:18080` and Admin host
@@ -124,7 +133,8 @@ Closed Admin create body (`AdminDoctorApplicantRequest`,
 | `phone` | write-only, Identity canonicalization |
 | `national_id` | write-only, existing NationalIdProtector HMAC/ciphertext |
 | `professional_display_name` | max 200 |
-| `specialty_id` | UUIDv7 of an **active** seeded specialty |
+| `specialty_id` | UUIDv7 of an **active** specialty. Unknown, inactive, or
+  absent catalogue fail closed; the server does not invent a row |
 | `syndicate_number` | optional write-only, existing syndicate HMAC |
 | `password` | write-only initial password |
 | `evidence_source` | `in_person_originals` \| `certified_copy` (provenance only) |
@@ -136,11 +146,11 @@ HTTP:
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/api/v1/admin/doctor-applicants/specialties` | active catalogue labels only |
+| GET | `/api/v1/admin/doctor-applicants/specialties` | active labels only; empty until an approved dataset exists |
 | POST | `/api/v1/admin/doctor-applicants` | Idempotency-Key required |
 | POST | `/api/v1/admin/doctor-applicants/{doctor_id}/verification-uploads` | represented grant |
 | POST | `/api/v1/admin/doctor-applicants/{doctor_id}/verification-submissions` | optimistic `expected_case_version` |
-| GET | `/api/v1/doctors/specialties` | same catalogue for Doctor actors; non-empty after clean migrate |
+| GET | `/api/v1/doctors/specialties` | same catalogue for Doctor actors; empty after clean migrate |
 
 Complete/status reuse existing `/api/v1/verification-uploads/{id}` routes.
 Claim/decide reuse existing `/api/v1/admin/verification-cases/*`.
@@ -159,42 +169,54 @@ Admin UI (`apps/admin-web`, existing verification architecture):
 - Does not render clinical data, unrestricted patient lookup, raw object keys,
   crypto fields, or internal reviewer notes
 - After represented submit, operator is sent to the existing verification queue
+- Empty active catalogue: Admin UI shows an unavailable state and does not
+  offer Create applicant
 - Existing queue/review screens unchanged except opening a case by professional
   display name so Admin-created E2E does not click the oldest seeded case
 
-## Specialty seed source
+## Specialty catalogue residual (CH16-SPECIALTY-REFERENCE-001)
 
-**Authoritative in-repo source:**
-`apps/core-api/database/data/approved_specialties.v1.php`
+Chunk 02 stated the specialties catalogue remains empty until an approved
+medical-specialty reference dataset exists. Independent review rejected the
+Chunk 16 attempt to treat a newly invented
+`database/data/approved_specialties.v1.php` engineering-default vocabulary as
+that dataset.
 
-Why it is authoritative for this repository: it is the engineering-default
-bilingual vocabulary already used by Doctors tests and onboarding helpers
-(`doctorsSeedSpecialty` / chunk-11 catalogue projections). There is no
-government, syndicate, board, or licensing dataset in repository
-source-of-truth. Labels are public names only and must not be described as
-certified.
+**Withdrawn from production:**
 
-Versioned migration `2026_09_22_160100_seed_approved_specialties.php` inserts
-idempotently by `code`. Identity is migration-safe (stable UUIDv7 + unique
-`code`). All 12 rows are `active=true`.
+- `apps/core-api/database/data/approved_specialties.v1.php`
+- `apps/core-api/database/migrations/2026_09_22_160100_seed_approved_specialties.php`
 
-| id | code | label_ar | label_en | sort_order |
-| --- | --- | --- | --- | --- |
-| `0199a016-c516-7000-8000-000000000001` | `general_practice` | طب الأسرة | General Practice | 10 |
-| `0199a016-c516-7000-8000-000000000002` | `cardiology` | قلب | Cardiology | 20 |
-| `0199a016-c516-7000-8000-000000000003` | `dermatology` | جلدية | Dermatology | 30 |
-| `0199a016-c516-7000-8000-000000000004` | `endocrinology` | غدد صماء | Endocrinology | 40 |
-| `0199a016-c516-7000-8000-000000000005` | `gastroenterology` | جهاز هضمي | Gastroenterology | 50 |
-| `0199a016-c516-7000-8000-000000000006` | `neurology` | مخ وأعصاب | Neurology | 60 |
-| `0199a016-c516-7000-8000-000000000007` | `obstetrics_gynecology` | نساء وتوليد | Obstetrics and Gynecology | 70 |
-| `0199a016-c516-7000-8000-000000000008` | `ophthalmology` | عيون | Ophthalmology | 80 |
-| `0199a016-c516-7000-8000-000000000009` | `orthopedics` | عظام | Orthopedics | 90 |
-| `0199a016-c516-7000-8000-00000000000a` | `otolaryngology` | أنف وأذن وحنجرة | Otolaryngology | 100 |
-| `0199a016-c516-7000-8000-00000000000b` | `pediatrics` | أطفال | Pediatrics | 110 |
-| `0199a016-c516-7000-8000-00000000000c` | `pulmonology` | صدر | Pulmonology | 120 |
+A clean production migration does **not** insert specialty rows.
+`ArchitectureBoundaryTest::production_migrations_do_not_seed_specialty_reference_rows`
+encodes that.
 
-`CommittedDatabaseTestCase` restores this catalogue after truncation so later
-`RefreshDatabase` tests still observe a clean migrated catalog.
+**Test/E2E only:** `doctorsSeedSpecialty()` and
+`e2e:seed-admin-verification` insert synthetic specialty rows for isolated
+automated tests. They are not production reference data.
+
+Admin-created Doctor with no active specialty: GET catalogue returns `[]`;
+POST with an unknown/inactive `specialty_id` is 422; no profile is created.
+FK and active-specialty checks are unchanged.
+
+**Files changed by this remediation:**
+
+- deleted `apps/core-api/database/data/approved_specialties.v1.php`
+- deleted `apps/core-api/database/migrations/2026_09_22_160100_seed_approved_specialties.php`
+- `apps/core-api/tests/CommittedDatabaseTestCase.php` restored to baseline (no catalogue re-seed)
+- `apps/core-api/tests/Support/doctorHttpHelpers.php`
+- `apps/core-api/tests/Feature/Admin/AdminCreatedDoctorHttpTest.php`
+- `apps/core-api/tests/Feature/Doctors/DoctorProfileFlowsTest.php`
+- `apps/core-api/tests/Unit/Platform/ArchitectureBoundaryTest.php`
+- `apps/core-api/app/Console/SeedAdminVerificationBrowserFixtureCommand.php`
+- `apps/admin-web/src/features/doctor-applicants/CreateDoctorPage.tsx`
+- `apps/admin-web/src/features/doctor-applicants/CreateDoctorPage.test.tsx`
+- `apps/admin-web/src/i18n/en.ts`
+- `apps/admin-web/src/i18n/ar.ts`
+- `packages/contracts/openapi/openapi.yaml`
+- `packages/typescript/api_client/src/generated/schema.d.ts`
+- `docs/architecture/module-catalog.md`
+- `docs/evidence/phase-02/chunk-16-admin-created-doctor.md`
 
 ## Security / privacy behavior proven
 
@@ -225,7 +247,8 @@ No exceptional bootstrap command was added.
 
 ## Automated tests (local)
 
-Focused after truncation fix (race → catalogue order):
+Focused after CH16-SPECIALTY-REFERENCE-001 (empty production catalogue;
+synthetic test fixtures only):
 
 ```text
 cd apps/core-api
@@ -258,8 +281,8 @@ passed).
 `AdminCreatedDoctorHttpTest` covers: happy path + pending capability denial,
 duplicate protected identity, unauthorized/low-assurance, BOLA + self-review,
 mass assignment, idempotent replay, optimistic version, reject +
-changes_requested, specialty catalogue ≥12 + inactive 422, self-registration
-regression, audit rollback.
+changes_requested, empty-catalogue 422, inactive specialty 422,
+self-registration regression, audit rollback.
 
 ## GUI / E2E
 
@@ -291,7 +314,10 @@ matrix because OpenAPI/TypeScript client changed. CI packaged Doctor +
 Pharmacy WebdriverIO passed on ubuntu-latest, macos-latest, and windows-latest.
 Forge Doctor practice E2E and Forge Pharmacy practice E2E jobs succeeded.
 
-## GitHub CI — run 35808624502 (SUCCESS) on `301d39a`
+## GitHub CI — historical run 35808624502 (SUCCESS) on withdrawn `301d39a`
+
+Pre-remediation product CI. That HEAD still contained the unapproved specialty
+seed and must not be treated as the Chunk 16 merge candidate.
 
 https://github.com/mahmoudemad68/clinical_system/actions/runs/35808624502
 
@@ -327,9 +353,11 @@ e17dbd7 Align Admin-created doctor E2E evidence bytes with the fixture writer.
 b71126b Give Admin-created doctor E2E its own approver TOTP.
 301d39a Restore approved specialties after committed-database truncation.
 aaf36b2 Record Phase 02 Chunk 16 Admin-created doctor evidence.
+0047a29 Record Chunk 16 evidence document commit SHA.
 ```
 
-Plus the SHA-recording commit that records `aaf36b2`.
+Plus the CH16-SPECIALTY-REFERENCE-001 remediation commit that withdraws the
+unapproved production specialty seed.
 
 ## Exact changed files versus baseline `3401017e`
 
@@ -354,9 +382,7 @@ apps/core-api/app/Console/ProcessVerificationUploadFixtureCommand.php
 apps/core-api/app/Console/SeedAdminVerificationBrowserFixtureCommand.php
 apps/core-api/app/Console/WriteVerificationUploadBytesCommand.php
 apps/core-api/app/Providers/AppServiceProvider.php
-apps/core-api/database/data/approved_specialties.v1.php
 apps/core-api/database/migrations/2026_09_22_160000_add_doctor_profile_provenance.php
-apps/core-api/database/migrations/2026_09_22_160100_seed_approved_specialties.php
 apps/core-api/Modules/Access/app/Support/Capabilities.php
 apps/core-api/Modules/Admin/app/Http/Controllers/AdminDoctorApplicantController.php
 apps/core-api/Modules/Admin/app/Providers/AdminServiceProvider.php
@@ -381,7 +407,6 @@ apps/core-api/Modules/Verification/app/Services/VerificationUploadService.php
 apps/core-api/Modules/Verification/app/Support/AdminDoctorApplicantOutcome.php
 apps/core-api/Modules/Verification/app/Support/PrivilegedAdminDoctorCreateGuard.php
 apps/core-api/routes/api.php
-apps/core-api/tests/CommittedDatabaseTestCase.php
 apps/core-api/tests/Feature/Admin/AdminCreatedDoctorHttpTest.php
 apps/core-api/tests/Feature/Admin/AdminCreatedDoctorRaceTest.php
 apps/core-api/tests/Feature/Admin/SeedAdminVerificationBrowserFixtureTest.php

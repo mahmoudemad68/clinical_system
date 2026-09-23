@@ -809,9 +809,34 @@ final class ArchitectureBoundaryTest extends TestCase
 
         $this->assertStringContainsString('function tearDown', $contents);
         $this->assertStringContainsString('truncateTablesForAllConnections', $contents);
-        $this->assertStringContainsString('doctorsSeedApprovedSpecialtyCatalogue', $contents);
         $this->assertStringNotContainsString("'outbox_events'", $contents);
         $this->assertStringNotContainsString("'audit_events'", $contents);
+        $this->assertStringNotContainsString('doctorsSeedApprovedSpecialtyCatalogue', $contents);
+    }
+
+    #[Test]
+    public function production_migrations_do_not_seed_specialty_reference_rows(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $this->assertFileDoesNotExist($root.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'data'.DIRECTORY_SEPARATOR.'approved_specialties.v1.php');
+
+        $seeder = $root.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'seeders'.DIRECTORY_SEPARATOR.'DatabaseSeeder.php';
+        $this->assertFileExists($seeder);
+        $this->assertDoesNotMatchRegularExpression(
+            "/DB::table\\(['\"]specialties['\"]\\)\\s*->\\s*insert/",
+            (string) file_get_contents($seeder),
+            'DatabaseSeeder must not insert specialty catalogue rows.',
+        );
+
+        foreach (glob($root.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'migrations'.DIRECTORY_SEPARATOR.'*.php') ?: [] as $file) {
+            $contents = (string) file_get_contents($file);
+            $this->assertStringNotContainsString('approved_specialties', $contents, $file);
+            $this->assertDoesNotMatchRegularExpression(
+                "/DB::table\\(['\"]specialties['\"]\\)\\s*->\\s*insert/",
+                $contents,
+                $file.' must not insert specialty catalogue rows.',
+            );
+        }
     }
 
     /**
