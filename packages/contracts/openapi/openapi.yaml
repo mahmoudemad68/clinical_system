@@ -67,6 +67,16 @@ info:
     the Doctor Electron onboarding and verification UX. These are additive.
     Doctor clinic-location UI remains absent.
 
+    Phase 02 chunk 16 adds privileged Admin-created doctor applicants
+    (`POST /api/v1/admin/doctor-applicants`,
+    `GET /api/v1/admin/doctor-applicants/specialties`,
+    `POST /api/v1/admin/doctor-applicants/{doctor_id}/verification-uploads`,
+    `POST /api/v1/admin/doctor-applicants/{doctor_id}/verification-submissions`)
+    on the existing Verification pipeline. Admin-created doctors are not a
+    verification bypass. The specialty catalogue remains empty until an
+    independently approved reference dataset is supplied. Public doctor
+    directory remains absent.
+
     Compatibility rules (ADR 0003):
       * Additive optional fields are compatible within a version.
       * A removal, a type change, a narrowed enum, or a new required field is
@@ -141,9 +151,9 @@ tags:
     description: |
       Phase 02 chunk 05 privileged Admin verification review. Requires an
       `admin_cookie` session, CSRF on state-changing requests, privileged MFA
-      assurance, and `verification.case.review`. Device bearer actors are
-      denied. Reviewer identity is server-derived. React verification UI is
-      not part of this slice.
+      assurance, and `verification.case.review` for review or
+      `doctors.admin.create` for Admin-created doctor applicants. Device bearer
+      actors are denied. Reviewer identity is server-derived.
 
 paths:
   /live:
@@ -1228,7 +1238,9 @@ paths:
         Authenticated doctor-only projection of the Doctors-owned active
         specialty catalogue, ordered by the authoritative in-process service.
         Labels only. Inactive rows, encryption metadata, and internal database
-        columns are never returned. Patient, pharmacy, and secretary actors
+        columns are never returned. The list is empty until an independently
+        approved specialty reference dataset is supplied. This endpoint never
+        fabricates catalogue rows. Patient, pharmacy, and secretary actors
         cannot obtain Doctor business privileges through this read. Creating
         a profile still requires a subsequent onboarding write.
       security:
@@ -2833,6 +2845,195 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /api/v1/admin/doctor-applicants/specialties:
+    get:
+      tags: [admin]
+      operationId: listAdminDoctorApplicantSpecialties
+      summary: Active specialty catalogue for Admin-created doctor applicants
+      description: |
+        Privileged Admin projection of the same Doctors-owned active specialty
+        catalogue used by doctor onboarding. Labels only. Inactive rows,
+        encryption metadata, and internal database columns are never returned.
+        The list is empty until an independently approved specialty reference
+        dataset is supplied. This endpoint never fabricates catalogue rows.
+        This is not a public directory and does not grant clinical capability.
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: Active specialties in server order.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorSpecialtyCatalogue'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/doctor-applicants:
+    post:
+      tags: [admin]
+      operationId: createAdminDoctorApplicant
+      summary: Create a doctor applicant for canonical verification
+      description: |
+        Privileged Admin session creates a doctor Identity account and a draft
+        hidden doctor profile, then opens the existing doctor verification
+        case. This is not a verification bypass. The server owns verification
+        status, public status, capabilities, cryptographic fields, and
+        reviewer state. National ID and syndicate number are write-only and
+        never echoed. Duplicate protected identity returns generic
+        `manual_review_required`. The creating Admin cannot later review the
+        same applicant. `specialty_id` must identify an active specialty.
+        Unknown or inactive IDs fail closed. The server does not invent a
+        catalogue when none is configured.
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDoctorApplicantRequest'
+      responses:
+        '201':
+          description: Applicant and draft verification case created.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminDoctorApplicantResult'
+        '200':
+          description: Idempotent replay or collision pending-review outcome.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AdminDoctorApplicantResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/admin/doctor-applicants/{doctor_id}/verification-uploads:
+    post:
+      tags: [admin]
+      operationId: createAdminDoctorApplicantUpload
+      summary: Create a represented doctor verification upload intent
+      description: |
+        The Admin who created the applicant opens a bounded upload grant on
+        the applicant's draft verification case. Same quarantine, scan, and
+        AVAILABLE-only evidence rules as self-registered doctors. Object keys
+        and locators are never returned on later status reads.
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: doctor_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationUploadCreateRequest'
+      responses:
+        '201':
+          description: Upload intent created with a bounded upload grant.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/VerificationUploadCreateResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/admin/doctor-applicants/{doctor_id}/verification-submissions:
+    post:
+      tags: [admin]
+      operationId: submitAdminDoctorApplicantVerification
+      summary: Submit a represented doctor verification case
+      description: |
+        The Admin who created the applicant submits the existing doctor
+        verification case after required AVAILABLE evidence is present.
+        Optimistic version semantics match self-registered doctor submit.
+      security:
+        - adminSession: []
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/AcceptLanguage'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: doctor_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorVerificationSubmissionRequest'
+      responses:
+        '200':
+          description: Compact submitted case pointer.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DoctorVerificationSubmissionResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
   /api/v1/verification-review-files/{case_id}/{document_id}:
     get:
       tags: [admin]
@@ -3923,6 +4124,70 @@ components:
         version:
           type: integer
           minimum: 1
+
+    AdminDoctorApplicantRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - phone
+        - national_id
+        - professional_display_name
+        - specialty_id
+        - password
+        - evidence_source
+      properties:
+        phone:
+          type: string
+          maxLength: 32
+          description: Write-only. Canonicalized server-side. Never echoed.
+        national_id:
+          type: string
+          maxLength: 32
+          description: Write-only. Canonicalized server-side. Never echoed.
+        professional_display_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        specialty_id:
+          $ref: '#/components/schemas/Uuid'
+        syndicate_number:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 64
+          description: Optional write-only professional identifier. Never echoed.
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          description: Write-only initial password for the created doctor account. Never echoed.
+        evidence_source:
+          type: string
+          enum: [in_person_originals, certified_copy]
+          description: |
+            How the Admin obtained the verification evidence. Provenance only.
+            Not a bootstrap flag and not a certification claim.
+
+    AdminDoctorApplicantResult:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [created, already_exists, manual_review_required]
+        doctor_id:
+          $ref: '#/components/schemas/Uuid'
+        profile_version:
+          type: integer
+          minimum: 1
+        case_id:
+          $ref: '#/components/schemas/Uuid'
+        case_version:
+          type: integer
+          minimum: 1
+        case_status:
+          type: string
+          enum: [draft, pending_review]
 
     DoctorProfile:
       type: object

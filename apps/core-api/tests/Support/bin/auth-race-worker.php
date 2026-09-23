@@ -133,6 +133,8 @@ if ($op === 'refresh') {
     $uri = '';
 } elseif ($op === 'clinic_accept_invitation') {
     $uri = '';
+} elseif ($op === 'admin_create_doctor') {
+    $uri = '';
 } else {
     fwrite(STDOUT, json_encode(['ok' => false, 'error' => 'unknown_op', 'status' => 0]));
     exit(1);
@@ -345,6 +347,74 @@ if ($op === 'verification_process') {
         'patient_id' => null,
         'case_id' => null,
         'decision' => null,
+    ], JSON_THROW_ON_ERROR));
+    exit($error === null ? 0 : 1);
+}
+
+if ($op === 'admin_create_doctor') {
+    try {
+        $reviewerId = Identifier::fromTrusted((string) ($payload['reviewer_user_id'] ?? ''));
+        $reviewer = new ActorContext(
+            $reviewerId,
+            AccountType::Admin,
+            AccountStatus::Active,
+            LanguagePreference::English,
+            AssuranceLevel::from((string) ($payload['assurance_level'] ?? 'aal2_totp')),
+            1,
+            null,
+            $reviewerId,
+            [],
+            Capabilities::forActor('admin', true),
+        );
+        $input = is_array($payload['input'] ?? null) ? $payload['input'] : [];
+        $outcome = $app->make(VerificationService::class)->createAdminDoctorApplicant($reviewer, $input);
+        $status = $outcome->status === 'created' ? 201 : 200;
+        $json = ['data' => $outcome->toArray()];
+    } catch (AuthorizationDenied|FeatureUnavailable) {
+        $status = 404;
+        $json = ['errors' => [['code' => 'NOT_FOUND']]];
+    } catch (StateConflict) {
+        $status = 409;
+        $json = ['errors' => [['code' => 'STATE_CONFLICT']]];
+    } catch (VersionConflict) {
+        $status = 409;
+        $json = ['errors' => [['code' => 'VERSION_CONFLICT']]];
+    } catch (InvalidValueObject|ValidationException) {
+        $status = 422;
+        $json = ['errors' => [['code' => 'VALIDATION_FAILED']]];
+    } catch (Throwable $e) {
+        $error = $e::class;
+        $cursor = $e;
+        while ($cursor instanceof Throwable) {
+            if ($cursor instanceof PDOException) {
+                $sqlstate = (string) ($cursor->errorInfo[0] ?? $cursor->getCode());
+                break;
+            }
+            $cursor = $cursor->getPrevious();
+            if (! $cursor instanceof Throwable) {
+                break;
+            }
+        }
+    }
+
+    $elapsed = (hrtime(true) - $started) / 1e6;
+    $code = is_array($json) ? ($json['error']['code'] ?? $json['errors'][0]['code'] ?? null) : null;
+    $data = is_array($json) ? ($json['data'] ?? []) : [];
+    fwrite(STDOUT, json_encode([
+        'ok' => $error === null && $status > 0,
+        'status' => $status,
+        'error' => $error,
+        'sqlstate' => $sqlstate,
+        'error_code' => $code,
+        'elapsed_ms' => round($elapsed, 3),
+        'has_access_token' => false,
+        'has_refresh_token' => false,
+        'session_id' => null,
+        'recovery_status' => is_array($data) ? ($data['status'] ?? null) : null,
+        'patient_id' => null,
+        'case_id' => is_array($data) ? ($data['case_id'] ?? null) : null,
+        'decision' => null,
+        'doctor_id' => is_array($data) ? ($data['doctor_id'] ?? null) : null,
     ], JSON_THROW_ON_ERROR));
     exit($error === null ? 0 : 1);
 }

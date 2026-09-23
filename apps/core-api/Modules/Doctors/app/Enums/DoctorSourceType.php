@@ -7,4 +7,5 @@ namespace Modules\Doctors\Enums;
 enum DoctorSourceType: string
 {
     case SelfOnboarding = 'self_onboarding';
+    case AdminCreated = 'admin_created';
 }

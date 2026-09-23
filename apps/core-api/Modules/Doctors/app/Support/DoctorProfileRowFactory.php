@@ -6,6 +6,7 @@ namespace Modules\Doctors\Support;
 
 use DateTimeImmutable;
 use Modules\Doctors\Enums\DoctorPublicStatus;
+use Modules\Doctors\Enums\DoctorSourceType;
 use Modules\Doctors\Enums\DoctorVerificationStatus;
 use Modules\Identity\Services\NationalIdProtector;
 use Modules\Identity\Support\NationalId;
@@ -32,6 +33,8 @@ final class DoctorProfileRowFactory
         ?string $syndicateCanonical,
         array $input,
         DateTimeImmutable $now,
+        ?Identifier $createdByUserId = null,
+        DoctorSourceType $sourceType = DoctorSourceType::SelfOnboarding,
     ): array {
         $stamp = $now->format('Y-m-d H:i:s.uP');
         $keyVersion = $this->protector->encryptionVersion();
@@ -39,6 +42,8 @@ final class DoctorProfileRowFactory
         $row = [
             'id' => $id->value,
             'user_id' => $userId->value,
+            'source_type' => $sourceType->value,
+            'created_by_user_id' => ($createdByUserId ?? $userId)->value,
             'national_id_ciphertext' => BinaryColumn::bind($this->protector->encryptNationalId($nationalId)),
             'national_id_lookup_hmac' => BinaryColumn::bind($this->protector->nationalIdHmac($nationalId)),
             'national_id_key_version' => $keyVersion,

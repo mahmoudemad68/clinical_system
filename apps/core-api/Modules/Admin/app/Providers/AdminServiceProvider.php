@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Modules\Admin\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\Admin\Http\Controllers\AdminDoctorApplicantController;
 use Modules\Admin\Http\Controllers\AdminVerificationController;
+use Modules\Admin\Services\AdminDoctorApplicantService;
 use Modules\Admin\Services\AdminVerificationReviewService;
 
 final class AdminServiceProvider extends ServiceProvider
@@ -14,6 +16,8 @@ final class AdminServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(dirname(__DIR__, 2).'/config/config.php', 'admin_module');
         $this->app->bind(AdminVerificationReviewService::class);
+        $this->app->bind(AdminDoctorApplicantService::class);
         $this->app->bind(AdminVerificationController::class);
+        $this->app->bind(AdminDoctorApplicantController::class);
     }
 }

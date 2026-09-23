@@ -18,6 +18,7 @@ final readonly class DoctorApplicantProjection
     public function __construct(
         public Identifier $doctorId,
         public Identifier $userId,
+        public Identifier $createdByUserId,
         public DoctorVerificationStatus $verificationStatus,
         public DoctorPublicStatus $publicStatus,
         public int $version,

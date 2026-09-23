@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Platform;
 
 use Modules\Auth\Services\RegisterAccountService;
+use Modules\Doctors\Services\CreateAdminDoctorApplicant;
 use Modules\Doctors\Services\RegisterDoctor;
 use Modules\Identity\Services\DisableIdentityService;
 use Modules\Identity\Services\EraseSubjectService;
@@ -70,6 +71,10 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             RegisterDoctor::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            CreateAdminDoctorApplicant::class,
             ApprovedCoordinators::classes(),
         );
         $this->assertContains(
@@ -345,6 +350,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $routes,
         );
         $this->assertStringContainsString('admin/verification-cases', $routes);
+        $this->assertStringContainsString('admin/doctor-applicants', $routes);
         $this->assertMatchesRegularExpression(
             '/AdminVerificationController::class, [\'"]index[\'"]/',
             $routes,
@@ -805,6 +811,32 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringContainsString('truncateTablesForAllConnections', $contents);
         $this->assertStringNotContainsString("'outbox_events'", $contents);
         $this->assertStringNotContainsString("'audit_events'", $contents);
+        $this->assertStringNotContainsString('doctorsSeedApprovedSpecialtyCatalogue', $contents);
+    }
+
+    #[Test]
+    public function production_migrations_do_not_seed_specialty_reference_rows(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $this->assertFileDoesNotExist($root.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'data'.DIRECTORY_SEPARATOR.'approved_specialties.v1.php');
+
+        $seeder = $root.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'seeders'.DIRECTORY_SEPARATOR.'DatabaseSeeder.php';
+        $this->assertFileExists($seeder);
+        $this->assertDoesNotMatchRegularExpression(
+            "/DB::table\\(['\"]specialties['\"]\\)\\s*->\\s*insert/",
+            (string) file_get_contents($seeder),
+            'DatabaseSeeder must not insert specialty catalogue rows.',
+        );
+
+        foreach (glob($root.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'migrations'.DIRECTORY_SEPARATOR.'*.php') ?: [] as $file) {
+            $contents = (string) file_get_contents($file);
+            $this->assertStringNotContainsString('approved_specialties', $contents, $file);
+            $this->assertDoesNotMatchRegularExpression(
+                "/DB::table\\(['\"]specialties['\"]\\)\\s*->\\s*insert/",
+                $contents,
+                $file.' must not insert specialty catalogue rows.',
+            );
+        }
     }
 
     /**

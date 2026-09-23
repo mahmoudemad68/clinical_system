@@ -6,6 +6,7 @@ namespace Modules\Doctors\Support;
 
 use DateTimeImmutable;
 use Modules\Doctors\Enums\DoctorPublicStatus;
+use Modules\Doctors\Enums\DoctorSourceType;
 use Modules\Doctors\Enums\DoctorVerificationStatus;
 use Modules\Platform\Support\Identifier;
 
@@ -27,6 +28,8 @@ final readonly class DoctorProfileRecord
         public string $professionalDisplayName,
         public DoctorVerificationStatus $verificationStatus,
         public DoctorPublicStatus $publicStatus,
+        public DoctorSourceType $sourceType,
+        public Identifier $createdByUserId,
         public int $version,
         public ?DateTimeImmutable $approvedAt,
         public ?DateTimeImmutable $suspendedAt,

@@ -37,6 +37,9 @@ it('seeds a secretary unauthorized actor who can read me but not the review queu
 
     $fixture = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
     expect($fixture['case']['professional_display_name'])->toBe('Dr E2E Review')
+        ->and($fixture['applicant']['professional_display_name'] ?? null)->toBe('Dr Admin Created E2E')
+        ->and(is_string($fixture['creator']['phone'] ?? null))->toBeTrue()
+        ->and(is_string($fixture['approver']['phone'] ?? null))->toBeTrue()
         ->and($fixture['pharmacy_case']['public_name'] ?? null)->toBe('E2E Pharmacy Review')
         ->and(is_string($fixture['unauthorized']['phone'] ?? null))->toBeTrue()
         ->and(is_string($fixture['unauthorized']['password'] ?? null))->toBeTrue();
@@ -67,4 +70,22 @@ it('seeds a secretary unauthorized actor who can read me but not the review queu
     adminVerificationGetJson('/api/v1/admin/verification-cases')->assertNotFound();
 
     @unlink($path);
+});
+
+it('refuses the verification upload and clinic-capability e2e helpers outside local/testing', function () {
+    config(['app.env' => 'production']);
+
+    expect(Artisan::call('e2e:write-verification-upload', ['uploadId' => '0199a5c8-0000-7000-8000-000000000001']))
+        ->toBe(1)
+        ->and(Artisan::output())->toContain('disabled outside local/testing');
+
+    expect(Artisan::call('e2e:process-verification-upload', ['uploadId' => '0199a5c8-0000-7000-8000-000000000001']))
+        ->toBe(1)
+        ->and(Artisan::output())->toContain('disabled outside local/testing');
+
+    expect(Artisan::call('e2e:probe-doctor-clinic-capability', [
+        '--doctor-id' => '0199a5c8-0000-7000-8000-000000000001',
+        '--write' => '/tmp/clinic-e2e-probe.json',
+    ]))->toBe(1)
+        ->and(Artisan::output())->toContain('disabled outside local/testing');
 });

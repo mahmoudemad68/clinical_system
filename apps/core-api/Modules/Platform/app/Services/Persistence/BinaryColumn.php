@@ -34,9 +34,15 @@ final class BinaryColumn
         }
 
         if (str_starts_with($value, '\\x')) {
-            $decoded = hex2bin(substr($value, 2));
+            $hex = substr($value, 2);
+            // PDO may already return raw bytea. Ciphertext/HMAC that happens
+            // to start with `\x` is not hex. PHP 8 emits a warning (ErrorException
+            // under Laravel) instead of returning false, so validate first.
+            if ($hex !== '' && strlen($hex) % 2 === 0 && ctype_xdigit($hex)) {
+                $decoded = hex2bin($hex);
 
-            return $decoded === false ? $value : $decoded;
+                return $decoded === false ? $value : $decoded;
+            }
         }
 
         return $value;

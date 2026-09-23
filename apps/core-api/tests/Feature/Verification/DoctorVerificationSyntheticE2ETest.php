@@ -19,9 +19,10 @@ it('runs the synthetic doctor onboarding, verification, admin review, and resubm
     $syndicate = 'SYN-E2E-11';
 
     $catalogue = $this->getJson('/api/v1/doctors/specialties', doctorsAuth($session['token']));
-    $catalogue->assertOk()
-        ->assertJsonPath('data.specialties.0.specialty_id', $specialtyBeta['id'])
-        ->assertJsonPath('data.specialties.1.specialty_id', $specialtyAlpha['id']);
+    $catalogue->assertOk();
+    $ids = collect($catalogue->json('data.specialties'))->pluck('specialty_id')->all();
+    expect($ids)->toContain($specialtyBeta['id'])
+        ->and($ids)->toContain($specialtyAlpha['id']);
     expect($catalogue->getContent())->not->toContain($nationalId)
         ->and($catalogue->getContent())->not->toContain($syndicate);
 

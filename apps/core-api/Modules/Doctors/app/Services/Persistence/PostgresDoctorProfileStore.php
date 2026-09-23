@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Modules\Doctors\Enums\DoctorPublicStatus;
+use Modules\Doctors\Enums\DoctorSourceType;
 use Modules\Doctors\Enums\DoctorVerificationStatus;
 use Modules\Doctors\Support\DoctorProfileRecord;
 use Modules\Platform\Exceptions\DuplicateIdentity;
@@ -192,6 +193,8 @@ final class PostgresDoctorProfileStore
             (string) $row->professional_display_name,
             DoctorVerificationStatus::from((string) $row->verification_status),
             DoctorPublicStatus::from((string) $row->public_status),
+            DoctorSourceType::from((string) $row->source_type),
+            Identifier::fromTrusted((string) $row->created_by_user_id),
             (int) $row->version,
             self::timestamp($row->approved_at ?? null),
             self::timestamp($row->suspended_at ?? null),

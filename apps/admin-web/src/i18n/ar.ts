@@ -42,6 +42,7 @@ export const ar = {
   },
   shell: {
     verification: 'مراجعة التحقق',
+    createDoctor: 'إنشاء طالب طبيب',
     workspace: 'مساحة عمل التحقق',
   },
   queue: {
@@ -73,6 +74,7 @@ export const ar = {
     verificationStatus: 'حالة تحقق المنظمة',
     specialty: 'التخصص',
     openCase: 'فتح الحالة',
+    createDoctor: 'إنشاء طالب طبيب',
     cursorRecovered: 'لم يعد رمز الصفحة السابقة صالحًا. يتم عرض الصفحة الأولى.',
     disappeared: 'هذه الحالة لم تعد في قائمة الانتظار. ربما ادّعاها أو بتّ فيها مراجع آخر.',
     catalogueNote:
@@ -180,5 +182,30 @@ export const ar = {
   notFound: {
     title: 'الصفحة غير موجودة',
     body: 'هذا المسار ليس جزءًا من مساحة عمل التحقق.',
+  },
+  createDoctor: {
+    title: 'إنشاء طالب طبيب',
+    intro:
+      'ينشئ طالب طبيب لمسار التحقق القائم. هذا ليس موافقة ولا إدراجًا عامًا ولا منح صلاحية سريرية.',
+    displayName: 'الاسم المهني الظاهر',
+    phone: 'رقم الجوال',
+    nationalId: 'الرقم القومي',
+    syndicate: 'رقم النقابة (اختياري)',
+    specialty: 'التخصص',
+    evidenceSource: 'مصدر الدليل',
+    inPersonOriginals: 'أصول حضورية',
+    certifiedCopy: 'صورة معتمدة',
+    password: 'كلمة المرور الأولية',
+    submitCreate: 'إنشاء الطالب',
+    draftReady: 'مسودة حالة التحقق جاهزة. ارفع مستند الهوية المهنية المطلوب ثم أرسل للمراجعة.',
+    chooseFile: 'اختيار ملف الدليل',
+    uploadEvidence: 'رفع الدليل',
+    evidenceReady: 'الدليل جاهز للمراجعة.',
+    submitReview: 'إرسال للمراجعة',
+    submitted: 'الحالة في قائمة التحقق. يجب أن يدّعيها ويبتّ فيها مراجع متميّز مختلف.',
+    backToQueue: 'العودة إلى القائمة',
+    capabilityNote: 'لا يحصل الطالبون المعلّقون على صلاحية سريرية أو تجارية.',
+    catalogueUnavailable:
+      'كتالوج التخصصات المعتمد غير متاح. لا يمكن إنشاء طالب طبيب حتى يتم توفير مرجع تخصص معتمد.',
   },
 } as const;

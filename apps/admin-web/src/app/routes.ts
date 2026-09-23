@@ -5,12 +5,14 @@ export const ADMIN_ROUTE_PATHS = {
   home: '/',
   verificationQueue: '/verification',
   verificationCase: '/verification/:caseId',
+  createDoctor: '/doctor-applicants/new',
 } as const;
 
 export const ADMIN_ROUTE_LIST = [
   ADMIN_ROUTE_PATHS.home,
   ADMIN_ROUTE_PATHS.verificationQueue,
   ADMIN_ROUTE_PATHS.verificationCase,
+  ADMIN_ROUTE_PATHS.createDoctor,
 ] as const;
 
 export const PROHIBITED_ADMIN_PATHS = [

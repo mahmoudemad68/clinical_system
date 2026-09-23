@@ -27,6 +27,7 @@ use Modules\Identity\Services\LinkVerifiedPatientAccount;
 use Modules\Identity\Services\MeQuery;
 use Modules\Identity\Services\NationalIdProtector;
 use Modules\Identity\Services\Persistence\PostgresIdentityStore;
+use Modules\Identity\Services\ProvisionDoctorApplicantAccount;
 use Modules\Identity\Services\ResolveActorContext;
 use Modules\Identity\Services\RotateIdentityKeysService;
 use Modules\Platform\Contracts\FieldEncryptor;
@@ -62,6 +63,7 @@ final class IdentityServiceProvider extends ServiceProvider
         $this->app->bind(AuditedSensitiveDecryptor::class);
         $this->app->bind(RotateIdentityKeysService::class);
         $this->app->bind(InvitationRecipientService::class);
+        $this->app->bind(ProvisionDoctorApplicantAccount::class);
     }
 
     public function boot(): void

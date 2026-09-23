@@ -386,9 +386,10 @@ describe('own doctor profile', function () {
             ->assertNotFound();
         $catalogue = $this->getJson('/api/v1/doctors/specialties', doctorsAuth($session['token']));
         $catalogue->assertOk()
-            ->assertJsonPath('data.specialties.0.specialty_id', $specialty['id'])
             ->assertJsonMissingPath('data.specialties.0.created_at')
             ->assertJsonMissingPath('data.specialties.0.active');
+        $codes = collect($catalogue->json('data.specialties'))->pluck('code')->all();
+        expect($codes)->toContain($specialty['code']);
     });
 });
 
@@ -405,7 +406,9 @@ describe('specialty catalogue', function () {
 
         $blob = json_encode(array_map(static fn ($row) => $row->toArray(), $listed), JSON_THROW_ON_ERROR);
         expect($blob)->not->toContain('zzz_inactive')
-            ->and($blob)->not->toContain('Hidden');
+            ->and($blob)->not->toContain('Hidden')
+            ->and($blob)->not->toContain('certified')
+            ->and($blob)->not->toContain('syndicate');
     });
 
     it('projects the active catalogue over HTTP for doctor actors only', function () {
@@ -471,6 +474,8 @@ describe('doctor identity uniqueness', function () {
             'professional_display_name' => 'Duplicate',
             'verification_status' => 'draft',
             'public_status' => 'hidden',
+            'source_type' => 'self_onboarding',
+            'created_by_user_id' => $other['user_id'],
             'version' => 1,
             'created_at' => now('UTC'),
             'updated_at' => now('UTC'),

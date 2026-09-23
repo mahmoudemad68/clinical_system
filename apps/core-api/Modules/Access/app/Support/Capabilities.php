@@ -72,6 +72,8 @@ final class Capabilities
 
     public const VERIFICATION_REVIEW = 'verification.case.review';
 
+    public const DOCTORS_ADMIN_CREATE = 'doctors.admin.create';
+
     public const MFA_MANAGE_SELF = 'auth.mfa.manage_self';
 
     public const ACCESS_GRANT_ISSUE = 'access.grant.issue';
@@ -134,6 +136,7 @@ final class Capabilities
         self::IDENTITY_EXPORT,
         self::RECOVERY_APPLY,
         self::VERIFICATION_REVIEW,
+        self::DOCTORS_ADMIN_CREATE,
     ];
 
     /** @var list<string> */

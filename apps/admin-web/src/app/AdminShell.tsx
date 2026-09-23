@@ -38,6 +38,15 @@ export function AdminShell() {
               {t('shell.verification')}
             </Button>
           ) : null}
+          {session.canCreateDoctor ? (
+            <Button
+              color="inherit"
+              component={RouterLink}
+              to={ADMIN_ROUTE_PATHS.createDoctor}
+            >
+              {t('shell.createDoctor')}
+            </Button>
+          ) : null}
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel id="language-label">{t('app.language')}</InputLabel>
             <Select

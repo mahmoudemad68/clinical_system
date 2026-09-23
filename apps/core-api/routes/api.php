@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Admin\Http\Controllers\AdminDoctorApplicantController;
 use Modules\Admin\Http\Controllers\AdminVerificationController;
 use Modules\Auth\Http\Controllers\AuthController;
 use Modules\Clinics\Http\Controllers\ClinicLocationController;
@@ -237,6 +238,21 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/verification-uploads/{uploadId}', [DoctorVerificationUploadController::class, 'show'])
             ->name('api.v1.verification-uploads.show');
+
+        Route::get('/admin/doctor-applicants/specialties', [AdminDoctorApplicantController::class, 'specialties'])
+            ->name('api.v1.admin.doctor-applicants.specialties');
+
+        Route::middleware('platform.idempotency')
+            ->post('/admin/doctor-applicants', [AdminDoctorApplicantController::class, 'store'])
+            ->name('api.v1.admin.doctor-applicants.store');
+
+        Route::middleware('platform.idempotency')
+            ->post('/admin/doctor-applicants/{doctorId}/verification-uploads', [AdminDoctorApplicantController::class, 'createUpload'])
+            ->name('api.v1.admin.doctor-applicants.verification-uploads');
+
+        Route::middleware('platform.idempotency')
+            ->post('/admin/doctor-applicants/{doctorId}/verification-submissions', [AdminDoctorApplicantController::class, 'submit'])
+            ->name('api.v1.admin.doctor-applicants.verification-submissions');
 
         Route::get('/admin/verification-cases', [AdminVerificationController::class, 'index'])
             ->name('api.v1.admin.verification-cases.index');

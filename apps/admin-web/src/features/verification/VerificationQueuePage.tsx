@@ -23,7 +23,9 @@ import { SafeError } from '@/app/SafeError';
 import { StatusChip } from '@/features/verification/StatusChip';
 import { isDoctorVerificationQueueItem } from '@/features/verification/doctorVerification';
 import { useVerificationQueue } from '@/features/verification/useVerificationQueue';
+import { ADMIN_ROUTE_PATHS } from '@/app/routes';
 import { isRtl } from '@/i18n';
+import { useSession } from '@/session/useSession';
 import type { QueueAssignmentFilter, VerificationCaseTypeFilter } from '@/session/keys';
 
 function formatSubmitted(value: string | null, locale: string): string {
@@ -36,6 +38,7 @@ function formatSubmitted(value: string | null, locale: string): string {
 
 export function VerificationQueuePage() {
   const { t, i18n } = useTranslation();
+  const session = useSession();
   const [assignment, setAssignment] = useState<QueueAssignmentFilter>('unassigned');
   const [caseType, setCaseType] = useState<VerificationCaseTypeFilter>('doctor_verification');
   const [cursor, setCursor] = useState<string | null>(null);
@@ -95,6 +98,11 @@ export function VerificationQueuePage() {
       <Typography variant="body2" color="text.secondary">
         {t('queue.catalogueNote')}
       </Typography>
+      {session.canCreateDoctor ? (
+        <Button component={RouterLink} to={ADMIN_ROUTE_PATHS.createDoctor} variant="outlined">
+          {t('queue.createDoctor')}
+        </Button>
+      ) : null}
 
       <Stack
         spacing={2}
