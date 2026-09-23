@@ -23,6 +23,8 @@ use Laravel\Octane\Listeners\ReportException;
 use Laravel\Octane\Listeners\StopWorkerIfNecessary;
 use Laravel\Octane\Octane;
 use Modules\Auth\Contracts\PasswordHasher;
+use Modules\Auth\Listeners\AttachUnknownUserDummyPrimeHeader;
+use Modules\Auth\Listeners\PrimeUnknownUserPasswordDummy;
 
 return [
 
@@ -82,6 +84,7 @@ return [
         WorkerStarting::class => [
             EnsureUploadedFilesAreValid::class,
             EnsureUploadedFilesCanBeMoved::class,
+            PrimeUnknownUserPasswordDummy::class,
         ],
 
         RequestReceived::class => [
@@ -91,7 +94,7 @@ return [
         ],
 
         RequestHandled::class => [
-            //
+            AttachUnknownUserDummyPrimeHeader::class,
         ],
 
         RequestTerminated::class => [
@@ -146,9 +149,9 @@ return [
 
     'warm' => [
         ...Octane::defaultServicesToWarm(),
-        // Resolve on the root worker so the sandbox clone reuses it. The hasher
-        // is a singleton; resolving it only inside a request-cloned container
-        // used to re-run Argon2id dummy hashing on every verification read.
+        // Resolve on the root worker so the sandbox clone reuses it. Warm
+        // resolution is construction only; PrimeUnknownUserPasswordDummy
+        // then runs the one-time dummy make() on WorkerStarting.
         PasswordHasher::class,
     ],
 
