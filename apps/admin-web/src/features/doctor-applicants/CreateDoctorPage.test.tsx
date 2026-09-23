@@ -104,13 +104,13 @@ describe('create doctor applicant', () => {
     const user = userEvent.setup();
     renderApp('/doctor-applicants/new');
     expect(await screen.findByRole('heading', { name: 'Create doctor applicant' })).toBeInTheDocument();
-    await user.type(screen.getByLabelText('Professional display name'), 'Dr Admin Created UI');
-    await user.type(screen.getByLabelText('Mobile number'), CANARIES.phone);
-    await user.type(screen.getByLabelText('National ID'), CANARIES.nationalId);
-    await user.type(screen.getByLabelText('Syndicate number (optional)'), CANARIES.syndicate);
-    await user.click(screen.getByLabelText('Specialty'));
+    await user.type(await screen.findByLabelText(/Professional display name/), 'Dr Admin Created UI');
+    await user.type(screen.getByLabelText(/Mobile number/), CANARIES.phone);
+    await user.type(screen.getByLabelText(/National ID/), CANARIES.nationalId);
+    await user.type(screen.getByLabelText(/Syndicate number/), CANARIES.syndicate);
+    await user.click(screen.getByLabelText(/Specialty/));
     await user.click(await screen.findByRole('option', { name: 'General Practice' }));
-    await user.type(screen.getByLabelText('Initial password'), 'correct-horse-battery');
+    await user.type(screen.getByLabelText(/Initial password/), 'correct-horse-battery');
     await user.click(screen.getByRole('button', { name: 'Create applicant' }));
 
     await screen.findByText(/A draft verification case is ready/);

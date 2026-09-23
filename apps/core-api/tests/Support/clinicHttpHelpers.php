@@ -164,14 +164,6 @@ function clinicClearBrowserSession(): void
     auth()->forgetGuards();
     test()->flushHeaders();
     test()->clearBrowserSession();
-    if (app()->bound('session')) {
-        try {
-            session()->flush();
-            session()->invalidate();
-        } catch (Throwable) {
-        }
-    }
-    Auth::guard('web')->forgetUser();
 }
 
 /**

@@ -49,6 +49,9 @@ function adminCreatedDoctorApplicantBody(array $overrides = []): array
 function adminCreatedDoctorAttachTotpAndLogin(string $userId, string $phone, string $password, string $key): array
 {
     clinicClearBrowserSession();
+    if (app()->bound('session')) {
+        session()->flush();
+    }
 
     $protector = app(NationalIdProtector::class);
     $totp = app(TotpVerifier::class);
