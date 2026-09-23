@@ -63,6 +63,8 @@ No public-directory implementation.
   path filters). Core API, Admin web Playwright, packaged Electron
   ubuntu/macos/windows, Forge Doctor/Pharmacy practice E2E, Contracts, and
   Security scans succeeded.
+- **Evidence document commit:** `aaf36b27e3ac562e2e0962bca1539870f6bb9848`
+  (adds this file; SHA-recording commit follows).
 - **Prior implementation HEAD (failed Core API Tests only):** `b71126b0d633089c10c70a924b81dc232bf492a4`
   (`pull-request` run **35807826004** FAILURE)
   https://github.com/mahmoudemad68/clinical_system/actions/runs/35807826004
@@ -324,9 +326,10 @@ a0948d9 Keep clinic cookie helpers intact and fix Create Doctor labels.
 e17dbd7 Align Admin-created doctor E2E evidence bytes with the fixture writer.
 b71126b Give Admin-created doctor E2E its own approver TOTP.
 301d39a Restore approved specialties after committed-database truncation.
+aaf36b2 Record Phase 02 Chunk 16 Admin-created doctor evidence.
 ```
 
-Plus this evidence document commit.
+Plus the SHA-recording commit that records `aaf36b2`.
 
 ## Exact changed files versus baseline `3401017e`
 
