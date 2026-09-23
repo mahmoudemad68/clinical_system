@@ -3,7 +3,8 @@
   "mode": "burst",
   "candidate_sha": "e5e395d316fca973862c395234b79bdac62a65b4",
   "recorded_at": "2026-09-23T13:48:20Z",
-  "image": "clinic-core-api:chunk17-after",
+  "runtime_image_name": "clinic-core-api",
+  "runtime_image_tag": "chunk17-after",
   "runtime": {
     "server": "octane:frankenphp",
     "workers": 16,

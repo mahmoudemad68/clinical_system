@@ -410,12 +410,14 @@ def v(name, *keys):
             return values[key]
     return None
 
+image_name, _, image_tag = image.partition(":")
 evidence = {
     "gate": "P02-AUDIT-002",
     "mode": mode,
     "candidate_sha": head,
     "recorded_at": now,
-    "image": image,
+    "runtime_image_name": image_name,
+    "runtime_image_tag": image_tag or image_name,
     "runtime": {
         "server": "octane:frankenphp",
         "workers": int(workers),

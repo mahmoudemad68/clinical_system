@@ -3,7 +3,8 @@
   "mode": "short-after-remediation",
   "candidate_sha": "8b7fc5d665e44ad890e5a67c1ca164fd76fbe91c",
   "recorded_at": "2026-09-23T13:43:11Z",
-  "image": "clinic-core-api:chunk17-after",
+  "runtime_image_name": "clinic-core-api",
+  "runtime_image_tag": "chunk17-after",
   "image_digest": "sha256:870fab6711d008d91d7f36b602bb39613f565c5c503ec0974fef5e208bcf6fba",
   "runtime": {
     "server": "octane:frankenphp",
@@ -33,16 +34,56 @@
     "max": 15974.02302
   },
   "operations": {
-    "op_patient_profile_read": {"p50": 7663.966292, "p95": 13140.44256075, "p99": 13640.736261299999},
-    "op_doctor_profile_read": {"p50": 7791.827569, "p95": 13180.460005500001, "p99": 13660.2153875},
-    "op_clinic_locations_read": {"p50": 7766.2432465, "p95": 13139.7579339, "p99": 13664.44914267},
-    "op_pharmacy_org_read": {"p50": 7793.099624, "p95": 13261.8461014, "p99": 13672.42612746},
-    "op_pharmacy_branches_read": {"p50": 7806.831885, "p95": 13127.097228, "p99": 13665.1204072},
-    "op_verification_read": {"p50": 9260.111438, "p95": 14652.6440871, "p99": 15427.829556840003},
-    "op_patient_demographic_update": {"p50": 7549.203138, "p95": 13208.652121149998, "p99": 13673.60179873},
-    "op_doctor_onboarding_status": {"p50": 8297.707453, "p95": 13193.336384, "p99": 13672.741333520002},
-    "op_clinic_location_update": {"p50": 7811.930469, "p95": 13046.841112400001, "p99": 13481.619329600004},
-    "op_membership_operations": {"p50": 7629.491773, "p95": 13183.8872324, "p99": 13689.94758516}
+    "op_patient_profile_read": {
+      "p50": 7663.966292,
+      "p95": 13140.44256075,
+      "p99": 13640.736261299999
+    },
+    "op_doctor_profile_read": {
+      "p50": 7791.827569,
+      "p95": 13180.460005500001,
+      "p99": 13660.2153875
+    },
+    "op_clinic_locations_read": {
+      "p50": 7766.2432465,
+      "p95": 13139.7579339,
+      "p99": 13664.44914267
+    },
+    "op_pharmacy_org_read": {
+      "p50": 7793.099624,
+      "p95": 13261.8461014,
+      "p99": 13672.42612746
+    },
+    "op_pharmacy_branches_read": {
+      "p50": 7806.831885,
+      "p95": 13127.097228,
+      "p99": 13665.1204072
+    },
+    "op_verification_read": {
+      "p50": 9260.111438,
+      "p95": 14652.6440871,
+      "p99": 15427.829556840003
+    },
+    "op_patient_demographic_update": {
+      "p50": 7549.203138,
+      "p95": 13208.652121149998,
+      "p99": 13673.60179873
+    },
+    "op_doctor_onboarding_status": {
+      "p50": 8297.707453,
+      "p95": 13193.336384,
+      "p99": 13672.741333520002
+    },
+    "op_clinic_location_update": {
+      "p50": 7811.930469,
+      "p95": 13046.841112400001,
+      "p99": 13481.619329600004
+    },
+    "op_membership_operations": {
+      "p50": 7629.491773,
+      "p95": 13183.8872324,
+      "p99": 13689.94758516
+    }
   },
   "serial_after_ms": {
     "patient": 23,
@@ -71,11 +112,26 @@
     "host_mem_available_min_kb": 1577416
   },
   "comparison_to_baseline": {
-    "achieved_rps": {"before": 92.8, "after": 113.2},
-    "dropped_iterations": {"before": 13663, "after": 11455},
-    "unexpected_failure_rate": {"before": 0.2086, "after": 0.0},
-    "http_5xx": {"before": 1844, "after": 0},
-    "p95_ms": {"before": 11572, "after": 13223}
+    "achieved_rps": {
+      "before": 92.8,
+      "after": 113.2
+    },
+    "dropped_iterations": {
+      "before": 13663,
+      "after": 11455
+    },
+    "unexpected_failure_rate": {
+      "before": 0.2086,
+      "after": 0.0
+    },
+    "http_5xx": {
+      "before": 1844,
+      "after": 0
+    },
+    "p95_ms": {
+      "before": 11572,
+      "after": 13223
+    }
   },
   "gate_plausible_on_this_host": false,
   "note": "Product 5xx/session defects are gone. Unloaded reads are 3-6ms. Remaining multi-second p95 at requested 250 RPS is queueing on this 4-CPU host with colocated k6 (max 1500 VUs) and 16 workers; Core API CPU ~200% of 400% available. Approved gate remains 8 CPUs. Do not treat as P02-AUDIT-002 closed."

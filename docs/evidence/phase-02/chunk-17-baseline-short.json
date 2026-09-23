@@ -3,7 +3,8 @@
   "mode": "short-baseline-pre-remediation",
   "candidate_sha": "5806684f5778691c5bbafee3cc2f520fb4701aa7",
   "recorded_at": "2026-09-23T13:17:06Z",
-  "image": "clinic-core-api:chunk17",
+  "runtime_image_name": "clinic-core-api",
+  "runtime_image_tag": "chunk17",
   "image_digest": "sha256:58b593ba556b792f173c0e28403c904037dcef41e5f159ca543f83b21b42380a",
   "runtime": {
     "server": "octane:frankenphp",
