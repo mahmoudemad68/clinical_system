@@ -7,7 +7,7 @@
   "hotspots": [
     {
       "hotspot": "identity.session StartSession+EncryptCookies+CSRF on every bearer API request",
-      "evidence": "Redis after 90s load: 11942 keys, 0 hits, 11942 misses. Successful 200s returned Set-Cookie. bootstrap/app.php already documents device API as stateless. Unrelated Dataset v1 operations share multi-second p95 while unloaded serial reads are 6-9ms — queueing, not SQL.",
+      "evidence": "Redis after 90s load: 11942 keys, 0 hits, 11942 misses. Successful 200s returned Set-Cookie. bootstrap/app.php already documents device API as stateless. Unrelated Dataset v1 operations share multi-second p95 while unloaded serial reads are 6-9ms \u2014 queueing, not SQL.",
       "affected_operations": "all authenticated Dataset v1 routes",
       "approx_cost": "one Redis session write plus cookie encryption per request; 11k+ unread session keys in 90s",
       "proposed_correction": "StartIdentitySession skips session/cookie/CSRF when a bearer token is present; cookie/admin path unchanged"
@@ -42,11 +42,18 @@
     }
   ],
   "not_claimed": [
-    "N+1 as the API p95 cause (clinic list has one duplicate doctor_profiles query; unloaded clinic is 16ms)",
-    "PostgreSQL/PostGIS as the API saturation cause (SQL time 2-14ms vs p95 11s)",
+    "N+1 as the API p95 cause (clinic list had one duplicate doctor_profiles query; unloaded clinic is ~14ms; duplicate removed in GetOwnClinicLocations)",
+    "PostgreSQL/PostGIS as the API saturation cause (SQL time 1-14ms vs p95 11-13s)",
     "crypto as the multi-second p95 cause",
     "authorization policy evaluation as the saturation cause",
     "serialization as the saturation cause",
     "Octane/FrankenPHP misconfiguration as the primary defect (OPcache/JIT already active)"
-  ]
+  ],
+  "post_remediation_unloaded": {
+    "patient_sql": 4,
+    "doctor_sql": 5,
+    "clinic_sql": 5,
+    "clinic_duplicate_sql": 0,
+    "patient_repeat_wall_ms": 2.3
+  }
 }
