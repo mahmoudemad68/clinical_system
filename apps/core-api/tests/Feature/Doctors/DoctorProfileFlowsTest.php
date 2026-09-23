@@ -395,6 +395,7 @@ describe('own doctor profile', function () {
 
 describe('specialty catalogue', function () {
     it('lists active specialties only through the Doctors-owned service', function () {
+        doctorsSeedApprovedSpecialtyCatalogue();
         doctorsSeedSpecialty('alpha_gp', ['sort_order' => 20, 'label_en' => 'Alpha']);
         doctorsSeedSpecialty('beta_card', ['sort_order' => 10, 'label_en' => 'Beta', 'label_ar' => 'قلب']);
         doctorsSeedSpecialty('zzz_inactive', ['active' => false, 'sort_order' => 1, 'label_en' => 'Hidden']);
@@ -420,6 +421,7 @@ describe('specialty catalogue', function () {
     });
 
     it('projects the active catalogue over HTTP for doctor actors only', function () {
+        doctorsSeedApprovedSpecialtyCatalogue();
         doctorsSeedSpecialty('alpha_http', ['sort_order' => 20, 'label_en' => 'Alpha HTTP']);
         $beta = doctorsSeedSpecialty('beta_http', ['sort_order' => 10, 'label_en' => 'Beta HTTP', 'label_ar' => 'قلب']);
         doctorsSeedSpecialty('zzz_http_inactive', ['active' => false, 'sort_order' => 1, 'label_en' => 'Hidden HTTP']);

@@ -23,6 +23,10 @@ use Tests\TestCase;
 uses(TestCase::class, RefreshDatabase::class);
 
 describe('admin-created doctor HTTP', function () {
+    beforeEach(function () {
+        doctorsSeedApprovedSpecialtyCatalogue();
+    });
+
     it('creates a draft hidden applicant, opens the canonical case, and denies pending capability', function () {
         $specialty = doctorsSeedSpecialty('general_practice');
         $body = adminCreatedDoctorApplicantBody([
@@ -479,6 +483,7 @@ describe('admin-created doctor HTTP', function () {
     });
 
     it('returns the seeded specialty catalogue and rejects inactive specialties', function () {
+        doctorsSeedApprovedSpecialtyCatalogue();
         $doctor = doctorsActiveSession('spec-cat');
         $listed = $this->getJson('/api/v1/doctors/specialties', doctorsAuth($doctor['token']))->assertOk();
         $codes = collect($listed->json('data.specialties'))->pluck('code')->all();

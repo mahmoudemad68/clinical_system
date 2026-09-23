@@ -809,6 +809,7 @@ final class ArchitectureBoundaryTest extends TestCase
 
         $this->assertStringContainsString('function tearDown', $contents);
         $this->assertStringContainsString('truncateTablesForAllConnections', $contents);
+        $this->assertStringContainsString('doctorsSeedApprovedSpecialtyCatalogue', $contents);
         $this->assertStringNotContainsString("'outbox_events'", $contents);
         $this->assertStringNotContainsString("'audit_events'", $contents);
     }

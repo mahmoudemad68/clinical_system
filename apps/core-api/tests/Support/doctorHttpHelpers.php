@@ -85,6 +85,34 @@ function doctorsSeedSpecialty(string $code = 'general_practice', array $override
 }
 
 /**
+ * Restore the versioned approved specialty catalogue after DatabaseTruncation.
+ * Identity matches database/data/approved_specialties.v1.php.
+ */
+function doctorsSeedApprovedSpecialtyCatalogue(): void
+{
+    /** @var list<array{id: string, code: string, label_ar: string, label_en: string, sort_order: int}> $rows */
+    $rows = require dirname(__DIR__, 2).'/database/data/approved_specialties.v1.php';
+    $now = now('UTC');
+
+    foreach ($rows as $row) {
+        if (DB::table('specialties')->where('code', $row['code'])->exists()) {
+            continue;
+        }
+
+        DB::table('specialties')->insert([
+            'id' => $row['id'],
+            'code' => $row['code'],
+            'label_ar' => $row['label_ar'],
+            'label_en' => $row['label_en'],
+            'active' => true,
+            'sort_order' => $row['sort_order'],
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+    }
+}
+
+/**
  * @return array<string, mixed>
  */
 function doctorsOnboardingBody(string $nationalId, string $specialtyId, ?string $syndicate = null, string $name = 'Synthetic Doctor'): array
