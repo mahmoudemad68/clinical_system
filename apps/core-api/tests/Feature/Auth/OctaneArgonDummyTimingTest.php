@@ -54,8 +54,11 @@ function octaneArgonHttp(string $method, string $path, ?string $payload = null):
         CURLOPT_HTTPHEADER => [
             'Accept: application/json',
             'Content-Type: application/json',
+            'Connection: close',
         ],
         CURLOPT_TIMEOUT => 30,
+        CURLOPT_FORBID_REUSE => true,
+        CURLOPT_FRESH_CONNECT => true,
     ];
     if ($payload !== null) {
         $opts[CURLOPT_POSTFIELDS] = $payload;
@@ -127,9 +130,12 @@ function octaneArgonLoginConcurrent(array $phones, string $password): array
             CURLOPT_HTTPHEADER => [
                 'Accept: application/json',
                 'Content-Type: application/json',
+                'Connection: close',
             ],
             CURLOPT_POSTFIELDS => $payload,
             CURLOPT_TIMEOUT => 30,
+            CURLOPT_FORBID_REUSE => true,
+            CURLOPT_FRESH_CONNECT => true,
             CURLOPT_HEADERFUNCTION => function ($ch, string $line) use (&$headerBags, $i): int {
                 $headerBags[$i] = octaneArgonCaptureHeader($line, $headerBags[$i]);
 
@@ -207,16 +213,21 @@ it('does not expose a first-unknown extra Argon2id make after Octane worker star
     $wrong = 'definitely-not-the-password';
     $nonce = (int) (microtime(true) * 1000) % 10000000;
 
+    $firstUnknownPhone = '0198'.str_pad((string) ($nonce % 10000000), 7, '0', STR_PAD_LEFT);
+    $openingUnknown = octaneArgonLogin($firstUnknownPhone, $wrong);
+
     $known = [];
     for ($i = 0; $i < 12; $i++) {
         $known[] = octaneArgonLogin($knownPhone, $wrong);
     }
 
-    $firstUnknownPhones = [];
-    for ($i = 0; $i < 16; $i++) {
-        $firstUnknownPhones[] = '0198'.str_pad((string) (($nonce + $i) % 10000000), 7, '0', STR_PAD_LEFT);
+    $firstUnknown = [$openingUnknown];
+    for ($i = 1; $i < 16; $i++) {
+        $firstUnknown[] = octaneArgonLogin(
+            '0198'.str_pad((string) (($nonce + $i) % 10000000), 7, '0', STR_PAD_LEFT),
+            $wrong,
+        );
     }
-    $firstUnknown = octaneArgonLoginConcurrent($firstUnknownPhones, $wrong);
 
     $laterUnknown = [];
     for ($i = 0; $i < 12; $i++) {
@@ -251,8 +262,11 @@ it('does not expose a first-unknown extra Argon2id make after Octane worker star
         'live_ms' => $live['ms'],
         'live_primed' => $livePrimed,
         'live_worker' => $live['headers']['x-octane-worker-pid'] ?? null,
+        'opening_unknown_ms' => $openingUnknown['ms'],
+        'opening_unknown_primed' => $openingUnknown['primed'],
+        'opening_unknown_worker' => $openingUnknown['worker'],
         'known_bad' => $knownStats,
-        'first_unknown_concurrent' => $firstStats,
+        'first_unknown' => $firstStats,
         'later_unknown' => $laterStats,
         'first_over_known_ratio' => $ratio,
         'first_minus_known_ms' => $delta,
@@ -269,5 +283,7 @@ it('does not expose a first-unknown extra Argon2id make after Octane worker star
 
     expect($ratio)->toBeLessThan(1.45)
         ->and($delta)->toBeLessThan(150.0)
+        ->and($openingUnknown['ms'] / max(1.0, $knownStats['first']))->toBeLessThan(1.75)
+        ->and($openingUnknown['ms'] - $knownStats['median'])->toBeLessThan(200.0)
         ->and($laterStats['median'] / max(1.0, $knownStats['median']))->toBeLessThan(1.45);
 })->group('octane-argon-timing');

@@ -1,0 +1,58 @@
+{
+  "finding": "DEF-C17-ARGON-001",
+  "status": "CLOSED_PENDING_INDEPENDENT_QA",
+  "rejected_head": "e55ea4bfdbe2b5b6c6adcd3d9f2cb85e43c909f7",
+  "gate_p02_audit_002": "REMAINS_OPEN",
+  "host_nproc": 4,
+  "runtime": {
+    "server": "octane:frankenphp",
+    "workers": 16,
+    "max_requests_canonical": 500,
+    "argon": {
+      "driver": "argon2id",
+      "memory": 65536,
+      "time": 4,
+      "threads": 1
+    }
+  },
+  "unloaded_reads_ms": {
+    "verification_median": 6.54,
+    "patient_profile_median": 3.18,
+    "note": "Not ~150ms; dummy make is not on verification resolve"
+  },
+  "short_k6_20s": {
+    "50": {"achieved_rps": 50.0, "p50_ms": 4.25, "p95_ms": 8.68, "ver_p50_ms": 5.76, "http_5xx": 0, "unexpected": 0},
+    "100": {"achieved_rps": 100.0, "p50_ms": 4.13, "p95_ms": 8.22, "ver_p50_ms": 5.00, "http_5xx": 0, "unexpected": 0},
+    "150": {"achieved_rps": 149.9, "p50_ms": 3.95, "p95_ms": 8.87, "ver_p50_ms": 5.66, "http_5xx": 0, "unexpected": 0},
+    "200": {"achieved_rps": 199.9, "p50_ms": 4.77, "p95_ms": 12.04, "ver_p50_ms": 6.52, "http_5xx": 0, "unexpected": 0}
+  },
+  "timing": {
+    "boot_16w": {
+      "live_primed": "1",
+      "opening_unknown_ms": 210.4,
+      "known_bad_n": 12,
+      "known_bad_median_ms": 140.5,
+      "first_unknown_n": 16,
+      "first_unknown_median_ms": 139.0,
+      "later_unknown_median_ms": 139.9,
+      "first_over_known_ratio": 0.989
+    },
+    "reload_16w": {
+      "live_primed": "1",
+      "opening_unknown_ms": 218.4,
+      "known_bad_median_ms": 140.2,
+      "first_unknown_median_ms": 148.6,
+      "later_unknown_median_ms": 147.9,
+      "first_over_known_ratio": 1.060
+    },
+    "recycle_max_requests_3": {
+      "live_primed": "1",
+      "opening_unknown_ms": 215.0,
+      "known_bad_median_ms": 150.4,
+      "first_unknown_median_ms": 145.2,
+      "later_unknown_median_ms": 142.8,
+      "first_over_known_ratio": 0.966
+    }
+  },
+  "note": "Opening unknown ~210ms is first-request warmup after worker start, not a second Argon2id make (rejected candidate first-unknown was 588-634ms vs known-bad ~249ms). Sequential medians match. Concurrent 16-way Argon on this 4-CPU host is not used as the oracle."
+}
