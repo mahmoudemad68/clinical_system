@@ -81,6 +81,7 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
         $password = 'correct-horse-battery';
         $reviewer = $this->insertStaff($ids, $protector, $hasher, $totp, 'reviewer', AccountType::Admin);
         $creator = $this->insertStaff($ids, $protector, $hasher, $totp, 'creator', AccountType::Admin);
+        $approver = $this->insertStaff($ids, $protector, $hasher, $totp, 'approver', AccountType::Admin);
         // Secretary can use admin_web cookies and /me, but Capabilities::forActor
         // never grants verification.case.review. password_must_change admins
         // cannot read /me (DenyPendingBusinessAccess), so they cannot exercise
@@ -234,6 +235,11 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
                 'phone' => $creator['phone'],
                 'password' => $password,
                 'totp_secret' => $creator['totp_secret'],
+            ],
+            'approver' => [
+                'phone' => $approver['phone'],
+                'password' => $password,
+                'totp_secret' => $approver['totp_secret'],
             ],
             'unauthorized' => [
                 'phone' => $unauthorized['phone'],

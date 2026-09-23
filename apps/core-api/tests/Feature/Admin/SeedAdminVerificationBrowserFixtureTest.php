@@ -39,6 +39,7 @@ it('seeds a secretary unauthorized actor who can read me but not the review queu
     expect($fixture['case']['professional_display_name'])->toBe('Dr E2E Review')
         ->and($fixture['applicant']['professional_display_name'] ?? null)->toBe('Dr Admin Created E2E')
         ->and(is_string($fixture['creator']['phone'] ?? null))->toBeTrue()
+        ->and(is_string($fixture['approver']['phone'] ?? null))->toBeTrue()
         ->and($fixture['pharmacy_case']['public_name'] ?? null)->toBe('E2E Pharmacy Review')
         ->and(is_string($fixture['unauthorized']['phone'] ?? null))->toBeTrue()
         ->and(is_string($fixture['unauthorized']['password'] ?? null))->toBeTrue();

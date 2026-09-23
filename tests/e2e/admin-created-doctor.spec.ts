@@ -8,6 +8,7 @@ import { totpCode } from './totp';
 type FixtureFile = {
   reviewer: { phone: string; password: string; totp_secret: string };
   creator: { phone: string; password: string; totp_secret: string };
+  approver: { phone: string; password: string; totp_secret: string };
   applicant: {
     phone: string;
     national_id: string;
@@ -209,7 +210,7 @@ test.describe('admin-created doctor', () => {
     expect(pending.verification_status).toBe('pending_review');
     expect(pending.public_status).toBe('hidden');
 
-    await signIn(page, fixture.reviewer.phone, fixture.reviewer.password, fixture.reviewer.totp_secret);
+    await signIn(page, fixture.approver.phone, fixture.approver.password, fixture.approver.totp_secret);
     await expect(page.getByRole('heading', { name: /Pending doctor verification|تحقق الأطباء المعلّق/ })).toBeVisible();
     const row = page.locator('tr', { hasText: fixture.applicant.professional_display_name });
     await expect(row).toBeVisible();
