@@ -68,9 +68,15 @@ No public-directory implementation.
 - **CH16-SPECIALTY-REFERENCE-001 remediation:** withdraws the unapproved
   production specialty seed. Do not treat pre-remediation `301d39a` as current.
 - **Remediation code commit:** `48361005d006c59e6f5cd4b5e469dfd441afd217`
-- **Follow-up:** BinaryColumn `hex2bin` fail-closed when raw HMAC/ciphertext
-  starts with `\x` (CI Core API 500 on `PharmacySyntheticE2ETest`; not a
-  specialty-catalogue change).
+- **CI-proven HEAD:** `ea1d23b4fa2996d4da3dca681d3caa17c571bb7e`
+  (`pull-request` run **35812359501** SUCCESS)
+  https://github.com/mahmoudemad68/clinical_system/actions/runs/35812359501
+  — 15 success, 3 skipped (Flutter, Flutter Patient profile E2E, AI service
+  path filters). Core API **839 passed / 15 skipped**. Admin vitest 49.
+  Admin Playwright 2 passed / 18.7s. Contracts and Security scans succeeded.
+- **Follow-up on that HEAD:** BinaryColumn `hex2bin` only for valid postgres hex
+  (CI Core API 500 on `PharmacySyntheticE2ETest` when raw HMAC started with `\x`;
+  not a specialty-catalogue change).
 - **Prior product CI (withdrawn specialty seed, not current HEAD):**
   `301d39a658d782152d8a309520878cb81f3e12bb`
   (`pull-request` run **35808624502** SUCCESS)
@@ -318,6 +324,34 @@ matrix because OpenAPI/TypeScript client changed. CI packaged Doctor +
 Pharmacy WebdriverIO passed on ubuntu-latest, macos-latest, and windows-latest.
 Forge Doctor practice E2E and Forge Pharmacy practice E2E jobs succeeded.
 
+## GitHub CI — run 35812359501 (SUCCESS) on `ea1d23b`
+
+https://github.com/mahmoudemad68/clinical_system/actions/runs/35812359501
+
+Current CH16-SPECIALTY-REFERENCE-001 HEAD (specialty seed withdrawn + BinaryColumn
+hex payload validation).
+
+| Job | Conclusion |
+| --- | --- |
+| Detect changed areas | success |
+| Contracts | success |
+| Supply-chain policy | success |
+| Security scans | success |
+| Core API | success (839 passed / 15 skipped Pest) |
+| Admin web | success (49 vitest; Playwright 2 passed / 18.7s) |
+| Secure-file providers | success |
+| Electron desktops | success |
+| Forge Doctor practice E2E | success |
+| Forge Pharmacy practice E2E | success |
+| Packaged Electron E2E (ubuntu-latest) | success |
+| Packaged Electron E2E (macos-latest) | success |
+| Packaged Electron E2E (windows-latest) | success |
+| Runtime image scan (core-api) | success |
+| Runtime image scan (ai-service) | success |
+| Flutter | skipped (path filter) |
+| Flutter Patient profile E2E | skipped (path filter) |
+| AI service | skipped (path filter) |
+
 ## GitHub CI — run 35811818017 on `4836100` (Core API failure)
 
 https://github.com/mahmoudemad68/clinical_system/actions/runs/35811818017
@@ -371,10 +405,9 @@ b71126b Give Admin-created doctor E2E its own approver TOTP.
 301d39a Restore approved specialties after committed-database truncation.
 aaf36b2 Record Phase 02 Chunk 16 Admin-created doctor evidence.
 0047a29 Record Chunk 16 evidence document commit SHA.
+4836100 Withdraw unapproved specialty catalogue seed.
+ea1d23b Decode bytea only when the postgres hex payload is valid.
 ```
-
-Plus the CH16-SPECIALTY-REFERENCE-001 remediation commit that withdraws the
-unapproved production specialty seed.
 
 ## Exact changed files versus baseline `3401017e`
 
