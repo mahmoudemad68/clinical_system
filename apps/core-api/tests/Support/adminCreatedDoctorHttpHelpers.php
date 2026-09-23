@@ -2,13 +2,21 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Modules\Access\Support\Capabilities;
 use Modules\Auth\Contracts\TotpVerifier;
+use Modules\Clinics\Services\CreateClinicLocation;
+use Modules\Identity\Enums\AccountStatus;
+use Modules\Identity\Enums\AccountType;
+use Modules\Identity\Enums\AssuranceLevel;
+use Modules\Identity\Enums\LanguagePreference;
 use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\StoreObject;
+use Modules\Platform\Exceptions\AuthorizationDenied;
+use Modules\Platform\Exceptions\FeatureUnavailable;
 use Modules\Platform\Services\Persistence\BinaryColumn;
 use Modules\Platform\Support\Identifier;
 use Modules\Platform\Support\StoredObjectRef;
@@ -40,10 +48,7 @@ function adminCreatedDoctorApplicantBody(array $overrides = []): array
  */
 function adminCreatedDoctorAttachTotpAndLogin(string $userId, string $phone, string $password, string $key): array
 {
-    auth()->forgetGuards();
-    test()->flushHeaders();
-    test()->clearBrowserSession();
-    Auth::guard('web')->forgetUser();
+    clinicClearBrowserSession();
 
     $protector = app(NationalIdProtector::class);
     $totp = app(TotpVerifier::class);
@@ -148,4 +153,32 @@ function adminCreatedDoctorUserId(string $doctorId): string
     expect($userId)->not->toBe('');
 
     return $userId;
+}
+
+/**
+ * Exercise the public Clinics CreateClinicLocation service as an AAL2 doctor.
+ * Avoids HTTP TOTP login so Admin cookie sessions stay isolated.
+ */
+function adminCreatedDoctorProbeClinicCreate(string $userId, string $publicName): int
+{
+    $actor = new ActorContext(
+        Identifier::fromTrusted($userId),
+        AccountType::Doctor,
+        AccountStatus::Active,
+        LanguagePreference::English,
+        AssuranceLevel::Aal2Totp,
+        1,
+        null,
+        null,
+        [],
+        Capabilities::AUTHENTICATED_SELF,
+    );
+
+    try {
+        app(CreateClinicLocation::class)->handle($actor, clinicLocationBody($publicName));
+
+        return 201;
+    } catch (AuthorizationDenied|FeatureUnavailable) {
+        return 404;
+    }
 }

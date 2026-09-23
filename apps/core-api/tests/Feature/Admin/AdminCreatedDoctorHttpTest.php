@@ -115,28 +115,18 @@ describe('admin-created doctor HTTP', function () {
             ->toBe(DoctorPublicStatus::Hidden->value);
 
         $userId = adminCreatedDoctorUserId($doctorId);
-        $pendingSession = adminCreatedDoctorAttachTotpAndLogin($userId, $body['phone'], $body['password'], 'pending');
-        $this->postJson(
-            '/api/v1/clinic-locations',
-            clinicLocationBody('Pending Admin Created Clinic'),
-            doctorsAuth($pendingSession['token']) + clinicIdem('acd-pending-clinic'),
-        )->assertNotFound();
-        expect(DB::table('clinic_locations')->count())->toBe(0);
+        expect(adminCreatedDoctorProbeClinicCreate($userId, 'Pending Admin Created Clinic'))->toBe(404)
+            ->and(DB::table('clinic_locations')->count())->toBe(0);
 
-        $me = $this->getJson('/api/v1/doctors/me/profile', doctorsAuth($pendingSession['token']));
-        $me->assertOk()
-            ->assertJsonPath('data.verification_status', DoctorVerificationStatus::PendingReview->value)
-            ->assertJsonPath('data.public_status', DoctorPublicStatus::Hidden->value);
-        expect($me->getContent())->not->toContain($canaryNid);
-
-        adminVerificationLogin($admin);
         adminVerificationPostJson(
             '/api/v1/admin/verification-cases/'.$caseId.'/claim',
             ['expected_case_version' => (int) DB::table('verification_cases')->where('id', $caseId)->value('version')],
         )->assertNotFound();
 
+        adminVerificationLogout();
         $reviewer = adminVerificationInsertAdmin('reviewer-happy');
         adminVerificationLogin($reviewer);
+        adminVerificationGetJson('/api/v1/me')->assertOk()->assertJsonPath('data.user_id', $reviewer['id']);
         $claimed = adminVerificationPostJson(
             '/api/v1/admin/verification-cases/'.$caseId.'/claim',
             ['expected_case_version' => (int) DB::table('verification_cases')->where('id', $caseId)->value('version')],
@@ -158,18 +148,33 @@ describe('admin-created doctor HTTP', function () {
             ->and((string) DB::table('verification_cases')->where('id', $caseId)->value('status'))
             ->toBe('approved');
 
+        expect(adminCreatedDoctorProbeClinicCreate($userId, 'Approved Admin Created Probe'))->toBe(201);
+
         $approvedSession = adminCreatedDoctorAttachTotpAndLogin($userId, $body['phone'], $body['password'], 'approved');
         $this->postJson(
             '/api/v1/clinic-locations',
             clinicLocationBody('Approved Admin Created Clinic'),
             doctorsAuth($approvedSession['token']) + clinicIdem('acd-approved-clinic'),
         )->assertCreated();
-        expect((string) DB::table('doctor_profiles')->where('id', $doctorId)->value('public_status'))
+        $me = $this->getJson('/api/v1/doctors/me/profile', doctorsAuth($approvedSession['token']));
+        $me->assertOk()
+            ->assertJsonPath('data.verification_status', DoctorVerificationStatus::Approved->value)
+            ->assertJsonPath('data.public_status', DoctorPublicStatus::Hidden->value);
+        expect($me->getContent())->not->toContain($canaryNid)
+            ->and((string) DB::table('doctor_profiles')->where('id', $doctorId)->value('public_status'))
             ->toBe(DoctorPublicStatus::Hidden->value);
     });
 
     it('rejects duplicate protected identity without creating a second profile', function () {
         $specialty = doctorsSeedSpecialty('general_practice');
+        $self = doctorsActiveSession('self-dup');
+        $this->postJson(
+            '/api/v1/doctors/onboarding',
+            doctorsOnboardingBody($self['payload']['national_id'], $specialty['id'], 'SYN-SELF-DUP'),
+            doctorsAuth($self['token']) + doctorsIdem('acd-self-dup'),
+        )->assertCreated();
+
+        clinicClearBrowserSession();
         $firstBody = adminCreatedDoctorApplicantBody([
             'specialty_id' => $specialty['id'],
             'syndicate_number' => 'SYN-DUP-1',
@@ -192,6 +197,7 @@ describe('admin-created doctor HTTP', function () {
             ->assertJsonPath('data.doctor_id', $first->json('data.doctor_id'))
             ->assertJsonPath('data.case_id', $first->json('data.case_id'));
 
+        adminVerificationLogout();
         $other = adminVerificationInsertAdmin('other-dup');
         adminVerificationLogin($other);
         $collision = adminVerificationPostJson(
@@ -206,16 +212,6 @@ describe('admin-created doctor HTTP', function () {
         $collision->assertOk()->assertJsonPath('data.status', 'manual_review_required');
         expect($collision->json('data'))->not->toHaveKey('doctor_id');
 
-        expect(DB::table('doctor_profiles')->count())->toBe(1);
-
-        $self = doctorsActiveSession('self-dup');
-        $this->postJson(
-            '/api/v1/doctors/onboarding',
-            doctorsOnboardingBody($self['payload']['national_id'], $specialty['id'], 'SYN-SELF-DUP'),
-            doctorsAuth($self['token']) + doctorsIdem('acd-self-dup'),
-        )->assertCreated();
-
-        adminVerificationLogin($admin);
         $againstSelf = adminVerificationPostJson(
             '/api/v1/admin/doctor-applicants',
             adminCreatedDoctorApplicantBody([
@@ -229,6 +225,7 @@ describe('admin-created doctor HTTP', function () {
     });
 
     it('denies unauthenticated, patient, doctor, and low-assurance admin create', function () {
+        clinicClearBrowserSession();
         $body = adminCreatedDoctorApplicantBody();
 
         $this->postJson('/api/v1/admin/doctor-applicants', $body)
@@ -236,13 +233,20 @@ describe('admin-created doctor HTTP', function () {
             ->assertJsonPath('errors.0.code', 'UNAUTHENTICATED');
 
         $patient = patientsActiveSession('acd-patient');
-        $this->postJson('/api/v1/admin/doctor-applicants', $body, patientsAuth($patient['token']))
-            ->assertNotFound();
+        $this->postJson(
+            '/api/v1/admin/doctor-applicants',
+            $body,
+            patientsAuth($patient['token']) + adminVerificationIdem('acd-patient'),
+        )->assertNotFound();
 
         $doctor = doctorsActiveSession('acd-doctor');
-        $this->postJson('/api/v1/admin/doctor-applicants', $body, doctorsAuth($doctor['token']))
-            ->assertNotFound();
+        $this->postJson(
+            '/api/v1/admin/doctor-applicants',
+            $body,
+            doctorsAuth($doctor['token']) + adminVerificationIdem('acd-doctor'),
+        )->assertNotFound();
 
+        clinicClearBrowserSession();
         $weak = adminVerificationInsertAdmin('acd-weak');
         adminVerificationLogin($weak);
         DB::table('auth_sessions')->where('user_id', $weak['id'])->update([
@@ -272,6 +276,22 @@ describe('admin-created doctor HTTP', function () {
             'bola',
         );
 
+        $version = (int) DB::table('verification_cases')->where('id', $caseId)->value('version');
+        adminVerificationPostJson(
+            '/api/v1/admin/verification-cases/'.$caseId.'/claim',
+            ['expected_case_version' => $version],
+        )->assertNotFound();
+        adminVerificationPostJson(
+            '/api/v1/admin/verification-cases/'.$caseId.'/decisions',
+            [
+                'decision' => 'approved',
+                'reason_code' => 'approved',
+                'expected_case_version' => $version,
+            ],
+            adminVerificationIdem('acd-bola-self-decide'),
+        )->assertNotFound();
+
+        adminVerificationLogout();
         $intruder = adminVerificationInsertAdmin('bola-intruder');
         adminVerificationLogin($intruder);
         adminVerificationPostJson(
@@ -292,22 +312,6 @@ describe('admin-created doctor HTTP', function () {
 
         $missing = app(IdentityGenerator::class)->next()->value;
         adminVerificationGetJson('/api/v1/admin/verification-cases/'.$missing)->assertNotFound();
-
-        adminVerificationLogin($creator);
-        $version = (int) DB::table('verification_cases')->where('id', $caseId)->value('version');
-        adminVerificationPostJson(
-            '/api/v1/admin/verification-cases/'.$caseId.'/claim',
-            ['expected_case_version' => $version],
-        )->assertNotFound();
-        adminVerificationPostJson(
-            '/api/v1/admin/verification-cases/'.$caseId.'/decisions',
-            [
-                'decision' => 'approved',
-                'reason_code' => 'approved',
-                'expected_case_version' => $version,
-            ],
-            adminVerificationIdem('acd-bola-self-decide'),
-        )->assertNotFound();
 
         expect((string) DB::table('doctor_profiles')->where('id', $doctorId)->value('verification_status'))
             ->toBe(DoctorVerificationStatus::PendingReview->value);
@@ -431,6 +435,7 @@ describe('admin-created doctor HTTP', function () {
             'chg',
         );
 
+        adminVerificationLogout();
         adminVerificationLogin($reviewer);
         $rejClaim = adminVerificationPostJson(
             '/api/v1/admin/verification-cases/'.$rejected->json('data.case_id').'/claim',
@@ -465,20 +470,12 @@ describe('admin-created doctor HTTP', function () {
             ->and((string) DB::table('doctor_profiles')->where('id', $changes->json('data.doctor_id'))->value('verification_status'))
             ->toBe(DoctorVerificationStatus::ChangesRequested->value)
             ->and((string) DB::table('doctor_profiles')->where('id', $rejected->json('data.doctor_id'))->value('public_status'))
-            ->toBe(DoctorPublicStatus::Hidden->value);
-
-        $rejectedSession = adminCreatedDoctorAttachTotpAndLogin(
-            adminCreatedDoctorUserId((string) $rejected->json('data.doctor_id')),
-            $rejectedBody['phone'],
-            $rejectedBody['password'],
-            'rejected',
-        );
-        $this->postJson(
-            '/api/v1/clinic-locations',
-            clinicLocationBody('Rejected Admin Created Clinic'),
-            doctorsAuth($rejectedSession['token']) + clinicIdem('acd-rejected-clinic'),
-        )->assertNotFound();
-        expect(DB::table('clinic_locations')->count())->toBe(0);
+            ->toBe(DoctorPublicStatus::Hidden->value)
+            ->and(adminCreatedDoctorProbeClinicCreate(
+                adminCreatedDoctorUserId((string) $rejected->json('data.doctor_id')),
+                'Rejected Admin Created Clinic',
+            ))->toBe(404)
+            ->and(DB::table('clinic_locations')->count())->toBe(0);
     });
 
     it('returns the seeded specialty catalogue and rejects inactive specialties', function () {
@@ -490,6 +487,7 @@ describe('admin-created doctor HTTP', function () {
             ->and($codes)->toContain('pulmonology')
             ->and(count($listed->json('data.specialties')))->toBeGreaterThanOrEqual(12);
 
+        clinicClearBrowserSession();
         $inactive = doctorsSeedSpecialty('inactive_admin_create', ['active' => false, 'sort_order' => 999]);
         $admin = adminVerificationInsertAdmin('spec-inactive');
         adminVerificationLogin($admin);
