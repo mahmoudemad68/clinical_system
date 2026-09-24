@@ -49,7 +49,7 @@ import {
   pharmacyUploadStatusResponseSchema,
   pharmacyVerificationSubmitResponseSchema,
 } from '@clinic/desktop-bridge-contracts';
-import { EVIDENCE_REQUIREMENT_CODE, PharmacyEvidenceHandleStore } from './evidence-handles';
+import { PharmacyEvidenceHandleStore } from './evidence-handles';
 import {
   TimeoutError,
   acceptIpcSchema,
@@ -160,7 +160,7 @@ describe('pharmacy gateway safe projections', () => {
     fetchMock.mockResolvedValueOnce(
       envelope(201, {
         upload_id: '0199a5c8-0000-7000-8000-000000000021',
-        requirement_code: 'organization_registration_evidence',
+        requirement_code: 'pharmacy_facility_license',
         state: 'uploading',
         rejection_reason: null,
         expires_at: '2026-09-21T00:10:00Z',
@@ -179,7 +179,7 @@ describe('pharmacy gateway safe projections', () => {
     fetchMock.mockResolvedValueOnce(
       envelope(200, {
         upload_id: '0199a5c8-0000-7000-8000-000000000021',
-        requirement_code: 'organization_registration_evidence',
+        requirement_code: 'pharmacy_facility_license',
         state: 'quarantined',
         rejection_reason: null,
         expires_at: '2026-09-21T00:10:00Z',
@@ -192,6 +192,7 @@ describe('pharmacy gateway safe projections', () => {
       bytes: Buffer.from('%PDF-1.4\n%%EOF\n'),
       sizeBytes: 14,
       candidateMediaType: 'application/pdf',
+      requirementCode: 'pharmacy_facility_license',
     });
     const serialized = JSON.stringify(uploaded);
     expect(uploaded.state).toBe('quarantined');
@@ -263,14 +264,19 @@ describe('pharmacy gateway safe projections', () => {
         submitted_at: '2026-09-21T00:00:00Z',
         decided_at: '2026-09-21T00:01:00Z',
         decision: 'changes_requested',
-        reason_code: 'evidence_incomplete',
+        reason_code: 'docs_blurry_or_illegible',
+        applicant_safe_explanation:
+          'صورة المستند المقدم غير واضحة أو يتعذر قراءة البيانات منها. يرجى إعادة رفع نسخة جيدة.',
         notes: CANARIES.notes,
         documents: [],
       }),
     );
     const status = await pharmacyGateway.verificationStatus('en');
     const serialized = JSON.stringify(status);
-    expect(status.reasonCode).toBe('evidence_incomplete');
+    expect(status.reasonCode).toBe('docs_blurry_or_illegible');
+    expect(status.applicantSafeExplanation).toBe(
+      'صورة المستند المقدم غير واضحة أو يتعذر قراءة البيانات منها. يرجى إعادة رفع نسخة جيدة.',
+    );
     expect(serialized).not.toContain(CANARIES.notes);
     expect(serialized).not.toContain('reviewer-private');
   });
@@ -443,7 +449,7 @@ describe('pharmacy gateway safe projections', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, Buffer.from('%PDF-1.4\n%%EOF\n'));
     const store = new PharmacyEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'pharmacy_facility_license');
     if (!selected.selected) {
       rmSync(dir, { recursive: true, force: true });
       throw new Error('expected selection');
@@ -454,7 +460,7 @@ describe('pharmacy gateway safe projections', () => {
 
     const created = envelope(201, {
       upload_id: '0199a5c8-0000-7000-8000-000000000021',
-      requirement_code: EVIDENCE_REQUIREMENT_CODE,
+      requirement_code: 'pharmacy_facility_license',
       state: 'uploading',
       rejection_reason: null,
       expires_at: '2026-09-21T00:10:00Z',
@@ -468,7 +474,7 @@ describe('pharmacy gateway safe projections', () => {
     });
     const completed = envelope(200, {
       upload_id: '0199a5c8-0000-7000-8000-000000000021',
-      requirement_code: EVIDENCE_REQUIREMENT_CODE,
+      requirement_code: 'pharmacy_facility_license',
       state: 'quarantined',
       rejection_reason: null,
       expires_at: '2026-09-21T00:10:00Z',
@@ -488,7 +494,7 @@ describe('pharmacy gateway safe projections', () => {
       caseId,
       sizeBytes,
       mediaType: candidateMediaType,
-      requirement: EVIDENCE_REQUIREMENT_CODE,
+      requirement: 'pharmacy_facility_license',
     });
 
     async function uploadThroughIpc(
@@ -506,6 +512,7 @@ describe('pharmacy gateway safe projections', () => {
             bytes: bytes.bytes,
             sizeBytes: bytes.sizeBytes,
             candidateMediaType: bytes.candidateMediaType,
+            requirementCode: bytes.requirementCode,
           });
         },
         deadline,
@@ -710,7 +717,7 @@ describe('pharmacy gateway safe projections', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, Buffer.from('%PDF-1.4\n%%EOF\n'));
     const store = new PharmacyEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'pharmacy_facility_license');
     if (!selected.selected) {
       rmSync(dir, { recursive: true, force: true });
       throw new Error('expected selection');
@@ -721,7 +728,7 @@ describe('pharmacy gateway safe projections', () => {
 
     const created = envelope(201, {
       upload_id: '0199a5c8-0000-7000-8000-000000000021',
-      requirement_code: EVIDENCE_REQUIREMENT_CODE,
+      requirement_code: 'pharmacy_facility_license',
       state: 'uploading',
       rejection_reason: null,
       expires_at: '2026-09-21T00:10:00Z',
@@ -735,7 +742,7 @@ describe('pharmacy gateway safe projections', () => {
     });
     const completed = envelope(200, {
       upload_id: '0199a5c8-0000-7000-8000-000000000021',
-      requirement_code: EVIDENCE_REQUIREMENT_CODE,
+      requirement_code: 'pharmacy_facility_license',
       state: 'quarantined',
       rejection_reason: null,
       expires_at: '2026-09-21T00:10:00Z',
@@ -753,7 +760,7 @@ describe('pharmacy gateway safe projections', () => {
       caseId,
       sizeBytes,
       mediaType: candidateMediaType,
-      requirement: EVIDENCE_REQUIREMENT_CODE,
+      requirement: 'pharmacy_facility_license',
     });
     const completeFingerprint = pharmacyIntentKeys.fingerprint({
       uploadId: '0199a5c8-0000-7000-8000-000000000021',
@@ -777,6 +784,7 @@ describe('pharmacy gateway safe projections', () => {
             bytes: bytes.bytes,
             sizeBytes: bytes.sizeBytes,
             candidateMediaType: bytes.candidateMediaType,
+            requirementCode: bytes.requirementCode,
           });
         },
         hang(),
@@ -830,7 +838,7 @@ describe('pharmacy gateway safe projections', () => {
     fetchMock.mockResolvedValueOnce(
       envelope(201, {
         upload_id: '0199a5c8-0000-7000-8000-000000000021',
-        requirement_code: 'organization_registration_evidence',
+        requirement_code: 'pharmacy_facility_license',
         state: 'uploading',
         rejection_reason: null,
         expires_at: '2026-09-21T00:10:00Z',
@@ -850,6 +858,7 @@ describe('pharmacy gateway safe projections', () => {
         bytes: Buffer.from('%PDF-1.4\n%%EOF\n'),
         sizeBytes: 14,
         candidateMediaType: 'application/pdf',
+        requirementCode: 'pharmacy_facility_license',
       }),
     ).rejects.toBeInstanceOf(UploadTargetError);
     const putCalls = fetchMock.mock.calls.filter(
@@ -925,7 +934,7 @@ describe('pharmacy verification transport without cookie or Host workarounds', (
       .mockResolvedValueOnce(
         envelope(201, {
           upload_id: '0199a5c8-0000-7000-8000-000000000021',
-          requirement_code: 'organization_registration_evidence',
+          requirement_code: 'pharmacy_facility_license',
           state: 'uploading',
           rejection_reason: null,
           expires_at: '2026-09-21T00:10:00Z',
@@ -942,7 +951,7 @@ describe('pharmacy verification transport without cookie or Host workarounds', (
       .mockResolvedValueOnce(
         envelope(200, {
           upload_id: '0199a5c8-0000-7000-8000-000000000021',
-          requirement_code: 'organization_registration_evidence',
+          requirement_code: 'pharmacy_facility_license',
           state: 'available',
           rejection_reason: null,
           expires_at: '2026-09-21T00:10:00Z',
@@ -980,6 +989,7 @@ describe('pharmacy verification transport without cookie or Host workarounds', (
       bytes: Buffer.from('%PDF-1.4\n%%EOF\n'),
       sizeBytes: 14,
       candidateMediaType: 'application/pdf',
+      requirementCode: 'pharmacy_facility_license',
     });
     expect(uploaded.state).toBe('available');
 

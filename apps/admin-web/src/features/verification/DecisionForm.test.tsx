@@ -61,14 +61,18 @@ describe('decision form', () => {
     vi.unstubAllGlobals();
   });
 
-  it('allows only ENGINEERING_DEFAULT decision/reason pairs', () => {
+  it('allows only approved v1.0.1 decision/reason pairs', () => {
     expect(isAllowedDecisionPair('approved', 'approved')).toBe(true);
-    expect(isAllowedDecisionPair('rejected', 'identity_mismatch')).toBe(true);
-    expect(isAllowedDecisionPair('rejected', 'evidence_incomplete')).toBe(true);
-    expect(isAllowedDecisionPair('changes_requested', 'evidence_incomplete')).toBe(true);
-    expect(isAllowedDecisionPair('changes_requested', 'documents_illegible')).toBe(true);
+    expect(isAllowedDecisionPair('changes_requested', 'identity_mismatch')).toBe(true);
+    expect(isAllowedDecisionPair('changes_requested', 'docs_blurry_or_illegible')).toBe(true);
+    expect(isAllowedDecisionPair('changes_requested', 'missing_required_docs')).toBe(true);
+    expect(isAllowedDecisionPair('changes_requested', 'license_expired')).toBe(true);
+    expect(isAllowedDecisionPair('rejected', 'fraudulent_or_altered_doc')).toBe(true);
+    expect(isAllowedDecisionPair('rejected', 'unauthorized_entity')).toBe(true);
+    expect(isAllowedDecisionPair('rejected', 'identity_mismatch')).toBe(false);
+    expect(isAllowedDecisionPair('rejected', 'evidence_incomplete')).toBe(false);
+    expect(isAllowedDecisionPair('changes_requested', 'documents_illegible')).toBe(false);
     expect(isAllowedDecisionPair('approved', 'identity_mismatch')).toBe(false);
-    expect(isAllowedDecisionPair('rejected', 'documents_illegible')).toBe(false);
     expect(isAllowedDecisionPair('changes_requested', 'approved')).toBe(false);
   });
 
@@ -86,7 +90,7 @@ describe('decision form', () => {
     });
     const changed = store.keyFor({
       decision: 'rejected',
-      reason_code: 'identity_mismatch',
+      reason_code: 'unauthorized_entity',
       expected_case_version: 2,
     });
     expect(first).toBe(retry);
@@ -219,10 +223,10 @@ describe('decision form', () => {
   });
 
   it.each([
-    ['Rejected', 'Identity mismatch', 'rejected', 'identity_mismatch'],
-    ['Rejected', 'Evidence incomplete', 'rejected', 'evidence_incomplete'],
-    ['Changes requested', 'Evidence incomplete', 'changes_requested', 'evidence_incomplete'],
-    ['Changes requested', 'Documents illegible', 'changes_requested', 'documents_illegible'],
+    ['Rejected', 'Invalid or Fraudulent Document', 'rejected', 'fraudulent_or_altered_doc'],
+    ['Rejected', 'Unauthorized Entity', 'rejected', 'unauthorized_entity'],
+    ['Changes requested', 'Documents Illegible', 'changes_requested', 'docs_blurry_or_illegible'],
+    ['Changes requested', 'Identity Details Mismatch', 'changes_requested', 'identity_mismatch'],
   ] as const)('posts %s + %s', async (decisionLabel, reasonLabel, decision, reason) => {
     const user = userEvent.setup();
     const bodies: Record<string, unknown>[] = [];
@@ -285,7 +289,7 @@ describe('decision form', () => {
     });
   });
 
-  it('does not offer invalid ENGINEERING_DEFAULT pairs', async () => {
+  it('does not offer withdrawn or invalid v1.0.1 pairs', async () => {
     const user = userEvent.setup();
     reviewerCase();
     renderApp(`/verification/${CASE_ID}`);
@@ -293,9 +297,10 @@ describe('decision form', () => {
     await user.click(screen.getByLabelText(/^Decision$/));
     await user.click(await screen.findByRole('option', { name: 'Approved' }));
     await user.click(screen.getByLabelText(/^Reason$/));
-    expect(screen.queryByRole('option', { name: 'Identity mismatch' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: 'Documents illegible' })).not.toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Approved' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Identity Details Mismatch' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Documents Illegible' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Evidence incomplete' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Verification Approved' })).toBeInTheDocument();
   });
 
   it('reuses one Idempotency-Key when the same payload is retried after a transport failure', async () => {
@@ -398,5 +403,90 @@ describe('decision form', () => {
       expect(screen.getByText(/This case changed/)).toBeInTheDocument();
     });
     expect(posts).toBe(1);
+  });
+
+  it('filters changes_requested and rejected reasons exactly and localizes Arabic labels', async () => {
+    const user = userEvent.setup();
+    reviewerCase();
+    renderApp(`/verification/${CASE_ID}`);
+    await screen.findByRole('button', { name: 'Submit decision' });
+    await user.click(screen.getByLabelText(/^Decision$/));
+    await user.click(await screen.findByRole('option', { name: 'Changes requested' }));
+    await user.click(screen.getByLabelText(/^Reason$/));
+    expect(screen.getByRole('option', { name: 'Documents Illegible' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Required Documents Missing' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Identity Details Mismatch' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Document Expired' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Invalid or Fraudulent Document' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Unauthorized Entity' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Evidence incomplete' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('option', { name: 'Identity Details Mismatch' }));
+
+    await user.click(screen.getByLabelText(/^Decision$/));
+    await user.click(await screen.findByRole('option', { name: 'Rejected' }));
+    await user.click(screen.getByLabelText(/^Reason$/));
+    expect(screen.getByRole('option', { name: 'Invalid or Fraudulent Document' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Unauthorized Entity' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Identity Details Mismatch' })).not.toBeInTheDocument();
+  });
+
+  it('shows Arabic reason labels from the approved catalogue', async () => {
+    const user = userEvent.setup();
+    await i18n.changeLanguage('ar');
+    stubApi({
+      'GET /api/v1/me': () => jsonResponse(meBody({ language: 'ar' })),
+      'GET /api/v1/me/capabilities': () => jsonResponse(capabilitiesBody([REVIEW_CAPABILITY])),
+      'GET /api/v1/auth/csrf': () => jsonResponse(envelope({ csrf: true })),
+      'GET /api/v1/health': () =>
+        jsonResponse(
+          envelope({
+            status: 'operational',
+            message: 'ok',
+            components: { core: 'operational', realtime: 'operational', ai: 'operational' },
+            version: '0.1.0-test',
+            server_time: '2026-09-20T00:00:00Z',
+          }),
+        ),
+      [`GET /api/v1/admin/verification-cases/${CASE_ID}`]: () =>
+        jsonResponse(
+          envelope(
+            caseDetail({
+              assignment: 'mine',
+              assigned_to_me: true,
+              case_status: 'pending_review',
+              documents: [reviewDocument()],
+            }),
+          ),
+        ),
+    });
+    renderApp(`/verification/${CASE_ID}`);
+    await screen.findByRole('button', { name: 'إرسال القرار' });
+    await user.click(screen.getByLabelText(/^القرار$/));
+    await user.click(await screen.findByRole('option', { name: 'مطلوب تعديلات' }));
+    await user.click(screen.getByLabelText(/^السبب$/));
+    expect(screen.getByRole('option', { name: 'عدم مطابقة بيانات الهوية' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'المستندات غير واضحة' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Evidence incomplete' })).not.toBeInTheDocument();
+  });
+
+  it('denies a doctor account the reviewer workspace', async () => {
+    stubApi({
+      'GET /api/v1/me': () => jsonResponse(meBody({ account_type: 'doctor', assurance_level: 'aal1' })),
+      'GET /api/v1/me/capabilities': () => jsonResponse(capabilitiesBody([])),
+      'GET /api/v1/auth/csrf': () => jsonResponse(envelope({ csrf: true })),
+      'GET /api/v1/health': () =>
+        jsonResponse(
+          envelope({
+            status: 'operational',
+            message: 'ok',
+            components: { core: 'operational', realtime: 'operational', ai: 'operational' },
+            version: '0.1.0-test',
+            server_time: '2026-09-20T00:00:00Z',
+          }),
+        ),
+    });
+    renderApp(`/verification/${CASE_ID}`);
+    expect(await screen.findByRole('heading', { name: 'Verification review is not available' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Submit decision' })).not.toBeInTheDocument();
   });
 });

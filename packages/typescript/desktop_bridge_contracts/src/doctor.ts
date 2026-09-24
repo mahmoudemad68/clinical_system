@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod';
+import { DOCTOR_REQUIREMENT_CODES } from '@clinic/verification-policy';
 
 const DEFAULT_IPC_TIMEOUT_MS = 15_000;
 const emptyRequestSchema = z.object({}).strict();
@@ -168,6 +169,7 @@ export const doctorVerificationStatusResponseSchema = z
     decidedAt: z.string().max(64).nullable(),
     decision: z.enum(['approved', 'rejected', 'changes_requested']).nullable(),
     reasonCode: z.string().max(64).nullable(),
+    applicantSafeExplanation: z.string().max(500).nullable().optional(),
     documents: z.array(doctorVerificationDocumentSchema).max(16),
   })
   .strict();
@@ -212,6 +214,14 @@ export const doctorEvidenceHandleIdSchema = z
   .string()
   .regex(/^[A-Za-z0-9_-]{32,64}$/, 'must be an opaque evidence handle');
 
+export const doctorEvidenceSelectRequestSchema = z
+  .object({
+    requirementCode: z.enum(DOCTOR_REQUIREMENT_CODES),
+  })
+  .strict();
+
+export type DoctorEvidenceSelectRequest = z.infer<typeof doctorEvidenceSelectRequestSchema>;
+
 export const doctorEvidenceSelectResponseSchema = z.discriminatedUnion('selected', [
   z.object({ selected: z.literal(false) }).strict(),
   z
@@ -221,6 +231,7 @@ export const doctorEvidenceSelectResponseSchema = z.discriminatedUnion('selected
       displayName: z.string().min(1).max(255),
       sizeBytes: z.number().int().positive().max(20 * 1024 * 1024),
       candidateMediaType: doctorMediaTypeSchema,
+      requirementCode: z.enum(DOCTOR_REQUIREMENT_CODES),
     })
     .strict(),
 ]);
@@ -472,7 +483,7 @@ export const DOCTOR_CAPABILITY_REGISTRY = {
     timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
   },
   [DOCTOR_CHANNELS.evidenceSelect]: {
-    request: emptyRequestSchema,
+    request: doctorEvidenceSelectRequestSchema,
     response: doctorEvidenceSelectResponseSchema,
     timeoutMs: FILE_DIALOG_TIMEOUT_MS,
   },

@@ -1,5 +1,10 @@
 # Phase 02 chunk 09 — Pharmacy verification UI surfaces (not phase PASS)
 
+> **Catalogue supersession (2026-09-24):** Phase 02 Verification Policy
+> v1.0.1-phase02 replaces `organization_registration_evidence` as an
+> ENGINEERING_DEFAULT synthetic requirement. See
+> `docs/evidence/phase-02/verification-policy-v1.0.1-phase02.md`.
+
 Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 **not** claim the branch is READY_TO_MERGE.
 
@@ -342,8 +347,8 @@ Phase 02 as a whole is **not** PASS.
 
 ## Residual (this chunk)
 
-- `organization_registration_evidence` remains ENGINEERING_DEFAULT, not a
-  legal/regulatory catalogue.
+- Pharmacy document requirements are superseded by v1.0.1-phase02. This
+  chunk historically used `organization_registration_evidence`.
 - Clinics / location / staff foundation remains.
 - Doctor Electron Phase-02 verification UX remains.
 - Patient Flutter Phase-02 completion remains.
@@ -358,9 +363,9 @@ Phase 02 as a whole is **not** PASS.
   envelopes).
 - Existing pharmacy subject-erasure lifecycle/documentation residual remains
   open; this UI chunk does not change erasure semantics.
-- Document requirement and reason catalogues remain ENGINEERING_DEFAULT.
+- Decision/reason catalogues are superseded by v1.0.1-phase02.
 - Reviewer document TTL 120s and queue page size 25/100 remain
-  ENGINEERING_DEFAULT.
+  ENGINEERING_CONTROL.
 - Signed GET URLs remain application-owned and bearer-style while valid.
 - Aborting an in-flight HTTP request is not treated as proof the server did
   not commit; TIMEOUT keeps the original idempotency key.

@@ -107,6 +107,7 @@ describe('admin verification signed document download', function () {
         $rejected = verificationRegisterDocument((string) $opened->caseId, 'rejected', 'failed');
         $scanning = verificationRegisterDocument((string) $opened->caseId, 'quarantined', 'pending');
         $available = verificationRegisterDocument((string) $opened->caseId);
+        verificationRegisterDocument((string) $opened->caseId, requirement: 'national_id_or_passport');
         $mixedCaseId = (string) $opened->caseId;
         test()->postJson(
             '/api/v1/doctors/me/verification-submissions',

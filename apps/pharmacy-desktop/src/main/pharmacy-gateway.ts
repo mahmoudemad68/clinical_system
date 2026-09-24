@@ -20,7 +20,7 @@ import type {
   PharmacyVerificationStatus,
   PharmacyVerificationSubmitResponse,
 } from '@clinic/desktop-bridge-contracts';
-import { EVIDENCE_REQUIREMENT_CODE, type EvidenceMediaType } from './evidence-handles';
+import { type EvidenceMediaType } from './evidence-handles';
 import { IntentKeyStore } from './intent-keys';
 import { parseIssuedUploadTarget } from './upload-target';
 import {
@@ -386,6 +386,7 @@ export const pharmacyGateway = {
       decided_at: string | null;
       decision: PharmacyVerificationStatus['decision'];
       reason_code: string | null;
+      applicant_safe_explanation?: string | null;
       documents: Array<{
         document_id: string;
         requirement_code: string;
@@ -409,6 +410,7 @@ export const pharmacyGateway = {
       decidedAt: data.decided_at,
       decision: data.decision,
       reasonCode: data.reason_code,
+      applicantSafeExplanation: data.applicant_safe_explanation ?? null,
       documents: data.documents.map((document) => ({
         documentId: document.document_id,
         requirementCode: document.requirement_code,
@@ -474,6 +476,7 @@ export const pharmacyGateway = {
       bytes: Buffer;
       sizeBytes: number;
       candidateMediaType: EvidenceMediaType;
+      requirementCode: string;
     },
   ): Promise<PharmacyUploadStatus> {
     await requirePharmacyAccount(locale);
@@ -481,7 +484,7 @@ export const pharmacyGateway = {
       caseId: input.caseId,
       sizeBytes: input.sizeBytes,
       mediaType: input.candidateMediaType,
-      requirement: EVIDENCE_REQUIREMENT_CODE,
+      requirement: input.requirementCode,
     });
     const createKey = pharmacyIntentKeys.keyFor(UPLOAD_CREATE_INTENT, createFingerprint);
 
@@ -503,7 +506,7 @@ export const pharmacyGateway = {
         locale,
         {
           case_id: input.caseId,
-          requirement_code: EVIDENCE_REQUIREMENT_CODE,
+          requirement_code: input.requirementCode,
           expected_size_bytes: input.sizeBytes,
           declared_media_type: input.candidateMediaType,
         },

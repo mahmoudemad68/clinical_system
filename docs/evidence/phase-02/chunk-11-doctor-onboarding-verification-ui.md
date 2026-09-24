@@ -1,5 +1,10 @@
 # Phase 02 chunk 11 — Doctor onboarding and verification UI (not phase PASS)
 
+> **Catalogue supersession (2026-09-24):** Phase 02 Verification Policy
+> v1.0.1-phase02 replaces `professional_id` as an ENGINEERING_DEFAULT
+> synthetic requirement. See
+> `docs/evidence/phase-02/verification-policy-v1.0.1-phase02.md`.
+
 Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 **not** claim the branch is READY_TO_MERGE.
 
@@ -298,8 +303,6 @@ AI service skipped (path filters).
 - Patient Flutter Phase-02 completion remains
 - Pharmacy additional branches/membership management remains
 - Phase-02 p95/load closeout remains
-- `organization_registration_evidence` remains ENGINEERING_DEFAULT
-- `professional_id` remains ENGINEERING_DEFAULT
 - Clinic invite TTL/Egypt bbox remain ENGINEERING_DEFAULT
 - SF-001 remains MERGE_ONLY / production promotion blocked
 - G-08-04 / ADR 0014 / profile-claim gate unchanged

@@ -88,6 +88,20 @@ function verification(
   };
 }
 
+function cleanDoc(code: string, suffix: string) {
+  return {
+    documentId: `0199a5c8-0000-7000-8000-0000000000${suffix}`,
+    requirementCode: code,
+    scanStatus: 'clean' as const,
+    status: 'available' as const,
+    uploadedAt: '2026-09-21T00:01:00Z',
+  };
+}
+
+function bothRequiredDocs() {
+  return [cleanDoc('medical_license', '51'), cleanDoc('national_id_or_passport', '52')];
+}
+
 function doctorMe() {
   return ok({
     userId: '0199a5c8-0000-7000-8000-000000000001',
@@ -148,19 +162,20 @@ function installBridge(
         profileVersion: 1,
         profileVerificationStatus: 'pending_review' as const,
       }),
-    selectEvidence: () =>
+    selectEvidence: async (input) =>
       ok({
         selected: true as const,
         handleId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        displayName: 'license.pdf',
+        displayName: `${input.requirementCode}.pdf`,
         sizeBytes: 1200,
         candidateMediaType: 'application/pdf' as const,
+        requirementCode: input.requirementCode,
       }),
     clearEvidence: () => ok({ cleared: true as const }),
     uploadEvidence: () =>
       ok({
         uploadId: UPLOAD_ID,
-        requirementCode: 'professional_id',
+        requirementCode: 'medical_license',
         state: 'quarantined' as const,
         rejectionReason: null,
         expiresAt: '2026-09-21T00:10:00Z',
@@ -169,7 +184,7 @@ function installBridge(
     uploadStatus: () =>
       ok({
         uploadId: UPLOAD_ID,
-        requirementCode: 'professional_id',
+        requirementCode: 'medical_license',
         state: 'available' as const,
         rejectionReason: null,
         expiresAt: '2026-09-21T00:10:00Z',
@@ -391,25 +406,28 @@ describe('doctor renderer workspace', () => {
 
     renderApp();
     expect(await screen.findByTestId('verification-workspace')).toBeTruthy();
-    fireEvent.click(await screen.findByRole('button', { name: 'Choose professional verification evidence' }));
-    expect(await screen.findByText(/license\.pdf/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Upload evidence' }));
-    expect(await screen.findByTestId('upload-status')).toBeTruthy();
+    fireEvent.click(await screen.findByTestId('select-evidence-medical_license'));
+    expect(await screen.findByText(/medical_license\.pdf/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('upload-evidence-medical_license'));
+    expect(await screen.findByTestId('upload-status-medical_license')).toBeTruthy();
     const html = document.body.innerHTML;
     assertNoCanaries(html);
     expect(html).not.toContain(CANARIES.path);
-    expect(JSON.stringify(await clinic.doctor.selectEvidence())).not.toContain(CANARIES.path);
+    expect(JSON.stringify(await clinic.doctor.selectEvidence({ requirementCode: 'medical_license' }))).not.toContain(
+      CANARIES.path,
+    );
   });
 
   it('shows scanning then available before submit is enabled', async () => {
-    let uploadState: 'scanning' | 'available' = 'scanning';
+    let documents: DoctorVerificationStatus['documents'] = [];
     const clinic = installBridge({
       getOwnProfile: () => ok({ present: true as const, profile: profile() }),
+      verificationStatus: () => ok(verification({ documents })),
       uploadStatus: () =>
         ok({
           uploadId: UPLOAD_ID,
-          requirementCode: 'professional_id',
-          state: uploadState,
+          requirementCode: 'medical_license',
+          state: 'scanning',
           rejectionReason: null,
           expiresAt: '2026-09-21T00:10:00Z',
           completedAt: '2026-09-21T00:01:00Z',
@@ -417,12 +435,19 @@ describe('doctor renderer workspace', () => {
     });
     signedInDoctor(clinic);
     renderApp();
-    expect(await screen.findByTestId('verification-workspace')).toBeTruthy();
-    fireEvent.click(await screen.findByRole('button', { name: 'Choose professional verification evidence' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Upload evidence' }));
+    expect(await screen.findByTestId('requirement-slot-medical_license')).toBeTruthy();
+    expect(screen.getByTestId('requirement-slot-national_id_or_passport')).toBeTruthy();
+    expect(screen.getByTestId('requirement-slot-syndicate_card')).toBeTruthy();
+    fireEvent.click(await screen.findByTestId('select-evidence-medical_license'));
+    fireEvent.click(await screen.findByTestId('upload-evidence-medical_license'));
     expect(await screen.findByText(/Scanning and validating/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
-    uploadState = 'available';
+    documents = [cleanDoc('medical_license', '51')];
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh status' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+    });
+    documents = bothRequiredDocs();
     fireEvent.click(screen.getByRole('button', { name: 'Refresh status' }));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', false);
@@ -430,7 +455,7 @@ describe('doctor renderer workspace', () => {
   });
 
   it('submits draft evidence and presents pending review without clinical navigation', async () => {
-    let status = verification();
+    let status = verification({ documents: bothRequiredDocs() });
     const clinic = installBridge({
       getOwnProfile: () => ok({ present: true as const, profile: profile() }),
       verificationStatus: () => ok(status),
@@ -454,9 +479,9 @@ describe('doctor renderer workspace', () => {
     });
     signedInDoctor(clinic);
     renderApp();
-    fireEvent.click(await screen.findByRole('button', { name: 'Choose professional verification evidence' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Upload evidence' }));
-    expect(await screen.findByTestId('upload-status')).toBeTruthy();
+    fireEvent.click(await screen.findByTestId('select-evidence-medical_license'));
+    fireEvent.click(screen.getByTestId('upload-evidence-medical_license'));
+    expect(await screen.findByTestId('upload-status-medical_license')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
     expect(await screen.findByTestId('pending-status')).toBeTruthy();
     assertNoClinicalNav();
@@ -473,7 +498,7 @@ describe('doctor renderer workspace', () => {
     signedInDoctor(clinic);
     renderApp();
     fireEvent.click(await screen.findByRole('button', { name: 'Open or resume verification case' }));
-    expect(await screen.findByRole('button', { name: 'Choose professional verification evidence' })).toBeTruthy();
+    expect(await screen.findByTestId('select-evidence-medical_license')).toBeTruthy();
   });
 
   it('shows changes requested with a safe reason and a new-case action', async () => {
@@ -486,14 +511,19 @@ describe('doctor renderer workspace', () => {
             profileVerificationStatus: 'changes_requested',
             caseStatus: 'changes_requested',
             decision: 'changes_requested',
-            reasonCode: 'evidence_incomplete',
+            reasonCode: 'docs_blurry_or_illegible',
+            applicantSafeExplanation:
+              'صورة المستند المقدم غير واضحة أو يتعذر قراءة البيانات منها. يرجى إعادة رفع نسخة جيدة.',
           }),
         ),
     });
     signedInDoctor(clinic);
     renderApp();
     expect(await screen.findByTestId('changes-requested-status')).toBeTruthy();
-    expect(screen.getByTestId('verification-reason').textContent).toContain('evidence_incomplete');
+    expect(screen.getByTestId('verification-reason').textContent).toContain(
+      'صورة المستند المقدم غير واضحة أو يتعذر قراءة البيانات منها. يرجى إعادة رفع نسخة جيدة.',
+    );
+    expect(screen.getByTestId('verification-reason').textContent).not.toContain('docs_blurry_or_illegible');
     expect(screen.getByRole('button', { name: 'Start a new verification case' })).toBeTruthy();
     assertNoClinicalNav();
     expect(document.body.innerHTML).not.toContain(CANARIES.notes);
@@ -561,8 +591,8 @@ describe('doctor renderer workspace', () => {
   it('refreshes authoritative status on version conflict instead of overwriting', async () => {
     const statusFn = vi
       .fn()
-      .mockResolvedValueOnce(ok(verification()))
-      .mockResolvedValue(ok(verification({ caseVersion: 3, profileVersion: 2 })));
+      .mockResolvedValueOnce(ok(verification({ documents: bothRequiredDocs() })))
+      .mockResolvedValue(ok(verification({ caseVersion: 3, profileVersion: 2, documents: bothRequiredDocs() })));
     const clinic = installBridge({
       getOwnProfile: () => ok({ present: true as const, profile: profile() }),
       verificationStatus: statusFn,
@@ -570,10 +600,6 @@ describe('doctor renderer workspace', () => {
     });
     signedInDoctor(clinic);
     renderApp();
-    fireEvent.click(await screen.findByRole('button', { name: 'Choose professional verification evidence' }));
-    expect(await screen.findByText(/license\.pdf/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Upload evidence' }));
-    expect(await screen.findByText(/Evidence is available/)).toBeTruthy();
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', false);
     });
@@ -609,5 +635,115 @@ describe('doctor renderer workspace', () => {
     });
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
+  });
+
+  it('gates submit on both required doctor documents and leaves syndicate optional', async () => {
+    let documents: DoctorVerificationStatus['documents'] = [];
+    const selected: string[] = [];
+    const clinic = installBridge({
+      getOwnProfile: () => ok({ present: true as const, profile: profile() }),
+      verificationStatus: () => ok(verification({ documents })),
+      selectEvidence: async (input) => {
+        selected.push(input.requirementCode);
+        return ok({
+          selected: true as const,
+          handleId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          displayName: `${input.requirementCode}.pdf`,
+          sizeBytes: 1200,
+          candidateMediaType: 'application/pdf' as const,
+          requirementCode: input.requirementCode,
+        });
+      },
+    });
+    signedInDoctor(clinic);
+    renderApp();
+    expect(await screen.findByTestId('requirement-slot-medical_license')).toBeTruthy();
+    expect(screen.getByTestId('requirement-slot-national_id_or_passport')).toBeTruthy();
+    expect(screen.getByTestId('requirement-slot-syndicate_card')).toBeTruthy();
+    expect(screen.getByText(/Professional Medical License \(required\)/)).toBeTruthy();
+    expect(screen.getByText(/Government Photo ID \(required\)/)).toBeTruthy();
+    expect(screen.getByText(/Medical Syndicate Membership Card \(optional\)/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+
+    fireEvent.click(screen.getByTestId('select-evidence-medical_license'));
+    expect(selected).toEqual(['medical_license']);
+    documents = [cleanDoc('medical_license', '51')];
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh status' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+    });
+
+    documents = [cleanDoc('national_id_or_passport', '52')];
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh status' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+    });
+
+    documents = bothRequiredDocs();
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh status' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', false);
+    });
+  });
+
+  it('opens a new case after changes_requested and rejected without showing reviewer notes', async () => {
+    const opened: string[] = [];
+    const clinic = installBridge({
+      getOwnProfile: () => ok({ present: true as const, profile: profile('changes_requested') }),
+      openVerificationCase: async () => {
+        opened.push('opened');
+        return ok({
+          status: 'ready' as const,
+          doctorId: DOCTOR_ID,
+          caseId: CASE_ID,
+          caseStatus: 'draft' as const,
+          caseVersion: 1,
+          profileVersion: 1,
+        });
+      },
+      verificationStatus: () =>
+        ok(
+          verification({
+            profileVerificationStatus: 'changes_requested',
+            caseStatus: 'changes_requested',
+            decision: 'changes_requested',
+            reasonCode: 'identity_mismatch',
+            applicantSafeExplanation:
+              'البيانات المدخلة في الطلب لا تتطابق مع البيانات الموجودة في المستندات المرفقة.',
+          }),
+        ),
+    });
+    signedInDoctor(clinic);
+    renderApp();
+    expect(await screen.findByTestId('changes-requested-status')).toBeTruthy();
+    expect(screen.getByTestId('verification-reason').textContent).toContain(
+      'البيانات المدخلة في الطلب لا تتطابق مع البيانات الموجودة في المستندات المرفقة.',
+    );
+    expect(document.body.innerHTML).not.toContain(CANARIES.notes);
+    fireEvent.click(screen.getByRole('button', { name: 'Start a new verification case' }));
+    await waitFor(() => {
+      expect(opened).toHaveLength(1);
+    });
+    cleanup();
+
+    const rejected = installBridge({
+      getOwnProfile: () => ok({ present: true as const, profile: profile('rejected') }),
+      verificationStatus: () =>
+        ok(
+          verification({
+            profileVerificationStatus: 'rejected',
+            caseStatus: 'rejected',
+            decision: 'rejected',
+            reasonCode: 'unauthorized_entity',
+            applicantSafeExplanation:
+              'المنشأة أو المتقدم لا يستوفي الشروط التنظيمية للتسجيل في المنصة.',
+          }),
+        ),
+    });
+    signedInDoctor(rejected);
+    renderApp();
+    expect(await screen.findByTestId('rejected-status')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Start a new verification case' })).toBeTruthy();
+    expect(screen.getByTestId('verification-reason').textContent).not.toContain('unauthorized_entity');
   });
 });

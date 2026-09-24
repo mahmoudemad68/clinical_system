@@ -33,7 +33,7 @@ it('keeps one authoritative decision under concurrent reviewers', function () {
             'reviewer_user_id' => $right['user_id'],
             'case_id' => $draft['case_id'],
             'decision' => 'rejected',
-            'reason_code' => 'identity_mismatch',
+            'reason_code' => 'unauthorized_entity',
             'expected_version' => $claimed['version'],
         ],
     );

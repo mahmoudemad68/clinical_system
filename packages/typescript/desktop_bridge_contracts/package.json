@@ -8,6 +8,9 @@
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
-  "dependencies": { "zod": "4.4.3" },
+  "dependencies": {
+    "@clinic/verification-policy": "0.1.0",
+    "zod": "4.4.3"
+  },
   "devDependencies": { "typescript": "5.9.3", "vitest": "4.1.11" }
 }

@@ -196,6 +196,12 @@ function adminVerificationPendingCanonicalCase(string $key): array
         doctorsAuth($onboarded['session']['token']) + doctorsIdem('admin-canon-done-'.$key),
     )->assertOk();
     verificationProcessUpload($created['upload_id']);
+    verificationUploadAndProcessRequirements(
+        $onboarded,
+        (string) $opened->caseId,
+        'admin-canon-'.$key.'-rest',
+        ['national_id_or_passport'],
+    );
 
     $intent = DB::table('verification_upload_intents')->where('id', $created['upload_id'])->first();
     assert($intent !== null);

@@ -758,7 +758,9 @@ final class VerificationService
 
             $this->assertNotSelfReview($reviewer, $case);
             $this->assertAssignedReviewer($reviewer, $case);
-            $this->assertRequiredDocumentsAvailable($case);
+            // Submitted cases keep the requirement snapshot accepted at submit.
+            // Do not re-apply the live catalogue, so in-flight pending-review
+            // cases from the previous policy are not stranded.
 
             $now = $this->clock->now();
             $stamp = $now->format('Y-m-d H:i:s.uP');
@@ -1232,6 +1234,7 @@ final class VerificationService
             $case instanceof VerificationCaseRecord ? $this->isoOrNull($case->decidedAt) : null,
             $decision?->decision->value,
             $decision?->reasonCode,
+            $this->policy->applicantSafeExplanation($decision?->reasonCode),
             $documents,
         );
     }
@@ -1258,6 +1261,7 @@ final class VerificationService
             $case instanceof VerificationCaseRecord ? $this->isoOrNull($case->decidedAt) : null,
             $decision?->decision->value,
             $decision?->reasonCode,
+            $this->policy->applicantSafeExplanation($decision?->reasonCode),
             $documents,
         );
     }

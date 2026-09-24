@@ -64,6 +64,7 @@ it('runs the synthetic doctor onboarding, verification, admin review, and resubm
         ['session' => $session],
         $caseId,
         'e2e-upload',
+        extra: ['requirement_code' => 'medical_license'],
     );
     $created['response']->assertCreated();
     expect($created['response']->getContent())->not->toContain($created['storage_locator'])
@@ -82,6 +83,19 @@ it('runs the synthetic doctor onboarding, verification, admin review, and resubm
         ->assertJsonPath('data.state', 'available');
     expect($uploadStatus->getContent())->not->toContain($created['storage_locator'])
         ->and($uploadStatus->getContent())->not->toContain($nationalId);
+
+    $this->postJson(
+        '/api/v1/doctors/me/verification-submissions',
+        verificationSubmitBody((int) $opened->json('data.case_version'), (int) $opened->json('data.profile_version')),
+        doctorsAuth($session['token']) + doctorsIdem('e2e-submit-missing'),
+    )->assertStatus(422);
+
+    verificationUploadAndProcessRequirements(
+        ['session' => $session],
+        $caseId,
+        'e2e-id',
+        ['national_id_or_passport'],
+    );
 
     $submitted = $this->postJson(
         '/api/v1/doctors/me/verification-submissions',
@@ -147,15 +161,12 @@ it('opens a new doctor verification case after changes_requested without mutatin
     $opened = verificationOpenHttp($onboarded, 'e2e-rework-open');
     $opened->assertOk();
     $firstCaseId = (string) $opened->json('data.case_id');
-    $created = verificationCreateUploadIntent($onboarded, $firstCaseId, 'e2e-rework-up');
-    $created['response']->assertCreated();
-    verificationPutUploadBytes($created['upload_id'], $created['bytes'], $created['mime']);
-    $this->postJson(
-        '/api/v1/verification-uploads/'.$created['upload_id'].'/complete',
-        [],
-        doctorsAuth($onboarded['session']['token']) + doctorsIdem('e2e-rework-done'),
-    )->assertOk();
-    verificationProcessUpload($created['upload_id']);
+    verificationUploadAndProcessRequirements(
+        $onboarded,
+        $firstCaseId,
+        'e2e-rework-up',
+        ['medical_license', 'national_id_or_passport'],
+    );
     $this->postJson(
         '/api/v1/doctors/me/verification-submissions',
         verificationSubmitBody((int) $opened->json('data.case_version'), (int) $opened->json('data.profile_version')),
@@ -171,7 +182,7 @@ it('opens a new doctor verification case after changes_requested without mutatin
         '/api/v1/admin/verification-cases/'.$firstCaseId.'/decisions',
         [
             'decision' => 'changes_requested',
-            'reason_code' => 'documents_illegible',
+            'reason_code' => 'docs_blurry_or_illegible',
             'expected_case_version' => (int) $claimed->json('data.case_version'),
             'notes' => 'reviewer-private-notes-must-not-cross',
         ],
@@ -182,7 +193,8 @@ it('opens a new doctor verification case after changes_requested without mutatin
     $status = $this->getJson('/api/v1/doctors/me/verification-status', doctorsAuth($onboarded['session']['token']));
     $status->assertOk()
         ->assertJsonPath('data.profile_verification_status', DoctorVerificationStatus::ChangesRequested->value)
-        ->assertJsonPath('data.reason_code', 'documents_illegible');
+        ->assertJsonPath('data.reason_code', 'docs_blurry_or_illegible')
+        ->assertJsonPath('data.applicant_safe_explanation', 'صورة المستند المقدم غير واضحة أو يتعذر قراءة البيانات منها. يرجى إعادة رفع نسخة جيدة.');
     expect($status->getContent())->not->toContain('reviewer-private-notes-must-not-cross')
         ->and($status->getContent())->not->toContain($onboarded['national_id']);
 
@@ -192,16 +204,13 @@ it('opens a new doctor verification case after changes_requested without mutatin
     expect($fresh->json('data.case_id'))->not->toBe($firstCaseId)
         ->and((string) DB::table('verification_cases')->where('id', $firstCaseId)->value('status'))->toBe('changes_requested');
 
-    $second = verificationCreateUploadIntent($onboarded, (string) $fresh->json('data.case_id'), 'e2e-rework-up-2');
-    $second['response']->assertCreated();
-    expect($second['upload_id'])->not->toBe($created['upload_id']);
-    verificationPutUploadBytes($second['upload_id'], $second['bytes'], $second['mime']);
-    $this->postJson(
-        '/api/v1/verification-uploads/'.$second['upload_id'].'/complete',
-        [],
-        doctorsAuth($onboarded['session']['token']) + doctorsIdem('e2e-rework-done-2'),
-    )->assertOk();
-    verificationProcessUpload($second['upload_id']);
+    $secondCaseId = (string) $fresh->json('data.case_id');
+    verificationUploadAndProcessRequirements(
+        $onboarded,
+        $secondCaseId,
+        'e2e-rework-up-2',
+        ['medical_license', 'national_id_or_passport'],
+    );
     $this->postJson(
         '/api/v1/doctors/me/verification-submissions',
         verificationSubmitBody((int) $fresh->json('data.case_version'), (int) $fresh->json('data.profile_version')),

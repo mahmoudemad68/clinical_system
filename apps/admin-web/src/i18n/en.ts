@@ -78,7 +78,7 @@ export const en = {
     cursorRecovered: 'The previous page token was no longer valid. Showing the first page.',
     disappeared: 'This case is no longer in the pending queue. Another reviewer may have claimed or decided it.',
     catalogueNote:
-      'Filters are limited to the current ENGINEERING_DEFAULT reviewer queue. They are not a legally or clinically approved catalogue.',
+      'Filters are limited to the current reviewer queue. They are not a legally or clinically approved catalogue.',
   },
   case: {
     title: 'Verification case',
@@ -127,7 +127,7 @@ export const en = {
     confirmCancel: 'Cancel',
     expectedVersion: 'Expected case version',
     catalogueNote:
-      'Decision and reason pairs shown here are the current ENGINEERING_DEFAULT catalogue. They are not legally or clinically approved reasons.',
+      'Decision and reason pairs shown here are Phase 02 Verification Policy v1.0.1. They are not government, syndicate, licensing-authority, or registry-provider approval.',
     decided: 'This case is no longer pending review.',
     backToQueue: 'Back to queue',
   },
@@ -136,10 +136,13 @@ export const en = {
     rejected: 'Rejected',
     changes_requested: 'Changes requested',
     reasons: {
-      approved: 'Approved',
-      evidence_incomplete: 'Evidence incomplete',
-      identity_mismatch: 'Identity mismatch',
-      documents_illegible: 'Documents illegible',
+      approved: 'Verification Approved',
+      docs_blurry_or_illegible: 'Documents Illegible',
+      missing_required_docs: 'Required Documents Missing',
+      identity_mismatch: 'Identity Details Mismatch',
+      license_expired: 'Document Expired',
+      fraudulent_or_altered_doc: 'Invalid or Fraudulent Document',
+      unauthorized_entity: 'Unauthorized Entity',
     },
   },
   status: {
@@ -197,10 +200,13 @@ export const en = {
     certifiedCopy: 'Certified copy',
     password: 'Initial password',
     submitCreate: 'Create applicant',
-    draftReady: 'A draft verification case is ready. Upload the required professional identity document, then submit for review.',
+    draftReady:
+      'A draft verification case is ready. Upload the Professional Medical License and Government Photo ID. The Medical Syndicate Membership Card is optional. This is not automated government or syndicate verification.',
     chooseFile: 'Choose evidence file',
     uploadEvidence: 'Upload evidence',
     evidenceReady: 'Evidence is ready for review.',
+    required: 'required',
+    optional: 'optional',
     submitReview: 'Submit for review',
     submitted: 'The case is in the verification queue. A different privileged reviewer must claim and decide it.',
     backToQueue: 'Back to queue',

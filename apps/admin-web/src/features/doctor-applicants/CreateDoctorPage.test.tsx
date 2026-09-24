@@ -68,12 +68,19 @@ describe('create doctor applicant', () => {
           201,
         );
       },
-      [`POST /api/v1/admin/doctor-applicants/${doctorId}/verification-uploads`]: () =>
-        jsonResponse(
+      [`POST /api/v1/admin/doctor-applicants/${doctorId}/verification-uploads`]: async (request) => {
+        const body = (await request.json()) as { requirement_code: string };
+        const uploadIds: Record<string, string> = {
+          medical_license: `${uploadId.slice(0, -1)}3`,
+          national_id_or_passport: `${uploadId.slice(0, -1)}4`,
+          syndicate_card: `${uploadId.slice(0, -1)}5`,
+        };
+        const id = uploadIds[body.requirement_code] ?? uploadId;
+        return jsonResponse(
           envelope({
-            upload_id: uploadId,
+            upload_id: id,
             state: 'uploading',
-            requirement_code: 'professional_id',
+            requirement_code: body.requirement_code,
             upload_target: {
               method: 'PUT',
               url: 'http://localhost/upload-grant',
@@ -82,12 +89,17 @@ describe('create doctor applicant', () => {
             },
           }),
           201,
-        ),
+        );
+      },
       'PUT /upload-grant': () => new Response(null, { status: 200 }),
-      [`POST /api/v1/verification-uploads/${uploadId}/complete`]: () =>
-        jsonResponse(envelope({ upload_id: uploadId, state: 'uploaded' })),
-      [`GET /api/v1/verification-uploads/${uploadId}`]: () =>
-        jsonResponse(envelope({ upload_id: uploadId, state: 'available' })),
+      [`POST /api/v1/verification-uploads/${uploadId.slice(0, -1)}3/complete`]: () =>
+        jsonResponse(envelope({ upload_id: `${uploadId.slice(0, -1)}3`, state: 'uploaded' })),
+      [`POST /api/v1/verification-uploads/${uploadId.slice(0, -1)}4/complete`]: () =>
+        jsonResponse(envelope({ upload_id: `${uploadId.slice(0, -1)}4`, state: 'uploaded' })),
+      [`GET /api/v1/verification-uploads/${uploadId.slice(0, -1)}3`]: () =>
+        jsonResponse(envelope({ upload_id: `${uploadId.slice(0, -1)}3`, state: 'available' })),
+      [`GET /api/v1/verification-uploads/${uploadId.slice(0, -1)}4`]: () =>
+        jsonResponse(envelope({ upload_id: `${uploadId.slice(0, -1)}4`, state: 'available' })),
       [`POST /api/v1/admin/doctor-applicants/${doctorId}/verification-submissions`]: () =>
         jsonResponse(
           envelope({
@@ -131,12 +143,22 @@ describe('create doctor applicant', () => {
     expect(document.body.textContent ?? '').not.toContain(CANARIES.syndicate);
     expect(document.body.textContent ?? '').not.toContain('correct-horse-battery');
 
-    const file = new File([new Uint8Array([37, 80, 68, 70])], 'id.pdf', { type: 'application/pdf' });
-    const input = document.querySelector('input[type="file"]');
-    expect(input).toBeInstanceOf(HTMLInputElement);
-    await user.upload(input as HTMLInputElement, file);
-    await user.click(screen.getByRole('button', { name: 'Upload evidence' }));
-    expect(await screen.findByText('Evidence is ready for review.')).toBeInTheDocument();
+    expect(screen.getByTestId('requirement-slot-medical_license')).toBeInTheDocument();
+    expect(screen.getByTestId('requirement-slot-national_id_or_passport')).toBeInTheDocument();
+    expect(screen.getByTestId('requirement-slot-syndicate_card')).toBeInTheDocument();
+    expect(screen.getByText(/Professional Medical License \(required\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Government Photo ID \(required\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Medical Syndicate Membership Card \(optional\)/)).toBeInTheDocument();
+
+    const license = new File([new Uint8Array([37, 80, 68, 70])], 'license.pdf', { type: 'application/pdf' });
+    const identity = new File([new Uint8Array([37, 80, 68, 70])], 'identity.pdf', { type: 'application/pdf' });
+    await user.upload(screen.getByTestId('file-input-medical_license'), license);
+    await user.click(screen.getByTestId('upload-evidence-medical_license'));
+    expect(await screen.findByTestId('evidence-ready-medical_license')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Submit for review' })).toBeDisabled();
+    await user.upload(screen.getByTestId('file-input-national_id_or_passport'), identity);
+    await user.click(screen.getByTestId('upload-evidence-national_id_or_passport'));
+    expect(await screen.findByTestId('evidence-ready-national_id_or_passport')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Submit for review' }));
     expect(await screen.findByText(/The case is in the verification queue/)).toBeInTheDocument();
   });

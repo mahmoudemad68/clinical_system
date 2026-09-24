@@ -8,10 +8,15 @@ import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useEffect, useMemo, useState, type ChangeEvent, type SubmitEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router-dom';
 import { uuidV7 } from '@clinic/api-client';
+import {
+  DOCTOR_REQUIREMENTS,
+  requirementLabel,
+  type DoctorRequirementCode,
+} from '@clinic/verification-policy';
 import { ApiError, apiClient, putBoundedUploadGrant, toApiFailure, type ApiFailure } from '@/api/client';
 import { SafeError } from '@/app/SafeError';
 import { ADMIN_ROUTE_PATHS } from '@/app/routes';
@@ -57,14 +62,13 @@ export function CreateDoctorPage() {
   );
   const [specialties, setSpecialties] = useState<Specialty[] | null>(null);
   const [created, setCreated] = useState<CreatedApplicant | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [evidenceReady, setEvidenceReady] = useState(false);
+  const [files, setFiles] = useState<Partial<Record<DoctorRequirementCode, File>>>({});
+  const [ready, setReady] = useState<Partial<Record<DoctorRequirementCode, boolean>>>({});
   const [submitted, setSubmitted] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const createKey = useMemo(() => uuidV7(), []);
-  const uploadKey = useMemo(() => uuidV7(), []);
-  const completeKey = useMemo(() => uuidV7(), []);
+  const uploadKeys = useRef<Partial<Record<DoctorRequirementCode, { upload: string; complete: string }>>>({});
   const submitKey = useMemo(() => uuidV7(), []);
 
   useEffect(() => {
@@ -155,8 +159,9 @@ export function CreateDoctorPage() {
     }
   }
 
-  async function uploadEvidence(): Promise<void> {
-    if (created === null || file === null) {
+  async function uploadEvidence(code: DoctorRequirementCode): Promise<void> {
+    const file = files[code];
+    if (created === null || file === undefined) {
       return;
     }
     const declared = evidenceType(file);
@@ -167,18 +172,20 @@ export function CreateDoctorPage() {
     setBusy(true);
     setFailure(undefined);
     try {
+      const keys = uploadKeys.current[code] ?? { upload: uuidV7(), complete: uuidV7() };
+      uploadKeys.current[code] = keys;
       const { data, error, response } = await apiClient.POST(
         '/api/v1/admin/doctor-applicants/{doctor_id}/verification-uploads',
         {
           body: {
             case_id: created.case_id,
-            requirement_code: 'professional_id',
+            requirement_code: code,
             expected_size_bytes: file.size,
             declared_media_type: declared,
           },
           params: {
             path: { doctor_id: created.doctor_id },
-            header: { 'Idempotency-Key': uploadKey },
+            header: { 'Idempotency-Key': keys.upload },
           },
         },
       );
@@ -197,7 +204,7 @@ export function CreateDoctorPage() {
       const completed = await apiClient.POST('/api/v1/verification-uploads/{upload_id}/complete', {
         params: {
           path: { upload_id: data.data.upload_id },
-          header: { 'Idempotency-Key': completeKey },
+          header: { 'Idempotency-Key': keys.complete },
         },
         body: {},
       });
@@ -214,10 +221,11 @@ export function CreateDoctorPage() {
           throw new ApiError(toApiFailure(status.error, status.response.status));
         }
         if (status.data.data.state === 'available') {
-          setEvidenceReady(true);
+          setReady((current) => ({ ...current, [code]: true }));
           return;
         }
         if (status.data.data.state === 'rejected') {
+          uploadKeys.current[code] = { upload: uuidV7(), complete: uuidV7() };
           throw new ApiError({
             code: 'STATE_CONFLICT',
             message: 'The request could not be completed.',
@@ -401,30 +409,70 @@ export function CreateDoctorPage() {
           <Alert severity="info" role="status">
             {t('createDoctor.draftReady')}
           </Alert>
+          {DOCTOR_REQUIREMENTS.map((requirement) => {
+            const label = requirementLabel(requirement, isRtl(language) ? 'ar' : 'en');
+            const requiredLabel = requirement.required
+              ? t('createDoctor.required')
+              : t('createDoctor.optional');
+            const file = files[requirement.code];
+            const slotReady = ready[requirement.code] === true;
+            return (
+              <Stack key={requirement.code} spacing={1} data-testid={`requirement-slot-${requirement.code}`}>
+                <Typography>
+                  {label} ({requiredLabel})
+                </Typography>
+                <Button component="label" variant="outlined" data-testid={`choose-file-${requirement.code}`}>
+                  {t('createDoctor.chooseFile')}: {label}
+                  <input
+                    type="file"
+                    accept="application/pdf,image/jpeg,image/png"
+                    hidden
+                    data-testid={`file-input-${requirement.code}`}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                      const next = event.target.files?.[0] ?? null;
+                      setFiles((current) => {
+                        const copy = { ...current };
+                        if (next === null) {
+                          delete copy[requirement.code];
+                        } else {
+                          copy[requirement.code] = next;
+                        }
+                        return copy;
+                      });
+                      setReady((current) => ({ ...current, [requirement.code]: false }));
+                      uploadKeys.current[requirement.code] = { upload: uuidV7(), complete: uuidV7() };
+                    }}
+                  />
+                </Button>
+                {file !== undefined ? <Typography>{file.name}</Typography> : null}
+                {slotReady ? (
+                  <Alert severity="success" role="status" data-testid={`evidence-ready-${requirement.code}`}>
+                    {t('createDoctor.evidenceReady')}
+                  </Alert>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="contained"
+                  disabled={busy || file === undefined || slotReady}
+                  data-testid={`upload-evidence-${requirement.code}`}
+                  onClick={() => void uploadEvidence(requirement.code)}
+                >
+                  {t('createDoctor.uploadEvidence')}
+                </Button>
+              </Stack>
+            );
+          })}
           <Button
-            component="label"
-            variant="outlined"
+            type="button"
+            variant="contained"
+            disabled={
+              busy ||
+              !DOCTOR_REQUIREMENTS.filter((requirement) => requirement.required).every(
+                (requirement) => ready[requirement.code] === true,
+              )
+            }
+            onClick={() => void submitCase()}
           >
-            {t('createDoctor.chooseFile')}
-            <input
-              type="file"
-              accept="application/pdf,image/jpeg,image/png"
-              hidden
-              onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                setFile(event.target.files?.[0] ?? null);
-              }}
-            />
-          </Button>
-          {file !== null ? <Typography>{file.name}</Typography> : null}
-          {evidenceReady ? (
-            <Alert severity="success" role="status">
-              {t('createDoctor.evidenceReady')}
-            </Alert>
-          ) : null}
-          <Button type="button" variant="contained" disabled={busy || file === null || evidenceReady} onClick={() => void uploadEvidence()}>
-            {t('createDoctor.uploadEvidence')}
-          </Button>
-          <Button type="button" variant="contained" disabled={busy || !evidenceReady} onClick={() => void submitCase()}>
             {t('createDoctor.submitReview')}
           </Button>
         </Stack>
