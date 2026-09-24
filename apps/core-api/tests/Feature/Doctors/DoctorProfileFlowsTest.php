@@ -400,9 +400,16 @@ describe('specialty catalogue', function () {
         doctorsSeedSpecialty('zzz_inactive', ['active' => false, 'sort_order' => 1, 'label_en' => 'Hidden']);
 
         $listed = app(ListSpecialties::class)->handle();
-        expect($listed)->toHaveCount(2)
-            ->and($listed[0]->code)->toBe('beta_card')
-            ->and($listed[1]->code)->toBe('alpha_gp');
+        $codes = array_map(static fn ($row): string => $row->code, $listed);
+        $pairs = array_map(static fn ($row): array => [$row->sortOrder, $row->code], $listed);
+        $sorted = $pairs;
+        usort($sorted, static fn (array $left, array $right): int => $left[0] <=> $right[0] ?: strcmp($left[1], $right[1]));
+
+        expect($listed)->toHaveCount(32)
+            ->and($codes)->toContain('beta_card')
+            ->and($codes)->toContain('alpha_gp')
+            ->and($codes)->not->toContain('zzz_inactive')
+            ->and($pairs)->toBe($sorted);
 
         $blob = json_encode(array_map(static fn ($row) => $row->toArray(), $listed), JSON_THROW_ON_ERROR);
         expect($blob)->not->toContain('zzz_inactive')
@@ -424,13 +431,16 @@ describe('specialty catalogue', function () {
             ->assertJsonPath('data.specialties.0.code', 'beta_http')
             ->assertJsonPath('data.specialties.0.specialty_id', $beta['id'])
             ->assertJsonPath('data.specialties.0.label_en', 'Beta HTTP')
-            ->assertJsonPath('data.specialties.1.code', 'alpha_http')
             ->assertJsonMissingPath('data.specialties.0.created_at')
             ->assertJsonMissingPath('data.specialties.0.updated_at')
             ->assertJsonMissingPath('data.specialties.0.active')
             ->assertJsonMissingPath('data.specialties.0.id');
 
-        expect($response->json('data.specialties'))->toHaveCount(2)
+        $httpCodes = collect($response->json('data.specialties'))->pluck('code')->all();
+        expect($response->json('data.specialties'))->toHaveCount(32)
+            ->and($httpCodes)->toContain('beta_http')
+            ->and($httpCodes)->toContain('alpha_http')
+            ->and($httpCodes)->not->toContain('zzz_http_inactive')
             ->and($response->getContent())->not->toContain('zzz_http_inactive')
             ->and($response->getContent())->not->toContain('Hidden HTTP')
             ->and($response->getContent())->not->toContain('hmac');

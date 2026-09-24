@@ -511,18 +511,20 @@ describe('admin-created doctor HTTP', function () {
     });
 });
 
-it('returns an empty specialty catalogue after clean migrate and rejects Admin create without an active specialty', function () {
-    expect(DB::table('specialties')->count())->toBe(0);
+it('exposes the approved specialty catalogue after clean migrate and rejects Admin create with an unknown specialty', function () {
+    expect(DB::table('specialties')->count())->toBe(30);
 
     $doctor = doctorsActiveSession('empty-cat');
     $listed = $this->getJson('/api/v1/doctors/specialties', doctorsAuth($doctor['token']))->assertOk();
-    expect($listed->json('data.specialties'))->toBe([]);
+    expect($listed->json('data.specialties'))->toHaveCount(30);
 
     clinicClearBrowserSession();
     $admin = adminVerificationInsertAdmin('empty-spec');
     adminVerificationLogin($admin);
     $catalogue = adminVerificationGetJson('/api/v1/admin/doctor-applicants/specialties')->assertOk();
-    expect($catalogue->json('data.specialties'))->toBe([]);
+    expect($catalogue->json('data.specialties'))->toHaveCount(30)
+        ->and(collect($catalogue->json('data.specialties'))->pluck('code')->all())
+        ->toBe(collect($listed->json('data.specialties'))->pluck('code')->all());
 
     $missingId = app(IdentityGenerator::class)->next()->value;
     adminVerificationPostJson(
@@ -531,7 +533,7 @@ it('returns an empty specialty catalogue after clean migrate and rejects Admin c
         adminVerificationIdem('acd-empty-cat'),
     )->assertUnprocessable();
     expect(DB::table('doctor_profiles')->count())->toBe(0)
-        ->and(DB::table('specialties')->count())->toBe(0);
+        ->and(DB::table('specialties')->count())->toBe(30);
 });
 
 it('rolls back Admin-created doctor writes when profile audit fails', function () {

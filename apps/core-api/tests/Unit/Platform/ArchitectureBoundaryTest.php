@@ -7,6 +7,7 @@ namespace Tests\Unit\Platform;
 use Modules\Auth\Services\RegisterAccountService;
 use Modules\Doctors\Services\CreateAdminDoctorApplicant;
 use Modules\Doctors\Services\RegisterDoctor;
+use Modules\Doctors\Support\ApprovedSpecialtyCatalogueV1;
 use Modules\Identity\Services\DisableIdentityService;
 use Modules\Identity\Services\EraseSubjectService;
 use Modules\Identity\Services\RotateIdentityKeysService;
@@ -812,10 +813,12 @@ final class ArchitectureBoundaryTest extends TestCase
         $this->assertStringNotContainsString("'outbox_events'", $contents);
         $this->assertStringNotContainsString("'audit_events'", $contents);
         $this->assertStringNotContainsString('doctorsSeedApprovedSpecialtyCatalogue', $contents);
+        $this->assertStringContainsString('InstallApprovedSpecialtyCatalogue', $contents);
+        $this->assertStringContainsString('restoreApprovedSpecialtyCatalogue', $contents);
     }
 
     #[Test]
-    public function production_migrations_do_not_seed_specialty_reference_rows(): void
+    public function production_specialty_seed_is_only_the_approved_versioned_catalogue(): void
     {
         $root = dirname(__DIR__, 3);
         $this->assertFileDoesNotExist($root.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'data'.DIRECTORY_SEPARATOR.'approved_specialties.v1.php');
@@ -828,8 +831,22 @@ final class ArchitectureBoundaryTest extends TestCase
             'DatabaseSeeder must not insert specialty catalogue rows.',
         );
 
+        $allowed = ApprovedSpecialtyCatalogueV1::MIGRATION.'.php';
+        $foundAllowed = false;
         foreach (glob($root.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'migrations'.DIRECTORY_SEPARATOR.'*.php') ?: [] as $file) {
             $contents = (string) file_get_contents($file);
+            if (basename($file) === $allowed) {
+                $foundAllowed = true;
+                $this->assertStringContainsString('InstallApprovedSpecialtyCatalogue', $contents);
+                $this->assertStringContainsString('v1.0.0-phase02', $contents);
+                $this->assertDoesNotMatchRegularExpression(
+                    "/DB::table\\(['\"]specialties['\"]\\)\\s*->\\s*insert/",
+                    $contents,
+                    $file.' must install through InstallApprovedSpecialtyCatalogue rather than inline inserts.',
+                );
+
+                continue;
+            }
             $this->assertStringNotContainsString('approved_specialties', $contents, $file);
             $this->assertDoesNotMatchRegularExpression(
                 "/DB::table\\(['\"]specialties['\"]\\)\\s*->\\s*insert/",
@@ -837,6 +854,7 @@ final class ArchitectureBoundaryTest extends TestCase
                 $file.' must not insert specialty catalogue rows.',
             );
         }
+        $this->assertTrue($foundAllowed, $allowed.' must exist as the versioned specialty catalogue migration.');
     }
 
     /**

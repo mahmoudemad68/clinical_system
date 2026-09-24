@@ -207,10 +207,17 @@ assignment, or decisions (`Verification` owns that pipeline). Granting clinical
 access. Making a doctor `listed` or clinically capable from profile creation.
 `verification_status` is not an access grant. Direct access to Identity/Access
 tables. Inventing government or syndicate certification claims in specialty
-labels. The specialties table remains empty until an independently approved
-medical-specialty reference dataset exists. Tests and E2E insert synthetic
-rows only; they are not production reference data. Chunk 16 does not install
-a production catalogue.
+labels. Production specialties are the independently approved catalogue
+`v1.0.0-phase02` (30 rows; Medical Operations & Clinical Informatics
+Governance Team; 2026-09-24). Immutable artifact:
+`docs/evidence/phase-02/reference-data/approved-medical-specialties.v1.0.0-phase02.json`
+(SHA-256 `e58a8a93aa938c9e270e6835b5867ec8a3c58e2429ac753413e8c1bd4fecf5fc`).
+These are product-approved specialty labels, not government or syndicate
+certification claims. Tests and E2E may still insert additional synthetic
+rows; those rows are not production reference data. Migration
+`2026_09_24_055405_install_approved_specialty_catalogue_v1_0_0_phase02`
+installs the catalogue; a clean production database is no longer
+intentionally empty.
 Onboarding HTTP is compact (`status`, `doctor_id`,
 `version`); `GET /doctors/me/profile` is the canonical projection. Collisions
 return generic `manual_review_required`. `ListSpecialties` is the in-process
