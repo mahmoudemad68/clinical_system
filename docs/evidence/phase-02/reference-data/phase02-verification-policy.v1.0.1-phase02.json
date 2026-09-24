@@ -1,0 +1,220 @@
+{
+  "version": "v1.0.1-phase02",
+  "supersedes": "v1.0.0-phase02",
+  "release_date": "2026-09-24",
+  "status": "APPROVED_PRODUCTION_POLICY",
+  "approved_by": {
+    "product": "prod-gov-lead@system.internal",
+    "privacy": "privacy-dpo@system.internal",
+    "security": "ciso-gov@system.internal"
+  },
+  "supersession_reason": "alignment with Phase 02 append-only architecture and existing authorization/retention boundaries",
+  "non_claims": [
+    "This policy does not constitute government, syndicate, licensing authority, or registry-provider approval.",
+    "The platform does not perform automated government, syndicate, license, or commercial-register verification."
+  ],
+  "doctor_requirements": [
+    {
+      "code": "medical_license",
+      "label_ar": "ترخيص ممارسة المهنة الطبية",
+      "label_en": "Professional Medical License",
+      "required": true,
+      "proof_description": "Proves valid medical practice authorization.",
+      "visibility": "both"
+    },
+    {
+      "code": "national_id_or_passport",
+      "label_ar": "إثبات الهوية الشخصية (هوية/جواز)",
+      "label_en": "Government Photo ID",
+      "required": true,
+      "proof_description": "Proves legal identity and matches identity details.",
+      "visibility": "both"
+    },
+    {
+      "code": "syndicate_card",
+      "label_ar": "بطاقة عضوية النقابة الطبية",
+      "label_en": "Medical Syndicate Membership Card",
+      "required": false,
+      "proof_description": "Optional proof of active syndicate enrollment.",
+      "visibility": "both"
+    }
+  ],
+  "pharmacy_requirements": [
+    {
+      "code": "pharmacy_facility_license",
+      "label_ar": "ترخيص المنشأة الصيدلانية",
+      "label_en": "Pharmacy Operating License",
+      "required": true,
+      "purpose": "Proves authorization to operate a pharmacy business."
+    },
+    {
+      "code": "commercial_register",
+      "label_ar": "السجل التجاري للمؤسسة",
+      "label_en": "Commercial Registration Certificate",
+      "required": true,
+      "purpose": "Proves legal business entity registration."
+    },
+    {
+      "code": "responsible_pharmacist_license",
+      "label_ar": "ترخيص الصيدلي المسؤول",
+      "label_en": "Responsible Pharmacist License",
+      "required": true,
+      "purpose": "Links establishment to a licensed pharmacist in charge."
+    }
+  ],
+  "decision_reasons": [
+    {
+      "code": "approved",
+      "allowed_decisions": [
+        "approved"
+      ],
+      "label_ar": "تم الاعتماد",
+      "label_en": "Verification Approved",
+      "applicant_safe_explanation": "تم التحقق من جميع المستندات بنجاح واعتماد الحساب.",
+      "visible_to_applicant": true,
+      "reviewer_notes_allowed": true
+    },
+    {
+      "code": "docs_blurry_or_illegible",
+      "allowed_decisions": [
+        "changes_requested"
+      ],
+      "label_ar": "المستندات غير واضحة",
+      "label_en": "Documents Illegible",
+      "applicant_safe_explanation": "صورة المستند المقدم غير واضحة أو يتعذر قراءة البيانات منها. يرجى إعادة رفع نسخة جيدة.",
+      "visible_to_applicant": true,
+      "reviewer_notes_allowed": true
+    },
+    {
+      "code": "missing_required_docs",
+      "allowed_decisions": [
+        "changes_requested"
+      ],
+      "label_ar": "نقص في المستندات المطلوبة",
+      "label_en": "Required Documents Missing",
+      "applicant_safe_explanation": "يرجى إرفاق كافة المستندات الإلزامية المطلوبة لإتمام عملية التقييم.",
+      "visible_to_applicant": true,
+      "reviewer_notes_allowed": true
+    },
+    {
+      "code": "identity_mismatch",
+      "allowed_decisions": [
+        "changes_requested"
+      ],
+      "label_ar": "عدم مطابقة بيانات الهوية",
+      "label_en": "Identity Details Mismatch",
+      "applicant_safe_explanation": "البيانات المدخلة في الطلب لا تتطابق مع البيانات الموجودة في المستندات المرفقة.",
+      "visible_to_applicant": true,
+      "reviewer_notes_allowed": true
+    },
+    {
+      "code": "license_expired",
+      "allowed_decisions": [
+        "changes_requested"
+      ],
+      "label_ar": "الترخيص أو الهوية منتهية",
+      "label_en": "Document Expired",
+      "applicant_safe_explanation": "المستند المرفق (الترخيص أو الهوية) منتهي الصلاحية. يرجى إرفاق مستند ساري.",
+      "visible_to_applicant": true,
+      "reviewer_notes_allowed": true
+    },
+    {
+      "code": "fraudulent_or_altered_doc",
+      "allowed_decisions": [
+        "rejected"
+      ],
+      "label_ar": "مستندات غير صالحة أو معدلة",
+      "label_en": "Invalid or Fraudulent Document",
+      "applicant_safe_explanation": "تعذر قبول الطلب بسبب وجود تلاعب أو عدم صحة البيانات في المستندات المرفقة.",
+      "visible_to_applicant": true,
+      "reviewer_notes_allowed": true
+    },
+    {
+      "code": "unauthorized_entity",
+      "allowed_decisions": [
+        "rejected"
+      ],
+      "label_ar": "منشأة غير مؤهلة",
+      "label_en": "Unauthorized Entity",
+      "applicant_safe_explanation": "المنشأة أو المتقدم لا يستوفي الشروط التنظيمية للتسجيل في المنصة.",
+      "visible_to_applicant": true,
+      "reviewer_notes_allowed": true
+    }
+  ],
+  "resubmission": {
+    "changes_requested": {
+      "allow_immediate_resubmission": true,
+      "requires_new_case": true,
+      "max_attempts": null,
+      "allow_same_reviewer": true,
+      "reuse_previous_decision_record": false
+    },
+    "rejected": {
+      "allow_resubmission": true,
+      "waiting_period_days": 0,
+      "requires_new_case": true,
+      "reuse_old_documents": false,
+      "max_attempts": null
+    }
+  },
+  "appeal": {
+    "allowed": false,
+    "implementation_required_in_phase02": false,
+    "status": "DEFERRED"
+  },
+  "reviewer_authorization": {
+    "account_type": "admin",
+    "capability": "verification.case.review",
+    "privileged_assurance": "AAL2",
+    "self_review": "prohibited",
+    "creator_review": "prohibited",
+    "phase02_roles_not_implemented": [
+      "medical_operations_reviewer",
+      "medical_compliance_officer",
+      "pharmacy_operations_reviewer",
+      "compliance_officer",
+      "senior_compliance_officer",
+      "security_operations_lead"
+    ]
+  },
+  "retention": {
+    "quarantine_abandoned_expired_failed_rejected": {
+      "cleanup_delay_seconds": 86400,
+      "hard_delete_quarantine_object_after_eligibility": true,
+      "reconciler": "bounded_idempotent"
+    },
+    "canonical_submitted_evidence": {
+      "retain": true,
+      "automated_canonical_deletion_in_phase02": false
+    },
+    "verification_decisions": "retain_append_only",
+    "reviewer_notes": "retain_with_verification_audit_record",
+    "long_term_lifecycle_policy": "DEFERRED"
+  },
+  "technical_upload_limits": {
+    "max_document_bytes": {
+      "value": 20971520,
+      "classification": "ENGINEERING_CONTROL"
+    },
+    "allowed_mime_types": {
+      "value": [
+        "application/pdf",
+        "image/jpeg",
+        "image/png"
+      ],
+      "classification": "APPROVED_AS_POLICY"
+    },
+    "upload_expiry_seconds": {
+      "value": 900,
+      "classification": "ENGINEERING_CONTROL"
+    },
+    "max_active_uploads_per_requirement": {
+      "value": 3,
+      "classification": "APPROVED_AS_POLICY"
+    },
+    "reviewer_document_access_ttl_seconds": {
+      "value": 120,
+      "classification": "ENGINEERING_CONTROL"
+    }
+  }
+}

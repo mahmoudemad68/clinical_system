@@ -105,7 +105,7 @@ export function reviewDocument(
 ): components['schemas']['AdminVerificationReviewDocument'] {
   return {
     document_id: '0199a5c8-0000-7000-8000-000000000041',
-    requirement_code: 'professional_id',
+    requirement_code: 'medical_license',
     sha256: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     detected_mime: 'application/pdf',
     size_bytes: 2048,

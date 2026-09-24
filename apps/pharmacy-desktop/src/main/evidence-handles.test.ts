@@ -43,7 +43,7 @@ describe('pharmacy evidence handles', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new PharmacyEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'pharmacy_facility_license');
     expect(selected.selected).toBe(true);
     if (!selected.selected) {
       return;
@@ -56,12 +56,34 @@ describe('pharmacy evidence handles', () => {
     expect(JSON.stringify(selected)).not.toContain(CANARY_URL);
   });
 
+  it('binds the handle to an approved requirement and fails closed for unknown codes', () => {
+    const dir = scratch();
+    const license = path.join(dir, 'license.pdf');
+    const register = path.join(dir, 'register.pdf');
+    writeFileSync(license, MIN_PDF);
+    writeFileSync(register, MIN_PDF);
+    const store = new PharmacyEvidenceHandleStore();
+    expect(() => store.registerSelectedFile(license, 'organization_registration_evidence')).toThrowError(
+      /INVALID_REQUEST/,
+    );
+    expect(() => store.registerSelectedFile(license, 'fabricated_licence')).toThrowError(/INVALID_REQUEST/);
+    const first = store.registerSelectedFile(license, 'pharmacy_facility_license');
+    const second = store.registerSelectedFile(register, 'commercial_register');
+    if (!first.selected || !second.selected) {
+      throw new Error('expected selections');
+    }
+    expect(first.requirementCode).toBe('pharmacy_facility_license');
+    expect(second.requirementCode).toBe('commercial_register');
+    expect(store.readForUpload(first.handleId).requirementCode).toBe('pharmacy_facility_license');
+    expect(store.readForUpload(second.handleId).requirementCode).toBe('commercial_register');
+  });
+
   it('rejects a deleted selected file on upload revalidation', () => {
     const dir = scratch();
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new PharmacyEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'pharmacy_facility_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -80,7 +102,7 @@ describe('pharmacy evidence handles', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new PharmacyEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'pharmacy_facility_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -115,7 +137,7 @@ describe('pharmacy evidence handles', () => {
     writeFileSync(original, MIN_PDF);
     writeFileSync(decoy, Buffer.concat([MIN_PDF, Buffer.from('%decoy')]));
     const store = new PharmacyEvidenceHandleStore();
-    const selected = store.registerSelectedFile(original);
+    const selected = store.registerSelectedFile(original, 'pharmacy_facility_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -142,7 +164,7 @@ describe('pharmacy evidence handles', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new PharmacyEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file, 1);
+    const selected = store.registerSelectedFile(file, 'pharmacy_facility_license', 1);
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -159,7 +181,7 @@ describe('pharmacy evidence handles', () => {
     writeFileSync(jpeg, MIN_JPEG);
     writeFileSync(png, MIN_PNG);
 
-    const selectedPdf = store.registerSelectedFile(pdf);
+    const selectedPdf = store.registerSelectedFile(pdf, 'pharmacy_facility_license');
     if (!selectedPdf.selected) {
       throw new Error('expected pdf selection');
     }
@@ -167,13 +189,13 @@ describe('pharmacy evidence handles', () => {
     expect(pdfBytes.candidateMediaType).toBe('application/pdf');
     expect(pdfBytes.bytes.equals(MIN_PDF)).toBe(true);
 
-    const selectedJpeg = store.registerSelectedFile(jpeg);
+    const selectedJpeg = store.registerSelectedFile(jpeg, 'commercial_register');
     if (!selectedJpeg.selected) {
       throw new Error('expected jpeg selection');
     }
     expect(store.readForUpload(selectedJpeg.handleId).candidateMediaType).toBe('image/jpeg');
 
-    const selectedPng = store.registerSelectedFile(png);
+    const selectedPng = store.registerSelectedFile(png, 'responsible_pharmacist_license');
     if (!selectedPng.selected) {
       throw new Error('expected png selection');
     }
@@ -186,7 +208,7 @@ describe('pharmacy evidence handles', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new PharmacyEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'pharmacy_facility_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -202,7 +224,7 @@ describe('pharmacy evidence handles', () => {
     decoy[decoy.byteLength - 2] = 0x41;
     writeFileSync(file, MIN_PDF);
     const store = new PharmacyEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'pharmacy_facility_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -220,7 +242,7 @@ describe('pharmacy evidence handles', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new PharmacyEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'pharmacy_facility_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }

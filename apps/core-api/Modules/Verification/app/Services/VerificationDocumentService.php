@@ -82,7 +82,7 @@ final class VerificationDocumentService
             throw new StateConflict;
         }
 
-        if (! $this->policy->isKnownRequirement($case->caseType->value, $evidence->requirementCode)) {
+        if (! $this->policy->isRecognizedRequirement($case->caseType->value, $evidence->requirementCode)) {
             throw new InvalidValueObject('Requirement code is not allowed.');
         }
 

@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod';
+import { PHARMACY_REQUIREMENT_CODES } from '@clinic/verification-policy';
 
 const DEFAULT_IPC_TIMEOUT_MS = 15_000;
 const emptyRequestSchema = z.object({}).strict();
@@ -176,6 +177,7 @@ export const pharmacyVerificationStatusResponseSchema = z
     decidedAt: z.string().max(64).nullable(),
     decision: z.enum(['approved', 'rejected', 'changes_requested']).nullable(),
     reasonCode: z.string().max(64).nullable(),
+    applicantSafeExplanation: z.string().max(500).nullable().optional(),
     documents: z.array(pharmacyVerificationDocumentSchema).max(16),
   })
   .strict();
@@ -220,6 +222,14 @@ export const pharmacyEvidenceHandleIdSchema = z
   .string()
   .regex(/^[A-Za-z0-9_-]{32,64}$/, 'must be an opaque evidence handle');
 
+export const pharmacyEvidenceSelectRequestSchema = z
+  .object({
+    requirementCode: z.enum(PHARMACY_REQUIREMENT_CODES),
+  })
+  .strict();
+
+export type PharmacyEvidenceSelectRequest = z.infer<typeof pharmacyEvidenceSelectRequestSchema>;
+
 export const pharmacyEvidenceSelectResponseSchema = z.discriminatedUnion('selected', [
   z.object({ selected: z.literal(false) }).strict(),
   z
@@ -229,6 +239,7 @@ export const pharmacyEvidenceSelectResponseSchema = z.discriminatedUnion('select
       displayName: z.string().min(1).max(255),
       sizeBytes: z.number().int().positive().max(20 * 1024 * 1024),
       candidateMediaType: pharmacyMediaTypeSchema,
+      requirementCode: z.enum(PHARMACY_REQUIREMENT_CODES),
     })
     .strict(),
 ]);
@@ -465,7 +476,7 @@ export const PHARMACY_CAPABILITY_REGISTRY = {
     timeoutMs: DEFAULT_IPC_TIMEOUT_MS,
   },
   [PHARMACY_CHANNELS.evidenceSelect]: {
-    request: emptyRequestSchema,
+    request: pharmacyEvidenceSelectRequestSchema,
     response: pharmacyEvidenceSelectResponseSchema,
     timeoutMs: FILE_DIALOG_TIMEOUT_MS,
   },

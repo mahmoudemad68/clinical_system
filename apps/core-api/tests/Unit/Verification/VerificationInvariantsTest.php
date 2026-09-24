@@ -143,13 +143,13 @@ it('denies unknown case types, requirements, and reason codes', function () {
     expect($policy->isKnownCaseType('doctor_verification'))->toBeTrue()
         ->and($policy->isKnownCaseType('pharmacy_verification'))->toBeTrue()
         ->and($policy->isKnownCaseType('clinic_verification'))->toBeFalse()
-        ->and($policy->isKnownRequirement('doctor_verification', 'professional_id'))->toBeTrue()
-        ->and($policy->isKnownRequirement('pharmacy_verification', 'organization_registration_evidence'))->toBeTrue()
-        ->and($policy->isKnownRequirement('doctor_verification', 'organization_registration_evidence'))->toBeFalse()
-        ->and($policy->isKnownRequirement('pharmacy_verification', 'professional_id'))->toBeFalse()
+        ->and($policy->isKnownRequirement('doctor_verification', 'medical_license'))->toBeTrue()
+        ->and($policy->isKnownRequirement('pharmacy_verification', 'pharmacy_facility_license'))->toBeTrue()
+        ->and($policy->isKnownRequirement('doctor_verification', 'pharmacy_facility_license'))->toBeFalse()
+        ->and($policy->isKnownRequirement('pharmacy_verification', 'medical_license'))->toBeFalse()
         ->and($policy->isKnownRequirement('doctor_verification', 'unspecified_licence'))->toBeFalse()
         ->and($policy->reasonAllowsDecision('approved', 'approved'))->toBeTrue()
-        ->and($policy->reasonAllowsDecision('evidence_incomplete', 'rejected'))->toBeTrue()
+        ->and($policy->reasonAllowsDecision('missing_required_docs', 'changes_requested'))->toBeTrue()
         ->and($policy->reasonAllowsDecision('fraud_internal', 'rejected'))->toBeFalse()
         ->and($policy->reasonAllowsDecision('approved', 'rejected'))->toBeFalse();
 });

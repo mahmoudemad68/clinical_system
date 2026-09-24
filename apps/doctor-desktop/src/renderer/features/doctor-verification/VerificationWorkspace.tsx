@@ -11,6 +11,14 @@ import type {
   DoctorUploadStatus,
   DoctorVerificationStatus,
 } from '@clinic/desktop-bridge-contracts';
+import {
+  DOCTOR_REQUIREMENTS,
+  applicantVisibleReasonCopy,
+  requiredDocumentsReady,
+  requirementLabel,
+  type DoctorRequirement,
+  type DoctorRequirementCode,
+} from '@clinic/verification-policy';
 import { doctorErrorMessage, doctorStrings } from '../../strings/doctor';
 
 const UPLOAD_POLL_INTERVAL_MS = 2_000;
@@ -23,6 +31,21 @@ const SCANNING_STATES: ReadonlySet<DoctorUploadStatus['state']> = new Set([
   'validating',
   'scanning',
 ]);
+
+type SlotState = {
+  evidence: Extract<DoctorEvidenceSelectResponse, { selected: true }> | null;
+  uploadId: string | null;
+  pollTimedOut: boolean;
+  pollGeneration: number;
+};
+
+function emptySlots(): Record<DoctorRequirementCode, SlotState> {
+  return {
+    medical_license: { evidence: null, uploadId: null, pollTimedOut: false, pollGeneration: 0 },
+    national_id_or_passport: { evidence: null, uploadId: null, pollTimedOut: false, pollGeneration: 0 },
+    syndicate_card: { evidence: null, uploadId: null, pollTimedOut: false, pollGeneration: 0 },
+  };
+}
 
 function isUncertainOutcome(code: string | undefined): boolean {
   return code === 'TIMEOUT' || code === 'UPSTREAM_FAILED';
@@ -58,6 +81,13 @@ function uploadStatusCopy(locale: Locale, state: DoctorUploadStatus['state']): s
   return t.completeIsNotAvailable;
 }
 
+function documentForRequirement(
+  status: DoctorVerificationStatus | undefined,
+  code: DoctorRequirementCode,
+) {
+  return status?.documents.find((document) => document.requirementCode === code);
+}
+
 export function VerificationWorkspace({
   locale,
   profile,
@@ -68,13 +98,8 @@ export function VerificationWorkspace({
   const t = doctorStrings[locale];
   const client = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
-  const [evidence, setEvidence] = useState<Extract<DoctorEvidenceSelectResponse, { selected: true }> | null>(
-    null,
-  );
-  const [uploadId, setUploadId] = useState<string | null>(null);
+  const [slots, setSlots] = useState(emptySlots);
   const [busy, setBusy] = useState(false);
-  const [pollTimedOut, setPollTimedOut] = useState(false);
-  const [pollGeneration, setPollGeneration] = useState(0);
   const alertRef = useRef<HTMLDivElement>(null);
 
   const statusQuery = useQuery({
@@ -88,65 +113,8 @@ export function VerificationWorkspace({
     },
   });
 
-  const uploadQuery = useQuery({
-    queryKey: ['doctor', 'upload', uploadId, locale, pollGeneration],
-    enabled: uploadId !== null,
-    queryFn: async () => {
-      if (uploadId === null) {
-        throw new Error('NOT_FOUND');
-      }
-      const result = await window.clinic.doctor.uploadStatus(uploadId);
-      if (!result.ok) {
-        throw new Error(result.error.code);
-      }
-      return result.value;
-    },
-    refetchInterval: (query) => {
-      if (pollTimedOut) {
-        return false;
-      }
-      const state = query.state.data?.state;
-      if (state !== undefined && SCANNING_STATES.has(state)) {
-        return UPLOAD_POLL_INTERVAL_MS;
-      }
-      return false;
-    },
-  });
-
-  useEffect(() => {
-    if (uploadId === null) {
-      return;
-    }
-    setPollTimedOut(false);
-    const timer = window.setTimeout(() => {
-      setPollTimedOut(true);
-    }, UPLOAD_POLL_TIMEOUT_MS);
-    return () => window.clearTimeout(timer);
-  }, [uploadId, pollGeneration]);
-
-  useEffect(() => {
-    if (message) {
-      alertRef.current?.focus();
-    }
-  }, [message]);
-
   const status: DoctorVerificationStatus | undefined = statusQuery.data;
-  const requirementDocument = status?.documents.find(
-    (document) => document.requirementCode === 'professional_id',
-  );
-  const reconciledUploadState: DoctorUploadStatus['state'] | null =
-    uploadQuery.data?.state ??
-    (requirementDocument === undefined
-      ? null
-      : requirementDocument.status === 'available'
-        ? 'available'
-        : requirementDocument.status === 'rejected'
-          ? 'rejected'
-          : 'quarantined');
-  const evidenceReady =
-    uploadQuery.data?.state === 'available' ||
-    status?.documents.some((document) => document.status === 'available' && document.scanStatus === 'clean') ===
-      true;
+  const evidenceReady = requiredDocumentsReady(status?.documents ?? [], DOCTOR_REQUIREMENTS);
   const canResubmit =
     status?.profileVerificationStatus === 'changes_requested' ||
     status?.profileVerificationStatus === 'rejected';
@@ -154,14 +122,16 @@ export function VerificationWorkspace({
   const approved = status?.profileVerificationStatus === 'approved';
   const suspended = status?.profileVerificationStatus === 'suspended';
   const draftCase = status?.caseStatus === 'draft';
+  const reasonCopy =
+    status?.applicantSafeExplanation && status.applicantSafeExplanation.length > 0
+      ? status.applicantSafeExplanation
+      : applicantVisibleReasonCopy(status?.reasonCode, locale);
 
-  async function refreshAuthoritative(): Promise<void> {
-    await statusQuery.refetch();
-    await client.invalidateQueries({ queryKey: ['doctor', 'profile'] });
-    if (uploadId !== null) {
-      await uploadQuery.refetch();
+  useEffect(() => {
+    if (message) {
+      alertRef.current?.focus();
     }
-  }
+  }, [message]);
 
   useEffect(() => {
     if (approved) {
@@ -169,11 +139,15 @@ export function VerificationWorkspace({
     }
   }, [approved, client]);
 
+  async function refreshAuthoritative(): Promise<void> {
+    await statusQuery.refetch();
+    await client.invalidateQueries({ queryKey: ['doctor', 'profile'] });
+  }
+
   async function openCase(): Promise<void> {
     setBusy(true);
     setMessage(null);
-    setEvidence(null);
-    setUploadId(null);
+    setSlots(emptySlots());
     const result = await window.clinic.doctor.openVerificationCase();
     setBusy(false);
     if (!result.ok) {
@@ -186,9 +160,9 @@ export function VerificationWorkspace({
     await refreshAuthoritative();
   }
 
-  async function chooseFile(): Promise<void> {
+  async function chooseFile(code: DoctorRequirementCode): Promise<void> {
     setMessage(null);
-    const result = await window.clinic.doctor.selectEvidence();
+    const result = await window.clinic.doctor.selectEvidence({ requirementCode: code });
     if (!result.ok) {
       setMessage(doctorErrorMessage(locale, result.error.code));
       return;
@@ -196,10 +170,14 @@ export function VerificationWorkspace({
     if (!result.value.selected) {
       return;
     }
-    setEvidence(result.value);
+    setSlots((current) => ({
+      ...current,
+      [code]: { ...current[code], evidence: result.value, uploadId: null, pollTimedOut: false },
+    }));
   }
 
-  async function upload(): Promise<void> {
+  async function upload(code: DoctorRequirementCode): Promise<void> {
+    const evidence = slots[code].evidence;
     if (evidence === null || status?.caseId === null || status?.caseId === undefined) {
       return;
     }
@@ -217,8 +195,10 @@ export function VerificationWorkspace({
       }
       return;
     }
-    setEvidence(null);
-    setUploadId(result.value.uploadId);
+    setSlots((current) => ({
+      ...current,
+      [code]: { ...current[code], evidence: null, uploadId: result.value.uploadId, pollTimedOut: false },
+    }));
   }
 
   async function submit(): Promise<void> {
@@ -247,7 +227,7 @@ export function VerificationWorkspace({
       <Typography variant="h5" component="h2">
         {t.verification.title}
       </Typography>
-      <Alert severity="info">{t.engineeringDefault}</Alert>
+      <Alert severity="info">{t.verificationPolicyNote}</Alert>
       <Typography>{t.noClinicalNav}</Typography>
       <Typography data-testid="verification-case-status">
         {t.verification.case}: {status?.caseStatus ? t.statuses[status.caseStatus] : t.statuses.none}
@@ -255,9 +235,9 @@ export function VerificationWorkspace({
       <Typography data-testid="profile-public-status">
         {t.profile.publicStatus}: {status?.profilePublicStatus ?? profile.publicStatus}
       </Typography>
-      {status?.reasonCode ? (
+      {reasonCopy ? (
         <Typography data-testid="verification-reason">
-          {t.verification.reason}: {status.reasonCode}
+          {t.verification.reason}: {reasonCopy}
         </Typography>
       ) : null}
 
@@ -299,54 +279,48 @@ export function VerificationWorkspace({
         </Button>
       ) : null}
 
-      {draftCase ? (
-        <Stack spacing={1}>
-          <Button type="button" onClick={() => void chooseFile()}>
-            {t.verification.selectEvidence}
-          </Button>
-          {evidence ? (
-            <Typography>
-              {t.verification.selectedFile}: {evidence.displayName} ({t.verification.size}{' '}
-              {String(evidence.sizeBytes)}, {t.verification.type} {evidence.candidateMediaType})
-            </Typography>
-          ) : null}
-          {evidence ? (
-            <Button
-              type="button"
-              onClick={() => {
-                void window.clinic.doctor.clearEvidence(evidence.handleId).then(() => setEvidence(null));
+      {draftCase
+        ? DOCTOR_REQUIREMENTS.map((requirement) => (
+            <RequirementSlot
+              key={requirement.code}
+              locale={locale}
+              requirement={requirement}
+              slot={slots[requirement.code]}
+              status={status}
+              busy={busy}
+              onChoose={() => void chooseFile(requirement.code)}
+              onClear={() => {
+                const handleId = slots[requirement.code].evidence?.handleId;
+                if (handleId === undefined) {
+                  return;
+                }
+                void window.clinic.doctor.clearEvidence(handleId).then(() => {
+                  setSlots((current) => ({
+                    ...current,
+                    [requirement.code]: { ...current[requirement.code], evidence: null },
+                  }));
+                });
               }}
-            >
-              {t.verification.clearFile}
-            </Button>
-          ) : null}
-          <Button type="button" variant="contained" disabled={busy || evidence === null} onClick={() => void upload()}>
-            {busy ? t.verification.uploading : t.verification.upload}
-          </Button>
-        </Stack>
-      ) : null}
-
-      {reconciledUploadState ? (
-        <Alert severity="info" role="status" aria-live="polite" data-testid="upload-status">
-          {uploadStatusCopy(locale, reconciledUploadState)}
-        </Alert>
-      ) : null}
-
-      {pollTimedOut && uploadId !== null && !evidenceReady ? (
-        <Alert severity="warning" role="status" data-testid="upload-poll-timeout">
-          {t.verification.pollTimedOut}
-          <Button
-            type="button"
-            data-testid="upload-poll-retry"
-            onClick={() => {
-              setPollTimedOut(false);
-              setPollGeneration((current) => current + 1);
-            }}
-          >
-            {t.verification.retryPoll}
-          </Button>
-        </Alert>
-      ) : null}
+              onUpload={() => void upload(requirement.code)}
+              onRetryPoll={() => {
+                setSlots((current) => ({
+                  ...current,
+                  [requirement.code]: {
+                    ...current[requirement.code],
+                    pollTimedOut: false,
+                    pollGeneration: current[requirement.code].pollGeneration + 1,
+                  },
+                }));
+              }}
+              onPollTimeout={() => {
+                setSlots((current) => ({
+                  ...current,
+                  [requirement.code]: { ...current[requirement.code], pollTimedOut: true },
+                }));
+              }}
+            />
+          ))
+        : null}
 
       {draftCase ? (
         <Button
@@ -369,6 +343,132 @@ export function VerificationWorkspace({
       {message ? (
         <Alert ref={alertRef} tabIndex={-1} severity="warning" role="alert" data-testid="verification-message">
           {message}
+        </Alert>
+      ) : null}
+    </Stack>
+  );
+}
+
+function RequirementSlot({
+  locale,
+  requirement,
+  slot,
+  status,
+  busy,
+  onChoose,
+  onClear,
+  onUpload,
+  onRetryPoll,
+  onPollTimeout,
+}: {
+  locale: Locale;
+  requirement: DoctorRequirement;
+  slot: SlotState;
+  status: DoctorVerificationStatus | undefined;
+  busy: boolean;
+  onChoose: () => void;
+  onClear: () => void;
+  onUpload: () => void;
+  onRetryPoll: () => void;
+  onPollTimeout: () => void;
+}) {
+  const t = doctorStrings[locale];
+  const document = documentForRequirement(status, requirement.code);
+  const uploadQuery = useQuery({
+    queryKey: ['doctor', 'upload', requirement.code, slot.uploadId, locale, slot.pollGeneration],
+    enabled: slot.uploadId !== null,
+    queryFn: async () => {
+      if (slot.uploadId === null) {
+        throw new Error('NOT_FOUND');
+      }
+      const result = await window.clinic.doctor.uploadStatus(slot.uploadId);
+      if (!result.ok) {
+        throw new Error(result.error.code);
+      }
+      return result.value;
+    },
+    refetchInterval: (query) => {
+      if (slot.pollTimedOut) {
+        return false;
+      }
+      const state = query.state.data?.state;
+      if (state !== undefined && SCANNING_STATES.has(state)) {
+        return UPLOAD_POLL_INTERVAL_MS;
+      }
+      return false;
+    },
+  });
+
+  useEffect(() => {
+    if (slot.uploadId === null) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      onPollTimeout();
+    }, UPLOAD_POLL_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [slot.uploadId, slot.pollGeneration, onPollTimeout]);
+
+  const reconciledUploadState: DoctorUploadStatus['state'] | null =
+    uploadQuery.data?.state ??
+    (document === undefined
+      ? null
+      : document.status === 'available'
+        ? 'available'
+        : document.status === 'rejected'
+          ? 'rejected'
+          : 'quarantined');
+  const label = requirementLabel(requirement, locale);
+  const requiredLabel = requirement.required ? t.verification.required : t.verification.optional;
+
+  return (
+    <Stack spacing={1} data-testid={`requirement-slot-${requirement.code}`}>
+      <Typography>
+        {label} ({requiredLabel})
+      </Typography>
+      <Button
+        type="button"
+        onClick={onChoose}
+        data-testid={`select-evidence-${requirement.code}`}
+      >
+        {t.verification.selectEvidence}: {label}
+      </Button>
+      {slot.evidence ? (
+        <Typography>
+          {t.verification.selectedFile}: {slot.evidence.displayName} ({t.verification.size}{' '}
+          {String(slot.evidence.sizeBytes)}, {t.verification.type} {slot.evidence.candidateMediaType})
+        </Typography>
+      ) : null}
+      {slot.evidence ? (
+        <Button type="button" onClick={onClear}>
+          {t.verification.clearFile}
+        </Button>
+      ) : null}
+      <Button
+        type="button"
+        variant="contained"
+        disabled={busy || slot.evidence === null}
+        data-testid={`upload-evidence-${requirement.code}`}
+        onClick={onUpload}
+      >
+        {busy ? t.verification.uploading : t.verification.upload}
+      </Button>
+      {reconciledUploadState ? (
+        <Alert
+          severity="info"
+          role="status"
+          aria-live="polite"
+          data-testid={`upload-status-${requirement.code}`}
+        >
+          {uploadStatusCopy(locale, reconciledUploadState)}
+        </Alert>
+      ) : null}
+      {slot.pollTimedOut && slot.uploadId !== null && uploadQuery.data?.state !== 'available' ? (
+        <Alert severity="warning" role="status" data-testid={`upload-poll-timeout-${requirement.code}`}>
+          {t.verification.pollTimedOut}
+          <Button type="button" data-testid={`upload-poll-retry-${requirement.code}`} onClick={onRetryPoll}>
+            {t.verification.retryPoll}
+          </Button>
         </Alert>
       ) : null}
     </Stack>

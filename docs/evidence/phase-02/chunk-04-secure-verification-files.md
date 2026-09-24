@@ -1,5 +1,12 @@
 # Phase 02 chunk 04 — Secure verification document upload pipeline (not phase PASS)
 
+> **Catalogue supersession (2026-09-24):** Phase 02 Verification Policy
+> v1.0.1-phase02 replaces the ENGINEERING_DEFAULT requirement catalogue
+> recorded below. MIME types and max active uploads are APPROVED_AS_POLICY.
+> Maximum bytes, upload-grant TTL, reviewer document URL TTL, and quarantine
+> cleanup delay remain ENGINEERING_CONTROL. See
+> `docs/evidence/phase-02/verification-policy-v1.0.1-phase02.md`.
+
 Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 **not** claim the branch is READY_TO_MERGE.
 
@@ -72,18 +79,18 @@ safe. Inspection, malware scanning, re-observation, promotion, and later
 trusted access use the canonical locator only. After seal, no processing
 step reads ingress.
 
-## Upload purpose and policy (`ENGINEERING_DEFAULT`)
+## Upload purpose and policy
 
 | Item | Value | Status |
 | --- | --- | --- |
-| Case type | `doctor_verification` | ENGINEERING_DEFAULT |
-| Requirement | `professional_id` | ENGINEERING_DEFAULT |
-| Allowed formats | `application/pdf`, `image/jpeg`, `image/png` (magic + declared must match) | ENGINEERING_DEFAULT |
-| Max bytes | 20_971_520 (20 MiB) | ENGINEERING_DEFAULT |
-| Upload grant expiry | 900 seconds, capped by the upload-intent `expires_at` | ENGINEERING_DEFAULT |
-| Max active uploads per requirement | 3 | ENGINEERING_DEFAULT |
-| Max processing attempts | 8 | ENGINEERING_DEFAULT |
-| Rejected-object cleanup eligibility | 86_400 seconds | ENGINEERING_DEFAULT; not a legal retention schedule |
+| Case type | `doctor_verification` | ENGINEERING_CONTROL (operational) |
+| Requirement | see v1.0.1-phase02 doctor/pharmacy catalogues | APPROVED_AS_POLICY |
+| Allowed formats | `application/pdf`, `image/jpeg`, `image/png` (magic + declared must match) | APPROVED_AS_POLICY |
+| Max bytes | 20_971_520 (20 MiB) | ENGINEERING_CONTROL |
+| Upload grant expiry | 900 seconds, capped by the upload-intent `expires_at` | ENGINEERING_CONTROL |
+| Max active uploads per requirement | 3 | APPROVED_AS_POLICY |
+| Max processing attempts | 8 | ENGINEERING_CONTROL |
+| Rejected-object cleanup eligibility | 86_400 seconds | ENGINEERING_CONTROL; not a legal retention schedule |
 | Archives / Office / SVG / HTML / executables / AV | denied | fail closed |
 
 ## Canonical sealed-object design
@@ -358,8 +365,11 @@ approval or READY_TO_MERGE.
 
 ## Residual (this chunk)
 
-- Document requirement catalogue remains `ENGINEERING_DEFAULT` (`professional_id`).
-- Allowed MIME/size/expiry/active-upload/cleanup windows are ENGINEERING_DEFAULT.
+- Document requirement catalogue is superseded by v1.0.1-phase02. This chunk
+  historically used `professional_id`.
+- Allowed MIME types and max active uploads are APPROVED_AS_POLICY in
+  v1.0.1-phase02. Maximum bytes, upload-grant TTL, and cleanup delay remain
+  ENGINEERING_CONTROL.
 - MinIO local/CI typically has no object versioning; immutability is the
   server-only canonical locator plus SHA-256, not a provider version-id.
 - Reviewer signed download URLs and Admin decision HTTP remain deferred.

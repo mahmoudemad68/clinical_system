@@ -127,7 +127,7 @@ function verificationRegisterDocument(
     string $caseId,
     string $status = 'available',
     string $scanStatus = 'clean',
-    string $requirement = 'professional_id',
+    string $requirement = 'medical_license',
 ): array {
     $ids = app(IdentityGenerator::class);
     $objectId = $ids->next()->value;
@@ -186,7 +186,7 @@ function verificationPrepareDraftWithAvailableDocument(string $key): array
     $onboarded = verificationOnboardDoctor($key);
     $opened = verificationOpenCase($onboarded['actor']);
     expect($opened->caseId)->toBeString();
-    $document = verificationRegisterDocument((string) $opened->caseId);
+    verificationRegisterRequiredDoctorDocuments((string) $opened->caseId);
 
     return [
         'session' => $onboarded['session'],
@@ -195,9 +195,59 @@ function verificationPrepareDraftWithAvailableDocument(string $key): array
         'case_id' => (string) $opened->caseId,
         'case_version' => (int) $opened->caseVersion,
         'profile_version' => $opened->profileVersion,
-        'object_id' => $document['object_id'],
+        'object_id' => (string) DB::table('verification_documents')->where('case_id', $opened->caseId)->value('object_id'),
         'national_id' => $onboarded['national_id'],
     ];
+}
+
+/**
+ * @return list<array{document_id: string, object_id: string, sha256: string}>
+ */
+function verificationRegisterRequiredDoctorDocuments(string $caseId): array
+{
+    return [
+        verificationRegisterDocument($caseId, requirement: 'medical_license'),
+        verificationRegisterDocument($caseId, requirement: 'national_id_or_passport'),
+    ];
+}
+
+/**
+ * @return list<array{document_id: string, object_id: string, sha256: string}>
+ */
+function verificationRegisterRequiredPharmacyDocuments(string $caseId): array
+{
+    return [
+        verificationRegisterDocument($caseId, requirement: 'pharmacy_facility_license'),
+        verificationRegisterDocument($caseId, requirement: 'commercial_register'),
+        verificationRegisterDocument($caseId, requirement: 'responsible_pharmacist_license'),
+    ];
+}
+
+/**
+ * @param  list<string>  $codes
+ */
+function verificationUploadAndProcessRequirements(
+    array $onboarded,
+    string $caseId,
+    string $idemPrefix,
+    array $codes,
+): void {
+    foreach ($codes as $code) {
+        $created = verificationCreateUploadIntent(
+            $onboarded,
+            $caseId,
+            $idemPrefix.'-'.$code,
+            extra: ['requirement_code' => $code],
+        );
+        $created['response']->assertCreated();
+        verificationPutUploadBytes($created['upload_id'], $created['bytes'], $created['mime']);
+        test()->postJson(
+            '/api/v1/verification-uploads/'.$created['upload_id'].'/complete',
+            [],
+            doctorsAuth($onboarded['session']['token']) + doctorsIdem($idemPrefix.'-done-'.$code),
+        )->assertOk();
+        verificationProcessUpload($created['upload_id']);
+    }
 }
 
 function verificationSubmitBody(int $caseVersion, int $profileVersion): array
@@ -236,7 +286,7 @@ function verificationCreateUploadIntent(array $onboarded, string $caseId, string
     $expected = $size > 0 ? $size : strlen($bytes);
     $payload = array_merge([
         'case_id' => $caseId,
-        'requirement_code' => 'professional_id',
+        'requirement_code' => 'medical_license',
         'expected_size_bytes' => $expected,
         'declared_media_type' => $mime,
     ], $extra);

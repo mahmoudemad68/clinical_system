@@ -147,7 +147,7 @@ windows-latest), Runtime image scan (core-api), Runtime image scan
 - Patient Flutter Phase-02 completion remains
 - Pharmacy additional branches/membership management remains
 - Phase-02 p95/load closeout remains
-- `professional_id` remains ENGINEERING_DEFAULT
+- Doctor document requirements are superseded by v1.0.1-phase02
 - DEF-SEC-MFA-001 remains OPEN / not addressed
 - SF-001 remains MERGE_ONLY / production promotion blocked
 - staging remains unprovisioned

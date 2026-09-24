@@ -141,7 +141,7 @@ describe('doctor verification HTTP foundation', function () {
             ->assertNotFound();
         $this->postJson('/api/v1/verification-uploads', [
             'case_id' => $left['case_id'],
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'expected_size_bytes' => 128,
             'declared_media_type' => 'application/pdf',
         ], doctorsAuth($right['session']['token']) + doctorsIdem('ver-upload-bola'))
@@ -373,8 +373,8 @@ describe('reviewer decisions', function () {
             ->and((string) DB::table('doctor_profiles')->where('id', $draft['doctor_id'])->value('verification_status'))->toBe($profileStatus)
             ->and((string) DB::table('doctor_profiles')->where('id', $draft['doctor_id'])->value('public_status'))->toBe('hidden');
     })->with([
-        'rejected' => ['rejected', 'identity_mismatch', DoctorVerificationStatus::Rejected->value],
-        'changes_requested' => ['changes_requested', 'documents_illegible', DoctorVerificationStatus::ChangesRequested->value],
+        'rejected' => ['rejected', 'unauthorized_entity', DoctorVerificationStatus::Rejected->value],
+        'changes_requested' => ['changes_requested', 'docs_blurry_or_illegible', DoctorVerificationStatus::ChangesRequested->value],
     ]);
 
     it('keeps historical decisions when a new case is opened after changes_requested', function () {
@@ -390,7 +390,7 @@ describe('reviewer decisions', function () {
             $claimed['admin']['actor'],
             Identifier::fromTrusted($draft['case_id']),
             'changes_requested',
-            'documents_illegible',
+            'docs_blurry_or_illegible',
             $claimed['version'],
         );
 
@@ -538,7 +538,7 @@ describe('reviewer decisions', function () {
             $other['actor'],
             Identifier::fromTrusted($draft['case_id']),
             'rejected',
-            'identity_mismatch',
+            'unauthorized_entity',
             $draft['case_version'] + 1,
         ))->toThrow(StateConflict::class);
 
@@ -628,7 +628,7 @@ describe('trusted document registration', function () {
         $admin = verificationSeedAdmin('forge-admin');
         $payload = [
             'case_id' => (string) $opened->caseId,
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'object_id' => app(IdentityGenerator::class)->next()->value,
             'sha256' => str_repeat('ab', 32),
             'detected_mime' => 'application/pdf',
@@ -707,7 +707,7 @@ describe('trusted document registration', function () {
         $objectId = $ids->next()->value;
         $evidence = (new TestingTrustedDocumentEvidenceIssuer(app(VerificationPolicy::class)))->issue([
             'case_id' => $caseId,
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'object_id' => $objectId,
             'sha256' => hash('sha256', 'synthetic-missing-applicant-'.$objectId),
             'detected_mime' => 'application/pdf',
@@ -730,7 +730,7 @@ describe('trusted document registration', function () {
         $issuer = new TestingTrustedDocumentEvidenceIssuer(app(VerificationPolicy::class));
         $promoted = $issuer->issue([
             'case_id' => (string) $opened->caseId,
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'object_id' => $quarantined['object_id'],
             'sha256' => $quarantined['sha256'],
             'detected_mime' => 'application/pdf',

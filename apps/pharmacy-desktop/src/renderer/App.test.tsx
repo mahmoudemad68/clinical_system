@@ -2,8 +2,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import type { PharmacyClinicBridge, PharmacyOrganizationView } from '@clinic/desktop-bridge-contracts';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { PharmacyClinicBridge, PharmacyOrganizationView, PharmacyVerificationStatus } from '@clinic/desktop-bridge-contracts';
 import { App } from './App';
 
 const CANARIES = {
@@ -60,6 +60,47 @@ function organization(status: 'draft' | 'pending' | 'active' = 'draft'): Pharmac
   };
 }
 
+function pharmacyMe() {
+  return ok({
+    userId: '0199a5c8-0000-7000-8000-000000000001',
+    accountType: 'pharmacy' as const,
+    status: 'active',
+    language: 'en' as const,
+    assuranceLevel: 'aal2_totp',
+    capabilities: [],
+  });
+}
+
+function pharmacyStatus(overrides: Partial<PharmacyVerificationStatus> = {}): PharmacyVerificationStatus {
+  return {
+    applicantType: 'pharmacy',
+    organizationId: ORG_ID,
+    organizationVerificationStatus: 'draft',
+    organizationStatus: 'draft',
+    organizationVersion: 1,
+    caseId: CASE_ID,
+    caseStatus: 'draft',
+    caseVersion: 1,
+    caseType: 'pharmacy_verification',
+    submittedAt: null,
+    decidedAt: null,
+    decision: null,
+    reasonCode: null,
+    documents: [],
+    ...overrides,
+  };
+}
+
+function pharmacyDoc(code: string, suffix: string) {
+  return {
+    documentId: `0199a5c8-0000-7000-8000-0000000000${suffix}`,
+    requirementCode: code,
+    scanStatus: 'clean' as const,
+    status: 'available' as const,
+    uploadedAt: '2026-09-21T00:01:00Z',
+  };
+}
+
 function installBridge(overrides: Partial<PharmacyClinicBridge['pharmacy']> & Record<string, unknown> = {}) {
   let present = false;
   const pharmacy: PharmacyClinicBridge['pharmacy'] = {
@@ -112,19 +153,20 @@ function installBridge(overrides: Partial<PharmacyClinicBridge['pharmacy']> & Re
         organizationVersion: 1,
         organizationVerificationStatus: 'pending_review' as const,
       }),
-    selectEvidence: () =>
+    selectEvidence: async (input) =>
       ok({
         selected: true as const,
         handleId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        displayName: 'registration.pdf',
+        displayName: `${input.requirementCode}.pdf`,
         sizeBytes: 1200,
         candidateMediaType: 'application/pdf' as const,
+        requirementCode: input.requirementCode,
       }),
     clearEvidence: () => ok({ cleared: true as const }),
     uploadEvidence: () =>
       ok({
         uploadId: UPLOAD_ID,
-        requirementCode: 'organization_registration_evidence',
+        requirementCode: 'pharmacy_facility_license',
         state: 'quarantined' as const,
         rejectionReason: null,
         expiresAt: '2026-09-21T00:10:00Z',
@@ -133,7 +175,7 @@ function installBridge(overrides: Partial<PharmacyClinicBridge['pharmacy']> & Re
     uploadStatus: () =>
       ok({
         uploadId: UPLOAD_ID,
-        requirementCode: 'organization_registration_evidence',
+        requirementCode: 'pharmacy_facility_license',
         state: 'available' as const,
         rejectionReason: null,
         expiresAt: '2026-09-21T00:10:00Z',
@@ -344,14 +386,18 @@ describe('pharmacy renderer workspace', () => {
 
     renderApp();
     expect(await screen.findByTestId('verification-workspace')).toBeTruthy();
-    fireEvent.click(await screen.findByRole('button', { name: 'Choose registration evidence' }));
-    expect(await screen.findByText(/registration\.pdf/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Upload evidence' }));
-    expect(await screen.findByTestId('upload-status')).toBeTruthy();
+    fireEvent.click(await screen.findByTestId('select-evidence-pharmacy_facility_license'));
+    expect(await screen.findByText(/pharmacy_facility_license\.pdf/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('upload-evidence-pharmacy_facility_license'));
+    expect(await screen.findByTestId('upload-status-pharmacy_facility_license')).toBeTruthy();
     const html = document.body.innerHTML;
     assertNoCanaries(html);
     expect(html).not.toContain(CANARIES.path);
-    expect(JSON.stringify(await clinic.pharmacy.selectEvidence())).not.toContain(CANARIES.path);
+    expect(
+      JSON.stringify(
+        await clinic.pharmacy.selectEvidence({ requirementCode: 'pharmacy_facility_license' }),
+      ),
+    ).not.toContain(CANARIES.path);
   });
 
   it('keeps a doctor login on the sign-in form without pharmacy workspace', async () => {
@@ -386,5 +432,109 @@ describe('pharmacy renderer workspace', () => {
     renderApp();
     expect(await screen.findByTestId('account-denied')).toBeTruthy();
     expect(screen.queryByTestId('onboarding-form')).toBeNull();
+  });
+
+  it('requires all three pharmacy documents before submit and keeps independent slots', async () => {
+    let documents: PharmacyVerificationStatus['documents'] = [];
+    const selected: string[] = [];
+    const clinic = installBridge({
+      getOwnOrganization: () => ok({ present: true as const, organization: organization() }),
+      verificationStatus: () => ok(pharmacyStatus({ documents })),
+      selectEvidence: async (input) => {
+        selected.push(input.requirementCode);
+        return ok({
+          selected: true as const,
+          handleId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          displayName: `${input.requirementCode}.pdf`,
+          sizeBytes: 1200,
+          candidateMediaType: 'application/pdf' as const,
+          requirementCode: input.requirementCode,
+        });
+      },
+    });
+    clinic.auth.me = () => pharmacyMe();
+    renderApp();
+    expect(await screen.findByTestId('requirement-slot-pharmacy_facility_license')).toBeTruthy();
+    expect(screen.getByTestId('requirement-slot-commercial_register')).toBeTruthy();
+    expect(screen.getByTestId('requirement-slot-responsible_pharmacist_license')).toBeTruthy();
+    expect(screen.getByText(/Pharmacy Operating License \(required\)/)).toBeTruthy();
+    expect(screen.getByText(/Commercial Registration Certificate \(required\)/)).toBeTruthy();
+    expect(screen.getByText(/Responsible Pharmacist License \(required\)/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+
+    fireEvent.click(screen.getByTestId('select-evidence-pharmacy_facility_license'));
+    expect(selected).toEqual(['pharmacy_facility_license']);
+    documents = [pharmacyDoc('pharmacy_facility_license', '61')];
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh status' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+    });
+
+    documents = [
+      pharmacyDoc('pharmacy_facility_license', '61'),
+      pharmacyDoc('commercial_register', '62'),
+    ];
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh status' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+    });
+
+    documents = [
+      pharmacyDoc('pharmacy_facility_license', '61'),
+      pharmacyDoc('commercial_register', '62'),
+      pharmacyDoc('responsible_pharmacist_license', '63'),
+    ];
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh status' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', false);
+    });
+  });
+
+  it('shows applicant-safe reason copy and can start a new case after rejected or changes_requested', async () => {
+    const clinic = installBridge({
+      getOwnOrganization: () =>
+        ok({ present: true as const, organization: organization('draft') }),
+      verificationStatus: () =>
+        ok(
+          pharmacyStatus({
+            organizationVerificationStatus: 'changes_requested',
+            organizationStatus: 'draft',
+            caseStatus: 'changes_requested',
+            decision: 'changes_requested',
+            reasonCode: 'docs_blurry_or_illegible',
+            applicantSafeExplanation:
+              'صورة المستند المقدم غير واضحة أو يتعذر قراءة البيانات منها. يرجى إعادة رفع نسخة جيدة.',
+          }),
+        ),
+    });
+    clinic.auth.me = () => pharmacyMe();
+    renderApp();
+    expect(await screen.findByTestId('changes-requested-status')).toBeTruthy();
+    expect(screen.getByTestId('verification-reason').textContent).toContain(
+      'صورة المستند المقدم غير واضحة أو يتعذر قراءة البيانات منها. يرجى إعادة رفع نسخة جيدة.',
+    );
+    expect(screen.getByTestId('verification-reason').textContent).not.toContain('docs_blurry_or_illegible');
+    expect(document.body.innerHTML).not.toContain(CANARIES.notes);
+    expect(screen.getByRole('button', { name: 'Start a new verification case' })).toBeTruthy();
+    cleanup();
+
+    const rejected = installBridge({
+      getOwnOrganization: () => ok({ present: true as const, organization: organization() }),
+      verificationStatus: () =>
+        ok(
+          pharmacyStatus({
+            organizationVerificationStatus: 'rejected',
+            caseStatus: 'rejected',
+            decision: 'rejected',
+            reasonCode: 'unauthorized_entity',
+            applicantSafeExplanation:
+              'المنشأة أو المتقدم لا يستوفي الشروط التنظيمية للتسجيل في المنصة.',
+          }),
+        ),
+    });
+    rejected.auth.me = () => pharmacyMe();
+    renderApp();
+    expect(await screen.findByTestId('rejected-status')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Start a new verification case' })).toBeTruthy();
   });
 });

@@ -1,5 +1,10 @@
 # Phase 02 chunk 06 — React Admin verification review UI (not phase PASS)
 
+> **Catalogue supersession (2026-09-24):** Phase 02 Verification Policy
+> v1.0.1-phase02 replaces the ENGINEERING_DEFAULT Admin decision/reason
+> catalogue recorded below. See
+> `docs/evidence/phase-02/verification-policy-v1.0.1-phase02.md`.
+
 Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 **not** claim the branch is READY_TO_MERGE.
 
@@ -138,8 +143,8 @@ exceptions are not shown.
 
 ## Decision form and idempotency
 
-React Hook Form + Zod. Decision / reason pairs are the current
-`ENGINEERING_DEFAULT` catalogue (not a legal or clinical approval):
+React Hook Form + Zod. Historical chunk catalogue (superseded by
+v1.0.1-phase02; see `verification-policy-v1.0.1-phase02.md`):
 
 - `approved` + `approved`
 - `rejected` + `evidence_incomplete` | `identity_mismatch`

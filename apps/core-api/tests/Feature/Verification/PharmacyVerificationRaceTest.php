@@ -131,7 +131,7 @@ it('keeps one authoritative pharmacy decision under concurrent reviewers', funct
             'reviewer_user_id' => $right['user_id'],
             'case_id' => $pending['case_id'],
             'decision' => 'rejected',
-            'reason_code' => 'identity_mismatch',
+            'reason_code' => 'unauthorized_entity',
             'expected_version' => $claimed['version'],
         ],
     );

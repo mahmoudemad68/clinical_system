@@ -1172,7 +1172,7 @@ client. `notes_ciphertext` is never returned to applicants or placed in events.
 | `id` | internal | UUIDv7 decision identity | app | until row deleted | at rest | Mahmoud | n/a |
 | `case_id` | internal | FK; unique | app | as row | at rest | Mahmoud | n/a |
 | `decision` | internal | `approved` / `rejected` / `changes_requested` | app | as row | at rest | Mahmoud | n/a |
-| `reason_code` | internal | Allowlisted ENGINEERING_DEFAULT code | app / applicant (safe code only) | as row | at rest | Mahmoud | n/a |
+| `reason_code` | internal | Allowlisted v1.0.1-phase02 code for new decisions; historical stored codes remain readable | app / applicant (applicant-safe explanation only) | as row | at rest | Mahmoud | n/a |
 | `reviewer_id` | personal | Server-derived user id | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
 | `reviewer_assurance_level` | internal | Copied from actor; privileged review requires AAL2 | app | as row | at rest | Mahmoud | n/a |
 | `notes_ciphertext` | sensitive | Optional reviewer notes; never in events or applicant DTOs | app (audited decrypt later) | as row | envelope | Mahmoud | owner_approved_2026-08-27 |

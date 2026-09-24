@@ -100,7 +100,7 @@ describe('pharmacy verification HTTP foundation', function () {
             ->assertNotFound();
         $this->postJson('/api/v1/verification-uploads', [
             'case_id' => $left['case_id'],
-            'requirement_code' => 'organization_registration_evidence',
+            'requirement_code' => 'pharmacy_facility_license',
             'expected_size_bytes' => 128,
             'declared_media_type' => 'application/pdf',
         ], pharmaciesAuth($right['session']['token']) + pharmaciesIdem('pver-upload-bola'))
@@ -159,7 +159,7 @@ describe('pharmacy upload isolation', function () {
         $doctorCase = verificationOpenCase($doctor['actor']);
         $this->postJson('/api/v1/verification-uploads', [
             'case_id' => (string) $doctorCase->caseId,
-            'requirement_code' => 'organization_registration_evidence',
+            'requirement_code' => 'pharmacy_facility_license',
             'expected_size_bytes' => 128,
             'declared_media_type' => 'application/pdf',
         ], doctorsAuth($doctor['session']['token']) + doctorsIdem('pver-req-pharm'))
@@ -173,7 +173,7 @@ describe('pharmacy upload isolation', function () {
 
         $this->postJson('/api/v1/verification-uploads', [
             'case_id' => $pharmacy['case_id'],
-            'requirement_code' => 'organization_registration_evidence',
+            'requirement_code' => 'pharmacy_facility_license',
             'expected_size_bytes' => 128,
             'declared_media_type' => 'application/pdf',
         ], doctorsAuth($doctor['session']['token']) + doctorsIdem('pver-doc-on-pharm'))
@@ -200,7 +200,7 @@ describe('pharmacy verification lifecycle', function () {
 
         $created = pharmacyVerificationCreateUploadIntent($onboarded, $caseId, 'pver-e2e-up');
         $created['response']->assertCreated()
-            ->assertJsonPath('data.requirement_code', 'organization_registration_evidence')
+            ->assertJsonPath('data.requirement_code', 'pharmacy_facility_license')
             ->assertJsonPath('data.state', 'uploading')
             ->assertJsonMissingPath('data.storage_locator')
             ->assertJsonMissingPath('data.object_id');
@@ -221,7 +221,20 @@ describe('pharmacy verification lifecycle', function () {
             ->and((string) $intent->canonical_storage_locator)->toStartWith('verification/c/')
             ->and((string) $document->status)->toBe('available')
             ->and((string) $document->scan_status)->toBe('clean')
-            ->and((string) $document->requirement_code)->toBe('organization_registration_evidence');
+            ->and((string) $document->requirement_code)->toBe('pharmacy_facility_license');
+
+        $this->postJson(
+            '/api/v1/pharmacy-organizations/me/verification-submissions',
+            pharmacyVerificationSubmitBody($caseVersion, $organizationVersion),
+            pharmaciesAuth($onboarded['session']['token']) + pharmaciesIdem('pver-e2e-sub-partial'),
+        )->assertStatus(422);
+
+        pharmacyVerificationUploadAndProcessRequirements(
+            $onboarded,
+            $caseId,
+            'pver-e2e-rest',
+            ['commercial_register', 'responsible_pharmacist_license'],
+        );
 
         $submit = $this->postJson(
             '/api/v1/pharmacy-organizations/me/verification-submissions',
@@ -249,7 +262,7 @@ describe('pharmacy verification lifecycle', function () {
 
         $this->postJson('/api/v1/verification-uploads', [
             'case_id' => $caseId,
-            'requirement_code' => 'organization_registration_evidence',
+            'requirement_code' => 'pharmacy_facility_license',
             'expected_size_bytes' => 128,
             'declared_media_type' => 'application/pdf',
         ], pharmaciesAuth($onboarded['session']['token']) + pharmaciesIdem('pver-e2e-frozen'))
@@ -408,7 +421,7 @@ describe('pharmacy verification lifecycle', function () {
         $fresh = pharmacyVerificationOpenCase($draft['actor']);
         expect($fresh->caseId)->not->toBe($draft['case_id'])
             ->and($fresh->caseStatus)->toBe('draft');
-        verificationRegisterDocument($fresh->caseId, requirement: 'organization_registration_evidence');
+        verificationRegisterRequiredPharmacyDocuments($fresh->caseId);
 
         $this->postJson(
             '/api/v1/pharmacy-organizations/me/verification-submissions',
@@ -426,8 +439,8 @@ describe('pharmacy verification lifecycle', function () {
         expect(DB::table('verification_cases')->count())->toBe(2)
             ->and(DB::table('verification_decisions')->where('case_id', $draft['case_id'])->count())->toBe(1);
     })->with([
-        'rejected' => ['rejected', 'identity_mismatch', PharmacyVerificationStatus::Rejected->value],
-        'changes_requested' => ['changes_requested', 'documents_illegible', PharmacyVerificationStatus::ChangesRequested->value],
+        'rejected' => ['rejected', 'unauthorized_entity', PharmacyVerificationStatus::Rejected->value],
+        'changes_requested' => ['changes_requested', 'docs_blurry_or_illegible', PharmacyVerificationStatus::ChangesRequested->value],
     ]);
 
     it('denies self-review even when the actor carries privileged capabilities', function () {

@@ -112,7 +112,7 @@ function pharmacyVerificationPrepareDraftWithAvailableDocument(string $key): arr
 {
     $onboarded = pharmacyVerificationOnboard($key);
     $opened = pharmacyVerificationOpenCase($onboarded['actor']);
-    $document = verificationRegisterDocument($opened->caseId, requirement: 'organization_registration_evidence');
+    $document = verificationRegisterRequiredPharmacyDocuments($opened->caseId)[0];
 
     return [
         'session' => $onboarded['session'],
@@ -155,7 +155,7 @@ function pharmacyVerificationCreateUploadIntent(array $onboarded, string $caseId
     $expected = $size > 0 ? $size : strlen($bytes);
     $payload = array_merge([
         'case_id' => $caseId,
-        'requirement_code' => 'organization_registration_evidence',
+        'requirement_code' => 'pharmacy_facility_license',
         'expected_size_bytes' => $expected,
         'declared_media_type' => $mime,
     ], $extra);
@@ -179,6 +179,33 @@ function pharmacyVerificationCreateUploadIntent(array $onboarded, string $caseId
         'bytes' => $bytes,
         'mime' => $mime,
     ];
+}
+
+/**
+ * @param  list<string>  $codes
+ */
+function pharmacyVerificationUploadAndProcessRequirements(
+    array $onboarded,
+    string $caseId,
+    string $idemPrefix,
+    array $codes,
+): void {
+    foreach ($codes as $code) {
+        $created = pharmacyVerificationCreateUploadIntent(
+            $onboarded,
+            $caseId,
+            $idemPrefix.'-'.$code,
+            extra: ['requirement_code' => $code],
+        );
+        $created['response']->assertCreated();
+        verificationPutUploadBytes($created['upload_id'], $created['bytes'], $created['mime']);
+        test()->postJson(
+            '/api/v1/verification-uploads/'.$created['upload_id'].'/complete',
+            [],
+            pharmaciesAuth($onboarded['session']['token']) + pharmaciesIdem($idemPrefix.'-done-'.$code),
+        )->assertOk();
+        verificationProcessUpload($created['upload_id']);
+    }
 }
 
 function pharmacyVerificationAssertNoCanaries(string $haystack, array $onboarded): void
@@ -259,6 +286,12 @@ function pharmacyVerificationPendingCanonicalCase(string $key): array
         pharmaciesAuth($onboarded['session']['token']) + pharmaciesIdem('pver-canon-done-'.$key),
     )->assertOk();
     verificationProcessUpload($created['upload_id']);
+    pharmacyVerificationUploadAndProcessRequirements(
+        $onboarded,
+        $opened->caseId,
+        'pver-canon-'.$key.'-rest',
+        ['commercial_register', 'responsible_pharmacist_license'],
+    );
 
     $intent = DB::table('verification_upload_intents')->where('id', $created['upload_id'])->first();
     assert($intent !== null);

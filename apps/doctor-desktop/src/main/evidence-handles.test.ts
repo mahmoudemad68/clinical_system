@@ -43,7 +43,7 @@ describe('doctor evidence handles', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new DoctorEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'medical_license');
     expect(selected.selected).toBe(true);
     if (!selected.selected) {
       return;
@@ -56,12 +56,32 @@ describe('doctor evidence handles', () => {
     expect(JSON.stringify(selected)).not.toContain(CANARY_URL);
   });
 
+  it('binds the handle to an approved requirement and fails closed for unknown codes', () => {
+    const dir = scratch();
+    const license = path.join(dir, 'license.pdf');
+    const identity = path.join(dir, 'identity.pdf');
+    writeFileSync(license, MIN_PDF);
+    writeFileSync(identity, MIN_PDF);
+    const store = new DoctorEvidenceHandleStore();
+    expect(() => store.registerSelectedFile(license, 'professional_id')).toThrowError(/INVALID_REQUEST/);
+    expect(() => store.registerSelectedFile(license, 'fabricated_licence')).toThrowError(/INVALID_REQUEST/);
+    const first = store.registerSelectedFile(license, 'medical_license');
+    const second = store.registerSelectedFile(identity, 'national_id_or_passport');
+    if (!first.selected || !second.selected) {
+      throw new Error('expected selections');
+    }
+    expect(first.requirementCode).toBe('medical_license');
+    expect(second.requirementCode).toBe('national_id_or_passport');
+    expect(store.readForUpload(first.handleId).requirementCode).toBe('medical_license');
+    expect(store.readForUpload(second.handleId).requirementCode).toBe('national_id_or_passport');
+  });
+
   it('rejects a deleted selected file on upload revalidation', () => {
     const dir = scratch();
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new DoctorEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'medical_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -80,7 +100,7 @@ describe('doctor evidence handles', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new DoctorEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'medical_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -115,7 +135,7 @@ describe('doctor evidence handles', () => {
     writeFileSync(original, MIN_PDF);
     writeFileSync(decoy, Buffer.concat([MIN_PDF, Buffer.from('%decoy')]));
     const store = new DoctorEvidenceHandleStore();
-    const selected = store.registerSelectedFile(original);
+    const selected = store.registerSelectedFile(original, 'medical_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -142,7 +162,7 @@ describe('doctor evidence handles', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new DoctorEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file, 1);
+    const selected = store.registerSelectedFile(file, 'medical_license', 1);
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -159,7 +179,7 @@ describe('doctor evidence handles', () => {
     writeFileSync(jpeg, MIN_JPEG);
     writeFileSync(png, MIN_PNG);
 
-    const selectedPdf = store.registerSelectedFile(pdf);
+    const selectedPdf = store.registerSelectedFile(pdf, 'medical_license');
     if (!selectedPdf.selected) {
       throw new Error('expected pdf selection');
     }
@@ -167,13 +187,13 @@ describe('doctor evidence handles', () => {
     expect(pdfBytes.candidateMediaType).toBe('application/pdf');
     expect(pdfBytes.bytes.equals(MIN_PDF)).toBe(true);
 
-    const selectedJpeg = store.registerSelectedFile(jpeg);
+    const selectedJpeg = store.registerSelectedFile(jpeg, 'national_id_or_passport');
     if (!selectedJpeg.selected) {
       throw new Error('expected jpeg selection');
     }
     expect(store.readForUpload(selectedJpeg.handleId).candidateMediaType).toBe('image/jpeg');
 
-    const selectedPng = store.registerSelectedFile(png);
+    const selectedPng = store.registerSelectedFile(png, 'syndicate_card');
     if (!selectedPng.selected) {
       throw new Error('expected png selection');
     }
@@ -186,7 +206,7 @@ describe('doctor evidence handles', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new DoctorEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'medical_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -202,7 +222,7 @@ describe('doctor evidence handles', () => {
     decoy[decoy.byteLength - 2] = 0x41;
     writeFileSync(file, MIN_PDF);
     const store = new DoctorEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'medical_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }
@@ -233,7 +253,7 @@ describe('doctor evidence handles', () => {
     const file = path.join(dir, 'registration.pdf');
     writeFileSync(file, MIN_PDF);
     const store = new DoctorEvidenceHandleStore();
-    const selected = store.registerSelectedFile(file);
+    const selected = store.registerSelectedFile(file, 'medical_license');
     if (!selected.selected) {
       throw new Error('expected selection');
     }

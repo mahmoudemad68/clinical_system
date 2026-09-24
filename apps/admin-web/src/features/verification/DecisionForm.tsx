@@ -25,9 +25,10 @@ import {
   type DecisionPayload,
 } from '@/features/verification/idempotency';
 import {
-  ENGINEERING_DEFAULT_DECISIONS,
+  VERIFICATION_DECISIONS,
+  reasonLabel,
   reasonsForDecision,
-  type EngineeringDefaultDecision,
+  type VerificationDecisionCode,
 } from '@/features/verification/reasons';
 import { useDecideVerificationCase } from '@/features/verification/useVerificationCase';
 
@@ -35,13 +36,13 @@ const NOTES_MAX = 2000;
 
 const decisionSchema = z
   .object({
-    decision: z.enum(ENGINEERING_DEFAULT_DECISIONS),
+    decision: z.enum(VERIFICATION_DECISIONS),
     reason_code: z.string().min(1).max(64),
     notes: z.string().max(NOTES_MAX),
   })
   .superRefine((value, ctx) => {
     const allowed = reasonsForDecision(value.decision);
-    if (!allowed.includes(value.reason_code)) {
+    if (!allowed.includes(value.reason_code as (typeof allowed)[number])) {
       ctx.addIssue({
         code: 'custom',
         path: ['reason_code'],
@@ -67,7 +68,8 @@ export function DecisionForm({
   applicantType = 'doctor',
   onConflict,
 }: DecisionFormProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = (i18n.resolvedLanguage ?? i18n.language ?? 'en').startsWith('ar') ? 'ar' : 'en';
   const decide = useDecideVerificationCase(caseId);
   const idempotency = useRef(createDecisionIdempotency());
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -88,12 +90,12 @@ export function DecisionForm({
     },
   });
 
-  const [decision, setDecision] = useState<EngineeringDefaultDecision>('approved');
+  const [decision, setDecision] = useState<VerificationDecisionCode>('approved');
   const reasons = reasonsForDecision(decision);
 
-  function syncReason(next: EngineeringDefaultDecision): void {
+  function syncReason(next: VerificationDecisionCode): void {
     const allowed = reasonsForDecision(next);
-    if (!allowed.includes(form.getValues('reason_code'))) {
+    if (!allowed.includes(form.getValues('reason_code') as (typeof allowed)[number])) {
       const first = allowed[0];
       if (first !== undefined) {
         form.setValue('reason_code', first);
@@ -138,7 +140,7 @@ export function DecisionForm({
     }
   }
 
-  const selectedDecision = pendingPayload?.decision as EngineeringDefaultDecision | undefined;
+  const selectedDecision = pendingPayload?.decision as VerificationDecisionCode | undefined;
 
   return (
     <Stack
@@ -176,7 +178,7 @@ export function DecisionForm({
                 syncReason(next);
               }}
             >
-              {ENGINEERING_DEFAULT_DECISIONS.map((value) => (
+              {VERIFICATION_DECISIONS.map((value) => (
                 <MenuItem key={value} value={value}>
                   {t(`decision.${value}`)}
                 </MenuItem>
@@ -196,7 +198,7 @@ export function DecisionForm({
             <Select {...field} labelId="reason-label" label={t('case.reason')}>
               {reasons.map((value) => (
                 <MenuItem key={value} value={value}>
-                  {t(`decision.reasons.${value}`)}
+                  {reasonLabel(value, locale) ?? value}
                 </MenuItem>
               ))}
             </Select>
@@ -248,7 +250,9 @@ export function DecisionForm({
           </DialogContentText>
           <DialogContentText>
             {t('case.confirmReason', {
-              reason: pendingPayload ? t(`decision.reasons.${pendingPayload.reason_code}`) : '',
+              reason: pendingPayload
+                ? (reasonLabel(pendingPayload.reason_code, locale) ?? pendingPayload.reason_code)
+                : '',
             })}
           </DialogContentText>
           {pendingPayload?.decision === 'approved' ? (

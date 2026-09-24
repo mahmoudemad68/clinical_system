@@ -97,6 +97,7 @@ describe('admin verification document access', function () {
         $rejected = verificationRegisterDocument((string) $opened->caseId, 'rejected', 'failed');
         $scanning = verificationRegisterDocument((string) $opened->caseId, 'quarantined', 'pending');
         $available = verificationRegisterDocument((string) $opened->caseId);
+        $identity = verificationRegisterDocument((string) $opened->caseId, requirement: 'national_id_or_passport');
         $mixedCaseId = (string) $opened->caseId;
         test()->postJson(
             '/api/v1/doctors/me/verification-submissions',
@@ -115,7 +116,8 @@ describe('admin verification document access', function () {
         $claimMixed = adminVerificationPostJson('/api/v1/admin/verification-cases/'.$mixedCaseId.'/claim', [
             'expected_case_version' => (int) $opened->caseVersion + 1,
         ])->assertOk();
-        expect(collect($claimMixed->json('data.documents'))->pluck('document_id')->all())->toBe([$available['document_id']]);
+        expect(collect($claimMixed->json('data.documents'))->pluck('document_id')->all())
+            ->toEqualCanonicalizing([$available['document_id'], $identity['document_id']]);
         $claimMissing = adminVerificationPostJson('/api/v1/admin/verification-cases/'.$missingIntent['case_id'].'/claim', [
             'expected_case_version' => $missingIntent['case_version'],
         ])->assertOk();
