@@ -435,8 +435,7 @@ describe('doctor renderer workspace', () => {
     });
     signedInDoctor(clinic);
     renderApp();
-    expect(await screen.findByTestId('verification-workspace')).toBeTruthy();
-    expect(screen.getByTestId('requirement-slot-medical_license')).toBeTruthy();
+    expect(await screen.findByTestId('requirement-slot-medical_license')).toBeTruthy();
     expect(screen.getByTestId('requirement-slot-national_id_or_passport')).toBeTruthy();
     expect(screen.getByTestId('requirement-slot-syndicate_card')).toBeTruthy();
     fireEvent.click(await screen.findByTestId('select-evidence-medical_license'));

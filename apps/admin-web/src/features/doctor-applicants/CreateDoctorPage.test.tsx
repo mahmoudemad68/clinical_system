@@ -146,9 +146,9 @@ describe('create doctor applicant', () => {
     expect(screen.getByTestId('requirement-slot-medical_license')).toBeInTheDocument();
     expect(screen.getByTestId('requirement-slot-national_id_or_passport')).toBeInTheDocument();
     expect(screen.getByTestId('requirement-slot-syndicate_card')).toBeInTheDocument();
-    expect(screen.getByText(/Professional Medical License/)).toBeInTheDocument();
-    expect(screen.getByText(/Government Photo ID/)).toBeInTheDocument();
-    expect(screen.getByText(/Medical Syndicate Membership Card/)).toBeInTheDocument();
+    expect(screen.getByText(/Professional Medical License \(required\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Government Photo ID \(required\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Medical Syndicate Membership Card \(optional\)/)).toBeInTheDocument();
 
     const license = new File([new Uint8Array([37, 80, 68, 70])], 'license.pdf', { type: 'application/pdf' });
     const identity = new File([new Uint8Array([37, 80, 68, 70])], 'identity.pdf', { type: 'application/pdf' });

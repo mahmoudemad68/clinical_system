@@ -433,9 +433,34 @@ describe('decision form', () => {
   it('shows Arabic reason labels from the approved catalogue', async () => {
     const user = userEvent.setup();
     await i18n.changeLanguage('ar');
-    reviewerCase();
+    stubApi({
+      'GET /api/v1/me': () => jsonResponse(meBody({ language: 'ar' })),
+      'GET /api/v1/me/capabilities': () => jsonResponse(capabilitiesBody([REVIEW_CAPABILITY])),
+      'GET /api/v1/auth/csrf': () => jsonResponse(envelope({ csrf: true })),
+      'GET /api/v1/health': () =>
+        jsonResponse(
+          envelope({
+            status: 'operational',
+            message: 'ok',
+            components: { core: 'operational', realtime: 'operational', ai: 'operational' },
+            version: '0.1.0-test',
+            server_time: '2026-09-20T00:00:00Z',
+          }),
+        ),
+      [`GET /api/v1/admin/verification-cases/${CASE_ID}`]: () =>
+        jsonResponse(
+          envelope(
+            caseDetail({
+              assignment: 'mine',
+              assigned_to_me: true,
+              case_status: 'pending_review',
+              documents: [reviewDocument()],
+            }),
+          ),
+        ),
+    });
     renderApp(`/verification/${CASE_ID}`);
-    await screen.findByRole('button');
+    await screen.findByRole('button', { name: 'إرسال القرار' });
     await user.click(screen.getByLabelText(/^القرار$/));
     await user.click(await screen.findByRole('option', { name: 'مطلوب تعديلات' }));
     await user.click(screen.getByLabelText(/^السبب$/));

@@ -210,24 +210,29 @@ describe('Phase 02 verification policy v1.0.1 HTTP', function () {
     it('keeps a pending-review case submitted under the previous requirement reviewable', function () {
         $onboarded = verificationOnboardDoctor('pol-legacy-pending');
         $opened = verificationOpenCase($onboarded['actor']);
-        verificationRegisterDocument((string) $opened->caseId, requirement: 'professional_id');
+        $caseId = (string) $opened->caseId;
+        verificationRegisterDocument($caseId, requirement: 'professional_id');
         $now = now('UTC')->format('Y-m-d H:i:s.uP');
-        DB::table('verification_cases')->where('id', $opened->caseId)->update([
+        expect(DB::table('verification_cases')->where('id', $caseId)->update([
             'status' => 'pending_review',
             'submitted_at' => $now,
             'version' => (int) $opened->caseVersion + 1,
             'updated_at' => $now,
-        ]);
+        ]))->toBe(1);
+        expect(DB::table('doctor_profiles')->where('id', $onboarded['doctor_id'])->update([
+            'verification_status' => 'pending_review',
+            'updated_at' => $now,
+        ]))->toBe(1);
 
         $admin = adminVerificationInsertAdmin('pol-legacy');
         adminVerificationLogin($admin);
         $claimed = adminVerificationPostJson(
-            '/api/v1/admin/verification-cases/'.$opened->caseId.'/claim',
+            '/api/v1/admin/verification-cases/'.$caseId.'/claim',
             ['expected_case_version' => (int) $opened->caseVersion + 1],
         )->assertOk();
 
         adminVerificationPostJson(
-            '/api/v1/admin/verification-cases/'.$opened->caseId.'/decisions',
+            '/api/v1/admin/verification-cases/'.$caseId.'/decisions',
             [
                 'decision' => 'changes_requested',
                 'reason_code' => 'docs_blurry_or_illegible',
@@ -236,9 +241,9 @@ describe('Phase 02 verification policy v1.0.1 HTTP', function () {
             adminVerificationIdem('pol-legacy-decide'),
         )->assertOk()->assertJsonPath('data.case_status', 'changes_requested');
 
-        expect((string) DB::table('verification_documents')->where('case_id', $opened->caseId)->value('requirement_code'))
+        expect((string) DB::table('verification_documents')->where('case_id', $caseId)->value('requirement_code'))
             ->toBe('professional_id')
-            ->and((string) DB::table('verification_cases')->where('id', $opened->caseId)->value('status'))
+            ->and((string) DB::table('verification_cases')->where('id', $caseId)->value('status'))
             ->toBe('changes_requested');
     });
 
