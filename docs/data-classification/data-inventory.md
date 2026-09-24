@@ -768,9 +768,16 @@ denied by trigger. `clinic_app` may SELECT+INSERT only.
 ### `specialties`
 
 Phase 02 chunk 02 Doctors-owned catalogue
-(`2026_09_19_140000_create_doctor_profile_tables.php`). Empty until an
-approved medical-specialty reference dataset exists; tests insert synthetic
-rows. Unique `code`; engineering format `^[a-z0-9_]+$`.
+(`2026_09_19_140000_create_doctor_profile_tables.php`) plus versioned
+install `2026_09_24_055405_install_approved_specialty_catalogue_v1_0_0_phase02`.
+Production rows are the independently approved catalogue `v1.0.0-phase02`
+(30 specialties; Medical Operations & Clinical Informatics Governance Team;
+2026-09-24). Artifact:
+`docs/evidence/phase-02/reference-data/approved-medical-specialties.v1.0.0-phase02.json`
+(SHA-256 `e58a8a93aa938c9e270e6835b5867ec8a3c58e2429ac753413e8c1bd4fecf5fc`).
+These are product-approved specialty labels, not government or syndicate
+certification claims. Tests may still insert additional synthetic rows.
+Unique `code`; engineering format `^[a-z0-9_]+$`.
 
 **Writer.** Doctors module via `clinic_app`. `clinic_worker` and
 `clinic_reporter` are revoked. `clinic_backup` is SELECT-only.

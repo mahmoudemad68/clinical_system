@@ -53,7 +53,10 @@ Phase 02 as a whole is **not** PASS.
 
 ## Residual (this chunk)
 
-- Specialty catalogue is empty until an approved medical-specialty reference dataset exists.
+- Specialty catalogue residual from this chunk is superseded by
+  `docs/evidence/phase-02/approved-specialty-reference-v1.0.0-phase02.md`
+  (`v1.0.0-phase02`, 2026-09-24, 30 product-approved rows). The production
+  catalogue is no longer intentionally empty after that dedicated migration.
 - Public registration remains Patient-only; doctor test actors are provisioned with TOTP `doctor_desktop` login.
 - Verification upload, cases, documents, decisions, reviewer assignment, and `POST /doctors/me/verification-submissions` are not implemented.
 - `identity:rotate-keys` still rotates Identity/Auth protected columns; doctor National ID / syndicate envelopes are a deferred follow-on (same class of residual as patient `full_name`).

@@ -11,10 +11,11 @@ pending-capability-denial, and canonical approval path used by
 self-registered Doctors applies.
 
 **CH16-SPECIALTY-REFERENCE-001 (independent review):** the engineering-default
-12-row file previously added as a production seed is withdrawn. There is no
-independently approved specialty reference dataset in repository
-source-of-truth. Production catalogue remains empty until product/domain
-supplies an approved source.
+12-row file previously added as a production seed is withdrawn. At the time
+of this chunk there was no independently approved specialty reference
+dataset in repository source-of-truth. That residual is superseded by
+`docs/evidence/phase-02/approved-specialty-reference-v1.0.0-phase02.md`
+(`v1.0.0-phase02`, 2026-09-24).
 
 Observable Admin browser journey:
 
@@ -54,9 +55,11 @@ bootstrap command was not required and was not added.
 - G-08-04 / ADR 0014
 - DEF-SEC-MFA-001 (this chunk did not reproduce a new regression of that finding)
 - Staging provisioning / production promotion
-- **Approved specialty reference dataset** — still pending product/domain
-  approval; production catalogue intentionally remains empty until an
-  approved source is supplied (CH16-SPECIALTY-REFERENCE-001)
+- **Approved specialty reference dataset** — supplied and installed in a
+  later dedicated change (`v1.0.0-phase02`, 2026-09-24). See
+  `docs/evidence/phase-02/approved-specialty-reference-v1.0.0-phase02.md`.
+  This chunk's CH16-SPECIALTY-REFERENCE-001 withdrawal of the unapproved
+  engineering-default seed remains historically correct.
 - Phase 02 PASS
 
 `designs/**` was not modified. No generic IPC. No clinical-data expansion.
@@ -155,11 +158,11 @@ HTTP:
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/api/v1/admin/doctor-applicants/specialties` | active labels only; empty until an approved dataset exists |
+| GET | `/api/v1/admin/doctor-applicants/specialties` | active labels only; this chunk shipped empty until an approved dataset existed. Superseded by `v1.0.0-phase02` (30 rows). |
 | POST | `/api/v1/admin/doctor-applicants` | Idempotency-Key required |
 | POST | `/api/v1/admin/doctor-applicants/{doctor_id}/verification-uploads` | represented grant |
 | POST | `/api/v1/admin/doctor-applicants/{doctor_id}/verification-submissions` | optimistic `expected_case_version` |
-| GET | `/api/v1/doctors/specialties` | same catalogue for Doctor actors; empty after clean migrate |
+| GET | `/api/v1/doctors/specialties` | same catalogue for Doctor actors; this chunk shipped empty after clean migrate. Superseded by `v1.0.0-phase02`. |
 
 Complete/status reuse existing `/api/v1/verification-uploads/{id}` routes.
 Claim/decide reuse existing `/api/v1/admin/verification-cases/*`.
@@ -196,17 +199,23 @@ that dataset.
 - `apps/core-api/database/data/approved_specialties.v1.php`
 - `apps/core-api/database/migrations/2026_09_22_160100_seed_approved_specialties.php`
 
-A clean production migration does **not** insert specialty rows.
+A clean production migration **at the time of this chunk** did **not**
+insert specialty rows.
 `ArchitectureBoundaryTest::production_migrations_do_not_seed_specialty_reference_rows`
-encodes that.
+encoded that. That residual is superseded by approved catalogue
+`v1.0.0-phase02` and
+`ArchitectureBoundaryTest::production_specialty_seed_is_only_the_approved_versioned_catalogue`.
+The production catalogue is no longer intentionally empty after
+`2026_09_24_055405_install_approved_specialty_catalogue_v1_0_0_phase02`.
 
 **Test/E2E only:** `doctorsSeedSpecialty()` and
 `e2e:seed-admin-verification` insert synthetic specialty rows for isolated
 automated tests. They are not production reference data.
 
-Admin-created Doctor with no active specialty: GET catalogue returns `[]`;
-POST with an unknown/inactive `specialty_id` is 422; no profile is created.
-FK and active-specialty checks are unchanged.
+Admin-created Doctor with an unknown/inactive `specialty_id` is 422; no
+profile is created. FK and active-specialty checks are unchanged. At the
+time of this chunk GET catalogue returned `[]` after clean migrate; that
+empty production catalogue is superseded by `v1.0.0-phase02`.
 
 **Files changed by this remediation:**
 
