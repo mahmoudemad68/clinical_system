@@ -17,6 +17,7 @@ import {
 import type {
   AuthMe,
   PharmacyOnboardRequest,
+  PlatformHealth,
 } from '@clinic/desktop-bridge-contracts';
 import { pharmacyStrings } from './strings';
 import { createPharmacyTheme } from './theme';
