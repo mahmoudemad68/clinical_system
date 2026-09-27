@@ -32,6 +32,38 @@ const SCANNING_STATES: ReadonlySet<DoctorUploadStatus['state']> = new Set([
   'scanning',
 ]);
 
+const TERMINAL_UPLOAD_STATES: ReadonlySet<DoctorUploadStatus['state']> = new Set([
+  'available',
+  'rejected',
+]);
+
+function useReconcileAuthoritativeOnTerminalUpload(
+  uploadId: string | null,
+  pollGeneration: number,
+  state: DoctorUploadStatus['state'] | undefined,
+  onReconcile: () => void,
+): void {
+  const seenTerminal = useRef<string | null>(null);
+  const onReconcileRef = useRef(onReconcile);
+  onReconcileRef.current = onReconcile;
+
+  useEffect(() => {
+    if (uploadId === null) {
+      seenTerminal.current = null;
+      return;
+    }
+    if (state === undefined || !TERMINAL_UPLOAD_STATES.has(state)) {
+      return;
+    }
+    const token = `${uploadId}:${String(pollGeneration)}:${state}`;
+    if (seenTerminal.current === token) {
+      return;
+    }
+    seenTerminal.current = token;
+    onReconcileRef.current();
+  }, [pollGeneration, state, uploadId]);
+}
+
 type SlotState = {
   evidence: Extract<DoctorEvidenceSelectResponse, { selected: true }> | null;
   uploadId: string | null;
@@ -318,6 +350,9 @@ export function VerificationWorkspace({
                   [requirement.code]: { ...current[requirement.code], pollTimedOut: true },
                 }));
               }}
+              onAuthoritativeReconcile={() => {
+                void client.invalidateQueries({ queryKey: ['doctor', 'verification'] });
+              }}
             />
           ))
         : null}
@@ -360,6 +395,7 @@ function RequirementSlot({
   onUpload,
   onRetryPoll,
   onPollTimeout,
+  onAuthoritativeReconcile,
 }: {
   locale: Locale;
   requirement: DoctorRequirement;
@@ -371,6 +407,7 @@ function RequirementSlot({
   onUpload: () => void;
   onRetryPoll: () => void;
   onPollTimeout: () => void;
+  onAuthoritativeReconcile: () => void;
 }) {
   const t = doctorStrings[locale];
   const document = documentForRequirement(status, requirement.code);
@@ -398,6 +435,13 @@ function RequirementSlot({
       return false;
     },
   });
+
+  useReconcileAuthoritativeOnTerminalUpload(
+    slot.uploadId,
+    slot.pollGeneration,
+    uploadQuery.data?.state,
+    onAuthoritativeReconcile,
+  );
 
   useEffect(() => {
     if (slot.uploadId === null) {

@@ -27,6 +27,9 @@ const DOCTOR_ID = '0199a5c8-0000-7000-8000-000000000010';
 const SPECIALTY_ID = '0199a5c8-0000-7000-8000-000000000002';
 const CASE_ID = '0199a5c8-0000-7000-8000-000000000040';
 const UPLOAD_ID = '0199a5c8-0000-7000-8000-000000000021';
+const IDENTITY_UPLOAD_ID = '0199a5c8-0000-7000-8000-000000000022';
+const LICENSE_HANDLE = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+const IDENTITY_HANDLE = 'cccccccccccccccccccccccccccccccc';
 
 function ok<T>(value: T) {
   return Promise.resolve({ ok: true as const, value });
@@ -100,6 +103,21 @@ function cleanDoc(code: string, suffix: string) {
 
 function bothRequiredDocs() {
   return [cleanDoc('medical_license', '51'), cleanDoc('national_id_or_passport', '52')];
+}
+
+function uploadView(
+  uploadId: string,
+  requirementCode: string,
+  state: 'scanning' | 'available' | 'rejected',
+) {
+  return ok({
+    uploadId,
+    requirementCode,
+    state,
+    rejectionReason: state === 'rejected' ? ('malware_detected' as const) : null,
+    expiresAt: '2026-09-21T00:10:00Z',
+    completedAt: '2026-09-21T00:01:00Z',
+  });
 }
 
 function doctorMe() {
@@ -453,6 +471,140 @@ describe('doctor renderer workspace', () => {
       expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', false);
     });
   });
+
+  it('enables submit after required uploads become available without clicking Refresh status', async () => {
+    let documents: DoctorVerificationStatus['documents'] = [];
+    const uploadState: Record<string, 'scanning' | 'available' | 'rejected'> = {
+      [UPLOAD_ID]: 'scanning',
+      [IDENTITY_UPLOAD_ID]: 'scanning',
+    };
+    const statusFn = vi.fn(async () => ok(verification({ documents })));
+    const clinic = installBridge({
+      getOwnProfile: () => ok({ present: true as const, profile: profile() }),
+      verificationStatus: statusFn,
+      selectEvidence: async (input) =>
+        ok({
+          selected: true as const,
+          handleId: input.requirementCode === 'medical_license' ? LICENSE_HANDLE : IDENTITY_HANDLE,
+          displayName: `${input.requirementCode}.pdf`,
+          sizeBytes: 1200,
+          candidateMediaType: 'application/pdf' as const,
+          requirementCode: input.requirementCode,
+        }),
+      uploadEvidence: async (input) => {
+        const requirementCode =
+          input.handleId === LICENSE_HANDLE ? 'medical_license' : 'national_id_or_passport';
+        const uploadId = requirementCode === 'medical_license' ? UPLOAD_ID : IDENTITY_UPLOAD_ID;
+        return ok({
+          uploadId,
+          requirementCode,
+          state: 'quarantined' as const,
+          rejectionReason: null,
+          expiresAt: '2026-09-21T00:10:00Z',
+          completedAt: '2026-09-21T00:01:00Z',
+        });
+      },
+      uploadStatus: async (uploadId) =>
+        uploadView(
+          uploadId,
+          uploadId === UPLOAD_ID ? 'medical_license' : 'national_id_or_passport',
+          uploadState[uploadId] ?? 'scanning',
+        ),
+    });
+    signedInDoctor(clinic);
+    renderApp();
+    expect(await screen.findByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+
+    fireEvent.click(screen.getByTestId('select-evidence-medical_license'));
+    expect(await screen.findByText(/medical_license\.pdf/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('upload-evidence-medical_license'));
+    expect(await screen.findByText(/Scanning and validating/)).toBeTruthy();
+    documents = [cleanDoc('medical_license', '51')];
+    uploadState[UPLOAD_ID] = 'available';
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('upload-status-medical_license').textContent).toMatch(/Evidence is available/);
+        expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+      },
+      { timeout: 8_000 },
+    );
+    expect(screen.queryByTestId('upload-status-syndicate_card')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('select-evidence-national_id_or_passport'));
+    expect(await screen.findByText(/national_id_or_passport\.pdf/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('upload-evidence-national_id_or_passport'));
+    expect(await screen.findByText(/Scanning and validating/)).toBeTruthy();
+    documents = bothRequiredDocs();
+    uploadState[IDENTITY_UPLOAD_ID] = 'available';
+    const callsBeforeSecondAvailable = statusFn.mock.calls.length;
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('upload-status-national_id_or_passport').textContent).toMatch(
+          /Evidence is available/,
+        );
+        expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', false);
+      },
+      { timeout: 8_000 },
+    );
+    expect(statusFn.mock.calls.length).toBeGreaterThan(callsBeforeSecondAvailable);
+    const settled = statusFn.mock.calls.length;
+    await new Promise((resolve) => {
+      setTimeout(resolve, 2_500);
+    });
+    expect(statusFn.mock.calls.length).toBe(settled);
+    expect(screen.queryByTestId('upload-status-syndicate_card')).toBeNull();
+  }, 20_000);
+
+  it('reconciles rejected upload status so submit cannot stay enabled from stale documents', async () => {
+    let documents: DoctorVerificationStatus['documents'] = bothRequiredDocs();
+    let uploadState: 'scanning' | 'available' | 'rejected' = 'scanning';
+    const clinic = installBridge({
+      getOwnProfile: () => ok({ present: true as const, profile: profile() }),
+      verificationStatus: async () => ok(verification({ documents })),
+      uploadEvidence: async () =>
+        ok({
+          uploadId: UPLOAD_ID,
+          requirementCode: 'medical_license',
+          state: 'quarantined' as const,
+          rejectionReason: null,
+          expiresAt: '2026-09-21T00:10:00Z',
+          completedAt: '2026-09-21T00:01:00Z',
+        }),
+      uploadStatus: async () => uploadView(UPLOAD_ID, 'medical_license', uploadState),
+    });
+    signedInDoctor(clinic);
+    renderApp();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', false);
+    });
+
+    fireEvent.click(screen.getByTestId('select-evidence-medical_license'));
+    expect(await screen.findByText(/medical_license\.pdf/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('upload-evidence-medical_license'));
+    expect(await screen.findByText(/Scanning and validating/)).toBeTruthy();
+    documents = [
+      {
+        ...cleanDoc('medical_license', '51'),
+        status: 'rejected',
+        scanStatus: 'failed',
+      },
+      cleanDoc('national_id_or_passport', '52'),
+    ];
+    uploadState = 'rejected';
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('upload-status-medical_license').textContent).toMatch(/rejected/);
+        expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+      },
+      { timeout: 8_000 },
+    );
+    expect(screen.getByTestId('select-evidence-medical_license')).toBeTruthy();
+    expect(screen.getByTestId('upload-evidence-medical_license')).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByTestId('select-evidence-medical_license'));
+    await waitFor(() => {
+      expect(screen.getByTestId('upload-evidence-medical_license')).toHaveProperty('disabled', false);
+    });
+  }, 20_000);
 
   it('submits draft evidence and presents pending review without clinical navigation', async () => {
     let status = verification({ documents: bothRequiredDocs() });

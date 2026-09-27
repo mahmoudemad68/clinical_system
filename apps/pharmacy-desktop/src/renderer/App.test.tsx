@@ -24,6 +24,11 @@ const CANARIES = {
 const ORG_ID = '0199a5c8-0000-7000-8000-000000000010';
 const CASE_ID = '0199a5c8-0000-7000-8000-000000000040';
 const UPLOAD_ID = '0199a5c8-0000-7000-8000-000000000021';
+const COMMERCIAL_UPLOAD_ID = '0199a5c8-0000-7000-8000-000000000022';
+const PHARMACIST_UPLOAD_ID = '0199a5c8-0000-7000-8000-000000000023';
+const FACILITY_HANDLE = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+const COMMERCIAL_HANDLE = 'cccccccccccccccccccccccccccccccc';
+const PHARMACIST_HANDLE = 'dddddddddddddddddddddddddddddddd';
 
 function ok<T>(value: T) {
   return Promise.resolve({ ok: true as const, value });
@@ -100,6 +105,38 @@ function pharmacyDoc(code: string, suffix: string) {
     uploadedAt: '2026-09-21T00:01:00Z',
   };
 }
+
+function allRequiredPharmacyDocs() {
+  return [
+    pharmacyDoc('pharmacy_facility_license', '61'),
+    pharmacyDoc('commercial_register', '62'),
+    pharmacyDoc('responsible_pharmacist_license', '63'),
+  ];
+}
+
+function pharmacyUploadView(
+  uploadId: string,
+  requirementCode: string,
+  state: 'scanning' | 'available' | 'rejected',
+) {
+  return ok({
+    uploadId,
+    requirementCode,
+    state,
+    rejectionReason: state === 'rejected' ? ('malware_detected' as const) : null,
+    expiresAt: '2026-09-21T00:10:00Z',
+    completedAt: '2026-09-21T00:01:00Z',
+  });
+}
+
+const PHARMACY_UPLOADS: Record<
+  'pharmacy_facility_license' | 'commercial_register' | 'responsible_pharmacist_license',
+  { handle: string; uploadId: string; suffix: string }
+> = {
+  pharmacy_facility_license: { handle: FACILITY_HANDLE, uploadId: UPLOAD_ID, suffix: '61' },
+  commercial_register: { handle: COMMERCIAL_HANDLE, uploadId: COMMERCIAL_UPLOAD_ID, suffix: '62' },
+  responsible_pharmacist_license: { handle: PHARMACIST_HANDLE, uploadId: PHARMACIST_UPLOAD_ID, suffix: '63' },
+};
 
 function installBridge(overrides: Partial<PharmacyClinicBridge['pharmacy']> & Record<string, unknown> = {}) {
   let present = false;
@@ -489,6 +526,110 @@ describe('pharmacy renderer workspace', () => {
       expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', false);
     });
   });
+
+  it('enables submit after the third required upload becomes available without clicking Refresh status', async () => {
+    let documents: PharmacyVerificationStatus['documents'] = [];
+    const uploadState: Record<string, 'scanning' | 'available' | 'rejected'> = {
+      [UPLOAD_ID]: 'scanning',
+      [COMMERCIAL_UPLOAD_ID]: 'scanning',
+      [PHARMACIST_UPLOAD_ID]: 'scanning',
+    };
+    const statusFn = vi.fn(async () => ok(pharmacyStatus({ documents })));
+    const clinic = installBridge({
+      getOwnOrganization: () => ok({ present: true as const, organization: organization() }),
+      verificationStatus: statusFn,
+      selectEvidence: async (input) => {
+        const mapped = PHARMACY_UPLOADS[input.requirementCode];
+        return ok({
+          selected: true as const,
+          handleId: mapped.handle,
+          displayName: `${input.requirementCode}.pdf`,
+          sizeBytes: 1200,
+          candidateMediaType: 'application/pdf' as const,
+          requirementCode: input.requirementCode,
+        });
+      },
+      uploadEvidence: async (input) => {
+        const entry = Object.entries(PHARMACY_UPLOADS).find(([, value]) => value.handle === input.handleId);
+        if (entry === undefined) {
+          throw new Error('unknown handle');
+        }
+        const [requirementCode, mapped] = entry;
+        return ok({
+          uploadId: mapped.uploadId,
+          requirementCode,
+          state: 'quarantined' as const,
+          rejectionReason: null,
+          expiresAt: '2026-09-21T00:10:00Z',
+          completedAt: '2026-09-21T00:01:00Z',
+        });
+      },
+      uploadStatus: async (uploadId) => {
+        const entry = Object.entries(PHARMACY_UPLOADS).find(([, value]) => value.uploadId === uploadId);
+        return pharmacyUploadView(
+          uploadId,
+          entry?.[0] ?? 'pharmacy_facility_license',
+          uploadState[uploadId] ?? 'scanning',
+        );
+      },
+    });
+    clinic.auth.me = () => pharmacyMe();
+    renderApp();
+    expect(await screen.findByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+
+    fireEvent.click(screen.getByTestId('select-evidence-pharmacy_facility_license'));
+    expect(await screen.findByText(/pharmacy_facility_license\.pdf/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('upload-evidence-pharmacy_facility_license'));
+    expect(await screen.findByText(/Scanning and validating/)).toBeTruthy();
+    documents = [pharmacyDoc('pharmacy_facility_license', '61')];
+    uploadState[UPLOAD_ID] = 'available';
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('upload-status-pharmacy_facility_license').textContent).toMatch(
+          /Evidence is available/,
+        );
+        expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+      },
+      { timeout: 8_000 },
+    );
+
+    fireEvent.click(screen.getByTestId('select-evidence-commercial_register'));
+    expect(await screen.findByText(/commercial_register\.pdf/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('upload-evidence-commercial_register'));
+    expect(await screen.findByText(/Scanning and validating/)).toBeTruthy();
+    documents = [pharmacyDoc('pharmacy_facility_license', '61'), pharmacyDoc('commercial_register', '62')];
+    uploadState[COMMERCIAL_UPLOAD_ID] = 'available';
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('upload-status-commercial_register').textContent).toMatch(/Evidence is available/);
+        expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', true);
+      },
+      { timeout: 8_000 },
+    );
+
+    fireEvent.click(screen.getByTestId('select-evidence-responsible_pharmacist_license'));
+    expect(await screen.findByText(/responsible_pharmacist_license\.pdf/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('upload-evidence-responsible_pharmacist_license'));
+    expect(await screen.findByText(/Scanning and validating/)).toBeTruthy();
+    documents = allRequiredPharmacyDocs();
+    uploadState[PHARMACIST_UPLOAD_ID] = 'available';
+    const callsBeforeThirdAvailable = statusFn.mock.calls.length;
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('upload-status-responsible_pharmacist_license').textContent).toMatch(
+          /Evidence is available/,
+        );
+        expect(screen.getByRole('button', { name: 'Submit for review' })).toHaveProperty('disabled', false);
+      },
+      { timeout: 8_000 },
+    );
+    expect(statusFn.mock.calls.length).toBeGreaterThan(callsBeforeThirdAvailable);
+    const settled = statusFn.mock.calls.length;
+    await new Promise((resolve) => {
+      setTimeout(resolve, 2_500);
+    });
+    expect(statusFn.mock.calls.length).toBe(settled);
+  }, 25_000);
 
   it('shows applicant-safe reason copy and can start a new case after rejected or changes_requested', async () => {
     const clinic = installBridge({
