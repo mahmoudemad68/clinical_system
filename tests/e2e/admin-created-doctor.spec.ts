@@ -172,34 +172,52 @@ test.describe('admin-created doctor', () => {
         + '%%EOF\n',
       'utf8',
     );
-    await page.locator('input[type="file"]').setInputFiles({
-      name: 'professional-id.pdf',
-      mimeType: 'application/pdf',
-      buffer: pdf,
-    });
+    await expect(page.getByTestId('requirement-slot-medical_license')).toBeVisible();
+    await expect(page.getByTestId('requirement-slot-national_id_or_passport')).toBeVisible();
+    await expect(page.getByTestId('requirement-slot-syndicate_card')).toBeVisible();
 
-    const uploadWait = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        /\/api\/v1\/admin\/doctor-applicants\/[^/]+\/verification-uploads$/.test(new URL(response.url()).pathname),
-      { timeout: 20_000 },
-    );
-    const completeWait = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        /\/api\/v1\/verification-uploads\/[^/]+\/complete$/.test(new URL(response.url()).pathname),
-      { timeout: 30_000 },
-    );
-    await page.getByRole('button', { name: /Upload evidence|رفع الدليل/ }).click();
-    const uploadResponse = await uploadWait;
-    expect(uploadResponse.ok(), `upload HTTP ${String(uploadResponse.status())}`).toBeTruthy();
-    const uploadJson = (await uploadResponse.json()) as { data?: { upload_id?: string } };
-    capturedUploadId = uploadJson.data?.upload_id ?? '';
-    expect(capturedUploadId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-    const completeResponse = await completeWait;
-    expect(completeResponse.ok(), `complete HTTP ${String(completeResponse.status())}`).toBeTruthy();
-    artisan(['e2e:process-verification-upload', capturedUploadId]);
-    await expect(page.getByText(/Evidence is ready for review|الدليل جاهز للمراجعة/)).toBeVisible({ timeout: 45_000 });
+    const uploadRequiredEvidence = async (requirementCode: string, fileName: string): Promise<void> => {
+      capturedUploadId = '';
+      await page.getByTestId(`file-input-${requirementCode}`).setInputFiles({
+        name: fileName,
+        mimeType: 'application/pdf',
+        buffer: pdf,
+      });
+
+      const uploadWait = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          /\/api\/v1\/admin\/doctor-applicants\/[^/]+\/verification-uploads$/.test(new URL(response.url()).pathname),
+        { timeout: 20_000 },
+      );
+      const completeWait = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          /\/api\/v1\/verification-uploads\/[^/]+\/complete$/.test(new URL(response.url()).pathname),
+        { timeout: 30_000 },
+      );
+      await page.getByTestId(`upload-evidence-${requirementCode}`).click();
+      const uploadResponse = await uploadWait;
+      expect(
+        uploadResponse.ok(),
+        `upload HTTP ${String(uploadResponse.status())} (${requirementCode})`,
+      ).toBeTruthy();
+      const uploadJson = (await uploadResponse.json()) as { data?: { upload_id?: string } };
+      capturedUploadId = uploadJson.data?.upload_id ?? '';
+      expect(capturedUploadId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      const completeResponse = await completeWait;
+      expect(
+        completeResponse.ok(),
+        `complete HTTP ${String(completeResponse.status())} (${requirementCode})`,
+      ).toBeTruthy();
+      artisan(['e2e:process-verification-upload', capturedUploadId]);
+      await expect(page.getByTestId(`evidence-ready-${requirementCode}`)).toBeVisible({ timeout: 45_000 });
+    };
+
+    await uploadRequiredEvidence('medical_license', 'medical-license.pdf');
+    await expect(page.getByRole('button', { name: /Submit for review|إرسال للمراجعة/ })).toBeDisabled();
+    await uploadRequiredEvidence('national_id_or_passport', 'national-id.pdf');
+    await expect(page.getByTestId('evidence-ready-syndicate_card')).toHaveCount(0);
 
     await page.getByRole('button', { name: /Submit for review|إرسال للمراجعة/ }).click();
     await expect(page.getByText(/The case is in the verification queue|الحالة في قائمة التحقق/)).toBeVisible();
