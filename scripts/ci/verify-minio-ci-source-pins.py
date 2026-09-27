@@ -48,6 +48,7 @@ def main() -> int:
         (pins["mc"]["source_archive_url"], "mc archive url"),
         (pins["mc"]["release_tag"], "mc release tag"),
         ("ADD --checksum=sha256:", "ADD checksum"),
+        ("USER clinic", "non-root USER"),
     ):
         if needle not in dockerfile:
             fail(f"Dockerfile missing {label}: {needle}")

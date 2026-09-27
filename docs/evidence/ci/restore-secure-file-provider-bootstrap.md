@@ -65,7 +65,7 @@ No secrets. No production object-store configuration change. ClamAV image and ma
 
 This is a CI test-infrastructure restore, not a MinIO product upgrade. The S3 API used by Laravel tests remains Community `RELEASE.2025-04-22T22-12-26Z`. Application AWS endpoint/credentials/bucket env vars are unchanged.
 
-Compose healthcheck changed from `mc ready local` (requires `mc` inside the server image) to `GET /minio/health/live` with pinned alpine `wget`. Bucket policy remains `anonymous none`.
+Compose healthcheck changed from `mc ready local` (requires `mc` inside the server image) to `GET /minio/health/live` with pinned alpine `wget`. Bucket policy remains `anonymous none`. Runtime images run as uid `10001` (`USER clinic`), matching `core-api.Dockerfile`. Local compose does not mount a named volume over `/data` so the non-root user can write the ephemeral fixture.
 
 ## SF-001
 

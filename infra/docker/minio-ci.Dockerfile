@@ -50,16 +50,26 @@ RUN go build -tags kqueue -ldflags "-s -w \
         -o /out/mc
 
 FROM ${ALPINE_IMAGE} AS minio
-RUN apk add --no-cache ca-certificates wget
+RUN apk add --no-cache ca-certificates wget \
+    && adduser -D -u 10001 -H -s /sbin/nologin clinic \
+    && mkdir -p /data \
+    && chown clinic:clinic /data
 COPY --from=minio-build /out/minio /usr/bin/minio
 RUN chmod 0755 /usr/bin/minio
+USER clinic
+ENV HOME=/tmp
 EXPOSE 9000 9001
-VOLUME ["/data"]
 ENTRYPOINT ["/usr/bin/minio"]
 CMD ["server", "/data", "--console-address", ":9001"]
 
 FROM ${ALPINE_IMAGE} AS mc
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates \
+    && adduser -D -u 10001 -H -s /sbin/nologin clinic \
+    && mkdir -p /tmp/.mc \
+    && chown clinic:clinic /tmp/.mc
 COPY --from=mc-build /out/mc /usr/bin/mc
 RUN chmod 0755 /usr/bin/mc
+USER clinic
+ENV HOME=/tmp \
+    MC_CONFIG_DIR=/tmp/.mc
 ENTRYPOINT ["/usr/bin/mc"]

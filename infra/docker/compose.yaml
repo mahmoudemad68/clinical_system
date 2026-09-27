@@ -166,8 +166,8 @@ services:
     environment:
       MINIO_ROOT_USER: clinic_local
       MINIO_ROOT_PASSWORD: local_dev_only_not_a_secret
-    volumes:
-      - minio-data:/data
+    # Ephemeral container-local /data so the non-root USER can write. A named
+    # volume would be root-owned on Linux and break the SAST-required USER.
     ports:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
@@ -312,7 +312,6 @@ services:
 
 volumes:
   postgres-data:
-  minio-data:
   qdrant-data:
   prometheus-data:
   grafana-data:
