@@ -360,6 +360,22 @@ jobs:
         for line in nid_out.strip().splitlines():
             print(f"  {line}")
 
+    minio_pins = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "ci" / "verify-minio-ci-source-pins.py")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    minio_out = (minio_pins.stdout or "") + (minio_pins.stderr or "")
+    if minio_pins.returncode != 0:
+        raise SystemExit(
+            f"minio CI source pins: expected exit 0, got {minio_pins.returncode}\n{minio_out}"
+        )
+    print("U minio CI source pins: PASS")
+    if minio_out.strip():
+        for line in minio_out.strip().splitlines():
+            print(f"  {line}")
+
     print("ISR-015 repository technical validators: PASS")
     return 0
 
