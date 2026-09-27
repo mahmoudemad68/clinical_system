@@ -727,6 +727,7 @@ describe('trusted document registration', function () {
         $onboarded = verificationOnboardDoctor('scan-life');
         $opened = verificationOpenCase($onboarded['actor']);
         $quarantined = verificationRegisterDocument((string) $opened->caseId, 'quarantined', 'pending');
+        verificationRegisterDocument((string) $opened->caseId, requirement: 'national_id_or_passport');
         $issuer = new TestingTrustedDocumentEvidenceIssuer(app(VerificationPolicy::class));
         $promoted = $issuer->issue([
             'case_id' => (string) $opened->caseId,
@@ -803,6 +804,7 @@ describe('reviewer document access', function () {
         $failed = verificationRegisterDocument((string) $opened->caseId, 'rejected', 'failed');
         $retired = verificationRegisterDocument((string) $opened->caseId, 'retired', 'clean');
         $available = verificationRegisterDocument((string) $opened->caseId);
+        $identity = verificationRegisterDocument((string) $opened->caseId, requirement: 'national_id_or_passport');
         $draft = [
             'session' => $onboarded['session'],
             'case_id' => (string) $opened->caseId,
@@ -842,8 +844,9 @@ describe('reviewer document access', function () {
             $claimed['admin']['actor'],
             Identifier::fromTrusted($draft['case_id']),
         );
-        expect($projection->documents)->toHaveCount(1)
-            ->and($projection->documents[0]['document_id'])->toBe($available['document_id']);
+        expect($projection->documents)->toHaveCount(2)
+            ->and(array_column($projection->documents, 'document_id'))
+            ->toEqualCanonicalizing([$available['document_id'], $identity['document_id']]);
     });
 
     it('does not decide when submitted reviewable evidence is no longer valid', function () {
