@@ -2,12 +2,21 @@
 
 declare(strict_types=1);
 
+use Modules\Verification\Support\ApprovedVerificationPolicyV1;
+
 /**
- * ENGINEERING_DEFAULT verification policy. Not a product/security-approved
- * document-requirement or rejection-reason catalogue. Unknown codes deny.
+ * Phase 02 Verification Policy v1.0.1-phase02 operational representation.
+ *
+ * Document requirements, decision/reason pairs, MIME types, and max active
+ * uploads are APPROVED_AS_POLICY. Maximum bytes, upload-grant TTL, and
+ * reviewer document URL TTL remain ENGINEERING_CONTROL values.
+ *
+ * Unknown codes deny. This is not government, syndicate, licensing-authority,
+ * or registry-provider approval.
  */
 return [
     'name' => 'Verification',
+    'policy_version' => ApprovedVerificationPolicyV1::VERSION,
     'case_types' => ['doctor_verification', 'pharmacy_verification'],
     'max_document_bytes' => 20_971_520,
     'allowed_mime_types' => [
@@ -15,25 +24,8 @@ return [
         'image/jpeg',
         'image/png',
     ],
-    'document_requirements' => [
-        'professional_id' => [
-            'case_type' => 'doctor_verification',
-            'required' => true,
-        ],
-        // ENGINEERING_DEFAULT synthetic requirement. Not government
-        // verification, pharmacy licensing sufficiency, commercial-registry
-        // validity, or legal approval.
-        'organization_registration_evidence' => [
-            'case_type' => 'pharmacy_verification',
-            'required' => true,
-        ],
-    ],
-    'reason_codes' => [
-        'approved' => ['approved'],
-        'evidence_incomplete' => ['rejected', 'changes_requested'],
-        'identity_mismatch' => ['rejected'],
-        'documents_illegible' => ['changes_requested'],
-    ],
+    'document_requirements' => ApprovedVerificationPolicyV1::documentRequirementsConfig(),
+    'reason_codes' => ApprovedVerificationPolicyV1::reasonCodesConfig(),
     'notes_max_length' => 2000,
     'upload_expiry_seconds' => 900,
     'max_active_uploads_per_requirement' => 3,

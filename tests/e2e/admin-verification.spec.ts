@@ -127,11 +127,11 @@ test.describe('admin verification review', () => {
       `claim HTTP ${String(claimResponse.status())} code=${claimPayload?.errors?.[0]?.code ?? 'unknown'} cookie=${claimHeaders.cookie ? '1' : '0'} xsrf=${claimHeaders['x-xsrf-token'] ? '1' : '0'} authorization=${claimHeaders.authorization ? '1' : '0'} names=${cookieNames}`,
     ).toBeTruthy();
     const viewButton = page.getByRole('button', { name: /View \/ download document|عرض \/ تنزيل المستند/ });
-    await expect(viewButton).toBeVisible({ timeout: 20_000 });
+    await expect(viewButton).toHaveCount(2, { timeout: 20_000 });
     expect(accessPosts).toEqual([]);
 
     const downloadPromise = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null);
-    await viewButton.click();
+    await viewButton.first().click();
     await expect(page.getByText(/Document access was recorded|تم تسجيل الوصول إلى المستند/)).toBeVisible();
     expect(accessPosts).toHaveLength(1);
     await downloadPromise;
@@ -186,10 +186,10 @@ test.describe('admin verification review', () => {
     const pharmacyClaim = await pharmacyClaimWait;
     expect(pharmacyClaim.ok(), `pharmacy claim HTTP ${String(pharmacyClaim.status())}`).toBeTruthy();
     const pharmacyView = page.getByRole('button', { name: /View \/ download document|عرض \/ تنزيل المستند/ });
-    await expect(pharmacyView).toBeVisible({ timeout: 20_000 });
+    await expect(pharmacyView).toHaveCount(3, { timeout: 20_000 });
 
     const pharmacyDownload = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null);
-    await pharmacyView.click();
+    await pharmacyView.first().click();
     await expect(page.getByText(/Document access was recorded|تم تسجيل الوصول إلى المستند/)).toBeVisible();
     expect(accessPosts).toHaveLength(2);
     await pharmacyDownload;

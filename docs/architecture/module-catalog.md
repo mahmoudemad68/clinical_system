@@ -260,16 +260,23 @@ processor promotes them. HTTP and event payloads never include National ID,
 syndicate identifiers, legal registration, legal name, address, phone,
 coordinates, HMAC, key versions, object storage keys, reviewer notes,
 or clinical data.
-**Policy catalogues:** document requirements and rejection reasons are
-`ENGINEERING_DEFAULT` config (`professional_id` for `doctor_verification`;
-`organization_registration_evidence` for `pharmacy_verification`; `approved`,
-`evidence_incomplete`, `identity_mismatch`, `documents_illegible`).
-`organization_registration_evidence` is a technical pipeline requirement, not
-government verification, pharmacy licensing sufficiency, commercial-registry
-validity, or legal approval. Upload limits are also `ENGINEERING_DEFAULT`
-(20 MiB, PDF/JPEG/PNG, 900s grant expiry, max 3 active uploads per requirement).
-Unknown case types, requirement codes, decisions, and reason codes deny. This
-is not an approved product/security catalogue.
+**Policy catalogues:** Phase 02 Verification Policy v1.0.1-phase02 is the
+approved source of truth for document requirements, decision/reason pairs,
+allowed MIME types, and max active uploads per requirement. Doctor
+requirements are `medical_license` (required), `national_id_or_passport`
+(required), and `syndicate_card` (optional). Pharmacy requirements are
+`pharmacy_facility_license`, `commercial_register`, and
+`responsible_pharmacist_license` (all required). Approved reasons are
+`approved`, `docs_blurry_or_illegible`, `missing_required_docs`,
+`identity_mismatch` (changes_requested only), `license_expired`,
+`fraudulent_or_altered_doc`, and `unauthorized_entity`. Immutable artifact:
+`docs/evidence/phase-02/reference-data/phase02-verification-policy.v1.0.1-phase02.json`.
+The platform does not perform automated government, syndicate, license, or
+commercial-register verification. Maximum bytes (20_971_520), upload-grant
+TTL (900s), and reviewer document URL TTL (120s) remain ENGINEERING_CONTROL
+values. Unknown case types, requirement codes, decisions, and reason codes
+deny. Historical stored requirement and reason codes remain readable and are
+not rewritten. Appeal is deferred and unsupported in Phase 02.
 **Prohibited:** querying Doctors/Patients/Pharmacies/clinical tables directly
 (Doctors is reached only through `DoctorApplicantService`,
 `DoctorReviewerService`, `CreateAdminDoctorApplicant`, and `ListSpecialties`;

@@ -301,7 +301,7 @@ describe('admin-created doctor HTTP', function () {
             '/api/v1/admin/doctor-applicants/'.$doctorId.'/verification-uploads',
             [
                 'case_id' => $caseId,
-                'requirement_code' => 'professional_id',
+                'requirement_code' => 'medical_license',
                 'expected_size_bytes' => 32,
                 'declared_media_type' => 'application/pdf',
             ],
@@ -381,7 +381,7 @@ describe('admin-created doctor HTTP', function () {
             '/api/v1/admin/doctor-applicants/'.$doctorId.'/verification-uploads',
             [
                 'case_id' => $caseId,
-                'requirement_code' => 'professional_id',
+                'requirement_code' => 'medical_license',
                 'expected_size_bytes' => strlen($bytes),
                 'declared_media_type' => 'application/pdf',
             ],
@@ -394,6 +394,23 @@ describe('admin-created doctor HTTP', function () {
             adminVerificationIdem('acd-ver-done'),
         )->assertOk();
         verificationProcessUpload((string) $upload->json('data.upload_id'));
+        $identity = adminVerificationPostJson(
+            '/api/v1/admin/doctor-applicants/'.$doctorId.'/verification-uploads',
+            [
+                'case_id' => $caseId,
+                'requirement_code' => 'national_id_or_passport',
+                'expected_size_bytes' => strlen($bytes),
+                'declared_media_type' => 'application/pdf',
+            ],
+            adminVerificationIdem('acd-ver-up-id'),
+        )->assertCreated();
+        verificationPutUploadBytes((string) $identity->json('data.upload_id'), $bytes, 'application/pdf');
+        adminVerificationPostJson(
+            '/api/v1/verification-uploads/'.$identity->json('data.upload_id').'/complete',
+            [],
+            adminVerificationIdem('acd-ver-done-id'),
+        )->assertOk();
+        verificationProcessUpload((string) $identity->json('data.upload_id'));
 
         adminVerificationPostJson(
             '/api/v1/admin/doctor-applicants/'.$doctorId.'/verification-submissions',
@@ -448,7 +465,7 @@ describe('admin-created doctor HTTP', function () {
             '/api/v1/admin/verification-cases/'.$rejected->json('data.case_id').'/decisions',
             [
                 'decision' => 'rejected',
-                'reason_code' => 'identity_mismatch',
+                'reason_code' => 'unauthorized_entity',
                 'expected_case_version' => (int) $rejClaim->json('data.case_version'),
             ],
             adminVerificationIdem('acd-rej-decide'),
@@ -462,7 +479,7 @@ describe('admin-created doctor HTTP', function () {
             '/api/v1/admin/verification-cases/'.$changes->json('data.case_id').'/decisions',
             [
                 'decision' => 'changes_requested',
-                'reason_code' => 'evidence_incomplete',
+                'reason_code' => 'missing_required_docs',
                 'expected_case_version' => (int) $chgClaim->json('data.case_version'),
             ],
             adminVerificationIdem('acd-chg-decide'),

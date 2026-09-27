@@ -1,5 +1,11 @@
 # Phase 02 chunk 05 — Admin verification review backend (not phase PASS)
 
+> **Catalogue supersession (2026-09-24):** Phase 02 Verification Policy
+> v1.0.1-phase02 replaces the ENGINEERING_DEFAULT requirement and reason
+> catalogues. Reviewer document TTL 120s and queue page size remain
+> ENGINEERING_CONTROL. See
+> `docs/evidence/phase-02/verification-policy-v1.0.1-phase02.md`.
+
 Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 **not** claim the branch is READY_TO_MERGE.
 
@@ -246,9 +252,9 @@ and missing records are indistinguishable `404`.
 
 ## Residual (this chunk)
 
-- Document requirement and reason catalogues remain ENGINEERING_DEFAULT.
-- Reviewer document TTL 120s is ENGINEERING_DEFAULT (cap 300s).
-- Queue page size 25/100 is ENGINEERING_DEFAULT.
+- Document requirement and reason catalogues are superseded by v1.0.1-phase02.
+- Reviewer document TTL 120s is ENGINEERING_CONTROL (cap 300s).
+- Queue page size 25/100 is ENGINEERING_CONTROL.
 - Signed GET URLs are application-owned and bearer-style while valid;
   they are not actor-bound after issuance. GET re-checks
   `pending_review` so a URL stops serving after a decision. Canonical

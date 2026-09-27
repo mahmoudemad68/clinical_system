@@ -19,6 +19,7 @@
     "@clinic/design-tokens": "0.1.0",
     "@clinic/error-handling": "0.1.0",
     "@clinic/localization": "0.1.0",
+    "@clinic/verification-policy": "0.1.0",
     "@emotion/cache": "11.14.0",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",

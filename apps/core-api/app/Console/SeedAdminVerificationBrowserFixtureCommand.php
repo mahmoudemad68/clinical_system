@@ -171,26 +171,16 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
             ."3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 3 3] >>endobj\n"
             ."trailer<< /Root 1 0 R >>\n"
             ."%%EOF\n";
-        $created = $uploads->createDoctorUpload($doctorActor, [
-            'case_id' => $opened->caseId,
-            'requirement_code' => 'professional_id',
-            'expected_size_bytes' => strlen($bytes),
-            'declared_media_type' => 'application/pdf',
-        ]);
-        if (! isset($created['grant'], $created['projection'])) {
-            throw new RuntimeException('Upload intent was not created.');
-        }
-        $objects->writeAt(
-            new StoredObjectRef(
-                $policy->objectNamespace(),
-                $created['grant']->objectId,
-                $created['grant']->storageLocator,
-            ),
-            'application/pdf',
+        $this->uploadCleanRequirements(
+            $uploads,
+            $objects,
+            $policy,
+            $processor,
+            $doctorActor,
+            $opened->caseId,
             $bytes,
+            ['medical_license', 'national_id_or_passport'],
         );
-        $uploads->completeDoctorUpload($doctorActor, Identifier::fromString($created['projection']->uploadId));
-        $processor->process(Identifier::fromString($created['projection']->uploadId));
 
         $verification->submitDoctorCase($doctorActor, [
             'case_version' => $opened->caseVersion,
@@ -366,31 +356,58 @@ final class SeedAdminVerificationBrowserFixtureCommand extends Command
         }
 
         $opened = $verification->openPharmacyCase($pharmacyActor);
-        $created = $uploads->createDoctorUpload($pharmacyActor, [
-            'case_id' => $opened->caseId,
-            'requirement_code' => 'organization_registration_evidence',
-            'expected_size_bytes' => strlen($bytes),
-            'declared_media_type' => 'application/pdf',
-        ]);
-        if (! isset($created['grant'], $created['projection'])) {
-            throw new RuntimeException('Pharmacy upload intent was not created.');
-        }
-        $objects->writeAt(
-            new StoredObjectRef(
-                $policy->objectNamespace(),
-                $created['grant']->objectId,
-                $created['grant']->storageLocator,
-            ),
-            'application/pdf',
+        $this->uploadCleanRequirements(
+            $uploads,
+            $objects,
+            $policy,
+            $processor,
+            $pharmacyActor,
+            $opened->caseId,
             $bytes,
+            ['pharmacy_facility_license', 'commercial_register', 'responsible_pharmacist_license'],
         );
-        $uploads->completeDoctorUpload($pharmacyActor, Identifier::fromString($created['projection']->uploadId));
-        $processor->process(Identifier::fromString($created['projection']->uploadId));
 
         $verification->submitPharmacyCase($pharmacyActor, [
             'case_version' => $opened->caseVersion,
             'organization_version' => $opened->organizationVersion,
         ]);
+    }
+
+    /**
+     * @param  list<string>  $requirementCodes
+     */
+    private function uploadCleanRequirements(
+        VerificationUploadService $uploads,
+        StoreObject $objects,
+        VerificationPolicy $policy,
+        VerificationUploadProcessor $processor,
+        ActorContext $actor,
+        string $caseId,
+        string $bytes,
+        array $requirementCodes,
+    ): void {
+        foreach ($requirementCodes as $code) {
+            $created = $uploads->createDoctorUpload($actor, [
+                'case_id' => $caseId,
+                'requirement_code' => $code,
+                'expected_size_bytes' => strlen($bytes),
+                'declared_media_type' => 'application/pdf',
+            ]);
+            if (! isset($created['grant'], $created['projection'])) {
+                throw new RuntimeException('Upload intent was not created.');
+            }
+            $objects->writeAt(
+                new StoredObjectRef(
+                    $policy->objectNamespace(),
+                    $created['grant']->objectId,
+                    $created['grant']->storageLocator,
+                ),
+                'application/pdf',
+                $bytes,
+            );
+            $uploads->completeDoctorUpload($actor, Identifier::fromString($created['projection']->uploadId));
+            $processor->process(Identifier::fromString($created['projection']->uploadId));
+        }
     }
 
     /**

@@ -9,8 +9,8 @@ export const doctorStrings = {
     staleState: 'The server state changed. The current status was refreshed. Nothing was overwritten.',
     manualReview:
       'This request needs a manual review. No other doctor or identity comparison is shown here.',
-    engineeringDefault:
-      'professional_id is an ENGINEERING_DEFAULT synthetic requirement. This is not government or syndicate verification.',
+    verificationPolicyNote:
+      'Upload the Professional Medical License and Government Photo ID. The Medical Syndicate Membership Card is optional. This is not automated government or syndicate verification.',
     loadingProfile: 'Loading doctor profile…',
     loadingSpecialties: 'Loading specialties…',
     specialtiesUnavailable: 'Specialties could not be loaded. Try again.',
@@ -137,7 +137,9 @@ export const doctorStrings = {
       title: 'Doctor verification',
       openCase: 'Open or resume verification case',
       opening: 'Opening verification case…',
-      selectEvidence: 'Choose professional verification evidence',
+      selectEvidence: 'Choose file',
+      required: 'required',
+      optional: 'optional',
       selectedFile: 'Selected file',
       size: 'Size',
       type: 'Type',
@@ -156,7 +158,8 @@ export const doctorStrings = {
       submitting: 'Submitting…',
       refresh: 'Refresh status',
       newCase: 'Start a new verification case',
-      disabledUntilAvailable: 'Submit stays disabled until the server marks evidence available and clean.',
+      disabledUntilAvailable:
+        'Submit stays disabled until every required document is available and clean. The optional syndicate card is not required.',
       retryPoll: 'Retry upload status',
       pollTimedOut: 'Upload status polling stopped. Refresh or retry to continue.',
       requirement: 'Requirement',
@@ -193,8 +196,8 @@ export const doctorStrings = {
     sessionExpired: 'انتهت جلستك. سجّل الدخول مرة أخرى للمتابعة.',
     staleState: 'تغيرت حالة الخادم. تم تحديث الحالة الحالية. لم يُكتب فوق أي شيء.',
     manualReview: 'يحتاج هذا الطلب إلى مراجعة يدوية. لا يُعرض طبيب آخر أو نتيجة مقارنة هوية هنا.',
-    engineeringDefault:
-      'professional_id متطلب هندسي افتراضي ENGINEERING_DEFAULT. هذا ليس تحققًا حكوميًا أو نقابيًا.',
+    verificationPolicyNote:
+      'ارفع ترخيص ممارسة المهنة الطبية وإثبات الهوية الشخصية. بطاقة عضوية النقابة الطبية اختيارية. هذا ليس تحققًا حكوميًا أو نقابيًا آليًا.',
     loadingProfile: 'جارٍ تحميل ملف الطبيب…',
     loadingSpecialties: 'جارٍ تحميل التخصصات…',
     specialtiesUnavailable: 'تعذر تحميل التخصصات. حاول مرة أخرى.',
@@ -317,7 +320,9 @@ export const doctorStrings = {
       title: 'تحقق الطبيب',
       openCase: 'فتح أو استئناف حالة التحقق',
       opening: 'جارٍ فتح حالة التحقق…',
-      selectEvidence: 'اختيار دليل التحقق المهني',
+      selectEvidence: 'اختيار ملف',
+      required: 'مطلوب',
+      optional: 'اختياري',
       selectedFile: 'الملف المختار',
       size: 'الحجم',
       type: 'النوع',
@@ -336,7 +341,8 @@ export const doctorStrings = {
       submitting: 'جارٍ الإرسال…',
       refresh: 'تحديث الحالة',
       newCase: 'بدء حالة تحقق جديدة',
-      disabledUntilAvailable: 'يبقى الإرسال معطّلًا حتى يعلّم الخادم الدليل متاحًا ونظيفًا.',
+      disabledUntilAvailable:
+        'يبقى الإرسال معطّلًا حتى تكون كل المستندات الإلزامية متاحة ونظيفة. بطاقة النقابة اختيارية.',
       retryPoll: 'إعادة محاولة حالة الرفع',
       pollTimedOut: 'توقف استعلام حالة الرفع. حدّث أو أعد المحاولة للمتابعة.',
       requirement: 'المتطلب',

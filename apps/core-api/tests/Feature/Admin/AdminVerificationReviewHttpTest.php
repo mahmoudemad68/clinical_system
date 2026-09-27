@@ -284,7 +284,7 @@ describe('admin verification review HTTP', function () {
             '/api/v1/admin/verification-cases/'.$approve['case_id'].'/decisions',
             [
                 'decision' => 'rejected',
-                'reason_code' => 'identity_mismatch',
+                'reason_code' => 'unauthorized_entity',
                 'expected_case_version' => (int) $claimA->json('data.case_version'),
             ],
             adminVerificationIdem('decide-ok'),
@@ -306,7 +306,7 @@ describe('admin verification review HTTP', function () {
             '/api/v1/admin/verification-cases/'.$reject['case_id'].'/decisions',
             [
                 'decision' => 'rejected',
-                'reason_code' => 'identity_mismatch',
+                'reason_code' => 'unauthorized_entity',
                 'expected_case_version' => (int) $claimR->json('data.case_version'),
             ],
             adminVerificationIdem('decide-no'),
@@ -320,7 +320,7 @@ describe('admin verification review HTTP', function () {
             '/api/v1/admin/verification-cases/'.$changes['case_id'].'/decisions',
             [
                 'decision' => 'changes_requested',
-                'reason_code' => 'documents_illegible',
+                'reason_code' => 'docs_blurry_or_illegible',
                 'expected_case_version' => (int) $claimC->json('data.case_version'),
             ],
             adminVerificationIdem('decide-ch'),
@@ -340,7 +340,7 @@ describe('admin verification review HTTP', function () {
             '/api/v1/admin/verification-cases/'.$changes['case_id'].'/decisions',
             [
                 'decision' => 'approved',
-                'reason_code' => 'documents_illegible',
+                'reason_code' => 'docs_blurry_or_illegible',
                 'expected_case_version' => (int) $claimC->json('data.case_version') + 1,
             ],
             adminVerificationIdem('decide-bad-pair'),

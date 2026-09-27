@@ -13,9 +13,11 @@ import {
   doctorClinicLocationUpdateRequestSchema,
   doctorClinicInviteStaffRequestSchema,
   doctorClinicMembershipViewSchema,
+  doctorEvidenceSelectRequestSchema,
   doctorOnboardRequestSchema,
   doctorProfileViewSchema,
   doctorUploadStatusResponseSchema,
+  pharmacyEvidenceSelectRequestSchema,
   pharmacyOnboardRequestSchema,
   pharmacyOrganizationViewSchema,
   pharmacyUploadStatusResponseSchema,
@@ -84,7 +86,7 @@ describe('desktop bridge contracts', () => {
     expect(
       pharmacyUploadStatusResponseSchema.safeParse({
         uploadId: '0199a5c8-0000-7000-8000-000000000004',
-        requirementCode: 'organization_registration_evidence',
+        requirementCode: 'pharmacy_facility_license',
         state: 'quarantined',
         rejectionReason: null,
         expiresAt: '2026-09-21T00:00:00Z',
@@ -131,7 +133,7 @@ describe('desktop bridge contracts', () => {
     expect(
       doctorUploadStatusResponseSchema.safeParse({
         uploadId: '0199a5c8-0000-7000-8000-000000000004',
-        requirementCode: 'professional_id',
+        requirementCode: 'medical_license',
         state: 'quarantined',
         rejectionReason: null,
         expiresAt: '2026-09-21T00:00:00Z',
@@ -148,6 +150,26 @@ describe('desktop bridge contracts', () => {
         syndicateNumber: null,
       }).success,
     ).toBe(false);
+  });
+
+  it('rejects unknown evidence requirement codes on select and accepts approved codes', () => {
+    expect(doctorEvidenceSelectRequestSchema.safeParse({ requirementCode: 'professional_id' }).success).toBe(
+      false,
+    );
+    expect(doctorEvidenceSelectRequestSchema.safeParse({ requirementCode: 'fabricated_licence' }).success).toBe(
+      false,
+    );
+    expect(doctorEvidenceSelectRequestSchema.safeParse({ requirementCode: 'medical_license' }).success).toBe(
+      true,
+    );
+    expect(
+      pharmacyEvidenceSelectRequestSchema.safeParse({
+        requirementCode: 'organization_registration_evidence',
+      }).success,
+    ).toBe(false);
+    expect(
+      pharmacyEvidenceSelectRequestSchema.safeParse({ requirementCode: 'pharmacy_facility_license' }).success,
+    ).toBe(true);
   });
 
   it('rejects unknown fields and client-owned clinic identifiers', () => {

@@ -758,7 +758,11 @@ final class VerificationService
 
             $this->assertNotSelfReview($reviewer, $case);
             $this->assertAssignedReviewer($reviewer, $case);
-            $this->assertRequiredDocumentsAvailable($case);
+            // Submitted cases keep the requirement snapshot accepted at submit.
+            // Do not re-apply the live catalogue, so in-flight pending-review
+            // cases from the previous policy are not stranded. Still refuse a
+            // decision when no submitted evidence remains reviewable.
+            $this->assertSubmittedEvidenceStillReviewable($case);
 
             $now = $this->clock->now();
             $stamp = $now->format('Y-m-d H:i:s.uP');
@@ -1162,6 +1166,19 @@ final class VerificationService
         }
     }
 
+    private function assertSubmittedEvidenceStillReviewable(VerificationCaseRecord $case): void
+    {
+        foreach ($this->store->documentsForCase($case->id) as $document) {
+            if ($document->isReviewable()) {
+                return;
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'documents' => 'Required documents are not available for review.',
+        ]);
+    }
+
     private function doctorStatusFor(VerificationDecision $decision): DoctorVerificationStatus
     {
         return match ($decision) {
@@ -1232,6 +1249,7 @@ final class VerificationService
             $case instanceof VerificationCaseRecord ? $this->isoOrNull($case->decidedAt) : null,
             $decision?->decision->value,
             $decision?->reasonCode,
+            $this->policy->applicantSafeExplanation($decision?->reasonCode),
             $documents,
         );
     }
@@ -1258,6 +1276,7 @@ final class VerificationService
             $case instanceof VerificationCaseRecord ? $this->isoOrNull($case->decidedAt) : null,
             $decision?->decision->value,
             $decision?->reasonCode,
+            $this->policy->applicantSafeExplanation($decision?->reasonCode),
             $documents,
         );
     }

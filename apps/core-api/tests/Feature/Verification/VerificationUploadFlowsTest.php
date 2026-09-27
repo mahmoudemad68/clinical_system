@@ -64,7 +64,7 @@ describe('verification upload intent HTTP', function () {
         $created = verificationCreateUploadIntent($onboarded, (string) $opened->caseId, 'up-own-create');
 
         $created['response']->assertCreated()
-            ->assertJsonPath('data.requirement_code', 'professional_id')
+            ->assertJsonPath('data.requirement_code', 'medical_license')
             ->assertJsonPath('data.state', 'uploading')
             ->assertJsonMissingPath('data.storage_locator')
             ->assertJsonMissingPath('data.object_id')
@@ -89,7 +89,7 @@ describe('verification upload intent HTTP', function () {
 
         test()->postJson('/api/v1/verification-uploads', [
             'case_id' => (string) $opened->caseId,
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'expected_size_bytes' => 128,
             'declared_media_type' => 'application/pdf',
         ], doctorsAuth($right['session']['token']) + doctorsIdem('up-bola-other'))
@@ -105,7 +105,7 @@ describe('verification upload intent HTTP', function () {
 
         test()->postJson('/api/v1/verification-uploads', [
             'case_id' => (string) $opened->caseId,
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'expected_size_bytes' => 128,
             'declared_media_type' => 'application/pdf',
             'object_key' => 'evil',
@@ -114,7 +114,7 @@ describe('verification upload intent HTTP', function () {
 
         test()->postJson('/api/v1/verification-uploads', [
             'case_id' => (string) $opened->caseId,
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'expected_size_bytes' => 20_971_521,
             'declared_media_type' => 'application/pdf',
         ], doctorsAuth($left['session']['token']) + doctorsIdem('up-oversize'))
@@ -122,7 +122,7 @@ describe('verification upload intent HTTP', function () {
 
         test()->postJson('/api/v1/verification-uploads', [
             'case_id' => (string) $opened->caseId,
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'expected_size_bytes' => 128,
             'declared_media_type' => 'application/zip',
         ], doctorsAuth($left['session']['token']) + doctorsIdem('up-zip'))
@@ -138,7 +138,7 @@ describe('verification upload intent HTTP', function () {
         $headers = doctorsAuth($onboarded['session']['token']) + doctorsIdem('up-idem-same');
         $payload = [
             'case_id' => (string) $opened->caseId,
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'expected_size_bytes' => 128,
             'declared_media_type' => 'application/pdf',
         ];
@@ -171,7 +171,7 @@ describe('verification upload intent HTTP', function () {
 
         $mismatch = test()->postJson('/api/v1/verification-uploads', [
             'case_id' => (string) $opened->caseId,
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'expected_size_bytes' => 256,
             'declared_media_type' => 'application/pdf',
         ], $headers);
@@ -188,7 +188,7 @@ describe('verification upload intent HTTP', function () {
 
         test()->postJson('/api/v1/verification-uploads', [
             'case_id' => $draft['case_id'],
-            'requirement_code' => 'professional_id',
+            'requirement_code' => 'medical_license',
             'expected_size_bytes' => 128,
             'declared_media_type' => 'application/pdf',
         ], doctorsAuth($draft['session']['token']) + doctorsIdem('up-after-sub'))
@@ -559,6 +559,7 @@ describe('completion, validation, scan, and promotion', function () {
             ->and(DB::table('audit_events')->where('event_name', 'verification.upload_cleanup')->where('object_id', $kept['upload_id'])->count())->toBe(1);
 
         $caseVersion = (int) DB::table('verification_cases')->where('id', (string) $opened->caseId)->value('version');
+        verificationRegisterDocument((string) $opened->caseId, requirement: 'national_id_or_passport');
         test()->postJson(
             '/api/v1/doctors/me/verification-submissions',
             verificationSubmitBody($caseVersion, $opened->profileVersion),

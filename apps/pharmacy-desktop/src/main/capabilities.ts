@@ -14,6 +14,7 @@ import {
 } from '@clinic/desktop-bridge-contracts';
 import { APP_CONFIG } from '../shared/app-config';
 import { isTrustedFrameOrigin } from '../shared/sender-policy';
+import { isPharmacyRequirementCode } from '@clinic/verification-policy';
 import { EvidenceFileError, PharmacyEvidenceHandleStore } from './evidence-handles';
 import { runIpcDelivered, timeoutDeadline, TimeoutError, ResponseContractError } from './ipc-delivery';
 import { pharmacyGateway, pharmacyIntentKeys } from './pharmacy-gateway';
@@ -80,7 +81,9 @@ export function registerCapabilities(): void {
   handle(PHARMACY_CHANNELS.verificationSubmit, async (payload) =>
     pharmacyGateway.submitVerification(localeState, payload),
   );
-  handle(PHARMACY_CHANNELS.evidenceSelect, async (_payload, event) => selectEvidence(event));
+  handle(PHARMACY_CHANNELS.evidenceSelect, async (payload: { requirementCode: string }, event) =>
+    selectEvidence(event, payload.requirementCode),
+  );
   handle(PHARMACY_CHANNELS.evidenceClear, async (payload: { handleId: string }) => {
     evidenceHandles.clearHandle(payload.handleId);
     return { cleared: true as const };
@@ -92,6 +95,7 @@ export function registerCapabilities(): void {
       bytes: file.bytes,
       sizeBytes: file.sizeBytes,
       candidateMediaType: file.candidateMediaType,
+      requirementCode: file.requirementCode,
     });
   });
   handle(PHARMACY_CHANNELS.uploadStatus, async (payload: { uploadId: string }) =>
@@ -120,7 +124,11 @@ export function registerCapabilities(): void {
   );
 }
 
-async function selectEvidence(event: IpcMainInvokeEvent) {
+async function selectEvidence(event: IpcMainInvokeEvent, requirementCode: string) {
+  if (!isPharmacyRequirementCode(requirementCode)) {
+    throw new EvidenceFileError('INVALID_REQUEST');
+  }
+
   const window = BrowserWindow.fromWebContents(event.sender);
   if (window === null) {
     throw new GatewayError('PERMISSION_DENIED');
@@ -143,7 +151,7 @@ async function selectEvidence(event: IpcMainInvokeEvent) {
     return { selected: false as const };
   }
 
-  return evidenceHandles.registerSelectedFile(selectedPath);
+  return evidenceHandles.registerSelectedFile(selectedPath, requirementCode);
 }
 
 export function clearPharmacySession(): void {

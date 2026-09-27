@@ -785,11 +785,14 @@ export interface paths {
         put?: never;
         /**
          * Submit the current pharmacy owner's verification case
-         * @description Moves a draft pharmacy verification case to `pending_review` when the
-         *     ENGINEERING_DEFAULT `organization_registration_evidence` document is
-         *     `available` with a clean scan. Server-derived actor, organization,
+         * @description Moves a draft pharmacy verification case to `pending_review` when every
+         *     required v1.0.1-phase02 pharmacy document is `available` with a clean
+         *     scan (`pharmacy_facility_license`, `commercial_register`,
+         *     `responsible_pharmacist_license`). Server-derived actor, organization,
          *     initial branch, and membership only. Requires expected case version
          *     and expected organization version. Idempotency-Key is required.
+         *     The platform does not perform automated government, license, or
+         *     commercial-register verification.
          */
         post: operations["submitOwnPharmacyVerification"];
         delete?: never;
@@ -1220,7 +1223,9 @@ export interface paths {
          * Current user's doctor verification status
          * @description Own-case projection only. Never returns National ID, HMAC, syndicate
          *     identifiers, object storage keys, reviewer notes, or clinical data.
-         *     Another doctor's case is not enumerable through this endpoint.
+         *     When a decision exists, `applicant_safe_explanation` carries the
+         *     approved v1.0.1-phase02 explanation when one exists. Another doctor's
+         *     case is not enumerable through this endpoint.
          */
         get: operations["getOwnDoctorVerificationStatus"];
         put?: never;
@@ -1243,12 +1248,17 @@ export interface paths {
         /**
          * Create a verification upload intent
          * @description Creates an opaque upload intent for the caller's own draft
-         *     verification case and a known requirement code. Doctor actors use
-         *     `professional_id` on `doctor_verification`. Pharmacy founding owners
-         *     use `organization_registration_evidence` on `pharmacy_verification`.
+         *     verification case and a known requirement code. Doctor actors use the
+         *     v1.0.1-phase02 doctor requirements (`medical_license`,
+         *     `national_id_or_passport`, optional `syndicate_card`) on
+         *     `doctor_verification`. Pharmacy founding owners use
+         *     `pharmacy_facility_license`, `commercial_register`, and
+         *     `responsible_pharmacist_license` on `pharmacy_verification`.
          *     Applicant type and case type are server-derived. Returns a short-lived
          *     private upload grant. The client cannot choose object keys, scanner
          *     results, or lifecycle states. Idempotency-Key is required.
+         *     The platform does not perform automated government, syndicate, license,
+         *     or commercial-register verification.
          */
         post: operations["createOwnDoctorVerificationUpload"];
         delete?: never;
@@ -2210,6 +2220,12 @@ export interface components {
             /** @enum {string|null} */
             decision: "approved" | "rejected" | "changes_requested" | null;
             reason_code: string | null;
+            /**
+             * @description Approved applicant-visible explanation for the current reason_code
+             *     when one exists in Verification Policy v1.0.1-phase02. Null for
+             *     historical withdrawn codes. Never includes reviewer notes.
+             */
+            applicant_safe_explanation?: string | null;
             documents: components["schemas"]["PharmacyVerificationDocumentStatus"][];
         };
         PharmacyBranchCreateRequest: {
@@ -2458,6 +2474,12 @@ export interface components {
             /** @enum {string|null} */
             decision: "approved" | "rejected" | "changes_requested" | null;
             reason_code: string | null;
+            /**
+             * @description Approved applicant-visible explanation for the current reason_code
+             *     when one exists in Verification Policy v1.0.1-phase02. Null for
+             *     historical withdrawn codes. Never includes reviewer notes.
+             */
+            applicant_safe_explanation?: string | null;
             documents: components["schemas"]["DoctorVerificationDocumentStatus"][];
         };
         VerificationUploadCreateRequest: {
@@ -2687,8 +2709,10 @@ export interface components {
             /** @enum {string} */
             decision: "approved" | "rejected" | "changes_requested";
             /**
-             * @description Must be accepted by VerificationPolicy for the chosen decision.
-             *     Unknown codes and invalid pairings deny.
+             * @description Must be accepted by Verification Policy v1.0.1-phase02 for the
+             *     chosen decision. Unknown codes, withdrawn ENGINEERING_DEFAULT
+             *     codes, and invalid pairings deny. Historical stored codes remain
+             *     readable and are not rewritten.
              */
             reason_code: string;
             expected_case_version: number;

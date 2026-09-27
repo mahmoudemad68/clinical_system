@@ -18,10 +18,13 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import type { DoctorEvidenceSelectResponse } from '@clinic/desktop-bridge-contracts';
+import {
+  isDoctorRequirementCode,
+  type DoctorRequirementCode,
+} from '@clinic/verification-policy';
 
 export const EVIDENCE_MAX_BYTES = 20 * 1024 * 1024;
 export const EVIDENCE_HANDLE_TTL_MS = 15 * 60 * 1000;
-export const EVIDENCE_REQUIREMENT_CODE = 'professional_id' as const;
 
 export type EvidenceMediaType = 'application/pdf' | 'image/jpeg' | 'image/png';
 
@@ -38,6 +41,7 @@ export class EvidenceFileError extends Error {
 
 type HandleRecord = {
   id: string;
+  requirementCode: DoctorRequirementCode;
   absolutePath: string;
   realPath: string;
   displayName: string;
@@ -150,12 +154,24 @@ export class DoctorEvidenceHandleStore {
     return this.handles.delete(handleId);
   }
 
-  registerSelectedFile(absolutePath: string, now = Date.now()): DoctorEvidenceSelectResponse {
+  registerSelectedFile(
+    absolutePath: string,
+    requirementCode: string,
+    now = Date.now(),
+  ): DoctorEvidenceSelectResponse {
+    if (!isDoctorRequirementCode(requirementCode)) {
+      throw new EvidenceFileError('INVALID_REQUEST');
+    }
     const inspected = inspectCandidateFile(absolutePath);
-    this.handles.clear();
+    for (const [id, record] of this.handles) {
+      if (record.requirementCode === requirementCode) {
+        this.handles.delete(id);
+      }
+    }
     const id = randomBytes(24).toString('base64url');
     this.handles.set(id, {
       id,
+      requirementCode,
       absolutePath,
       realPath: inspected.realPath,
       displayName: inspected.displayName,
@@ -172,6 +188,7 @@ export class DoctorEvidenceHandleStore {
       displayName: inspected.displayName,
       sizeBytes: inspected.size,
       candidateMediaType: inspected.candidateMediaType,
+      requirementCode,
     };
   }
 
@@ -206,6 +223,7 @@ export class DoctorEvidenceHandleStore {
     sizeBytes: number;
     candidateMediaType: EvidenceMediaType;
     displayName: string;
+    requirementCode: DoctorRequirementCode;
   } {
     const record = this.requireFresh(handleId, now);
     let stats: Stats;
@@ -269,6 +287,7 @@ export class DoctorEvidenceHandleStore {
           sizeBytes: record.size,
           candidateMediaType: record.candidateMediaType,
           displayName: record.displayName,
+          requirementCode: record.requirementCode,
         };
       });
     } catch (error) {

@@ -469,7 +469,7 @@ describe('Clinic Pharmacy — IPC contract', () => {
     expect(renderer).not.toContain('window.clinic.doctor');
     expect(renderer).not.toContain('data-testid="inventory-nav"');
     expect(renderer).not.toContain('data-testid="pos-nav"');
-    expect(renderer).not.toContain('pharmacist');
+    expect(renderer.replaceAll('responsible_pharmacist_license', '')).not.toContain('pharmacist');
     expect(renderer).not.toContain('cashier');
     expect(PHARMACY_ALL_CHANNELS).not.toEqual(expect.arrayContaining([...DOCTOR_CHANNEL_LIST]));
 

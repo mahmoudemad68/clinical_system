@@ -1,5 +1,10 @@
 # Phase 02 chunk 03 — Verification foundation (not phase PASS)
 
+> **Catalogue supersession (2026-09-24):** Phase 02 Verification Policy
+> v1.0.1-phase02 replaces the ENGINEERING_DEFAULT requirement and reason
+> catalogues recorded below. See
+> `docs/evidence/phase-02/verification-policy-v1.0.1-phase02.md`.
+
 Chunk-only evidence. This file does **not** mark Phase 02 complete and does
 **not** claim the branch is READY_TO_MERGE.
 
@@ -49,10 +54,10 @@ approval.
 
 ## Residual (this chunk)
 
-- Document requirement catalogue and rejection-reason catalogue remain
-  `ENGINEERING_DEFAULT` (`professional_id`; `approved`, `evidence_incomplete`,
-  `identity_mismatch`, `documents_illegible`). Unknown codes deny. Product and
-  security owners have not approved a production policy catalogue.
+- Document requirement and rejection-reason catalogues recorded in this
+  chunk are superseded by v1.0.1-phase02. Historical chunk text used
+  `professional_id` and `approved` / `evidence_incomplete` /
+  `identity_mismatch` / `documents_illegible`. Unknown codes still deny.
 - Production cannot manufacture `AVAILABLE`/`CLEAN` evidence. The bound issuer
   is `DisabledTrustedDocumentEvidenceIssuer` (`ProviderNotEnabled`). A doctor
   or admin `ActorContext` is not scanner trust. Tests use

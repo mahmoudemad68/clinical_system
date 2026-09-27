@@ -30,6 +30,7 @@ namespace Modules\Verification\Support;
  *     decided_at: string|null,
  *     decision: string|null,
  *     reason_code: string|null,
+ *     applicant_safe_explanation: string|null,
  *     documents: list<DocumentArray>
  * }
  */
@@ -51,6 +52,7 @@ final readonly class PharmacyApplicantCaseProjection
         public ?string $decidedAt,
         public ?string $decision,
         public ?string $reasonCode,
+        public ?string $applicantSafeExplanation,
         public array $documents,
     ) {}
 
@@ -73,6 +75,7 @@ final readonly class PharmacyApplicantCaseProjection
             'decided_at' => $this->decidedAt,
             'decision' => $this->decision,
             'reason_code' => $this->reasonCode,
+            'applicant_safe_explanation' => $this->applicantSafeExplanation,
             'documents' => $this->documents,
         ];
     }

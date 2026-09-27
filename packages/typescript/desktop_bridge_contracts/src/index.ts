@@ -399,6 +399,7 @@ export {
   PHARMACY_CHANNEL_LIST,
   pharmacyEvidenceClearRequestSchema,
   pharmacyEvidenceClearResponseSchema,
+  pharmacyEvidenceSelectRequestSchema,
   pharmacyEvidenceSelectResponseSchema,
   pharmacyEvidenceUploadRequestSchema,
   pharmacyOnboardRequestSchema,
@@ -425,6 +426,7 @@ export {
   pharmacyBranchMembershipsResponseSchema,
   pharmacyBranchRevokeMembershipRequestSchema,
   type PharmacyChannelName,
+  type PharmacyEvidenceSelectRequest,
   type PharmacyEvidenceSelectResponse,
   type PharmacyOnboardRequest,
   type PharmacyOnboardResponse,
@@ -453,6 +455,7 @@ export {
   DOCTOR_CHANNEL_LIST,
   doctorEvidenceClearRequestSchema,
   doctorEvidenceClearResponseSchema,
+  doctorEvidenceSelectRequestSchema,
   doctorEvidenceSelectResponseSchema,
   doctorEvidenceUploadRequestSchema,
   doctorOnboardRequestSchema,
@@ -480,6 +483,7 @@ export {
   doctorClinicMembershipsResponseSchema,
   doctorClinicRevokeMembershipRequestSchema,
   type DoctorChannelName,
+  type DoctorEvidenceSelectRequest,
   type DoctorEvidenceSelectResponse,
   type DoctorOnboardRequest,
   type DoctorOnboardResponse,
@@ -505,6 +509,7 @@ export {
 
 import type {
   PharmacyChannelName,
+  PharmacyEvidenceSelectRequest,
   PharmacyEvidenceSelectResponse,
   PharmacyOnboardRequest,
   PharmacyOnboardResponse,
@@ -528,6 +533,7 @@ import type {
 import { PHARMACY_CHANNEL_LIST } from './pharmacy';
 import type {
   DoctorChannelName,
+  DoctorEvidenceSelectRequest,
   DoctorEvidenceSelectResponse,
   DoctorOnboardRequest,
   DoctorOnboardResponse,
@@ -579,7 +585,7 @@ export interface PharmacyClinicBridge extends ClinicBridge {
       caseVersion: number;
       organizationVersion: number;
     }): Promise<BridgeResult<PharmacyVerificationSubmitResponse>>;
-    selectEvidence(): Promise<BridgeResult<PharmacyEvidenceSelectResponse>>;
+    selectEvidence(input: PharmacyEvidenceSelectRequest): Promise<BridgeResult<PharmacyEvidenceSelectResponse>>;
     clearEvidence(handleId: string): Promise<BridgeResult<{ cleared: true }>>;
     uploadEvidence(input: {
       handleId: string;
@@ -622,7 +628,7 @@ export interface DoctorClinicBridge extends ClinicBridge {
       caseVersion: number;
       profileVersion: number;
     }): Promise<BridgeResult<DoctorVerificationSubmitResponse>>;
-    selectEvidence(): Promise<BridgeResult<DoctorEvidenceSelectResponse>>;
+    selectEvidence(input: DoctorEvidenceSelectRequest): Promise<BridgeResult<DoctorEvidenceSelectResponse>>;
     clearEvidence(handleId: string): Promise<BridgeResult<{ cleared: true }>>;
     uploadEvidence(input: {
       handleId: string;

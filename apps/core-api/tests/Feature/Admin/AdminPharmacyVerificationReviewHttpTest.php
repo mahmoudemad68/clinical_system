@@ -71,7 +71,7 @@ describe('admin pharmacy verification review HTTP', function () {
         )->assertOk();
         expect($claimed->json('data.assigned_to_me'))->toBeTrue()
             ->and($claimed->json('data.documents'))->not->toBe([])
-            ->and($claimed->json('data.documents.0.requirement_code'))->toBe('organization_registration_evidence')
+            ->and($claimed->json('data.documents.0.requirement_code'))->toBe('pharmacy_facility_license')
             ->and($claimed->json('data.documents.0.status'))->toBe('available')
             ->and($claimed->json('data.documents.0.scan_status'))->toBe('clean')
             ->and($claimed->json('data.documents.0'))->not->toHaveKey('object_id');

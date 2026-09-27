@@ -112,34 +112,37 @@ function adminCreatedDoctorAttachEvidenceAndSubmit(
 ): array {
     verificationBindCleanScanner();
     $bytes = verificationMinimalPdf();
-    $created = adminVerificationPostJson(
-        '/api/v1/admin/doctor-applicants/'.$doctorId.'/verification-uploads',
-        [
-            'case_id' => $caseId,
-            'requirement_code' => 'professional_id',
-            'expected_size_bytes' => strlen($bytes),
-            'declared_media_type' => 'application/pdf',
-        ],
-        adminVerificationIdem('acd-up-'.$key),
-    );
-    $created->assertCreated();
-    $uploadId = (string) $created->json('data.upload_id');
-    expect($uploadId)->not->toBe('');
+    $uploadId = '';
+    foreach (['medical_license', 'national_id_or_passport'] as $code) {
+        $created = adminVerificationPostJson(
+            '/api/v1/admin/doctor-applicants/'.$doctorId.'/verification-uploads',
+            [
+                'case_id' => $caseId,
+                'requirement_code' => $code,
+                'expected_size_bytes' => strlen($bytes),
+                'declared_media_type' => 'application/pdf',
+            ],
+            adminVerificationIdem('acd-up-'.$key.'-'.$code),
+        );
+        $created->assertCreated();
+        $uploadId = (string) $created->json('data.upload_id');
+        expect($uploadId)->not->toBe('');
 
-    $row = DB::table('verification_upload_intents')->where('id', $uploadId)->first();
-    assert($row !== null);
-    app(StoreObject::class)->writeAt(
-        new StoredObjectRef('verification', (string) $row->object_id, (string) $row->storage_locator),
-        'application/pdf',
-        $bytes,
-    );
+        $row = DB::table('verification_upload_intents')->where('id', $uploadId)->first();
+        assert($row !== null);
+        app(StoreObject::class)->writeAt(
+            new StoredObjectRef('verification', (string) $row->object_id, (string) $row->storage_locator),
+            'application/pdf',
+            $bytes,
+        );
 
-    adminVerificationPostJson(
-        '/api/v1/verification-uploads/'.$uploadId.'/complete',
-        [],
-        adminVerificationIdem('acd-done-'.$key),
-    )->assertOk();
-    app(VerificationUploadProcessor::class)->process(Identifier::fromTrusted($uploadId));
+        adminVerificationPostJson(
+            '/api/v1/verification-uploads/'.$uploadId.'/complete',
+            [],
+            adminVerificationIdem('acd-done-'.$key.'-'.$code),
+        )->assertOk();
+        app(VerificationUploadProcessor::class)->process(Identifier::fromTrusted($uploadId));
+    }
 
     adminVerificationPostJson(
         '/api/v1/admin/doctor-applicants/'.$doctorId.'/verification-submissions',
