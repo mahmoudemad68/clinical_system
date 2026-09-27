@@ -429,16 +429,8 @@ export function CreateDoctorPage() {
                     hidden
                     data-testid={`file-input-${requirement.code}`}
                     onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                      const next = event.target.files?.[0] ?? null;
-                      setFiles((current) => {
-                        const copy = { ...current };
-                        if (next === null) {
-                          delete copy[requirement.code];
-                        } else {
-                          copy[requirement.code] = next;
-                        }
-                        return copy;
-                      });
+                      const next = event.target.files?.[0];
+                      setFiles((current) => ({ ...current, [requirement.code]: next }));
                       setReady((current) => ({ ...current, [requirement.code]: false }));
                       uploadKeys.current[requirement.code] = { upload: uuidV7(), complete: uuidV7() };
                     }}

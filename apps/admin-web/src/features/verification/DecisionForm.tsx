@@ -69,7 +69,7 @@ export function DecisionForm({
   onConflict,
 }: DecisionFormProps) {
   const { t, i18n } = useTranslation();
-  const locale = (i18n.resolvedLanguage ?? i18n.language ?? 'en').startsWith('ar') ? 'ar' : 'en';
+  const locale = (i18n.resolvedLanguage ?? i18n.language).startsWith('ar') ? 'ar' : 'en';
   const decide = useDecideVerificationCase(caseId);
   const idempotency = useRef(createDecisionIdempotency());
   const [confirmOpen, setConfirmOpen] = useState(false);
