@@ -174,11 +174,18 @@ it.
 
 ## MinIO bucket provisioning
 
-Compose starts digest-pinned MinIO (`quay.io/minio/minio`) and an
-idempotent `minio-init` using digest-pinned `quay.io/minio/mc`. Docker Hub
-`minio/minio` / `minio/mc` are gone (404 / pull access denied); the same
-RELEASE tags and index digests remain on quay.io. It creates
-`clinic-local-private`, sets anonymous
+Compose previously started digest-pinned MinIO (`quay.io/minio/minio`) and
+an idempotent `minio-init` using digest-pinned `quay.io/minio/mc`. Docker Hub
+`minio/minio` / `minio/mc` are gone (404 / pull access denied). As of
+2026-09-27, anonymous quay.io/minio pulls also return 401 Unauthorized and
+`dl.min.io` returns 410; CI no longer pulls those registries.
+
+Current CI/local bootstrap source-builds the same Community releases from
+pinned official GitHub archives (`infra/docker/minio-ci.Dockerfile`,
+`infra/security/minio-ci-source-pins.json`). See
+`docs/evidence/ci/restore-secure-file-provider-bootstrap.md`.
+
+It creates `clinic-local-private`, sets anonymous
 access to `none`, and uses local-only credentials
 (`clinic_local` / `local_dev_only_not_a_secret`). Those values must not be
 reused in shared environments. Application roles in real environments must
@@ -197,8 +204,8 @@ rather than skips.
 
 Job `secure-file-providers` on `pull-request`:
 
-- digest-pinned `docker run` of MinIO, `mc` bucket init, and clamd (not
-  unpinned GHA `services:` images)
+- source-built, checksum-verified MinIO/`mc` from pinned GitHub Community
+  releases plus digest-pinned clamd (not unpinned GHA `services:` images)
 - ISR-015 pin catalogue updated; workflow blob references every catalogued
   image ref
 - runs live S3 contract tests, live Clamd tests, and a provider-backed
