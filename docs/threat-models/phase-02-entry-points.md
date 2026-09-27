@@ -188,7 +188,7 @@ Inherited Phase 01 auth/platform channels (`clinic:auth.*`,
 
 ---
 
-## Non-HTTP security entry points (18)
+## Non-HTTP security entry points (19)
 
 These are not HTTP routes. Do not invent REST paths for them.
 
@@ -199,7 +199,7 @@ These are not HTTP routes. Do not invent REST paths for them.
 | 3 | `LinkVerifiedPatientAccount` | module service | claim ceremony | Throws `FeatureUnavailable` while `FEATURE_IDENTITY_PROFILE_CLAIM` is off | P02-T46 |
 | 4 | `VerificationUploadCompletedConsumer` | outbox consumer | `clinic_worker` | `verification.upload_completed` → `VerificationUploadProcessor::process` | P02-T44, P02-T29 |
 | 5 | `VerificationUploadProcessor` | module service | worker only | Observe bytes, inspect, scan, promote or reject | P02-T24, P02-T28 |
-| 6 | `verification:reconcile-uploads {--limit=50}` | artisan / hourly scheduler | system | Re-drive stuck scanning intents | P02-T44 |
+| 6 | `verification:reconcile-uploads {--limit=50}` | artisan / hourly scheduler | system | Selects expired `requested`/`uploading` (expire to `rejected`/`expired`; **does not delete objects in that step**), rejected rows past `cleanup_eligible_at` (**DELETE** quarantine objects), and expired AVAILABLE (**DELETE ingress only**). **Does not** select or re-drive `scanning` / `quarantined` / `validating` uploads. Never deletes AVAILABLE or submitted canonical evidence. | P02-T28, P02-T44 |
 | 7 | `e2e:process-verification-upload` | artisan | local/testing only | Fixture processor | P02-T29 |
 | 8 | `e2e:write-verification-upload` | artisan | local/testing only | Write fixture bytes | P02-T21 |
 | 9 | `e2e:seed-admin-verification` | artisan | local/testing only | Browser fixture | P02-T16 |
@@ -212,6 +212,7 @@ These are not HTTP routes. Do not invent REST paths for them.
 | 16 | `outbox:work` | worker (Phase 01 catalog) | `clinic_worker` | Now also dispatches verification upload consumer | P02-T44 |
 | 17 | `AdminVerificationReviewService` | module service | Admin HTTP | Queue/show/claim/decide/documentAccess facade | P02-T16 |
 | 18 | `platform:prune` | artisan (Phase 01) | system | Does **not** purge quarantine objects | P02-T28 residual |
+| 19 | `e2e:probe-doctor-clinic-capability` | artisan | local/testing only | **LOCAL/TESTING ONLY.** Disabled outside `local`/`testing`. Not production attack surface. Probes clinic-location capability for an Admin-created doctor. | n/a (fixture) |
 
 ---
 
@@ -220,14 +221,18 @@ These are not HTTP routes. Do not invent REST paths for them.
 | Kind | Actual name | Notes |
 | --- | --- | --- |
 | Laravel `ShouldQueue` job in Verification | **none** | Scan is outbox-driven, not a Horizon job class |
-| Outbox event | `verification.upload_completed` | Triggers processor |
+| Outbox event | `verification.upload_completed` | Triggers `VerificationUploadCompletedConsumer` → `VerificationUploadProcessor` |
 | Outbox event | `doctor.verification_submitted` | After doctor submit |
 | Outbox event | `doctor.verification_decided` / `pharmacy.verification_decided` | No notes, NID, object keys |
 | Outbox event | `patient.profile_created` / `patient.account_linked` | No NID |
 | Outbox event | `doctor.profile_created` | Admin-created and self |
 | Outbox event | `pharmacy.organization_created` / `pharmacy.branch_changed` / `pharmacy.membership_changed` | |
 | Outbox event | `clinic.location_changed` / `clinic.membership_changed` | |
-| Planned `pharmacy.verification_submitted` | **not emitted** | Tests assert count 0 |
+| Outbox event | `pharmacy.verification_submitted` | **NOT_EMITTED / NOT_CANONICALLY_REQUIRED** — Phase 02 never promised this event; tests assert count 0. Not implemented. |
+| Object storage | `StoreObject` / `S3StoreObject` | PUT grant `/q/` only; copy to `/c/`; `anonymousGet`/`anonymousList` throw. **No** S3 event-notification webhook |
+| Scanner | `ScanObject` / `ClamdScanObject` / `DisabledScanObject` | Worker pulls clamd INSTREAM; no inbound scanner HTTP |
+| Trusted-document issuer | `ProcessingTrustedDocumentEvidenceIssuer` (worker) / `DisabledTrustedDocumentEvidenceIssuer` (API) | Only worker context may mint AVAILABLE |
+| Cleanup | `verification:reconcile-uploads` | Expire stale `requested`/`uploading`; DELETE rejected/expired quarantine objects after `cleanup_eligible_at`; DELETE expired AVAILABLE **ingress only**. Does **not** operate on still-scanning uploads |
 | Object storage callback | **none** | No S3 event notification webhook |
 | Scanner callback | **none** | Core pulls clamd INSTREAM; no inbound scanner HTTP |
 

@@ -48,10 +48,11 @@ try, what stops them **today**, and what does not. `MITIGATED` requires a
 named source file **and** a named test/contract/CI artifact. “Code appears
 safe” is not evidence.
 
-ISR-016 repository completeness for this phase is the pair of this file +
-the entry-point catalog +
+ISR-016 repository completeness for this phase is the structural parser in
+`apps/core-api/tests/Support/ThreatModel/` plus
 `apps/core-api/tests/Feature/Platform/ThreatModelDocumentationTest.php`.
-Independent workshop remains G-08-04.
+Substring presence of an ID is not completeness. Independent workshop remains
+G-08-04.
 
 ---
 
@@ -81,7 +82,9 @@ MinIO CI from merged PR #30.
 
 - `FEATURE_IDENTITY_PROFILE_CLAIM` production/local enablement (P02-AUDIT-005)
 - approved **profile-correction policy** (P02-T45)
-- dual-approval for high-risk exceptions
+- dual-approval for high-risk exceptions (optional in the phase text; **not
+  configured** in policy v1.0.1 — P02-T47 NOT_APPLICABLE until a future
+  policy adds that category)
 - appeal HTTP
 - public directory / public PostGIS search
 - Inertia admin verification pages (admin is `apps/admin-web`)
@@ -95,7 +98,17 @@ MinIO CI from merged PR #30.
 ## Data-flow diagram — Phase 02
 
 KMS is **FUTURE / Phase 23**, not a live processor. Reviewer download is an
-application HMAC, not an S3 GET.
+application HMAC, not an S3 GET. There is **no** S3 event-notification
+webhook; the worker pulls bytes and clamd INSTREAM.
+
+The upload trust boundary is **not** “client → API → object store” for the
+bytes. The API issues a PUT grant. The component that **possesses the signed
+URL** then PUTs directly:
+
+- Doctor/Pharmacy Electron: **main process** holds the signed URL and streams
+  the opaque handle. The renderer never receives `upload_target`.
+- Admin represented-applicant upload: the **admin browser** holds
+  `upload_target.url` and performs the signed PUT.
 
 ```mermaid
 flowchart TB
@@ -121,7 +134,10 @@ flowchart TB
 
   subgraph F5["F5 Core HTTP / API"]
     API["/api/v1 patients doctors pharmacies<br/>clinics verification admin"]
+    Grant["POST verification-uploads<br/>or admin represented upload"]
+    RevGrant["POST .../documents/{id}/access"]
     RevDL["GET verification-review-files<br/>HMAC query"]
+    Reconcile["verification:reconcile-uploads"]
   end
 
   subgraph F6["F6 Authorization / profiles"]
@@ -152,7 +168,17 @@ flowchart TB
   DocR -->|typed IPC| DocP --> DocM --> API
   PhR -->|typed IPC| PhP --> PhM --> API
   Admin --> API
-  Admin -->|issued HMAC URL| RevDL
+  DocM --> Grant
+  PhM --> Grant
+  Admin --> Grant
+  Grant -->|PUT grant JSON| DocM
+  Grant -->|PUT grant JSON| PhM
+  Grant -->|upload_target.url in browser| Admin
+  DocM -->|"signed PUT /q/ (main holds URL)"| S3
+  PhM -->|"signed PUT /q/ (main holds URL)"| S3
+  Admin -->|"signed PUT /q/ (browser holds URL)"| S3
+  Admin --> RevGrant --> RevDL
+  RevDL -->|HMAC download streams canonical bytes| S3
   API --> AuthZ
   API --> Patients
   API --> Doctors
@@ -169,10 +195,12 @@ flowchart TB
   Worker --> Clam
   Worker --> S3
   Worker --> PG
+  Reconcile --> PG
+  Reconcile -->|"DELETE rejected/expired quarantine<br/>ingress; AVAILABLE ingress only"| S3
   Patients -.->|flag off| Claim
 ```
 
-Trust-boundary / data-flow inventory (13):
+Trust-boundary / data-flow inventory (17):
 
 1. Flutter patient → API
 2. Doctor renderer → preload → main → API
@@ -180,17 +208,25 @@ Trust-boundary / data-flow inventory (13):
 4. Admin browser → API
 5. API → PostgreSQL/PostGIS
 6. API/worker → Redis/queue
-7. API/worker → object storage
-8. Worker → malware scanner
-9. Applicant → upload pipeline (grant → PUT → complete → outbox → scan)
-10. Verifier → case projection + HMAC document access
+7. API/worker → object storage (grants, metadata, worker copy/observe)
+8. Worker → malware scanner (clamd INSTREAM; no inbound scanner HTTP)
+9. Applicant → upload pipeline (grant → complete → outbox → scan)
+10. Verifier → case projection + HMAC document-access grant → HMAC download endpoint → object-store retrieval
 11. Profile/membership authorization (`DefaultDenyAuthorizer`)
 12. Location/PostGIS (own-doctor / own-org only; no public search)
 13. Account → profile claim (`LinkVerifiedPatientAccount`, flag off)
+14. Doctor/Pharmacy Electron main → direct signed PUT to object storage (main possesses the signed URL)
+15. Admin browser represented upload → direct signed PUT to object storage (browser possesses the signed URL)
+16. HMAC reviewer-download endpoint → canonical object-store GET (application HMAC, not S3 `temporaryUrl`)
+17. `verification:reconcile-uploads` → upload-intent rows → object-store DELETE for rejected/expired quarantine objects (and expired AVAILABLE **ingress only**)
 
 ---
 
-## Actors (13)
+## Actors (19)
+
+Human roles plus non-human threat principals that actually touch Phase 02
+boundaries. Rows marked “trust-boundary principal” are not interactive
+product roles; they are still attackers/principals in the register.
 
 | Actor | Notes |
 | --- | --- |
@@ -201,16 +237,25 @@ Trust-boundary / data-flow inventory (13):
 | pharmacy member/operator | Branch-scoped membership |
 | clinic secretary/staff | Location-scoped membership |
 | admin verifier | AAL2 + `verification.case.review`; no clinical module |
+| admin acting on an applicant's behalf | Represented-doctor create/upload/submit (`doctors.admin.create`); not the assigned reviewer of that case |
+| staff invitee | Clinic secretary / pharmacy operator accepting an invitation |
 | malicious authenticated user | Cross-object IDOR/BFLA |
+| anonymous caller | Unauthenticated HTTP against onboarding/reviewer-download/public probes |
 | compromised renderer/client | XSS in Electron renderer or stolen SPA |
 | malicious uploaded document | MIME/polyglot/malware/bomb |
 | insider/reviewer | Need-to-know browsing, notes, bulk access |
 | background worker/service | `clinic_worker`; confused deputy |
-| external object-storage/scanner boundary | MinIO/S3 + clamd |
+| external object-storage/scanner boundary | MinIO/S3 + clamd (trust-boundary principal) |
+| log-sink/operator boundary | Operators with log/event/export access (trust-boundary principal, not a product role) |
+| supply-chain attacker | Compromised desktop/CI dependency (SF-001 / extract-zip); trust-boundary principal |
+| direct database reader | Stolen replica / excessive DB role; HMAC/ciphertext offline abuse (trust-boundary principal) |
 
 ---
 
-## Assets (18)
+## Assets (23)
+
+Invitation phone material is grouped: invitation rows store a **blind index
+only**. They do **not** persist invitee phone ciphertext.
 
 | Asset | Classification | Store | Trust boundary |
 | --- | --- | --- | --- |
@@ -232,6 +277,11 @@ Trust-boundary / data-flow inventory (13):
 | Upload handles/grants | credential | intent row + signed PUT; Electron opaque handle | client ↔ API ↔ S3 |
 | Location/address data | personal/location | address ciphertext; public_name | API ↔ PostgreSQL |
 | Worker DB identity | credential | `clinic_worker` role | worker ↔ PostgreSQL |
+| Staff invitation phone ciphertext | sensitive / **not on invitation rows** | Invitee `users.phone_e164_encrypted` only; clinic/pharmacy invitation tables store **no** phone ciphertext by design | API ↔ PostgreSQL |
+| Staff invitation phone blind index | internal lookup | `clinic_staff_invitations.target_phone_lookup_hmac` and `pharmacy_staff_invitations.target_phone_lookup_hmac` | API ↔ PostgreSQL |
+| `clinic_staff_profiles` | identity | secretary profile row linked to `user_id` | API ↔ PostgreSQL |
+| Reviewer-download signing key | credential | `ReviewerDocumentUrlSigner` uses `config('app.key')` HMAC secret | API process |
+| Idempotency records | internal | `idempotency_keys` (onboarding/upload/decide replay) | API ↔ PostgreSQL |
 
 ---
 
@@ -256,7 +306,7 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | STRIDE / privacy | Tampering / Information disclosure |
 | Abuse scenario | Two authoritative profiles for one National ID or registration HMAC |
 | Existing control | Unique `national_id_lookup_hmac` / registration HMAC; row lock; loser → `manual_review_required` without disclosure |
-| Evidence | `PatientProfileRaceTest`; `PatientProfileFlowsTest` uniqueness; `DoctorProfileFlowsTest`; `PharmacyOrganizationFlowsTest`; `AdminCreatedDoctorHttpTest` duplicate identity |
+| Evidence | `PatientProfileRaceTest`; `DoctorProfileRaceTest`; `PharmacyOrganizationRaceTest`; `AdminCreatedDoctorRaceTest` |
 | Residual | Claim attach still off (P02-T46) |
 | Status | **MITIGATED** |
 | Owner | engineering |
@@ -286,7 +336,7 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | Attacker | Authenticated or unauthenticated probe |
 | STRIDE / privacy | Information disclosure |
 | Abuse scenario | Existence oracle via distinct error codes or leaked HMAC/plaintext |
-| Existing control | Generic `manual_review_required`; no `patient_id` on collision; no public resolve HTTP; events/logs omit NID |
+| Existing control | Generic `manual_review_required`; registration-bound National ID comparison (`CreatePatientProfile` `matchesBoundIdentity` against the account `national_id_lookup_hmac`); no `patient_id` on collision; no public resolve HTTP; events/logs omit NID |
 | Evidence | `PatientProfileFlowsTest` non-disclosure; `RedactionCanaryTest`; chunk-01 canary sinks |
 | Residual | Timing side-channel not load-tested here |
 | Status | **MITIGATED** |
@@ -453,7 +503,7 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | Abuse scenario | Same admin claims/decides the represented case |
 | Existing control | Creating admin cannot claim/decide; other admin cannot upload/submit that applicant |
 | Evidence | `AdminCreatedDoctorHttpTest`; `VerificationPolicyV1HttpTest`; Playwright `admin-created-doctor.spec.ts` |
-| Residual | Dual-approval for high-risk is not implemented (P02-T47) |
+| Residual | Dual-approval remains NOT_APPLICABLE while policy v1.0.1 has no high-risk category (P02-T47) |
 | Status | **MITIGATED** |
 | Owner | engineering |
 | Independent acceptance | `PENDING_INDEPENDENT_REVIEW` |
@@ -642,13 +692,13 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 
 | Field | Value |
 | --- | --- |
-| Asset / flow | `/q/` and `/c/` locators |
-| Attacker | Renderer, logs, JSON, events |
+| Asset / flow | `/q/` and `/c/` locators; signed PUT grant |
+| Attacker | Renderer, admin browser, logs, JSON, events |
 | STRIDE / privacy | Information disclosure |
-| Abuse scenario | Client receives `object_key` or `X-Amz-` |
-| Existing control | Opaque upload id; PUT grant not projected to Electron renderer; reviewer JSON omits locators; logs drop signed query |
-| Evidence | `VerificationUploadFlowsTest`; `doctor-gateway.test.ts` / `pharmacy-gateway.test.ts`; `AdminVerificationDocumentAccessTest`; `upload-target.test.ts` |
-| Residual | Main process still sees the PUT URL (not the renderer) |
+| Abuse scenario | Client receives `object_key` or `X-Amz-`; renderer or SPA displays the PUT target |
+| Existing control | Opaque upload id. **Electron:** PUT grant is consumed in main (`doctor-gateway` / `pharmacy-gateway`); renderer never sees `upload_target`. **Admin represented upload:** the admin **browser** *does* hold `upload_target.url` and PUTs directly (`CreateDoctorPage.tsx`); grant is `/q/`-only, short-lived, no list/get. Reviewer JSON omits locators; logs drop signed query. |
+| Evidence | `VerificationUploadFlowsTest`; `doctor-gateway.test.ts` / `pharmacy-gateway.test.ts`; `CreateDoctorPage.test.tsx`; `AdminVerificationDocumentAccessTest`; `upload-target.test.ts` |
+| Residual | Electron main and the admin browser both possess PUT URLs by design. Renderer isolation does **not** apply to admin-web. Stolen in-TTL PUT URL can overwrite ingress only. |
 | Status | **MITIGATED** |
 | Owner | engineering |
 | Independent acceptance | `PENDING_INDEPENDENT_REVIEW` |
@@ -657,13 +707,13 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 
 | Field | Value |
 | --- | --- |
-| Asset / flow | Ingress `/q/` vs canonical `/c/` |
-| Attacker | Applicant completing before scan; worker skip |
+| Asset / flow | Ingress `/q/` vs canonical `/c/`; reconciler DELETE |
+| Attacker | Applicant completing before scan; worker skip; leftover quarantine bytes |
 | STRIDE / privacy | Tampering / Elevation |
-| Abuse scenario | Mark AVAILABLE without clean scan; reviewer reads ingress overwrite |
-| Existing control | PUT only on `/q/`; copyExact to `/c/` after clean; reviewer streams canonical; complete does not promote |
-| Evidence | `VerificationUploadFlowsTest`; `AdminVerificationDocumentDownloadTest` canonical vs ingress; `S3StoreObject` grant refuses `/c/` |
-| Residual | `platform:prune` does not delete abandoned quarantine objects |
+| Abuse scenario | Mark AVAILABLE without clean scan; reviewer reads ingress overwrite; abandoned `/q/` objects linger forever |
+| Existing control | PUT only on `/q/`; `copyExact` to `/c/` after clean; reviewer streams canonical; complete does not promote. `verification:reconcile-uploads` selects expired `requested`/`uploading` (expire to `rejected`/`expired`, **no delete in that step**), rejected rows past `cleanup_eligible_at` (**DELETE** ingress and unused canonical refs), and expired AVAILABLE (**DELETE ingress only**). It does **not** select `scanning` / `quarantined` / `validating`. Never deletes AVAILABLE or submitted **canonical** evidence. Verification **business** retention of submitted documents is separate from quarantine-object cleanup. |
+| Evidence | `VerificationUploadFlowsTest` expire/retain/retry-delete; `ReconcileVerificationUploadsCommand`; `PostgresVerificationStore::uploadsEligibleForCleanup`; `AdminVerificationDocumentDownloadTest` canonical vs ingress; `S3StoreObject` grant refuses `/c/` |
+| Residual | Legal retention of rejected objects remains `OPEN_LEGAL_DECISION`. `platform:prune` still does not purge quarantine; the verification reconciler does, on its own eligibility rules. Failed DELETE leaves `cleanup_completed_at` null for retry. |
 | Status | **MITIGATED** |
 | Owner | engineering |
 | Independent acceptance | `PENDING_INDEPENDENT_REVIEW` |
@@ -695,8 +745,7 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | Evidence | `trust-boundary.test.ts` (doctor + pharmacy). **No** packaged WebdriverIO XSS-to-file corpus executed in this audit |
 | Residual | Packaged XSS-to-IPC remains an independent retest item |
 | Status | **PARTIAL** |
-| Owner | engineering |
-| Independent acceptance | `PENDING_INDEPENDENT_REVIEW` |
+| Owner | engineering — residual PARTIAL test-depth gap; **non-blocking** for P02-AUDIT-004 completeness (`PARTIAL` is an allowed register status). No invented follow-up audit ID. Packaged XSS-to-IPC is later desktop/G-08-04 retest, not this documentation gate. |
 
 ### P02-T31 — Forged Electron IPC sender
 
@@ -710,8 +759,7 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | Evidence | `sender-policy.test.ts` unit tests. **No** live `event.senderFrame` integration against a hostile frame |
 | Residual | Unit-level origin policy only |
 | Status | **PARTIAL** |
-| Owner | engineering |
-| Independent acceptance | `PENDING_INDEPENDENT_REVIEW` |
+| Owner | engineering — residual PARTIAL test-depth gap; **non-blocking** for P02-AUDIT-004 completeness. No invented follow-up audit ID. Live hostile `senderFrame` is later desktop retest, not this documentation gate. |
 
 ### P02-T32 — Stale opaque file handle
 
@@ -740,8 +788,7 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | Evidence | `doctor-gateway.test.ts` reset+clear; `platform-gateway.test.ts` logout. **Not** a full IPC upload after `auth.logout` |
 | Residual | Simulated via store clear, not packaged E2E after revoke |
 | Status | **PARTIAL** |
-| Owner | engineering |
-| Independent acceptance | `PENDING_INDEPENDENT_REVIEW` |
+| Owner | engineering — residual PARTIAL test-depth gap; **non-blocking** for P02-AUDIT-004 completeness. No invented follow-up audit ID. Full IPC-after-`auth.logout` is later desktop retest, not this documentation gate. |
 
 ### P02-T34 — Unsafe navigation / webview / external URL
 
@@ -765,10 +812,10 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | Asset / flow | NID, phone, address, notes, object keys |
 | Attacker | Operator with sink access |
 | STRIDE / privacy | Information disclosure / privacy |
-| Abuse scenario | Canaries in Monolog, outbox, audit metadata, metrics labels |
-| Existing control | Redacting log tap; event payloads IDs-only; metric labels without applicant ids |
+| Abuse scenario | Canaries in Monolog, outbox, audit metadata |
+| Existing control | Redacting log tap; event payloads IDs-only. Metric-label bounding is **not** claimed here: this register does not have a named Phase 02 test proving `clinic_secure_file_results_total` labels omit applicant ids. |
 | Evidence | `PatientProfileFlowsTest` events; `RedactionCanaryTest`; verification decide tests omit NID; chunk-01 listed sinks |
-| Residual | Other collectors (export/Sentry prod) remain G-07-05 / `OPERATIONAL_FOLLOW_THROUGH` |
+| Residual | Metrics/export/Sentry collectors remain unproven in this register (`OPERATIONAL_FOLLOW_THROUGH` / G-07-05). |
 | Status | **MITIGATED** |
 | Owner | engineering |
 | Independent acceptance | `OPERATIONAL_FOLLOW_THROUGH` (export) |
@@ -920,7 +967,7 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | Evidence | `UpdateOwnDemographics`; `PatientProfileFlowsTest` stale version / forbidden fields. **No** product/privacy/security policy artifact for correction/provenance |
 | Residual | **EXTERNAL_POLICY_INPUT_REQUIRED:** which demographic fields may be self-corrected vs staff-corrected, required reason/source, whether DOB/name changes need re-verification, retention of revision plaintext vs ciphertext, and dispute/merge workflow. Engineering must not invent that decision. |
 | Status | **OPEN** |
-| Owner | product / privacy / security (policy); engineering (current allowlist) |
+| Owner | P02-AUDIT-003 → EXTERNAL_POLICY_INPUT_REQUIRED (product / privacy / security policy); engineering owns the current technical allowlist only |
 | Independent acceptance | `EXTERNAL_HUMAN` |
 
 ### P02-T46 — Profile-claim enablement (out of scope)
@@ -940,18 +987,23 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 
 ### P02-T47 — Dual-approval high-risk exceptions
 
+Canonical Phase 02 (fraudulent professional approval) names **optional** dual
+approval for configured high-risk exceptions. Policy v1.0.1 configures **no**
+such high-risk category, so this control is not an implemented Phase 02
+requirement.
+
 | Field | Value |
 | --- | --- |
 | Asset / flow | Verification decide |
 | Attacker | Single rogue reviewer |
 | STRIDE / privacy | Elevation |
 | Abuse scenario | One AAL2 admin approves a high-risk fraudulent case without a second reviewer |
-| Existing control | Single assigned reviewer + AAL2 + reason catalogue. **No** dual-approval workflow |
-| Evidence | Absence: no dual-approval tests or config. Phase plan mentioned it as optional; not implemented |
-| Residual | Not fabricated here |
-| Status | **OPEN** |
-| Owner | product / security (whether required) |
-| Independent acceptance | `EXTERNAL_HUMAN` |
+| Existing control | Optional in the phase text. Current verification-policy v1.0.1 has no configured high-risk exception that requires dual approval. Single-reviewer residual is already modeled by P02-T13 (self-review), P02-T14 (creator-review), and P02-T50 (insider browsing). |
+| Evidence | `ApprovedVerificationPolicyV1Test`; policy JSON has no dual-approval / high-risk exception category. Canonical phase text: optional, not mandatory. |
+| Residual | If a future policy version **configures** a high-risk category that requires dual approval, this threat must be re-evaluated and cannot remain NOT_APPLICABLE by inertia. |
+| Status | **NOT_APPLICABLE** |
+| Owner | product / security (re-open if policy adds a high-risk dual-approval category) |
+| Independent acceptance | `NOT_REQUIRED_FOR_TECHNICAL_CONTROL` until a future policy configures the category |
 
 ### P02-T48 — Appeal flow abuse
 
@@ -980,7 +1032,7 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | Evidence | `infra/security/exceptions/SF-001.json`; Security scans “SF-001 merge exception binding” |
 | Residual | Unaccepted High; **not remediated or accepted here** |
 | Status | **OPEN** |
-| Owner | independent acceptor / G-01-21 |
+| Owner | P02-AUDIT-006 / SF-001 (`extract-zip@2.0.1`; independent acceptor / G-01-21) |
 | Independent acceptance | `PENDING_INDEPENDENT_ACCEPTANCE` |
 
 ### P02-T50 — Insider document browsing
@@ -1030,17 +1082,38 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 
 ---
 
+## Residual / open-risk treatment
+
+OPEN and PARTIAL are first-class outcomes. This register does not convert
+missing policy or missing packaged retests into MITIGATED.
+
+Ownership routing for remaining OPEN rows:
+
+- **P02-T45** → **P02-AUDIT-003** → `EXTERNAL_POLICY_INPUT_REQUIRED` (profile-correction policy). Engineering documents the current allowlist only.
+- **P02-T46** → **P02-AUDIT-005** (profile-claim enablement). Out of this task.
+- **P02-T49** → **P02-AUDIT-006 / SF-001** (`extract-zip@2.0.1`). Unchanged; not remediated here.
+
+P02-T47 dual approval is **NOT_APPLICABLE** while policy v1.0.1 configures no
+high-risk dual-approval category. P02-T48 appeal remains NOT_APPLICABLE (no
+route).
+
+P02-T30 / P02-T31 / P02-T33 are residual **PARTIAL** engineering test-depth
+gaps. They are **non-blocking** for P02-AUDIT-004 completeness because the
+canonical gate is an honest register with named evidence, not packaged
+XSS-to-IPC / live `senderFrame` / post-logout IPC re-runs. No follow-up audit
+IDs are invented.
+
 ## Status counts (P02-AUDIT-004 register)
 
 | Status | Count | IDs |
 | --- | --- | --- |
 | MITIGATED | 39 | T01–T11, T13–T22, T24, T26–T29, T32, T34–T38, T40–T44, T51–T52 |
 | PARTIAL | 8 | T12, T23, T25, T30, T31, T33, T39, T50 |
-| OPEN | 4 | T45, T46, T47, T49 |
-| NOT_APPLICABLE | 1 | T48 |
+| OPEN | 3 | T45, T46, T49 |
+| NOT_APPLICABLE | 2 | T47, T48 |
 | **Total** | **52** | |
 
-`STATUS_COUNTS MITIGATED=39 PARTIAL=8 OPEN=4 NOT_APPLICABLE=1 TOTAL=52`
+`STATUS_COUNTS MITIGATED=39 PARTIAL=8 OPEN=3 NOT_APPLICABLE=2 TOTAL=52`
 
 ---
 
@@ -1069,7 +1142,7 @@ here.
 | --- | --- |
 | Profile-correction policy | OPEN — `EXTERNAL_POLICY_INPUT_REQUIRED` |
 | Profile-claim enablement | OPEN — P02-AUDIT-005 (out of scope) |
-| Dual approval | OPEN — not implemented |
+| Dual approval | NOT_APPLICABLE — optional; policy v1.0.1 configures no high-risk category |
 | Appeal | deferred / NOT_APPLICABLE as HTTP |
 | SF-001 | OPEN / UNCHANGED |
 | G-08-04 | OPEN / EXTERNAL_HUMAN |

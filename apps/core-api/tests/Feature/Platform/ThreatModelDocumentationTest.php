@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Route;
+use Tests\Support\ThreatModel\Phase02CompletenessValidator;
+use Tests\Support\ThreatModel\Phase02ImplementedSurface;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -74,60 +77,59 @@ it('keeps Phase 00 and Phase 01 threat-model completeness claims aligned with so
     expect(substr_count($phase00, 'subgraph B'))->toBeGreaterThanOrEqual(8);
 });
 
-it('keeps Phase 02 threat-model completeness claims aligned with source', function () {
+it('structurally validates the Phase 02 threat register and inventories', function () {
     $root = dirname(base_path(), 2);
     $phase02 = (string) file_get_contents($root.'/docs/threat-models/phase-02-onboarding.md');
     $phase02Catalog = (string) file_get_contents($root.'/docs/threat-models/phase-02-entry-points.md');
     $phase02Evidence = (string) file_get_contents($root.'/docs/evidence/phase-02/p02-audit-004-threat-model.md');
 
+    $apiPhp = (string) file_get_contents(base_path('routes/api.php'));
+    $fromFile = Phase02ImplementedSurface::httpIdentitiesFromApiPhp($apiPhp);
+    $fromLaravel = Phase02ImplementedSurface::httpIdentitiesFromLaravelRoutes(Route::getRoutes());
+    expect($fromLaravel)->toEqual($fromFile);
+
+    $doctorTs = (string) file_get_contents($root.'/packages/typescript/desktop_bridge_contracts/src/doctor.ts');
+    $pharmacyTs = (string) file_get_contents($root.'/packages/typescript/desktop_bridge_contracts/src/pharmacy.ts');
+    $doctorChannels = Phase02ImplementedSurface::channelsFromContract($doctorTs, 'clinic:doctor.');
+    $pharmacyChannels = Phase02ImplementedSurface::channelsFromContract($pharmacyTs, 'clinic:pharmacy.');
+
+    $result = (new Phase02CompletenessValidator($root))->validate(
+        $phase02,
+        $phase02Catalog,
+        $phase02Evidence,
+        $fromFile,
+        $doctorChannels,
+        $pharmacyChannels,
+    );
+
+    expect($result->issues)->toEqual([])
+        ->and($result->statusCounts)->toBe([
+            'MITIGATED' => 39,
+            'PARTIAL' => 8,
+            'OPEN' => 3,
+            'NOT_APPLICABLE' => 2,
+            'TOTAL' => 52,
+        ])
+        ->and($result->httpCount)->toBe(44)
+        ->and($result->doctorIpcCount)->toBe(17)
+        ->and($result->pharmacyIpcCount)->toBe(16)
+        ->and($result->actorCount)->toBe(19)
+        ->and($result->assetCount)->toBe(23);
+
     expect($phase02)
         ->toContain('d16fcde5b07844f69547a7ed7be52187a44800d8')
         ->toContain('STRIDE')
-        ->toContain('PENDING_INDEPENDENT_REVIEW')
-        ->toContain('G-08-04')
-        ->toContain('OPEN')
-        ->toContain('EXTERNAL_HUMAN')
-        ->toContain('SF-001')
-        ->toContain('extract-zip@2.0.1')
+        ->toContain('**G-08-04:** `OPEN`')
         ->toContain('EXTERNAL_POLICY_INPUT_REQUIRED')
-        ->toContain('FEATURE_IDENTITY_PROFILE_CLAIM')
         ->toContain('P02-AUDIT-003 stays OPEN')
-        ->toContain('P02-AUDIT-005')
-        ->toContain('STATUS_COUNTS MITIGATED=39 PARTIAL=8 OPEN=4 NOT_APPLICABLE=1 TOTAL=52')
-        ->toContain('P02-T01')
-        ->toContain('P02-T12')
-        ->toContain('P02-T23')
-        ->toContain('P02-T30')
-        ->toContain('P02-T45')
-        ->toContain('P02-T46')
-        ->toContain('P02-T47')
-        ->toContain('P02-T48')
-        ->toContain('P02-T49')
-        ->toContain('P02-T52')
         ->not->toContain('READY_TO_MERGE')
         ->not->toContain('closes P02-AUDIT-003');
 
     expect(substr_count($phase02, 'subgraph F'))->toBeGreaterThanOrEqual(9);
 
-    expect($phase02Catalog)
-        ->toContain('HTTP entry points (44)')
-        ->toContain('Electron IPC entry points (33 domain + inherited auth)')
-        ->toContain('Non-HTTP security entry points (18)')
-        ->toContain('/api/v1/patients/onboarding')
-        ->toContain('/api/v1/verification-review-files/{caseId}/{documentId}')
-        ->toContain('/api/v1/admin/verification-cases/{caseId}/decisions')
-        ->toContain('clinic:doctor.evidence.select')
-        ->toContain('clinic:pharmacy.evidence.upload')
-        ->toContain('verification:reconcile-uploads')
-        ->toContain('CreateUnlinkedPatientProfile')
-        ->toContain('FEATURE_IDENTITY_PROFILE_CLAIM')
-        ->toContain('intentionally internal')
-        ->toContain('deferred');
-
     expect($phase02Evidence)
         ->toContain('P02-AUDIT-004')
-        ->toContain('READY_FOR_INDEPENDENT_QA')
+        ->toContain('READY_FOR_RE-QA')
         ->toContain('does **not** close P02-AUDIT-003')
-        ->toContain('G-08-04 remains OPEN')
         ->toContain('OPEN / UNCHANGED');
 });
