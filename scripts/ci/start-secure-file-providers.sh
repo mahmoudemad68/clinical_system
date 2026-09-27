@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-# Start digest-pinned MinIO and clamd for the secure-file provider CI lane.
-# Path-filter trigger: scripts/ci/** re-runs this job on evidence-only HEADs.
+# Start digest-pinned clamd and a source-built MinIO Community fixture for the
+# secure-file provider CI lane. Path-filter trigger: scripts/ci/** re-runs this
+# job on evidence-only HEADs.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-MINIO_IMAGE="quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e"
 CLAMAV_IMAGE="clamav/clamav:1.4.6@sha256:f156095071757e3838caa50265d65e36cdf7f934a27aacf851ea6d2fadbe8200"
+MINIO_IMAGE="clinic-ci-minio:local"
+MC_IMAGE="clinic-ci-mc:local"
+DOCKERFILE="${ROOT}/infra/docker/minio-ci.Dockerfile"
+DOCKER_CONTEXT="${ROOT}/infra/docker"
+
+python3 "${ROOT}/scripts/ci/verify-minio-ci-source-pins.py"
 
 wait_tcp() {
   local host="$1"
@@ -24,6 +30,10 @@ wait_tcp() {
 
 docker rm -f clinic-ci-minio clinic-ci-clamav >/dev/null 2>&1 || true
 
+export DOCKER_BUILDKIT=1
+docker build --pull --target minio -t "${MINIO_IMAGE}" -f "${DOCKERFILE}" "${DOCKER_CONTEXT}"
+docker build --pull --target mc -t "${MC_IMAGE}" -f "${DOCKERFILE}" "${DOCKER_CONTEXT}"
+
 docker run -d --name clinic-ci-minio --network host \
   -e MINIO_ROOT_USER=clinic_local \
   -e MINIO_ROOT_PASSWORD=local_dev_only_not_a_secret \
@@ -34,6 +44,7 @@ docker run -d --name clinic-ci-clamav --network host \
   "${CLAMAV_IMAGE}"
 
 wait_tcp 127.0.0.1 9000 30
+export MINIO_MC_IMAGE="${MC_IMAGE}"
 if ! bash "${ROOT}/scripts/ci/provision-minio-bucket.sh"; then
   echo "::error::MinIO bucket provision failed" >&2
   docker logs clinic-ci-minio >&2 || true

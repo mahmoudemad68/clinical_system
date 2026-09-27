@@ -1,5 +1,5 @@
 {
-  "resolved_at": "2026-08-31",
+  "resolved_at": "2026-09-27",
   "images": [
     {
       "readable": "postgis/postgis:16-3.4",
@@ -22,14 +22,14 @@
       "ref": "semgrep/semgrep:1.99.0@sha256:ae27024c16f7848cdbfd49c24ed0b78b13f13b85fcd7b87c679aaa8b0c0dce98"
     },
     {
-      "readable": "quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z",
-      "digest": "sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
-      "ref": "quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e"
+      "readable": "golang:1.24.2-alpine3.21",
+      "digest": "sha256:7772cb5322baa875edd74705556d08f0eeca7b9c4b5367754ce3f2f00041ccee",
+      "ref": "golang:1.24.2-alpine3.21@sha256:7772cb5322baa875edd74705556d08f0eeca7b9c4b5367754ce3f2f00041ccee"
     },
     {
-      "readable": "quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z",
-      "digest": "sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3",
-      "ref": "quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3"
+      "readable": "alpine:3.21.3",
+      "digest": "sha256:a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c",
+      "ref": "alpine:3.21.3@sha256:a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c"
     },
     {
       "readable": "clamav/clamav:1.4.6",
