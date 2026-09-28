@@ -86,6 +86,21 @@ final class Phase02ThreatRegisterParser
     }
 
     /**
+     * @param  list<array{id: string, title: string, fields: array<string, string>, status: string}>  $threats
+     * @return array{id: string, title: string, fields: array<string, string>, status: string}|null
+     */
+    public function findThreat(array $threats, string $id): ?array
+    {
+        foreach ($threats as $threat) {
+            if ($threat['id'] === $id) {
+                return $threat;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param  list<array{status: string}>  $threats
      * @return array{MITIGATED: int, PARTIAL: int, OPEN: int, NOT_APPLICABLE: int, TOTAL: int}
      */
@@ -128,6 +143,130 @@ final class Phase02ThreatRegisterParser
             'NOT_APPLICABLE' => (int) $match[4],
             'TOTAL' => (int) $match[5],
         ];
+    }
+
+    /**
+     * @return list<array{MITIGATED: int, PARTIAL: int, OPEN: int, NOT_APPLICABLE: int, TOTAL: int}>
+     */
+    public function parseAllPublishedStatusCounts(string $markdown): array
+    {
+        if (preg_match_all(
+            '/STATUS_COUNTS\s+MITIGATED=(\d+)\s+PARTIAL=(\d+)\s+OPEN=(\d+)\s+NOT_APPLICABLE=(\d+)\s+TOTAL=(\d+)/',
+            $markdown,
+            $matches,
+            PREG_SET_ORDER,
+        ) === false) {
+            return [];
+        }
+
+        $published = [];
+        foreach ($matches as $match) {
+            $published[] = [
+                'MITIGATED' => (int) $match[1],
+                'PARTIAL' => (int) $match[2],
+                'OPEN' => (int) $match[3],
+                'NOT_APPLICABLE' => (int) $match[4],
+                'TOTAL' => (int) $match[5],
+            ];
+        }
+
+        return $published;
+    }
+
+    /**
+     * Parse `| STATUS | N |` rollup rows (register table and evidence completeness).
+     *
+     * @return list<array{status: string, count: int}>
+     */
+    public function parseLabeledStatusCounts(string $markdown): array
+    {
+        $rows = [];
+        foreach (['MITIGATED', 'PARTIAL', 'OPEN', 'NOT_APPLICABLE'] as $status) {
+            if (preg_match_all('/^\| '.$status.' \| (\d+) \|/m', $markdown, $matches) === false) {
+                continue;
+            }
+            foreach ($matches[1] as $count) {
+                $rows[] = [
+                    'status' => $status,
+                    'count' => (int) $count,
+                ];
+            }
+        }
+        if (preg_match_all('/^\| \*\*Total\*\* \| \*\*(\d+)\*\* \|/m', $markdown, $totals) !== false) {
+            foreach ($totals[1] as $count) {
+                $rows[] = [
+                    'status' => 'TOTAL',
+                    'count' => (int) $count,
+                ];
+            }
+        }
+        if (preg_match_all('/^\| Threats \| (\d+) \|/m', $markdown, $threatTotals) !== false) {
+            foreach ($threatTotals[1] as $count) {
+                $rows[] = [
+                    'status' => 'TOTAL',
+                    'count' => (int) $count,
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Expand ID cells such as `T01–T11, T13, T40–T45` into P02-Txx ids.
+     *
+     * @return list<string>
+     */
+    public function expandThreatIdCell(string $cell): array
+    {
+        $ids = [];
+        if (preg_match_all('/T(\d+)(?:\s*[–—-]\s*T(\d+))?/u', $cell, $matches, PREG_SET_ORDER) === false) {
+            return $ids;
+        }
+        foreach ($matches as $match) {
+            $start = (int) $match[1];
+            $end = isset($match[2]) && $match[2] !== '' ? (int) $match[2] : $start;
+            if ($end < $start) {
+                [$start, $end] = [$end, $start];
+            }
+            for ($n = $start; $n <= $end; $n++) {
+                $ids[] = sprintf('%s%02d', self::ID_PREFIX, $n);
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public function parseStatusTableIds(string $markdown): array
+    {
+        $section = $this->sectionAfter($markdown, '/^## Status counts\b/m');
+        $idsByStatus = [];
+        foreach (['MITIGATED', 'PARTIAL', 'OPEN', 'NOT_APPLICABLE'] as $status) {
+            if (preg_match('/^\| '.$status.' \| \d+ \| ([^|]+) \|/m', $section, $match) === 1) {
+                $idsByStatus[$status] = $this->expandThreatIdCell($match[1]);
+            }
+        }
+
+        return $idsByStatus;
+    }
+
+    private function sectionAfter(string $markdown, string $startPattern): string
+    {
+        if (preg_match($startPattern, $markdown, $match, PREG_OFFSET_CAPTURE) !== 1) {
+            return '';
+        }
+        $start = (int) $match[0][1];
+        $rest = substr($markdown, $start);
+        $nl = strpos($rest, "\n");
+        $afterHeading = $nl === false ? '' : substr($rest, $nl + 1);
+        if (preg_match('/^## /m', $afterHeading, $next, PREG_OFFSET_CAPTURE) === 1) {
+            return substr($rest, 0, $nl + 1 + (int) $next[0][1]);
+        }
+
+        return $rest;
     }
 
     /**

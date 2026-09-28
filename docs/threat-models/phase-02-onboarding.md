@@ -10,18 +10,23 @@ paths, impact, implemented mitigation, verification/evidence, residual,
 owner, engineering status, independent-acceptance state, and an explicit
 **Status** of `MITIGATED`, `PARTIAL`, `OPEN`, or `NOT_APPLICABLE`.
 
-**ENGINEERING STATUS:** engineering draft for P02-AUDIT-004 against starting
-main `d16fcde5b07844f69547a7ed7be52187a44800d8`. This is **not** independent
-human approval.
+**ENGINEERING STATUS:** original P02-AUDIT-004 engineering draft against
+starting main `d16fcde5b07844f69547a7ed7be52187a44800d8`. Subsequent
+**QA-P02A003-014** evidence reconciliation of P02-T45 against main
+`8083ad0c85ce60a0346910416a83472861d971ca` after the merged profile-correction
+policy v1.0.2. This is **not** independent human approval and does **not**
+recast this file as a new original P02-AUDIT-004 closer.
 
 **INDEPENDENT/HUMAN ACCEPTANCE:** `PENDING_INDEPENDENT_REVIEW`. Assessor and
 remediator remain concentrated. Independent workshop/sign-off remains Phase 00
 **G-08-04 / EXTERNAL_HUMAN** and Phase 22. **Not a legal, privacy-officer, or
 statutory position.**
 
-Do not use `APPROVED` or `ACCEPTED` in this file. Do not convert plans into
-mitigations. Do not claim P02-AUDIT-003 closed: profile-correction policy is
-still missing (`EXTERNAL_POLICY_INPUT_REQUIRED`, P02-T45). Document-requirement
+Do not use `APPROVED` or `ACCEPTED` as independent-acceptance vocabulary in
+this file. Do not convert plans into mitigations. Do not claim P02-AUDIT-003
+**CLOSED**: the missing-policy condition on P02-T45 is resolved by merged
+v1.0.2 Freeze Current Behavior, and P02-AUDIT-003 is `READY_FOR_RE_QA`
+pending independent QA of this QA-P02A003-014 reconciliation. Document-requirement
 catalogue v1.0.1 is installed and tested; that is not this threat-model gate
 and is not G-08-04.
 
@@ -76,12 +81,13 @@ Same register as Phase 00/01:
 cases, uploads, scan, reviewer HMAC download; admin queue/claim/decide;
 clinic locations + staff; pharmacy branches + memberships; Electron opaque
 file handles; Flutter patient onboarding against generated Dart; source-built
-MinIO CI from merged PR #30.
+MinIO CI from merged PR #30; Product/Security/Privacy profile-correction
+policy evidence v1.0.2 Freeze Current Behavior (P02-T45; evidence-only,
+runtime unchanged).
 
 **NOT implemented / NOT live / NOT claimed:**
 
 - `FEATURE_IDENTITY_PROFILE_CLAIM` production/local enablement (P02-AUDIT-005)
-- approved **profile-correction policy** (P02-T45)
 - dual-approval for high-risk exceptions (optional in the phase text; **not
   configured** in policy v1.0.1 — P02-T47 NOT_APPLICABLE until a future
   policy adds that category)
@@ -955,7 +961,13 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | Owner | engineering |
 | Independent acceptance | `PENDING_INDEPENDENT_REVIEW` |
 
-### P02-T45 — Profile-correction policy missing
+### P02-T45 — Profile-correction policy (Freeze Current Behavior)
+
+P02-T45 was **OPEN** solely because Product/Privacy/Security policy evidence
+was absent. Merged v1.0.2 Freeze Current Behavior plus named alignment tests
+now satisfy this register’s MITIGATED rule (named source file **and** named
+test). This row is **evidence-only**; runtime self-correction is unchanged.
+Independent QA of QA-P02A003-014 has not run. G-08-04 remains OPEN separately.
 
 | Field | Value |
 | --- | --- |
@@ -963,12 +975,12 @@ revoke; insider with AAL2; claim flag mistakenly enabled.
 | Attacker | Patient or support process |
 | STRIDE / privacy | Tampering / privacy |
 | Abuse scenario | Engineering allowlist (`full_name`, `gender`, `date_of_birth`, `height_cm`, `weight_kg`, `marital_status`, `blood_type`) used as if it were an approved correction policy, including National-ID immutability and provenance |
-| Existing control | Technical allowlist + revision history + version; National ID is **not** in `EDITABLE` |
-| Evidence | `UpdateOwnDemographics`; `PatientProfileFlowsTest` stale version / forbidden fields. **No** product/privacy/security policy artifact for correction/provenance |
-| Residual | **EXTERNAL_POLICY_INPUT_REQUIRED:** which demographic fields may be self-corrected vs staff-corrected, required reason/source, whether DOB/name changes need re-verification, retention of revision plaintext vs ciphertext, and dispute/merge workflow. Engineering must not invent that decision. |
-| Status | **OPEN** |
-| Owner | P02-AUDIT-003 → EXTERNAL_POLICY_INPUT_REQUIRED (product / privacy / security policy); engineering owns the current technical allowlist only |
-| Independent acceptance | `EXTERNAL_HUMAN` |
+| Existing control | Freeze Current Behavior policy v1.0.2 plus technical allowlist + revision history + version; National ID is **not** in `EDITABLE`. Policy reflects current runtime. |
+| Evidence | Product evidence, Privacy evidence, and Security evidence now exist: `docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.2-phase02.json` (SHA-256 `1961be59aa3ea0ab2e712ebc854d15a23343ca03485d81155aa4c36627c35e37`); `docs/evidence/phase-02/p02-audit-003-profile-correction-policy.md`; `Phase02PatientProfileCorrectionPolicyAlignmentTest`; `Phase02PatientProfileCorrectionPolicyHttpAlignmentTest`; `UpdateOwnDemographics`; `PatientProfileFlowsTest` stale version / forbidden fields. Decision `FREEZE_CURRENT_BEHAVIOR`. |
+| Residual | Freeze accepts the current self-correction residuals (no staff-correction path, no AAL2, no re-verification, revision plaintext, erasure survivors). `OPEN_LEGAL_DECISION` remains **non-blocking** under the canonical Phase 02 gate. Missing-policy condition is **resolved**. Independent workshop remains G-08-04 OPEN / EXTERNAL_HUMAN (separate from this row). |
+| Status | **MITIGATED** |
+| Owner | engineering (policy artifact + alignment tests). P02-AUDIT-003 is `READY_FOR_RE_QA` after QA-P02A003-014 evidence reconciliation; not CLOSED. Final audit closure remains subject to independent QA. |
+| Independent acceptance | `PENDING_INDEPENDENT_REVIEW` |
 
 ### P02-T46 — Profile-claim enablement (out of scope)
 
@@ -1089,9 +1101,13 @@ missing policy or missing packaged retests into MITIGATED.
 
 Ownership routing for remaining OPEN rows:
 
-- **P02-T45** → **P02-AUDIT-003** → `EXTERNAL_POLICY_INPUT_REQUIRED` (profile-correction policy). Engineering documents the current allowlist only.
-- **P02-T46** → **P02-AUDIT-005** (profile-claim enablement). Out of this task.
+- **P02-T46** → **P02-AUDIT-005** (profile-claim enablement). Out of this task. Unchanged / OPEN.
 - **P02-T49** → **P02-AUDIT-006 / SF-001** (`extract-zip@2.0.1`). Unchanged; not remediated here.
+
+P02-T45’s missing-policy condition is **resolved** (MITIGATED) by merged
+v1.0.2 Freeze Current Behavior. See the T45 row. This is evidence-only
+reconciliation (**QA-P02A003-014**). P02-AUDIT-003 is `READY_FOR_RE_QA`,
+not CLOSED; final audit closure remains subject to independent QA.
 
 P02-T47 dual approval is **NOT_APPLICABLE** while policy v1.0.1 configures no
 high-risk dual-approval category. P02-T48 appeal remains NOT_APPLICABLE (no
@@ -1107,13 +1123,13 @@ IDs are invented.
 
 | Status | Count | IDs |
 | --- | --- | --- |
-| MITIGATED | 39 | T01–T11, T13–T22, T24, T26–T29, T32, T34–T38, T40–T44, T51–T52 |
+| MITIGATED | 40 | T01–T11, T13–T22, T24, T26–T29, T32, T34–T38, T40–T45, T51–T52 |
 | PARTIAL | 8 | T12, T23, T25, T30, T31, T33, T39, T50 |
-| OPEN | 3 | T45, T46, T49 |
+| OPEN | 2 | T46, T49 |
 | NOT_APPLICABLE | 2 | T47, T48 |
 | **Total** | **52** | |
 
-`STATUS_COUNTS MITIGATED=39 PARTIAL=8 OPEN=3 NOT_APPLICABLE=2 TOTAL=52`
+`STATUS_COUNTS MITIGATED=40 PARTIAL=8 OPEN=2 NOT_APPLICABLE=2 TOTAL=52`
 
 ---
 
@@ -1125,11 +1141,18 @@ profile-correction policies.
 
 - Document-requirement / reviewer-separation engineering controls are in the
   v1.0.1 policy install and tests (not closed here as P02-AUDIT-003).
-- Profile-correction policy remains **OPEN** (P02-T45).
-- Therefore **P02-AUDIT-003 stays OPEN**. This work must not be read as closing
-  it.
+- Profile-correction policy evidence is merged as v1.0.2 Freeze Current
+  Behavior (`docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.2-phase02.json`,
+  SHA-256 `1961be59aa3ea0ab2e712ebc854d15a23343ca03485d81155aa4c36627c35e37`;
+  Product/Privacy/Security evidence in
+  `docs/evidence/phase-02/p02-audit-003-profile-correction-policy.md`).
+  P02-T45’s missing-policy condition is therefore **resolved**.
+- Obsolete rationale that kept P02-AUDIT-003 open solely for a missing policy
+  is **not** current. **P02-AUDIT-003 is `READY_FOR_RE_QA`** after this
+  QA-P02A003-014 evidence reconciliation. It is **not CLOSED**. Final audit
+  closure remains subject to independent QA.
 
-Known documentation mismatch (left in place per scope):
+Known documentation mismatch (left in place per original P02-AUDIT-004 scope):
 `docs/evidence/phase-02/verification-policy-v1.0.1-phase02.md` historically
 mislabels P02-AUDIT-003/P02-AUDIT-008 relative to later QA. Not rewritten
 here.
@@ -1140,7 +1163,7 @@ here.
 
 | Topic | State |
 | --- | --- |
-| Profile-correction policy | OPEN — `EXTERNAL_POLICY_INPUT_REQUIRED` |
+| Profile-correction policy | MITIGATED — merged v1.0.2 Freeze Current Behavior; QA-P02A003-014 evidence reconciliation; P02-AUDIT-003 `READY_FOR_RE_QA` (not CLOSED) |
 | Profile-claim enablement | OPEN — P02-AUDIT-005 (out of scope) |
 | Dual approval | NOT_APPLICABLE — optional; policy v1.0.1 configures no high-risk category |
 | Appeal | deferred / NOT_APPLICABLE as HTTP |

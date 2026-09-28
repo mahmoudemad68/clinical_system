@@ -144,4 +144,105 @@ final class Phase02MarkdownMutations
     {
         return $markdown."\n\nG-08-04 APPROVED\n";
     }
+
+    public static function claimG0804Completed(string $markdown): string
+    {
+        return $markdown."\n\nG-08-04 completed\n";
+    }
+
+    /**
+     * @param  array{MITIGATED: int, PARTIAL: int, OPEN: int, NOT_APPLICABLE: int, TOTAL: int}  $counts
+     */
+    public static function replacePublishedStatusCounts(string $markdown, array $counts): string
+    {
+        return (string) preg_replace(
+            '/STATUS_COUNTS\s+MITIGATED=\d+\s+PARTIAL=\d+\s+OPEN=\d+\s+NOT_APPLICABLE=\d+\s+TOTAL=\d+/',
+            sprintf(
+                'STATUS_COUNTS MITIGATED=%d PARTIAL=%d OPEN=%d NOT_APPLICABLE=%d TOTAL=%d',
+                $counts['MITIGATED'],
+                $counts['PARTIAL'],
+                $counts['OPEN'],
+                $counts['NOT_APPLICABLE'],
+                $counts['TOTAL'],
+            ),
+            $markdown,
+        );
+    }
+
+    public static function corruptFirstPublishedStatusCounts(string $markdown): string
+    {
+        return (string) preg_replace(
+            '/STATUS_COUNTS\s+MITIGATED=(\d+)/',
+            'STATUS_COUNTS MITIGATED=0',
+            $markdown,
+            1,
+        );
+    }
+
+    public static function setT45OpenMissingPolicy(string $markdown): string
+    {
+        $updated = self::changeThreatStatus($markdown, 'P02-T45', 'OPEN');
+        $updated = (string) preg_replace(
+            '/^### P02-T45\s+.*$/m',
+            '### P02-T45 — Profile-correction policy missing',
+            $updated,
+            1,
+        );
+
+        return self::replaceThreatField(
+            $updated,
+            'P02-T45',
+            'Evidence',
+            '`UpdateOwnDemographics`; **No** product/privacy/security policy artifact for correction/provenance',
+        );
+    }
+
+    public static function removeCurrentPolicyReference(string $markdown): string
+    {
+        return str_replace(
+            Phase02CompletenessValidator::CURRENT_PROFILE_CORRECTION_JSON,
+            'docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.REMOVED.json',
+            $markdown,
+        );
+    }
+
+    public static function corruptCurrentPolicySha(string $markdown): string
+    {
+        return str_replace(
+            Phase02CompletenessValidator::CURRENT_PROFILE_CORRECTION_SHA256,
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            $markdown,
+        );
+    }
+
+    public static function replaceThreatField(string $markdown, string $id, string $fieldLabel, string $value): string
+    {
+        if (preg_match(
+            '/^### '.preg_quote($id, '/').'\s+.*?(?=^### P02-T|\Z)/msu',
+            $markdown,
+            $match,
+        ) !== 1) {
+            return $markdown;
+        }
+        $updated = preg_replace(
+            '/^\| '.preg_quote($fieldLabel, '/').' \| .* \|$/m',
+            '| '.$fieldLabel.' | '.$value.' |',
+            $match[0],
+            1,
+        );
+
+        return str_replace($match[0], (string) $updated, $markdown);
+    }
+
+    /**
+     * Change a threat status and rewrite STATUS_COUNTS to match the mutated register.
+     */
+    public static function resolveThreatKeepingCountsConsistent(string $markdown, string $id, string $status = 'MITIGATED'): string
+    {
+        $updated = self::changeThreatStatus($markdown, $id, $status);
+        $parser = new Phase02ThreatRegisterParser;
+        $derived = $parser->deriveStatusCounts($parser->parseThreats($updated));
+
+        return self::replacePublishedStatusCounts($updated, $derived);
+    }
 }

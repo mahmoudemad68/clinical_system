@@ -194,3 +194,77 @@ it('detects a false G-08-04 APPROVED claim and allows OPEN wording', function ()
     expect($matched)->toBeTrue()
         ->and($good->passed())->toBeTrue();
 });
+
+it('detects T45 restored to OPEN missing-policy while v1.0.2 exists', function () {
+    $fx = phase02RemediationFixtures();
+    $mutated = Phase02MarkdownMutations::setT45OpenMissingPolicy($fx['onboarding']);
+    $result = $fx['validator']->validate($mutated, $fx['catalog'], $fx['evidence'], $fx['http'], $fx['doctor'], $fx['pharmacy']);
+
+    expect($result->passed())->toBeFalse();
+    expect(implode("\n", $result->issues))
+        ->toContain('P02-T45 status OPEN while current profile-correction policy artifact exists')
+        ->toContain('P02-T45 says profile-correction policy is missing while v1.0.2 is current')
+        ->toContain('P02-T45 says no Product/Security/Privacy evidence exists');
+});
+
+it('detects removal of the current v1.0.2 artifact reference', function () {
+    $fx = phase02RemediationFixtures();
+    $mutated = Phase02MarkdownMutations::removeCurrentPolicyReference($fx['onboarding']);
+    $result = $fx['validator']->validate($mutated, $fx['catalog'], $fx['evidence'], $fx['http'], $fx['doctor'], $fx['pharmacy']);
+
+    expect($result->passed())->toBeFalse()
+        ->and($result->issues)->toContain('P02-T45 current artifact reference is missing/wrong');
+});
+
+it('detects a wrong current v1.0.2 SHA on T45', function () {
+    $fx = phase02RemediationFixtures();
+    $mutated = Phase02MarkdownMutations::corruptCurrentPolicySha($fx['onboarding']);
+    $result = $fx['validator']->validate($mutated, $fx['catalog'], $fx['evidence'], $fx['http'], $fx['doctor'], $fx['pharmacy']);
+
+    expect($result->passed())->toBeFalse()
+        ->and($result->issues)->toContain('P02-T45 current artifact SHA is missing/wrong');
+});
+
+it('detects a corrupted duplicated STATUS_COUNTS summary', function () {
+    $fx = phase02RemediationFixtures();
+    $mutated = Phase02MarkdownMutations::corruptFirstPublishedStatusCounts($fx['onboarding']);
+    $result = $fx['validator']->validate($mutated, $fx['catalog'], $fx['evidence'], $fx['http'], $fx['doctor'], $fx['pharmacy']);
+
+    expect($result->passed())->toBeFalse();
+    $joined = implode("\n", $result->issues);
+    expect($joined)->toContain('STATUS_COUNTS MITIGATED=0 does not match derived')
+        ->and($joined)->toContain('duplicated STATUS_COUNTS summaries disagree');
+});
+
+it('detects T46 marked resolved even when STATUS_COUNTS are rewritten', function () {
+    $fx = phase02RemediationFixtures();
+    $mutated = Phase02MarkdownMutations::resolveThreatKeepingCountsConsistent($fx['onboarding'], 'P02-T46');
+    $result = $fx['validator']->validate($mutated, $fx['catalog'], $fx['evidence'], $fx['http'], $fx['doctor'], $fx['pharmacy']);
+
+    expect($result->passed())->toBeFalse()
+        ->and($result->issues)->toContain('P02-T46 status changed from OPEN to MITIGATED');
+});
+
+it('detects T49 marked resolved even when STATUS_COUNTS are rewritten', function () {
+    $fx = phase02RemediationFixtures();
+    $mutated = Phase02MarkdownMutations::resolveThreatKeepingCountsConsistent($fx['onboarding'], 'P02-T49');
+    $result = $fx['validator']->validate($mutated, $fx['catalog'], $fx['evidence'], $fx['http'], $fx['doctor'], $fx['pharmacy']);
+
+    expect($result->passed())->toBeFalse()
+        ->and($result->issues)->toContain('P02-T49 status changed from OPEN to MITIGATED');
+});
+
+it('detects a false G-08-04 completed claim', function () {
+    $fx = phase02RemediationFixtures();
+    $completed = Phase02MarkdownMutations::claimG0804Completed($fx['onboarding']);
+    $result = $fx['validator']->validate($completed, $fx['catalog'], $fx['evidence'], $fx['http'], $fx['doctor'], $fx['pharmacy']);
+
+    expect($result->passed())->toBeFalse();
+    $matched = false;
+    foreach ($result->issues as $issue) {
+        if (str_contains($issue, 'forbidden G-08-04')) {
+            $matched = true;
+        }
+    }
+    expect($matched)->toBeTrue();
+});
