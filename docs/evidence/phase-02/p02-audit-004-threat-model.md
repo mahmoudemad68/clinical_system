@@ -5,6 +5,12 @@ Phase 02 complete, does **not** close P02-AUDIT-003, does **not** start
 P02-AUDIT-005/006/007, and does **not** claim G-08-04 or production
 promotion.
 
+P02-AUDIT-004 originally closed as the Phase 02 threat-model engineering
+register. The block below records that original register. A later
+**QA-P02A003-014** section reconciles P02-T45 after the profile-correction
+policy merge. This file is **not** rewritten as though the T45
+reconciliation was the original P02-AUDIT-004 closer.
+
 | Field | Value |
 | --- | --- |
 | Starting main | `d16fcde5b07844f69547a7ed7be52187a44800d8` |
@@ -13,7 +19,7 @@ promotion.
 | Methodology | STRIDE + privacy; Phase 00/01 register fields; structural parser (not substring completeness) |
 | Independent acceptance | `PENDING_INDEPENDENT_REVIEW` — **G-08-04: OPEN / EXTERNAL_HUMAN** |
 | SF-001 | **OPEN / UNCHANGED** (`extract-zip@2.0.1`) |
-| Profile-correction | **OUT OF PRODUCT-POLICY SCOPE** — P02-T45 `EXTERNAL_POLICY_INPUT_REQUIRED` routed to P02-AUDIT-003 |
+| Profile-correction | **RECONCILED** — P02-T45 MITIGATED by merged v1.0.2 Freeze Current Behavior; Product/Privacy/Security evidence exists; P02-AUDIT-003 `READY_FOR_RE_QA` (not CLOSED). Original P02-AUDIT-004 closure predated this reconciliation. |
 | Profile-claim enablement | **OUT OF SCOPE** (P02-AUDIT-005) — P02-T46 OPEN |
 
 AI/agent authoring is engineering evidence, not independent human approval.
@@ -26,15 +32,15 @@ AI/agent authoring is engineering evidence, not independent human approval.
 | Assets | 23 |
 | Trust-boundary / data-flow edges | 17 |
 | Threats | 52 |
-| MITIGATED | 39 |
+| MITIGATED | 40 |
 | PARTIAL | 8 |
-| OPEN | 3 |
+| OPEN | 2 |
 | NOT_APPLICABLE | 2 |
 | HTTP Phase 02 entry points | 44 |
 | Electron domain IPC channels | 33 (17 doctor + 16 pharmacy) |
 | Non-HTTP security entry points | 19 |
 
-`STATUS_COUNTS MITIGATED=39 PARTIAL=8 OPEN=3 NOT_APPLICABLE=2 TOTAL=52`
+`STATUS_COUNTS MITIGATED=40 PARTIAL=8 OPEN=2 NOT_APPLICABLE=2 TOTAL=52`
 
 Counts are **derived** from parsed threat rows by
 `Phase02ThreatRegisterParser`. The human-readable summary must match.
@@ -51,7 +57,6 @@ Counts are **derived** from parsed threat rows by
 | P02-T33 | PARTIAL | Handle clear on logout-equivalent; not full IPC after `auth.logout`. Non-blocking for P02-AUDIT-004 completeness |
 | P02-T39 | PARTIAL | No public geo search (reduces exposure); no adversarial PostGIS corpus |
 | P02-T50 | PARTIAL | Claim/no-bulk-export tested; reviewer volume alerts not proven |
-| P02-T45 | OPEN | **P02-AUDIT-003 / EXTERNAL_POLICY_INPUT_REQUIRED** profile-correction policy |
 | P02-T46 | OPEN | **P02-AUDIT-005** claim enablement |
 | P02-T49 | OPEN | **P02-AUDIT-006 / SF-001** unchanged |
 
@@ -101,6 +106,7 @@ Every MITIGATED row points at a test or contract, not “looks safe”:
 | T42 | Historical decision rows retained |
 | T43 | Rollback-on-audit-failure tests |
 | T44 | `VerificationWorkerAuditIdentityTest` |
+| T45 | `docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.2-phase02.json` SHA-256 `1961be59aa3ea0ab2e712ebc854d15a23343ca03485d81155aa4c36627c35e37`; `docs/evidence/phase-02/p02-audit-003-profile-correction-policy.md`; `Phase02PatientProfileCorrectionPolicyAlignmentTest`; `Phase02PatientProfileCorrectionPolicyHttpAlignmentTest` |
 | T51 | Anonymous deny; source-built MinIO on merged main |
 | T52 | Unlinked services have no HTTP; capability default-deny |
 
@@ -127,12 +133,39 @@ path existence, and G-08-04 OPEN wording. There is no separate
 
 ## P02-AUDIT-003 threat-model component
 
-Satisfied as **engineering draft** by `phase-02-onboarding.md`. P02-AUDIT-003
-**remains OPEN** because profile-correction policy is missing (P02-T45) and
-independent acceptance is G-08-04.
+**Original P02-AUDIT-004 closure (historical):** the threat-model register was
+an engineering draft. At that time P02-AUDIT-003 remained open because
+profile-correction Product/Privacy/Security policy evidence had not yet been
+merged. That original 004 closure is **not** restated by this file as a new
+event, and this reconciliation PR is **not** the original closer of
+P02-AUDIT-004.
+
+**Current after QA-P02A003-014 (evidence-only):** profile-correction policy
+v1.0.2 Freeze Current Behavior is merged
+(`docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.2-phase02.json`,
+SHA-256 `1961be59aa3ea0ab2e712ebc854d15a23343ca03485d81155aa4c36627c35e37`;
+`docs/evidence/phase-02/p02-audit-003-profile-correction-policy.md`).
+P02-T45’s missing-policy condition is **resolved** (MITIGATED). Product,
+Privacy, and Security policy evidence now exists. The policy reflects current
+runtime behavior (`FREEZE_CURRENT_BEHAVIOR`). `OPEN_LEGAL_DECISION` remains
+non-blocking under the canonical Phase 02 gate.
+
+**P02-AUDIT-003 is `READY_FOR_RE_QA`**, not CLOSED. Final audit closure
+remains subject to independent QA of this reconciliation. Independent
+acceptance of the threat model remains G-08-04 OPEN / EXTERNAL_HUMAN.
 
 ## Proposed verdict
 
-**READY_FOR_RE-QA** as engineering P02-AUDIT-004 remediation.
+**Original P02-AUDIT-004:** engineering register **CLOSED** before this work
+(READY_FOR_RE-QA as the original 004 remediation, then independently
+accepted as the threat-model component). This PR does **not** re-close
+P02-AUDIT-004 and does **not** recast T45 reconciliation as that original
+closure.
 
-Not CLOSED. Not READY_TO_MERGE. Not Phase 02 PASS. G-08-04 not self-approved.
+**QA-P02A003-014 (this change):** evidence-only T45 reconciliation
+`REMEDIATED_AWAITING_RE_QA`. P02-T45 `RECONCILED_AWAITING_RE_QA`.
+P02-AUDIT-003 `READY_FOR_RE_QA`.
+
+Not READY_TO_MERGE. Not Phase 02 PASS. G-08-04 not self-approved.
+P02-AUDIT-005 remains OPEN. P02-AUDIT-006 remains OPEN / UNCHANGED.
+P02-AUDIT-007 remains OPEN / EXTERNAL_HUMAN.

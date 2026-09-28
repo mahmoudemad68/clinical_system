@@ -10,6 +10,12 @@ namespace Tests\Support\ThreatModel;
  */
 final class Phase02CompletenessValidator
 {
+    public const CURRENT_PROFILE_CORRECTION_JSON = 'docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.2-phase02.json';
+
+    public const CURRENT_PROFILE_CORRECTION_SHA256 = '1961be59aa3ea0ab2e712ebc854d15a23343ca03485d81155aa4c36627c35e37';
+
+    public const PROFILE_CORRECTION_EVIDENCE = 'docs/evidence/phase-02/p02-audit-003-profile-correction-policy.md';
+
     /** @var array<string, string>|null */
     private ?array $basenameIndex = null;
 
@@ -43,7 +49,7 @@ final class Phase02CompletenessValidator
         $issues = array_merge($issues, $this->threatIdentityIssues($parsed));
         $issues = array_merge($issues, $this->threatFieldIssues($parsed));
         $counts = $this->threats->deriveStatusCounts($parsed);
-        $issues = array_merge($issues, $this->statusSummaryIssues($onboarding, $counts));
+        $issues = array_merge($issues, $this->statusSummaryIssues($onboarding, $evidence, $counts, $parsed));
         $issues = array_merge($issues, $this->approvalWordingIssues($onboarding."\n".$evidence));
         $issues = array_merge($issues, $this->actorAssetIssues($onboarding));
         $issues = array_merge($issues, $this->dfdIssues($onboarding));
@@ -55,6 +61,8 @@ final class Phase02CompletenessValidator
         $issues = array_merge($issues, $this->httpIssues($catalog, $http, $implementedHttpIdentities));
         $issues = array_merge($issues, $this->ipcIssues($catalog, $doctor, $pharmacy, $implementedDoctorChannels, $implementedPharmacyChannels));
         $issues = array_merge($issues, $this->evidenceReferenceIssues($parsed));
+        $issues = array_merge($issues, $this->profileCorrectionReconciliationIssues($parsed, $onboarding, $evidence));
+        $issues = array_merge($issues, $this->preservedOpenBlockerIssues($parsed, $onboarding, $evidence));
 
         $actors = $this->tableRowCount($onboarding, '/^## Actors\b/m');
         $assets = $this->tableRowCount($onboarding, '/^## Assets\b/m');
@@ -152,22 +160,68 @@ final class Phase02CompletenessValidator
 
     /**
      * @param  array{MITIGATED: int, PARTIAL: int, OPEN: int, NOT_APPLICABLE: int, TOTAL: int}  $derived
+     * @param  list<array{id: string, status: string}>  $parsed
      * @return list<string>
      */
-    private function statusSummaryIssues(string $onboarding, array $derived): array
+    private function statusSummaryIssues(string $onboarding, string $evidence, array $derived, array $parsed): array
     {
-        $published = $this->threats->parsePublishedStatusCounts($onboarding);
-        if ($published === null) {
+        $issues = [];
+        $publishedBlocks = $this->threats->parseAllPublishedStatusCounts($onboarding."\n".$evidence);
+        if ($publishedBlocks === []) {
             return ['missing STATUS_COUNTS summary derived from the register'];
         }
-        $issues = [];
-        foreach (['MITIGATED', 'PARTIAL', 'OPEN', 'NOT_APPLICABLE', 'TOTAL'] as $key) {
-            if ($published[$key] !== $derived[$key]) {
-                $issues[] = 'STATUS_COUNTS '.$key.'='.$published[$key].' does not match derived '.$derived[$key];
+        foreach ($publishedBlocks as $index => $published) {
+            foreach (['MITIGATED', 'PARTIAL', 'OPEN', 'NOT_APPLICABLE', 'TOTAL'] as $key) {
+                if ($published[$key] !== $derived[$key]) {
+                    $issues[] = 'STATUS_COUNTS '.$key.'='.$published[$key].' does not match derived '.$derived[$key];
+                }
+            }
+            if ($index > 0 && $published !== $publishedBlocks[0]) {
+                $issues[] = 'duplicated STATUS_COUNTS summaries disagree';
             }
         }
 
-        return $issues;
+        foreach ($this->threats->parseLabeledStatusCounts($onboarding."\n".$evidence) as $row) {
+            if ($row['count'] !== $derived[$row['status']]) {
+                $issues[] = 'status table '.$row['status'].'='.$row['count'].' does not match derived '.$derived[$row['status']];
+            }
+        }
+
+        $byStatus = [];
+        foreach ($parsed as $threat) {
+            $byStatus[$threat['status']][] = $threat['id'];
+        }
+        $tableIds = $this->threats->parseStatusTableIds($onboarding);
+        foreach (['MITIGATED', 'PARTIAL', 'OPEN', 'NOT_APPLICABLE'] as $status) {
+            $expected = $byStatus[$status] ?? [];
+            $listed = $tableIds[$status] ?? null;
+            if ($listed === null) {
+                continue;
+            }
+            sort($expected);
+            $listedSorted = $listed;
+            sort($listedSorted);
+            if ($expected !== $listedSorted) {
+                $issues[] = 'status table IDs for '.$status.' do not match register rows';
+            }
+        }
+
+        $t45 = $this->threats->findThreat($parsed, 'P02-T45');
+        if ($t45 !== null) {
+            $openListed = $tableIds['OPEN'] ?? [];
+            $mitigatedListed = $tableIds['MITIGATED'] ?? [];
+            if ($t45['status'] === 'MITIGATED' && in_array('P02-T45', $openListed, true)) {
+                $issues[] = 'P02-T45 status MITIGATED disagrees with OPEN summary IDs';
+            }
+            if ($t45['status'] === 'MITIGATED' && $mitigatedListed !== [] && ! in_array('P02-T45', $mitigatedListed, true)) {
+                $issues[] = 'P02-T45 status MITIGATED disagrees with MITIGATED summary IDs';
+            }
+            if ($t45['status'] === 'OPEN' && in_array('P02-T45', $mitigatedListed, true)) {
+                $issues[] = 'P02-T45 status OPEN disagrees with MITIGATED summary IDs';
+            }
+        }
+
+        return array_values(array_unique($issues));
     }
 
     /**
@@ -183,10 +237,10 @@ final class Phase02CompletenessValidator
             if (preg_match('/\bOPEN\b/', $window) === 1) {
                 continue;
             }
-            if (preg_match('/\bnot\b.{0,40}\b(APPROVED|ACCEPTED|CLOSED)\b/i', $window) === 1) {
+            if (preg_match('/\bnot\b.{0,40}\b(APPROVED|ACCEPTED|CLOSED|COMPLETED)\b/i', $window) === 1) {
                 continue;
             }
-            if (preg_match('/\b(APPROVED|ACCEPTED|CLOSED)\b/', $window) === 1) {
+            if (preg_match('/\b(APPROVED|ACCEPTED|CLOSED|COMPLETED)\b/i', $window) === 1) {
                 $issues[] = 'forbidden G-08-04 approval/closure wording: '.$window;
             }
         }
@@ -452,6 +506,227 @@ final class Phase02CompletenessValidator
         }
 
         return $issues;
+    }
+
+    /**
+     * @param  list<array{id: string, title: string, fields: array<string, string>, status: string}>  $parsed
+     * @return list<string>
+     */
+    private function profileCorrectionReconciliationIssues(array $parsed, string $onboarding, string $evidence): array
+    {
+        $issues = [];
+        $jsonPath = $this->repoRoot.'/'.self::CURRENT_PROFILE_CORRECTION_JSON;
+        if (! is_file($jsonPath)) {
+            return ['missing current profile-correction policy artifact '.self::CURRENT_PROFILE_CORRECTION_JSON];
+        }
+        $fileSha = hash('sha256', (string) file_get_contents($jsonPath));
+        if ($fileSha !== self::CURRENT_PROFILE_CORRECTION_SHA256) {
+            $issues[] = 'current profile-correction artifact SHA is '.$fileSha.' expected '.self::CURRENT_PROFILE_CORRECTION_SHA256;
+        }
+
+        $t45 = $this->threats->findThreat($parsed, 'P02-T45');
+        if ($t45 === null) {
+            return $issues;
+        }
+
+        $t45Text = $t45['title']."\n".implode("\n", $t45['fields']);
+        $t45Evidence = (string) ($t45['fields']['evidence'] ?? '');
+        $t45Flat = $this->flatten($t45Text);
+
+        if ($t45['status'] !== 'MITIGATED') {
+            $issues[] = 'P02-T45 status '.$t45['status'].' while current profile-correction policy artifact exists';
+        }
+        if (str_contains($t45Flat, 'policy missing') || str_contains($t45Flat, 'policy is missing') || str_contains($t45Flat, 'policy is still missing')) {
+            $issues[] = 'P02-T45 says profile-correction policy is missing while v1.0.2 is current';
+        }
+        if (str_contains($t45Flat, 'external_policy_input_required')) {
+            $issues[] = 'P02-T45 says profile-correction policy is missing while v1.0.2 is current';
+        }
+        if ($this->claimsNoProductPrivacySecurityEvidence($t45Evidence)) {
+            $issues[] = 'P02-T45 says no Product/Security/Privacy evidence exists';
+        }
+        $evidenceFlat = $this->flatten($t45Evidence);
+        foreach (['product evidence', 'privacy evidence', 'security evidence'] as $required) {
+            if (! str_contains($evidenceFlat, $required)) {
+                $issues[] = 'P02-T45 does not record '.$required;
+            }
+        }
+        if (! str_contains($t45Evidence, self::CURRENT_PROFILE_CORRECTION_JSON)) {
+            $issues[] = 'P02-T45 current artifact reference is missing/wrong';
+        }
+        if (! str_contains($t45Evidence, self::CURRENT_PROFILE_CORRECTION_SHA256)) {
+            $issues[] = 'P02-T45 current artifact SHA is missing/wrong';
+        }
+        if (preg_match('/\b[a-f0-9]{64}\b/', $t45Evidence, $shaMatch) === 1
+            && $shaMatch[0] !== self::CURRENT_PROFILE_CORRECTION_SHA256) {
+            $issues[] = 'P02-T45 current artifact SHA is missing/wrong';
+        }
+        if (! str_contains($t45Evidence, self::PROFILE_CORRECTION_EVIDENCE)) {
+            $issues[] = 'P02-T45 missing profile-correction evidence document reference';
+        }
+        if (! str_contains($t45Evidence, 'Phase02PatientProfileCorrectionPolicyAlignmentTest')) {
+            $issues[] = 'P02-T45 MITIGATED evidence missing named alignment test';
+        }
+        if (! str_contains($t45Flat, 'freeze_current_behavior')) {
+            $issues[] = 'P02-T45 missing FREEZE_CURRENT_BEHAVIOR decision';
+        }
+
+        if (preg_match('/^\| P02-T45 \| OPEN \|/m', $evidence) === 1 && $t45['status'] !== 'OPEN') {
+            $issues[] = 'P02-T45 listed OPEN in evidence while register status is '.$t45['status'];
+        }
+        if ($t45['status'] === 'MITIGATED' && preg_match('/^\| T45 \| /m', $evidence) !== 1) {
+            $issues[] = 'P02-T45 MITIGATED evidence map row is missing';
+        }
+        if (preg_match('/^\| Profile-correction \| ([^|]+) \|/m', $evidence, $profileCell) === 1) {
+            $cell = $this->flatten($profileCell[1]);
+            if (str_contains($cell, 'out of product-policy scope')
+                || str_contains($cell, 'external_policy_input_required')
+                || str_contains($cell, 'policy is missing')) {
+                $issues[] = 'threat-model evidence document says the profile-correction policy is absent';
+            }
+        }
+        if ($this->currentVoiceMissingPolicyParagraphs($evidence) !== []) {
+            $issues[] = 'threat-model evidence document says the profile-correction policy is absent';
+        }
+
+        $audit003Path = $this->repoRoot.'/'.self::PROFILE_CORRECTION_EVIDENCE;
+        if (! is_file($audit003Path)) {
+            $issues[] = 'missing P02-AUDIT-003 profile-correction evidence document';
+        } else {
+            $audit003 = (string) file_get_contents($audit003Path);
+            if (! str_contains($audit003, self::CURRENT_PROFILE_CORRECTION_SHA256)
+                || ! str_contains($audit003, 'FREEZE_CURRENT_BEHAVIOR')) {
+                $issues[] = 'P02-AUDIT-003 evidence missing current v1.0.2 Freeze Current Behavior reference';
+            }
+            if ($this->currentVoiceMissingPolicyParagraphs($audit003) !== []) {
+                $issues[] = 'P02-AUDIT-003 evidence currently cites obsolete missing-policy rationale';
+            }
+        }
+
+        $combined = $onboarding."\n".$evidence;
+        if (! str_contains($combined, 'READY_FOR_RE_QA')) {
+            $issues[] = 'P02-AUDIT-003 current wording must be READY_FOR_RE_QA';
+        }
+        if ($this->claimsAudit003Closed($combined)) {
+            $issues[] = 'P02-AUDIT-003 falsely claimed CLOSED before independent QA';
+        }
+
+        return array_values(array_unique($issues));
+    }
+
+    /**
+     * @param  list<array{id: string, title: string, fields: array<string, string>, status: string}>  $parsed
+     * @return list<string>
+     */
+    private function preservedOpenBlockerIssues(array $parsed, string $onboarding, string $evidence): array
+    {
+        $issues = [];
+        $combined = $onboarding."\n".$evidence;
+        $t46 = $this->threats->findThreat($parsed, 'P02-T46');
+        $t49 = $this->threats->findThreat($parsed, 'P02-T49');
+        if ($t46 === null) {
+            $issues[] = 'missing threat ID P02-T46';
+        } elseif ($t46['status'] !== 'OPEN') {
+            $issues[] = 'P02-T46 status changed from OPEN to '.$t46['status'];
+        } else {
+            $t46Text = $this->flatten($t46['title'].' '.implode(' ', $t46['fields']));
+            if (! str_contains($t46Text, 'p02-audit-005')) {
+                $issues[] = 'P02-T46 missing P02-AUDIT-005 owner';
+            }
+        }
+        if ($t49 === null) {
+            $issues[] = 'missing threat ID P02-T49';
+        } elseif ($t49['status'] !== 'OPEN') {
+            $issues[] = 'P02-T49 status changed from OPEN to '.$t49['status'];
+        } else {
+            $t49Text = $this->flatten($t49['title'].' '.implode(' ', $t49['fields']));
+            if (! str_contains($t49Text, 'sf-001') || ! str_contains($t49Text, 'extract-zip')) {
+                $issues[] = 'P02-T49 missing SF-001 extract-zip residual';
+            }
+        }
+        $flat = $this->flatten($combined);
+        if (str_contains($flat, 'profile claim') && preg_match('/profile claim[^\n]{0,80}(enabled|live|on)/i', $combined) === 1) {
+            $issues[] = 'wording implies profile claim is enabled';
+        }
+        if (preg_match('/SF-001[^\n]{0,80}\b(ACCEPTED|CLOSED|REMEDIATED)\b/', $combined) === 1
+            && preg_match('/SF-001[^\n]{0,80}\bOPEN\b/', $combined) !== 1) {
+            $issues[] = 'wording implies SF-001 is accepted';
+        }
+
+        return $issues;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function currentVoiceMissingPolicyParagraphs(string $text): array
+    {
+        $hits = [];
+        $chunks = preg_split('/\n{2,}/', $text) ?: [];
+        foreach ($chunks as $chunk) {
+            $flat = $this->flatten($chunk);
+            $historical = str_contains($flat, 'historical')
+                || str_contains($flat, 'originally')
+                || str_contains($flat, 'at that time')
+                || str_contains($flat, 'obsolete')
+                || str_contains($flat, 'not current')
+                || str_contains($flat, 'predated')
+                || str_contains($flat, 'was absent')
+                || str_contains($flat, 'had not yet');
+            $missing = str_contains($flat, 'out of product-policy scope')
+                || str_contains($flat, 'profile-correction policy is missing')
+                || str_contains($flat, 'profile-correction policy is still missing')
+                || str_contains($flat, 'no product/privacy/security policy')
+                || str_contains($flat, 'no product privacy security policy')
+                || str_contains($flat, 'p02-audit-003 stays open')
+                || str_contains($flat, 'p02-audit-003 remains open because');
+            if ($missing && ! $historical) {
+                $hits[] = $chunk;
+            }
+        }
+
+        return $hits;
+    }
+
+    private function claimsNoProductPrivacySecurityEvidence(string $evidence): bool
+    {
+        $flat = $this->flatten($evidence);
+
+        return str_contains($flat, 'no product/privacy/security policy')
+            || str_contains($flat, 'no product privacy security policy')
+            || (str_contains($flat, 'no product') && str_contains($flat, 'policy artifact'));
+    }
+
+    private function claimsAudit003Closed(string $text): bool
+    {
+        if (preg_match_all('/P02-AUDIT-003[^\n]{0,160}/', $text, $matches) === false) {
+            return false;
+        }
+        foreach ($matches[0] as $window) {
+            $flat = $this->flatten($window);
+            if (! str_contains($flat, 'closed')) {
+                continue;
+            }
+            if (str_contains($flat, 'not closed')
+                || str_contains($flat, 'not claim')
+                || str_contains($flat, 'does not close')
+                || str_contains($flat, 'do not claim')) {
+                continue;
+            }
+            if (preg_match('/p02-audit-003[^\n]{0,80}closed/', $flat) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function flatten(string $text): string
+    {
+        $stripped = str_replace(['*', '`', '"', "'"], '', $text);
+        $collapsed = preg_replace('/\s+/', ' ', $stripped) ?? $stripped;
+
+        return strtolower($collapsed);
     }
 
     /**

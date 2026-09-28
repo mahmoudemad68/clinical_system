@@ -104,9 +104,9 @@ it('structurally validates the Phase 02 threat register and inventories', functi
 
     expect($result->issues)->toEqual([])
         ->and($result->statusCounts)->toBe([
-            'MITIGATED' => 39,
+            'MITIGATED' => 40,
             'PARTIAL' => 8,
-            'OPEN' => 3,
+            'OPEN' => 2,
             'NOT_APPLICABLE' => 2,
             'TOTAL' => 52,
         ])
@@ -118,10 +118,14 @@ it('structurally validates the Phase 02 threat register and inventories', functi
 
     expect($phase02)
         ->toContain('d16fcde5b07844f69547a7ed7be52187a44800d8')
+        ->toContain('8083ad0c85ce60a0346910416a83472861d971ca')
         ->toContain('STRIDE')
         ->toContain('**G-08-04:** `OPEN`')
-        ->toContain('EXTERNAL_POLICY_INPUT_REQUIRED')
-        ->toContain('P02-AUDIT-003 stays OPEN')
+        ->toContain('1961be59aa3ea0ab2e712ebc854d15a23343ca03485d81155aa4c36627c35e37')
+        ->toContain('FREEZE_CURRENT_BEHAVIOR')
+        ->toContain('READY_FOR_RE_QA')
+        ->toContain('QA-P02A003-014')
+        ->not->toContain('P02-AUDIT-003 stays OPEN')
         ->not->toContain('READY_TO_MERGE')
         ->not->toContain('closes P02-AUDIT-003');
 
@@ -131,5 +135,7 @@ it('structurally validates the Phase 02 threat register and inventories', functi
         ->toContain('P02-AUDIT-004')
         ->toContain('READY_FOR_RE-QA')
         ->toContain('does **not** close P02-AUDIT-003')
-        ->toContain('OPEN / UNCHANGED');
+        ->toContain('OPEN / UNCHANGED')
+        ->toContain('QA-P02A003-014')
+        ->toContain('1961be59aa3ea0ab2e712ebc854d15a23343ca03485d81155aa4c36627c35e37');
 });
