@@ -17,11 +17,14 @@ use Modules\Identity\Enums\LanguagePreference;
 use Modules\Identity\Support\ActorContext;
 use Modules\Identity\Support\NationalId;
 use Modules\Patients\Http\Controllers\PatientProfileController;
+use Modules\Patients\Services\Persistence\PostgresPatientProfileStore;
 use Modules\Patients\Services\UpdateOwnDemographics;
 use Modules\Patients\Support\DemographicRules;
 use Modules\Patients\Support\PatientDemographicRevisionRecorder;
 use Modules\Patients\Support\PatientSubjectHoldings;
+use Modules\Platform\Http\Middleware\AssignCorrelationId;
 use Modules\Platform\Services\Features\PlatformFeatures;
+use Modules\Platform\Services\Identity\UuidV7Generator;
 use Modules\Platform\Support\Identifier;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -80,6 +83,38 @@ function phase02RevisionCheckFields(): array
     return array_values($fields[1]);
 }
 
+/**
+ * @return list<string>
+ */
+function phase02EraseLinkedProfileUpdateKeys(): array
+{
+    $source = (string) file_get_contents(base_path('Modules/Patients/app/Services/Persistence/PostgresPatientProfileStore.php'));
+    expect(preg_match(
+        '/public function eraseLinkedProfiles\(.*?->update\(\[(.*?)\n\s+\]\);/s',
+        $source,
+        $match,
+    ))->toBe(1);
+    preg_match_all("/'([a-z_]+)'\s*=>/", $match[1], $keys);
+
+    return array_values($keys[1]);
+}
+
+/**
+ * @return list<string>
+ */
+function phase02PatientProfileSchemaColumns(): array
+{
+    $migration = (string) file_get_contents(base_path('database/migrations/2026_09_01_150000_create_patient_profile_tables.php'));
+    expect(preg_match(
+        '/Schema::create\(\'patient_profiles\', function \(Blueprint \$table\): void \{\n(?P<body>.*?)\n\s+\}\);/s',
+        $migration,
+        $match,
+    ))->toBe(1);
+    preg_match_all("/\\\$table->[A-Za-z]+\\('([a-z_]+)'/", $match['body'], $columns);
+
+    return array_values($columns[1]);
+}
+
 describe('P02-AUDIT-003 profile-correction policy artifact', function () {
     it('keeps the SHA-256 companion equal to the hash of the JSON file bytes', function () {
         $computed = Artifact::computedSha256();
@@ -102,8 +137,13 @@ describe('P02-AUDIT-003 profile-correction policy artifact', function () {
         expect($artifact['policy_namespace'])->toBe('phase02-patient-profile-correction')
             ->and($artifact['distinct_from_verification_policy'])->toBeTrue()
             ->and($artifact['title'])->toBe('Phase 02 Patient Profile Correction Policy')
-            ->and($artifact['version'])->toBe('v1.0.0-phase02')
-            ->and($artifact['supersedes'])->toBeNull()
+            ->and($artifact['version'])->toBe(Artifact::VERSION)
+            ->and($artifact['version'])->toBe('v1.0.1-phase02')
+            ->and($artifact['supersedes'])->toBe(Artifact::SUPERSEDES)
+            ->and($artifact['supersedes'])->toBe('v1.0.0-phase02')
+            ->and($artifact['accuracy_amendment']['from'])->toBe('v1.0.0-phase02')
+            ->and($artifact['accuracy_amendment']['findings'])->toBe(['QA-P02A003-001', 'QA-P02A003-002'])
+            ->and($artifact['accuracy_amendment']['policy_behavior_decision_unchanged'])->toBeTrue()
             ->and($artifact['release_date'])->toBe('2026-09-28')
             ->and($artifact['status'])->toBe('APPROVED_PRODUCTION_POLICY')
             ->and($artifact['decision'])->toBe('FREEZE_CURRENT_BEHAVIOR')
@@ -111,6 +151,31 @@ describe('P02-AUDIT-003 profile-correction policy artifact', function () {
             ->and($artifact['p02_mapping']['threat_id'])->toBe('P02-T45')
             ->and($artifact['version'])->not->toBe($verification['version'])
             ->and($artifact['policy_id'])->not->toBe('phase02-verification-policy');
+    });
+
+    it('preserves v1.0.0 historical bytes and does not reuse that hash for v1.0.1', function () {
+        $historical = Artifact::historicalDecoded();
+        $current = Artifact::decoded();
+        $historicalHash = Artifact::historicalComputedSha256();
+        $currentHash = Artifact::computedSha256();
+
+        expect($historical['version'])->toBe('v1.0.0-phase02')
+            ->and($historical['supersedes'])->toBeNull()
+            ->and($historical['provenance']['request_id'])->toBe('existing_correlation_request_identifier')
+            ->and($historical['provenance']['caller_supplied'])->toBeFalse()
+            ->and($historicalHash)->toBe(Artifact::HISTORICAL_PUBLISHED_SHA256)
+            ->and(Artifact::historicalRecordedSha256())->toBe(Artifact::HISTORICAL_PUBLISHED_SHA256)
+            ->and($currentHash)->not->toBe(Artifact::HISTORICAL_PUBLISHED_SHA256)
+            ->and($currentHash)->toBe(Artifact::recordedSha256())
+            ->and($current['version'])->toBe('v1.0.1-phase02')
+            ->and($current['provenance'])->not->toHaveKey('caller_supplied')
+            ->and($current['provenance']['request_id'])->toBeArray();
+
+        $evidence = (string) file_get_contents(Artifact::evidencePath());
+        expect($evidence)->toContain(basename(Artifact::RELATIVE_JSON))
+            ->and($evidence)->toContain(basename(Artifact::RELATIVE_HISTORICAL_JSON))
+            ->and($evidence)->toContain('READY_FOR_RE_QA')
+            ->and($evidence)->toContain('REMEDIATED_AWAITING_RE_QA');
     });
 
     it('attributes Product Privacy and Security using the established verification-policy identities', function () {
@@ -235,21 +300,48 @@ describe('P02-AUDIT-003 runtime alignment', function () {
         }
     });
 
-    it('keeps reason source and actor server-controlled as implemented', function () {
+    it('keeps reason source and actor server-controlled while allowing a valid caller X-Request-Id as correlation', function () {
         $artifact = Artifact::decoded();
-        $source = (string) file_get_contents(base_path('Modules/Patients/app/Services/UpdateOwnDemographics.php'));
+        $service = (string) file_get_contents(base_path('Modules/Patients/app/Services/UpdateOwnDemographics.php'));
+        $controller = (string) file_get_contents(base_path('Modules/Patients/app/Http/Controllers/PatientProfileController.php'));
+        $middleware = (string) file_get_contents(base_path('Modules/Platform/app/Http/Middleware/AssignCorrelationId.php'));
+        $identifierPattern = (new ReflectionClass(Identifier::class))->getReflectionConstant('PATTERN');
+        expect($identifierPattern)->toBeInstanceOf(ReflectionClassConstant::class);
+        $generated = (new UuidV7Generator)->next()->value;
+        $requestIdPolicy = $artifact['provenance']['request_id'];
 
         expect($artifact['reason']['code'])->toBe('self_correction')
             ->and($artifact['reason']['caller_supplied'])->toBeFalse()
             ->and($artifact['reason']['catalogue_required_in_phase02'])->toBeFalse()
             ->and($artifact['reason']['free_text_required_in_phase02'])->toBeFalse()
             ->and($artifact['provenance']['source_type'])->toBe('self_onboarding')
+            ->and($artifact['provenance']['source_type_caller_supplied'])->toBeFalse()
             ->and($artifact['provenance']['actor_type'])->toBe('user')
-            ->and($artifact['provenance']['caller_supplied'])->toBeFalse()
-            ->and($source)->toContain("'reason_code' => 'self_correction'")
-            ->and($source)->toContain("'source_type' => 'self_onboarding'")
-            ->and($source)->toContain("'actor_type' => 'user'")
-            ->and($source)->toContain("'request_id' => \$requestId->value");
+            ->and($artifact['provenance']['actor_identity_caller_supplied'])->toBeFalse()
+            ->and($artifact['provenance']['actor_identity_source'])->toBe('authenticated_session')
+            ->and($artifact['provenance'])->not->toHaveKey('caller_supplied')
+            ->and($requestIdPolicy['role'])->toBe('correlation_metadata')
+            ->and($requestIdPolicy['may_originate_from_valid_caller_x_request_id'])->toBeTrue()
+            ->and($requestIdPolicy['header'])->toBe('X-Request-Id')
+            ->and($requestIdPolicy['accepted_shape'])->toBe('lowercase_uuidv7')
+            ->and($requestIdPolicy['malformed_replaced_by_server'])->toBeTrue()
+            ->and($requestIdPolicy['is_proof_of_caller_identity'])->toBeFalse()
+            ->and($requestIdPolicy['is_trustworthy_provenance_by_itself'])->toBeFalse()
+            ->and($requestIdPolicy['middleware_class'])->toBe(AssignCorrelationId::class)
+            ->and($service)->toContain("'reason_code' => 'self_correction'")
+            ->and($service)->toContain("'source_type' => 'self_onboarding'")
+            ->and($service)->toContain("'actor_type' => 'user'")
+            ->and($service)->toContain("'actor_id' => \$actor->userId->value")
+            ->and($service)->toContain("'request_id' => \$requestId->value")
+            ->and($controller)->toContain("\$request->attributes->get('correlation_id')")
+            ->and($controller)->toContain('$this->actor($request)')
+            ->and($middleware)->toContain("\$request->headers->get('X-Request-Id')")
+            ->and($middleware)->toContain('Identifier::fromString($supplied)')
+            ->and($middleware)->toContain("\$request->attributes->set('correlation_id', \$correlationId)")
+            ->and($middleware)->toContain('InvalidValueObject')
+            ->and($identifierPattern->getValue())->toBe('/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/')
+            ->and(Identifier::fromString($generated)->value)->toBe($generated)
+            ->and(preg_match((string) $identifierPattern->getValue(), $generated))->toBe(1);
     });
 
     it('accepts AAL1 live own-profile correction and denies pending-phone without requiring AAL2', function () {
@@ -334,11 +426,13 @@ describe('P02-AUDIT-003 runtime alignment', function () {
             ->and($artifact['revision_privacy_storage']['full_name']['always_revises_when_supplied'])->toBeTrue()
             ->and($artifact['revision_privacy_storage']['other_editable_fields']['representation'])->toBe('plaintext_revision_columns')
             ->and($artifact['erasure_retention']['subject_erasure_rewrites_revision_ledger'])->toBeFalse()
+            ->and($artifact['erasure_retention']['subject_erasure_deletes_revision_ledger'])->toBeFalse()
             ->and($artifact['erasure_retention']['legal_retention_duration'])->toBe('OPEN_LEGAL_DECISION')
             ->and($artifact['erasure_retention']['legal_retention_duration_evidence_class'])->toBe('GOVERNANCE_ONLY')
             ->and($artifact['erasure_retention']['legal_sign_off_blocks_phase02_gate'])->toBeFalse()
             ->and($migration)->toContain('patient_demographic_revisions is append-only')
             ->and($migration)->toContain('BEFORE UPDATE OR DELETE ON patient_demographic_revisions')
+            ->and($migration)->toContain("grantIfRole('clinic_app', 'SELECT, INSERT', 'patient_demographic_revisions')")
             ->and($service)->toContain("'old_plain' => null")
             ->and($service)->toContain("'new_plain' => null")
             ->and($service)->toContain("'old_plain' => \$current")
@@ -350,6 +444,78 @@ describe('P02-AUDIT-003 runtime alignment', function () {
             $service,
         ))->toBe(1);
         expect($service)->not->toContain("if (\$field === 'full_name' && \$this->same");
+    });
+
+    it('discloses live-profile and revision erasure residuals against the actual erase path', function () {
+        $artifact = Artifact::decoded();
+        $erasure = $artifact['erasure_retention'];
+        $store = (string) file_get_contents(base_path('Modules/Patients/app/Services/Persistence/PostgresPatientProfileStore.php'));
+        $privacy = (string) file_get_contents(base_path('Modules/Patients/app/Services/Adapters/PostgresPatientSubjectPrivacy.php'));
+        $migration = (string) file_get_contents(base_path('database/migrations/2026_09_01_150000_create_patient_profile_tables.php'));
+        $holdings = PatientSubjectHoldings::plan();
+        $profileHolding = collect($holdings)->firstWhere('holding', 'patient_profiles');
+        $revisionHolding = collect($holdings)->firstWhere('holding', 'patient_demographic_revisions');
+        $eraseKeys = phase02EraseLinkedProfileUpdateKeys();
+        $schemaColumns = phase02PatientProfileSchemaColumns();
+        $plaintext = Artifact::stringList($artifact, 'erasure_retention.live_profile_plaintext_demographics_not_rewritten');
+        $editableMinusName = array_values(array_diff(Artifact::APPROVED_SELF_EDIT_ALLOWLIST, ['full_name']));
+        $schemaPlaintextDemographics = array_values(array_intersect($schemaColumns, $editableMinusName));
+        $residualIds = array_map(fn (array $row): string => $row['id'], $artifact['accepted_residuals']);
+
+        expect(preg_match(
+            '/public function eraseLinkedProfiles\((?P<body>.*)\n    public function countLinkedToUser/s',
+            $store,
+            $eraseMethod,
+        ))->toBe(1);
+        expect(preg_match(
+            '/public function eraseLinked\(Identifier \$userId\): array\n    \{(?P<body>.*?)\n    \}/s',
+            $privacy,
+            $privacyErase,
+        ))->toBe(1);
+
+        expect($eraseKeys)->toBe([
+            'user_id',
+            'national_id_ciphertext',
+            'national_id_lookup_hmac',
+            'full_name_ciphertext',
+            'status',
+            'updated_at',
+        ])
+            ->and($plaintext)->toBe(Artifact::LIVE_PROFILE_PLAINTEXT_DEMOGRAPHICS_NOT_REWRITTEN)
+            ->and($plaintext)->toBe($editableMinusName)
+            ->and($plaintext)->toBe($schemaPlaintextDemographics);
+
+        foreach ($plaintext as $column) {
+            expect($eraseKeys)->not->toContain($column)
+                ->and($schemaColumns)->toContain($column);
+        }
+
+        expect($erasure['live_profile_action'])->toBe('IRREVERSIBLE_TOMBSTONE')
+            ->and($erasure['live_profile_unlinks_user_id'])->toBeTrue()
+            ->and($erasure['live_profile_tombstones_national_id_ciphertext_hmac'])->toBeTrue()
+            ->and($erasure['live_profile_tombstones_full_name_ciphertext'])->toBeTrue()
+            ->and($erasure['live_profile_sets_status_archived'])->toBeTrue()
+            ->and($erasure['does_not_remove_all_personal_data'])->toBeTrue()
+            ->and($erasure['historical_revision_records_remain'])->toBeTrue()
+            ->and($erasure['non_name_revision_plaintext_may_remain'])->toBeTrue()
+            ->and($erasure['revision_actor_id_may_remain'])->toBeTrue()
+            ->and($erasure['encrypted_historical_name_may_remain_after_live_profile_erasure'])->toBeTrue()
+            ->and($erasure['correction_history_delete_workflow'])->toBeFalse()
+            ->and($erasure['application_role_cannot_update_delete_revision_rows'])->toBeTrue()
+            ->and($erasure['legal_retention_duration'])->toBe('OPEN_LEGAL_DECISION')
+            ->and($profileHolding?->action->value)->toBe('IRREVERSIBLE_TOMBSTONE')
+            ->and($revisionHolding?->action->value)->toBe('PRESERVE_SECURITY_AUDIT')
+            ->and($eraseMethod['body'])->toContain("->where('user_id', \$userId->value)")
+            ->and($eraseMethod['body'])->not->toContain('patient_demographic_revisions')
+            ->and($privacyErase['body'])->toContain('eraseLinkedProfiles')
+            ->and($privacyErase['body'])->not->toContain('patient_demographic_revisions')
+            ->and($privacy)->toContain("'patient_demographic_revisions' => null")
+            ->and($migration)->toContain('$table->uuid(\'actor_id\')')
+            ->and($residualIds)->toContain('encrypted_historical_name_survives_erasure')
+            ->and($residualIds)->toContain('archived_profile_plaintext_demographics_survive_erasure')
+            ->and($residualIds)->toContain('revision_actor_id_survives_erasure')
+            ->and($artifact['non_claims'])->toContain('This policy does not claim subject erasure removes all personal data.')
+            ->and((new ReflectionClass(PostgresPatientProfileStore::class))->hasMethod('eraseLinkedProfiles'))->toBeTrue();
     });
 
     it('does not introduce staff correction re-verification supporting documents or claim', function () {
