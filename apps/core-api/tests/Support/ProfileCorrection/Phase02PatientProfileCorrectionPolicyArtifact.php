@@ -9,18 +9,26 @@ use RuntimeException;
 
 /**
  * Loader for the current Phase 02 patient profile-correction policy
- * artifact (v1.0.1). Freeze allowlists below are the controller-approved
- * oracle, not a copy of the JSON at load time. v1.0.0 remains historical.
+ * artifact (v1.0.2). Freeze allowlists below are the controller-approved
+ * oracle, not a copy of the JSON at load time. v1.0.0 and v1.0.1 remain
+ * historical. Privacy-sensitive erasure survivors are grounded in schema
+ * plus the actual erase mutation, not derived only from editable fields.
  */
 final class Phase02PatientProfileCorrectionPolicyArtifact
 {
-    public const VERSION = 'v1.0.1-phase02';
+    public const VERSION = 'v1.0.2-phase02';
 
-    public const SUPERSEDES = 'v1.0.0-phase02';
+    public const SUPERSEDES = 'v1.0.1-phase02';
 
-    public const RELATIVE_JSON = 'docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.1-phase02.json';
+    public const RELATIVE_JSON = 'docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.2-phase02.json';
 
-    public const RELATIVE_SHA256 = 'docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.1-phase02.sha256';
+    public const RELATIVE_SHA256 = 'docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.2-phase02.sha256';
+
+    public const RELATIVE_PRIOR_JSON = 'docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.1-phase02.json';
+
+    public const RELATIVE_PRIOR_SHA256 = 'docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.1-phase02.sha256';
+
+    public const PRIOR_PUBLISHED_SHA256 = '029f1fc5ee1246e2431ef5ddab77c305a84c8fceb5c3f1431261a35da093fb65';
 
     public const RELATIVE_HISTORICAL_JSON = 'docs/evidence/phase-02/reference-data/phase02-patient-profile-correction-policy.v1.0.0-phase02.json';
 
@@ -70,6 +78,37 @@ final class Phase02PatientProfileCorrectionPolicyArtifact
     ];
 
     /** @var list<string> */
+    public const LIVE_PROFILE_CREATOR_LINKAGE_NOT_REWRITTEN = [
+        'created_by_id',
+        'created_by_type',
+    ];
+
+    /**
+     * Privacy-sensitive live-profile columns that current erasure does not
+     * rewrite. This set is independent of the seven-field edit allowlist.
+     *
+     * @var list<string>
+     */
+    public const PRIVACY_SENSITIVE_LIVE_PROFILE_SURVIVORS = [
+        'gender',
+        'date_of_birth',
+        'height_cm',
+        'weight_kg',
+        'marital_status',
+        'blood_type',
+        'created_by_id',
+        'created_by_type',
+    ];
+
+    /** @var list<string> */
+    public const LIVE_PROFILE_TECHNICAL_METADATA_NOT_REWRITTEN = [
+        'id',
+        'national_id_key_version',
+        'version',
+        'created_at',
+    ];
+
+    /** @var list<string> */
     public const ACCEPTED_RESIDUAL_IDS = [
         'no_server_status_active_gate',
         'no_patch_idempotency_key',
@@ -80,6 +119,7 @@ final class Phase02PatientProfileCorrectionPolicyArtifact
         'non_name_revision_plaintext',
         'encrypted_historical_name_survives_erasure',
         'archived_profile_plaintext_demographics_survive_erasure',
+        'archived_profile_creator_linkage_survives_erasure',
         'revision_actor_id_survives_erasure',
         'no_staff_assisted_correction_path',
         'no_correction_notification',
@@ -99,6 +139,16 @@ final class Phase02PatientProfileCorrectionPolicyArtifact
     public static function sha256Path(): string
     {
         return self::repositoryRoot().'/'.self::RELATIVE_SHA256;
+    }
+
+    public static function priorJsonPath(): string
+    {
+        return self::repositoryRoot().'/'.self::RELATIVE_PRIOR_JSON;
+    }
+
+    public static function priorSha256Path(): string
+    {
+        return self::repositoryRoot().'/'.self::RELATIVE_PRIOR_SHA256;
     }
 
     public static function historicalJsonPath(): string
@@ -127,6 +177,14 @@ final class Phase02PatientProfileCorrectionPolicyArtifact
     /**
      * @return array<string, mixed>
      */
+    public static function priorDecoded(): array
+    {
+        return self::decodeObject(self::priorRawJson(), 'Prior profile-correction policy artifact');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public static function historicalDecoded(): array
     {
         return self::decodeObject(self::historicalRawJson(), 'Historical profile-correction policy artifact');
@@ -137,14 +195,29 @@ final class Phase02PatientProfileCorrectionPolicyArtifact
         return self::readFile(self::jsonPath(), 'Missing profile-correction policy artifact: ');
     }
 
+    public static function priorRawJson(): string
+    {
+        return self::readFile(self::priorJsonPath(), 'Missing prior profile-correction policy artifact: ');
+    }
+
     public static function historicalRawJson(): string
     {
         return self::readFile(self::historicalJsonPath(), 'Missing historical profile-correction policy artifact: ');
     }
 
+    public static function evidenceRaw(): string
+    {
+        return self::readFile(self::evidencePath(), 'Missing profile-correction evidence document: ');
+    }
+
     public static function recordedSha256(): string
     {
         return trim(self::readFile(self::sha256Path(), 'Missing profile-correction policy SHA-256 companion: '));
+    }
+
+    public static function priorRecordedSha256(): string
+    {
+        return trim(self::readFile(self::priorSha256Path(), 'Missing prior profile-correction policy SHA-256 companion: '));
     }
 
     public static function historicalRecordedSha256(): string
@@ -155,6 +228,11 @@ final class Phase02PatientProfileCorrectionPolicyArtifact
     public static function computedSha256(): string
     {
         return hash('sha256', self::rawJson());
+    }
+
+    public static function priorComputedSha256(): string
+    {
+        return hash('sha256', self::priorRawJson());
     }
 
     public static function historicalComputedSha256(): string
@@ -189,6 +267,27 @@ final class Phase02PatientProfileCorrectionPolicyArtifact
         }
 
         return array_values($values);
+    }
+
+    /**
+     * @param  array<string, mixed>  $artifact
+     * @return array<string, mixed>
+     */
+    public static function objectAt(array $artifact, string $path): array
+    {
+        $cursor = $artifact;
+        foreach (explode('.', $path) as $segment) {
+            if (! is_array($cursor) || ! array_key_exists($segment, $cursor)) {
+                throw new RuntimeException('Missing policy path: '.$path);
+            }
+            $cursor = $cursor[$segment];
+        }
+
+        if (! is_array($cursor)) {
+            throw new RuntimeException('Policy path is not an object: '.$path);
+        }
+
+        return $cursor;
     }
 
     /**

@@ -168,7 +168,82 @@ describe('P02-AUDIT-003 HTTP alignment with freeze policy', function () {
             ->and($policy['provenance']['actor_identity_caller_supplied'])->toBeFalse()
             ->and($policy['provenance']['request_id']['may_originate_from_valid_caller_x_request_id'])->toBeTrue()
             ->and($policy['provenance']['request_id']['is_proof_of_caller_identity'])->toBeFalse()
-            ->and($policy['provenance']['request_id']['is_trustworthy_provenance_by_itself'])->toBeFalse();
+            ->and($policy['provenance']['request_id']['is_trustworthy_provenance_by_itself'])->toBeFalse()
+            ->and($policy['reason']['caller_supplied'])->toBeFalse()
+            ->and($policy['provenance']['request_id']['role'])->toBe('correlation_metadata');
+    });
+
+    it('accepts uppercase UUIDv7 X-Request-Id, stores it lowercase, and does not persist it on the audit event', function () {
+        $session = patientsActiveSession('p02-corr-xid-upper');
+        $this->postJson(
+            '/api/v1/patients/onboarding',
+            patientsDemographics($session['payload']['national_id']),
+            patientsAuth($session['token']) + patientsIdem('p02-corr-xid-upper-on'),
+        )->assertCreated();
+
+        $supplied = app(IdentityGenerator::class)->next()->value;
+        $uppercase = strtoupper($supplied);
+        expect($uppercase)->not->toBe($supplied);
+
+        $response = $this->patchJson('/api/v1/patients/me/demographics', [
+            'version' => 1,
+            'gender' => 'male',
+        ], patientsAuth($session['token']) + ['X-Request-Id' => $uppercase]);
+
+        $response->assertOk()
+            ->assertHeader('X-Request-Id', $supplied)
+            ->assertJsonPath('request_id', $supplied);
+
+        $revision = DB::table('patient_demographic_revisions')
+            ->where('field_name', 'gender')
+            ->where('reason_code', 'self_correction')
+            ->orderByDesc('created_at')
+            ->first();
+        $audit = DB::table('audit_events')
+            ->where('event_name', 'patient.demographics_updated')
+            ->orderByDesc('occurred_at')
+            ->first();
+        $policy = Artifact::decoded();
+        $evidence = Artifact::evidenceRaw();
+        $metadata = [];
+        if ($audit !== null) {
+            $rawMetadata = $audit->metadata;
+            if (is_string($rawMetadata)) {
+                $decoded = json_decode($rawMetadata, true);
+                $metadata = is_array($decoded) ? $decoded : [];
+            } elseif (is_array($rawMetadata)) {
+                $metadata = $rawMetadata;
+            } elseif (is_object($rawMetadata)) {
+                $metadata = (array) $rawMetadata;
+            }
+        }
+        $auditIdentity = json_encode([
+            'id' => $audit->id ?? null,
+            'event_name' => $audit->event_name ?? null,
+            'actor_id' => $audit->actor_id ?? null,
+            'actor_type' => $audit->actor_type ?? null,
+            'object_type' => $audit->object_type ?? null,
+            'object_id' => $audit->object_id ?? null,
+            'metadata' => $metadata,
+        ], JSON_THROW_ON_ERROR);
+
+        expect($revision)->not->toBeNull()
+            ->and($audit)->not->toBeNull()
+            ->and((string) $revision->request_id)->toBe($supplied)
+            ->and((string) $revision->request_id)->not->toBe($uppercase)
+            ->and(array_keys((array) $audit))->not->toContain('request_id')
+            ->and($metadata)->not->toHaveKey('request_id')
+            ->and($auditIdentity)->not->toContain($supplied)
+            ->and($auditIdentity)->not->toContain($uppercase)
+            ->and($policy['provenance']['request_id']['uppercase_representation_accepted'])->toBeTrue()
+            ->and($policy['provenance']['request_id']['normalized_and_stored'])->toBe('lowercase')
+            ->and($policy['provenance']['request_id']['persisted_on_revision'])->toBeTrue()
+            ->and($policy['provenance']['request_id']['persisted_on_audit_event'])->toBeFalse()
+            ->and($evidence)->toContain('the audit row/event does not store the request ID')
+            ->and($evidence)->toContain('uppercase representation is accepted')
+            ->and($evidence)->not->toMatch('/only lowercase UUIDv7 is accepted/i')
+            ->and($evidence)->not->toMatch('/uppercase.{0,40}(UUIDv7 )?(is |are )?rejected/i')
+            ->and($evidence)->not->toMatch('/audit.{0,40}(storage )?persists (the )?request ID/i');
     });
 
     it('replaces a malformed X-Request-Id before storing demographic revision correlation', function () {
@@ -274,12 +349,27 @@ describe('P02-AUDIT-003 HTTP alignment with freeze policy', function () {
             ->and((string) $genderRevision->old_plain)->toBe('female')
             ->and((string) $genderRevision->new_plain)->toBe('male')
             ->and((string) $genderRevision->actor_id)->toBe($session['user_id'])
+            ->and((string) $after->created_by_id)->toBe($session['user_id'])
+            ->and((string) $after->created_by_id)->toBe((string) $before->created_by_id)
+            ->and((string) $after->created_by_type)->toBe('user')
+            ->and((string) $after->created_by_type)->toBe((string) $before->created_by_type)
             ->and($policy['erasure_retention']['does_not_remove_all_personal_data'])->toBeTrue()
+            ->and($policy['erasure_retention']['does_not_remove_all_personal_identifiers_or_history'])->toBeTrue()
+            ->and($policy['erasure_retention']['created_by_id_may_retain_erased_user_uuid'])->toBeTrue()
+            ->and($policy['erasure_retention']['created_by_type_may_remain_user'])->toBeTrue()
             ->and($policy['erasure_retention']['historical_revision_records_remain'])->toBeTrue()
             ->and($policy['erasure_retention']['non_name_revision_plaintext_may_remain'])->toBeTrue()
             ->and($policy['erasure_retention']['revision_actor_id_may_remain'])->toBeTrue()
             ->and($policy['erasure_retention']['encrypted_historical_name_may_remain_after_live_profile_erasure'])->toBeTrue()
-            ->and($policy['erasure_retention']['legal_retention_duration'])->toBe('OPEN_LEGAL_DECISION');
+            ->and($policy['erasure_retention']['legal_retention_duration'])->toBe('OPEN_LEGAL_DECISION')
+            ->and(Artifact::stringList($policy, 'erasure_retention.live_profile_creator_linkage_not_rewritten'))
+            ->toBe(Artifact::LIVE_PROFILE_CREATOR_LINKAGE_NOT_REWRITTEN);
+
+        $evidence = Artifact::evidenceRaw();
+        expect($evidence)->toContain('created_by_id')
+            ->and($evidence)->toContain('created_by_type')
+            ->and($evidence)->toContain('erased user’s UUID')
+            ->and($evidence)->not->toMatch('/removes creator linkage/i');
 
         foreach ($plaintextColumns as $column) {
             $expected = (string) $before->{$column};
