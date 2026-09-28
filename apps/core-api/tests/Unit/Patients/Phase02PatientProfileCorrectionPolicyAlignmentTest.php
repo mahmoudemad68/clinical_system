@@ -634,7 +634,7 @@ describe('P02-AUDIT-003 runtime alignment', function () {
             ->and($evidence)->toContain('created_by_type')
             ->and($evidence)->toContain('may retain the')
             ->and($evidence)->toContain('erased user’s UUID')
-            ->and($evidence)->toContain('does **not** remove all personal identifiers or history')
+            ->and($evidence)->toMatch('/does \*\*not\*\*\s+remove all personal identifiers or history/')
             ->and($evidence)->not->toMatch('/erasure removes creator linkage/i')
             ->and($evidence)->not->toMatch('/removes creator linkage/i')
             ->and((new ReflectionClass(PostgresPatientProfileStore::class))->hasMethod('eraseLinkedProfiles'))->toBeTrue();
