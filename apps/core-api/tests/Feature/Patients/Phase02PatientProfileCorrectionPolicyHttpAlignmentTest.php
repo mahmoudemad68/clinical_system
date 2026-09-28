@@ -248,8 +248,16 @@ describe('P02-AUDIT-003 HTTP alignment with freeze policy', function () {
         $revisions = DB::table('patient_demographic_revisions')->where('patient_profile_id', $profileId)->get();
         $policy = Artifact::decoded();
         $plaintextColumns = Artifact::stringList($policy, 'erasure_retention.live_profile_plaintext_demographics_not_rewritten');
-        $nameRevision = $revisions->firstWhere('field_name', 'full_name');
-        $genderRevision = $revisions->firstWhere('field_name', 'gender');
+        $nameRevision = $revisions
+            ->where('field_name', 'full_name')
+            ->where('reason_code', 'self_correction')
+            ->sortByDesc('created_at')
+            ->first();
+        $genderRevision = $revisions
+            ->where('field_name', 'gender')
+            ->where('reason_code', 'self_correction')
+            ->sortByDesc('created_at')
+            ->first();
 
         expect($after)->not->toBeNull()
             ->and($after->user_id)->toBeNull()

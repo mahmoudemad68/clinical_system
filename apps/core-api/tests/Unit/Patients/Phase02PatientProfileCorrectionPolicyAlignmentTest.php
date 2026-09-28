@@ -149,8 +149,9 @@ describe('P02-AUDIT-003 profile-correction policy artifact', function () {
             ->and($artifact['decision'])->toBe('FREEZE_CURRENT_BEHAVIOR')
             ->and($artifact['p02_mapping']['audit_id'])->toBe('P02-AUDIT-003')
             ->and($artifact['p02_mapping']['threat_id'])->toBe('P02-T45')
-            ->and($artifact['version'])->not->toBe($verification['version'])
-            ->and($artifact['policy_id'])->not->toBe('phase02-verification-policy');
+            ->and($artifact['policy_namespace'])->not->toBe($verification['policy_id'] ?? 'phase02-verification-policy')
+            ->and($artifact['policy_id'])->not->toBe('phase02-verification-policy')
+            ->and($artifact['title'])->not->toBe($verification['title'] ?? '');
     });
 
     it('preserves v1.0.0 historical bytes and does not reuse that hash for v1.0.1', function () {
