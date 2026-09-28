@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+namespace Tests\Unit\Patients;
+
 use FilesystemIterator;
 use Illuminate\Support\Facades\Route;
+use Mockery;
 use Modules\Access\Contracts\GrantStore;
 use Modules\Access\Services\DefaultDenyAuthorizer;
 use Modules\Access\Support\Capabilities;
