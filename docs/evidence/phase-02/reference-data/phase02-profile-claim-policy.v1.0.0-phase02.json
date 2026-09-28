@@ -117,10 +117,14 @@
   "proof": {
     "high_confidence_requires_all": [
       "canonical_national_id_hmac_matches_exactly_one_active_unlinked_patient_profile",
-      "account_matches_bound_identity_for_the_same_national_id",
+      "claimant_account_has_non_empty_bound_national_id_identity_that_matches_the_target_profile",
       "fresh_purpose_bound_profile_claim_otp_consumed_on_already_verified_phone",
       "valid_clinic_issued_claim_credential_for_that_exact_patient_profile"
     ],
+    "account_bound_national_id_required": true,
+    "missing_account_bound_national_id_is_not_high_confidence": true,
+    "missing_account_bound_national_id_routes_to": "internal_manual_review_generic_client_contract",
+    "matches_bound_identity_null_stored_hmac_is_not_high_confidence": true,
     "not_independent_additional_proof": [
       "date_of_birth",
       "full_name",
@@ -153,6 +157,7 @@
       "self_reclaim": false,
       "overwrite": false,
       "automatic_reassignment": false,
+      "automatic_transfer_to_another_user": false,
       "existing_user_id_unchanged": true,
       "disclose_already_bound": false
     }
@@ -237,10 +242,23 @@
     "disabling_stops_new_claims": true,
     "disabling_does_not_automatically_unlink_valid_links": true,
     "dispute_recovery_handled_separately": true,
+    "verified_kill_switch_required_before_pc020": true,
     "post_pc020_env_false_disables_without_code_change": true,
     "process_or_config_reload_may_be_required": true,
-    "current_production_already_hard_off": true
+    "current_production_already_hard_off": true,
+    "env_flag_true_alone_cannot_enable_production": true
   },
+  "pc020_prerequisites": [
+    "policy_recorded",
+    "ceremony_implementation_complete",
+    "tests_complete",
+    "observability_complete",
+    "monitored_rollout_or_cohort_controls_ready",
+    "verified_kill_switch",
+    "external_governance_approvals",
+    "independent_engineering_qa",
+    "applicable_independent_human_gates"
+  ],
   "otp_step_up": {
     "purpose": "profile_claim",
     "new_otp_on_already_verified_phone_required": true,
@@ -313,8 +331,8 @@
     {
       "id": "PC-002",
       "title": "high_confidence_proof_bundle",
-      "policy_decision": "High-confidence self-service requires National ID HMAC match to one Active unlinked profile, matchesBoundIdentity, a consumed profile_claim OTP on the already-verified phone, and a valid clinic-issued claim credential for that exact profile. DOB, full name, gender, blood type, other NID-derived demographics, National ID plus OTP alone, and patient verification-document upload are not independent additional proof.",
-      "rationale": "ADR 0011: National ID plus a newly verified phone is insufficient. Card demographics are not possession of the walk-in record. The additional factor is the clinic-issued profile-bound credential.",
+      "policy_decision": "High-confidence self-service requires all four factors: (1) canonical National-ID HMAC resolves exactly one Active unlinked target profile; (2) the claimant account has a non-empty bound National-ID identity representation and that bound identity matches the target profile identity; (3) a fresh consumed profile_claim OTP exists on the claimant's already-verified phone; (4) a valid clinic-issued, profile-bound, single-use claim credential exists for that exact profile. A missing account-bound National ID is not high-confidence and routes to internal Manual Review with the generic client contract. matchesBoundIdentity treating a null stored HMAC as a match is not the approved high-confidence rule. DOB, full name, gender, blood type, other NID-derived demographics, National ID plus OTP alone, and patient verification-document upload are not independent additional proof.",
+      "rationale": "ADR 0011: National ID plus a newly verified phone is insufficient. Card demographics are not possession of the walk-in record. A missing account-bound National ID cannot be treated as identity match. The additional factor is the clinic-issued profile-bound credential.",
       "implementation_status": "NOT_IMPLEMENTED",
       "implementation_evidence_requirement": "Future ceremony must enforce the full bundle before attachAccount.",
       "blocks_production_enablement": true
@@ -448,7 +466,7 @@
     {
       "id": "PC-017",
       "title": "observability_before_enablement",
-      "policy_decision": "Metrics, alerts, dashboard visibility, and monitored rollout or cohorts are required before PC-020 production enablement.",
+      "policy_decision": "PC-017 is a production-enablement blocker. Metrics, alerts, dashboard visibility, and monitored rollout or cohorts are prerequisites before PC-020.",
       "rationale": "Canonical Phase 02 rollout: enable claim separately with monitored cohorts and a kill switch.",
       "implementation_status": "PARTIALLY_ENFORCED",
       "implementation_evidence_requirement": "clinic_profile_claims_total exists but is unused in production. Alerts and dashboards are absent. Do not implement them in this task.",
@@ -466,19 +484,19 @@
     {
       "id": "PC-019",
       "title": "kill_switch_preserves_valid_links",
-      "policy_decision": "Disabling Profile Claim stops new claims. It does not automatically unlink already-established valid account/profile links. Dispute and recovery are separate.",
-      "rationale": "Canonical Phase 02 rollback preserves submitted profiles and links.",
+      "policy_decision": "PC-019 is a production-enablement blocker. A verified kill switch that stops new claims without unlinking valid existing links is required before production enablement. Dispute and recovery are separate.",
+      "rationale": "Canonical Phase 02 rollback preserves submitted profiles and links. Production must not be reachable without a demonstrated new-claim kill switch.",
       "implementation_status": "PARTIALLY_ENFORCED",
-      "implementation_evidence_requirement": "Current kill switch is global hard-off with no live claim binds. Future disable must not un-bind.",
-      "blocks_production_enablement": false
+      "implementation_evidence_requirement": "Current kill switch is global hard-off with no live claim binds. Future disable must not un-bind. Demonstrate the verified kill switch before PC-020.",
+      "blocks_production_enablement": true
     },
     {
       "id": "PC-020",
       "title": "production_remains_hard_off",
-      "policy_decision": "Production remains hard-off. This artifact is not permission to enable production, set FEATURE_IDENTITY_PROFILE_CLAIM=true, or remove APP_ENV=production hard-off. Enablement requires recorded policy, implementation, tests, observability, governance approvals, independent QA, and applicable independent human gates in a later separately authorized change.",
-      "rationale": "Silent env enablement is an accepted ADR 0011 residual that production force-off currently blocks.",
+      "policy_decision": "Production remains hard-off. This artifact is not permission to enable production, set FEATURE_IDENTITY_PROFILE_CLAIM=true, or remove APP_ENV=production hard-off. The env flag alone cannot enable production. Enablement requires a later separately authorized PC-020 change after all of: policy recorded; ceremony implementation complete; tests complete; observability complete; monitored rollout/cohort controls ready; verified kill switch; external governance approvals; independent engineering QA; and any applicable independent-human gates.",
+      "rationale": "Silent env enablement is an accepted ADR 0011 residual that production force-off currently blocks. PC-020 is not performed by this artifact.",
       "implementation_status": "ALREADY_ENFORCED",
-      "implementation_evidence_requirement": "Keep PlatformFeatures production short-circuit unchanged in this task.",
+      "implementation_evidence_requirement": "Keep PlatformFeatures production short-circuit unchanged in this task. Do not perform PC-020 here.",
       "blocks_production_enablement": true
     },
     {
@@ -493,18 +511,18 @@
     {
       "id": "PC-022",
       "title": "post_enablement_env_kill_switch",
-      "policy_decision": "After a separately authorized PC-020 change exists, FEATURE_IDENTITY_PROFILE_CLAIM=false must disable new claims without a code change. Process or config reload may be required. Current production is already hard-off. Do not alter current behavior in this task.",
-      "rationale": "Fast operational disable after the hard-off is intentionally removed.",
+      "policy_decision": "PC-022 is a production-enablement blocker until the future post-hard-off env/config kill-switch behavior is demonstrated. After the separately authorized PC-020 change, setting FEATURE_IDENTITY_PROFILE_CLAIM=false must prevent new claims without a code deployment; a config or process reload may still be required. Current production is already hard-off. Do not alter current behavior in this task.",
+      "rationale": "Production enablement must not proceed until operators can disable new claims by env/config after the hard-off is removed.",
       "implementation_status": "PARTIALLY_ENFORCED",
-      "implementation_evidence_requirement": "Today the production short-circuit ignores the env flag. Do not remove it here.",
-      "blocks_production_enablement": false
+      "implementation_evidence_requirement": "Today the production short-circuit ignores the env flag. Do not remove it here. Demonstrate post-hard-off FEATURE_IDENTITY_PROFILE_CLAIM=false before PC-020.",
+      "blocks_production_enablement": true
     }
   ],
   "external_audit_boundaries": {
     "P02-AUDIT-005": {
       "status": "OPEN",
-      "classification": "POLICY_V1_RECORDED_AWAITING_INDEPENDENT_QA",
-      "note": "Controller Policy v1 is recorded. Ceremony is not implemented. Production remains disabled. This is not closure."
+      "classification": "POLICY_V1_REMEDIATED_AWAITING_INDEPENDENT_RE_QA",
+      "note": "Controller Policy v1 is recorded and QA-P02A005 findings are remediated in this unmerged artifact. Ceremony is not implemented. Production remains disabled. This is not closure."
     },
     "P02-AUDIT-006": {
       "status": "OPEN / UNCHANGED",
