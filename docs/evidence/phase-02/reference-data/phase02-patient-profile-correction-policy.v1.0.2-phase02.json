@@ -1,0 +1,370 @@
+{
+  "policy_id": "phase02-patient-profile-correction",
+  "policy_namespace": "phase02-patient-profile-correction",
+  "distinct_from_verification_policy": true,
+  "title": "Phase 02 Patient Profile Correction Policy",
+  "version": "v1.0.2-phase02",
+  "supersedes": "v1.0.1-phase02",
+  "supersession_reason": "Accuracy amendment only: QA-P02A003-002 archived-profile creator linkage, QA-P02A003-011 request-id/audit/uppercase wording, QA-P02A003-012 erasure-alignment test grounding. Freeze Current Behavior is unchanged. QA-P02A003-001 remains CLOSED / UNCHANGED.",
+  "release_date": "2026-09-28",
+  "status": "APPROVED_PRODUCTION_POLICY",
+  "decision": "FREEZE_CURRENT_BEHAVIOR",
+  "p02_mapping": {
+    "audit_id": "P02-AUDIT-003",
+    "threat_id": "P02-T45",
+    "canonical_gate": "Phase 02 measurable exit gate: profile-correction policy with documented product/security/privacy evidence"
+  },
+  "approval": {
+    "controller_decision": "FREEZE_CURRENT_BEHAVIOR",
+    "controller_decision_date": "2026-09-28",
+    "controller_decision_evidence_class": "GOVERNANCE_ONLY",
+    "repository_governance_attribution": {
+      "product": "prod-gov-lead@system.internal",
+      "privacy": "privacy-dpo@system.internal",
+      "security": "ciso-gov@system.internal",
+      "precedent_artifact": "docs/evidence/phase-02/reference-data/phase02-verification-policy.v1.0.1-phase02.json",
+      "evidence_class": "GOVERNANCE_ONLY"
+    },
+    "independent_qa": "PENDING",
+    "independent_qa_evidence_class": "GOVERNANCE_ONLY",
+    "g_08_04": "OPEN / EXTERNAL_HUMAN",
+    "g_08_04_claimed_approved": false,
+    "g_08_04_evidence_class": "GOVERNANCE_ONLY"
+  },
+  "accuracy_amendment": {
+    "from": "v1.0.1-phase02",
+    "findings": [
+      "QA-P02A003-002",
+      "QA-P02A003-011",
+      "QA-P02A003-012"
+    ],
+    "preserves": [
+      "QA-P02A003-001"
+    ],
+    "scope": "factual erasure creator-linkage disclosure, request-id/audit/uppercase wording, and erasure-alignment test grounding",
+    "policy_behavior_decision_unchanged": true
+  },
+  "non_claims": [
+    "This artifact records a controller-approved Freeze Current Behavior decision plus repository Product/Privacy/Security governance attribution for Phase 02 patient demographic self-correction.",
+    "Independent QA has not closed P02-AUDIT-003.",
+    "This is not G-08-04 independent human security/privacy approval.",
+    "This policy does not enable profile claim (P02-AUDIT-005).",
+    "This policy does not accept SF-001 (P02-AUDIT-006).",
+    "This policy does not assert that full_name or date_of_birth have been verified against an identity document.",
+    "This policy does not claim stored date_of_birth is consistent with the date encoded in National ID digits.",
+    "This policy does not invent a statutory or legal retention duration.",
+    "This policy does not claim subject erasure removes all personal data.",
+    "This policy does not claim subject erasure removes all personal identifiers or history.",
+    "A caller-supplied valid X-Request-Id used as correlation metadata is not proof of caller identity and is not trustworthy provenance by itself.",
+    "Technical metadata such as created_by_type, reason_code, source_type, profile_version, and timestamps is not personal data by itself unless linked or contextual."
+  ],
+  "self_correction": {
+    "closed_allowlist": [
+      "full_name",
+      "gender",
+      "date_of_birth",
+      "height_cm",
+      "weight_kg",
+      "marital_status",
+      "blood_type"
+    ],
+    "unknown_properties": "default_deny",
+    "http": {
+      "method": "PATCH",
+      "path": "/api/v1/patients/me/demographics",
+      "idempotency_middleware": false
+    }
+  },
+  "immutable_excluded_fields": [
+    "national_id",
+    "user_id",
+    "patient_id",
+    "status",
+    "national_id_ciphertext",
+    "national_id_lookup_hmac",
+    "national_id_key_version",
+    "full_name_ciphertext",
+    "reason_code",
+    "source_type"
+  ],
+  "national_id": {
+    "mutable_on_demographic_patch": false,
+    "role": "immutable identity-bound identifier for this correction surface"
+  },
+  "staff_admin_correction": {
+    "policy": "NO_STAFF_OR_ADMIN_DEMOGRAPHIC_CORRECTION_SURFACE",
+    "phase02_intentional_absence": true
+  },
+  "identity_reverification": {
+    "required_for_full_name_change": false,
+    "required_for_date_of_birth_change": false,
+    "workflow_exists_in_phase02": false,
+    "rationale": [
+      "full_name and date_of_birth remain self-asserted demographic attributes on this Phase 02 surface",
+      "National ID remains the immutable identity-bound identifier",
+      "this policy does not assert that name or date_of_birth have been verified against an identity document"
+    ]
+  },
+  "reason": {
+    "code": "self_correction",
+    "caller_supplied": false,
+    "catalogue_required_in_phase02": false,
+    "free_text_required_in_phase02": false
+  },
+  "provenance": {
+    "source_type": "self_onboarding",
+    "source_type_caller_supplied": false,
+    "actor_type": "user",
+    "actor": "authenticated_user",
+    "actor_identity_caller_supplied": false,
+    "actor_identity_source": "authenticated_session",
+    "request_id": {
+      "role": "correlation_metadata",
+      "may_originate_from_valid_caller_x_request_id": true,
+      "header": "X-Request-Id",
+      "accepted_shape": "uuidv7",
+      "uppercase_representation_accepted": true,
+      "normalized_and_stored": "lowercase",
+      "malformed_replaced_by_server": true,
+      "non_v7_replaced_by_server": true,
+      "invalid_length_replaced_by_server": true,
+      "persisted_on_revision": true,
+      "persisted_on_audit_event": false,
+      "exposed_on_response_body": true,
+      "exposed_on_response_header": true,
+      "is_proof_of_caller_identity": false,
+      "is_trustworthy_provenance_by_itself": false,
+      "middleware_class": "Modules\\Platform\\Http\\Middleware\\AssignCorrelationId"
+    }
+  },
+  "assurance": {
+    "authenticated_live_session": true,
+    "pending_phone": "denied",
+    "own_linked_patient_profile": true,
+    "accepted_assurance": "AAL1_PASSWORD",
+    "aal2_required": false,
+    "step_up_required": false
+  },
+  "authorization_concurrency": {
+    "own_profile_only": true,
+    "default_deny_unknown_json": true,
+    "required_profile_version": true,
+    "optimistic_concurrency": "VERSION_CONFLICT",
+    "concurrent_same_version": "one_success_one_conflict",
+    "http_idempotency_key": false,
+    "status_active_gate": false,
+    "correction_specific_rate_limit": false
+  },
+  "revision_history": {
+    "append_only": true,
+    "application_update_delete_prohibited": true,
+    "allowed_field_names": [
+      "full_name",
+      "gender",
+      "date_of_birth",
+      "height_cm",
+      "weight_kg",
+      "marital_status",
+      "blood_type"
+    ],
+    "read_api": false,
+    "records_actor_request_provenance": true
+  },
+  "revision_privacy_storage": {
+    "full_name": {
+      "old_new_representation": "protected_encrypted",
+      "old_plain": null,
+      "new_plain": null,
+      "always_revises_when_supplied": true
+    },
+    "other_editable_fields": {
+      "fields": [
+        "gender",
+        "date_of_birth",
+        "height_cm",
+        "weight_kg",
+        "marital_status",
+        "blood_type"
+      ],
+      "representation": "plaintext_revision_columns",
+      "privacy_residual": "Non-name revision values remain plaintext in old_plain/new_plain where currently implemented. This residual is accepted for Phase 02; no encryption rewrite is authorized by this freeze."
+    }
+  },
+  "erasure_retention": {
+    "live_profile_action": "IRREVERSIBLE_TOMBSTONE",
+    "live_profile_unlinks_user_id": true,
+    "live_profile_tombstones_national_id_ciphertext_hmac": true,
+    "live_profile_tombstones_full_name_ciphertext": true,
+    "live_profile_sets_status_archived": true,
+    "live_profile_plaintext_demographics_not_rewritten": [
+      "gender",
+      "date_of_birth",
+      "height_cm",
+      "weight_kg",
+      "marital_status",
+      "blood_type"
+    ],
+    "live_profile_creator_linkage_not_rewritten": [
+      "created_by_id",
+      "created_by_type"
+    ],
+    "created_by_id_may_retain_erased_user_uuid": true,
+    "created_by_type_may_remain_user": true,
+    "created_by_id_classification": "personal_identifier_when_it_retains_the_erased_user_uuid",
+    "created_by_type_classification": "technical_actor_kind_metadata_not_pii_by_itself",
+    "live_profile_technical_metadata_not_rewritten": [
+      "id",
+      "national_id_key_version",
+      "version",
+      "created_at"
+    ],
+    "does_not_remove_all_personal_data": true,
+    "does_not_remove_all_personal_identifiers_or_history": true,
+    "revision_ledger": "security_audit_evidence",
+    "historical_revision_records_remain": true,
+    "subject_erasure_rewrites_revision_ledger": false,
+    "subject_erasure_deletes_revision_ledger": false,
+    "non_name_revision_plaintext_may_remain": true,
+    "revision_actor_id_may_remain": true,
+    "encrypted_historical_name_may_remain_after_live_profile_erasure": true,
+    "historical_revision_survivors": {
+      "plaintext_non_name_old_new": {
+        "survives": true,
+        "classification": "personal_data"
+      },
+      "encrypted_historical_full_name": {
+        "survives": true,
+        "classification": "protected_personal_data"
+      },
+      "actor_id": {
+        "survives": true,
+        "classification": "personal_identifier_when_linked"
+      },
+      "reason_code": {
+        "survives": true,
+        "classification": "technical_metadata"
+      },
+      "source_type": {
+        "survives": true,
+        "classification": "technical_metadata"
+      },
+      "request_id": {
+        "survives": true,
+        "classification": "correlation_metadata_not_identity_proof"
+      },
+      "profile_version": {
+        "survives": true,
+        "classification": "technical_metadata"
+      },
+      "timestamps_and_row_identity": {
+        "survives": true,
+        "classification": "technical_metadata"
+      }
+    },
+    "correction_history_delete_workflow": false,
+    "application_role_cannot_update_delete_revision_rows": true,
+    "legal_retention_duration": "OPEN_LEGAL_DECISION",
+    "legal_retention_duration_evidence_class": "GOVERNANCE_ONLY",
+    "legal_sign_off_blocks_phase02_gate": false,
+    "engineering_behavior": "unlink/tombstone live profile NID and name ciphertext, archive status; do not rewrite created_by_id/created_by_type or non-name plaintext demographics; PreserveSecurityAudit on patient_demographic_revisions; revision actor_id/non-name plaintext/encrypted historical name and correlation/technical metadata are not rewritten"
+  },
+  "deferred_not_required_for_phase02": [
+    "supporting_documents_for_demographic_correction",
+    "staff_assisted_correction",
+    "dual_review",
+    "correction_appeal_dispute_workflow",
+    "duplicate_profile_merge_workflow",
+    "correction_notifications",
+    "velocity_specific_controls",
+    "identity_reverification_workflow",
+    "correction_specific_aal2",
+    "client_selected_reason_catalogue"
+  ],
+  "accepted_residuals": [
+    {
+      "id": "no_server_status_active_gate",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "no_patch_idempotency_key",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "no_correction_velocity_control",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "aal1_not_aal2",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "stored_dob_may_disagree_with_nid_encoded_date",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "full_name_supplied_always_revises",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "non_name_revision_plaintext",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "encrypted_historical_name_survives_erasure",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "archived_profile_plaintext_demographics_survive_erasure",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "archived_profile_creator_linkage_survives_erasure",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "revision_actor_id_survives_erasure",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "no_staff_assisted_correction_path",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "no_correction_notification",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    },
+    {
+      "id": "no_identity_reverification_after_name_or_dob_correction",
+      "classification": "ACCEPTED_PHASE02_RESIDUAL",
+      "evidence_class": "RUNTIME_ALIGNED"
+    }
+  ],
+  "external_audit_boundaries": {
+    "P02-AUDIT-005": {
+      "status": "OPEN",
+      "note": "Profile correction policy does not enable profile claim. FEATURE_IDENTITY_PROFILE_CLAIM remains fail-closed/off in production."
+    },
+    "P02-AUDIT-006": {
+      "status": "OPEN / UNCHANGED",
+      "sf_001": "OPEN / UNCHANGED",
+      "package": "extract-zip@2.0.1"
+    },
+    "P02-AUDIT-007": {
+      "status": "OPEN / EXTERNAL_HUMAN",
+      "g_08_04": "OPEN / EXTERNAL_HUMAN"
+    }
+  }
+}
