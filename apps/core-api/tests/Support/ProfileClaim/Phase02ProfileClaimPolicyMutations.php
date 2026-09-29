@@ -97,6 +97,43 @@ final class Phase02ProfileClaimPolicyMutations
             self::case('evidence_production_authorized', 'evidence_production_enablement_authorized', $baseline, self::evidenceReplaceOnce($evidence, '| Production enablement | `NOT_AUTHORIZED` |', '| Production enablement | `AUTHORIZED` |')),
             self::case('evidence_plain_hash', 'evidence_storage_not_peppered_hash_only', $baseline, self::evidenceReplaceOnce($evidence, '| Storage | peppered-hash-only |', '| Storage | plain-hash-only |')),
             self::case('evidence_legacy_auto_generation', 'evidence_legacy_automatic_credential_generation', $baseline, self::evidenceLegacyAutoGeneration($evidence)),
+            self::case('audit_005_classification_transient', 'p02_audit_005_classification_not_durable', self::transientAudit005Classification($baseline), $evidence),
+            self::case('evidence_t46_italic_identity_closed', 'evidence_prose_t46_closed', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: T46 is OPEN.', 'Current material state: _T46_ is CLOSED.')),
+            self::case('evidence_t46_italic_state_closed', 'evidence_prose_t46_closed', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: T46 is OPEN.', 'Current material state: T46 is _CLOSED_.')),
+            self::case('evidence_t46_has_been_closed', 'evidence_prose_t46_closed', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: T46 is OPEN.', 'Current material state: T46 has been closed.')),
+            self::case('evidence_t46_was_closed', 'evidence_prose_t46_closed', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: T46 is OPEN.', 'Current material state: T46 was closed.')),
+            self::case('evidence_t46_is_now_closed', 'evidence_prose_t46_closed', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: T46 is OPEN.', 'Current material state: T46 is now CLOSED.')),
+            self::case('evidence_t46_unrelated_negation_then_closed', 'evidence_prose_t46_closed', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: T46 is OPEN.', 'This policy does not close another audit. T46 is CLOSED.')),
+            self::case('evidence_t46_closed_before_open', 'evidence_final_status_t46_conflict', $baseline, self::evidenceInsertBefore($evidence, '`T46: OPEN`', "`T46: CLOSED`\n\n")),
+            self::case('evidence_t46_closed_after_open', 'evidence_final_status_t46_conflict', $baseline, self::evidenceInsertAfter($evidence, '`T46: OPEN`', "\n\n`T46: CLOSED`")),
+            self::case('evidence_audit_005_closed_before_open', 'evidence_final_status_p02_audit_005_conflict', $baseline, self::evidenceInsertBefore($evidence, '`P02-AUDIT-005: OPEN`', "`P02-AUDIT-005: CLOSED`\n\n")),
+            self::case('evidence_audit_005_closed_after_open', 'evidence_final_status_p02_audit_005_conflict', $baseline, self::evidenceInsertAfter($evidence, '`P02-AUDIT-005: OPEN`', "\n\n`P02-AUDIT-005: CLOSED`")),
+            self::case('evidence_production_enablement_is_authorized', 'evidence_production_enablement_authorized', $baseline, self::evidenceReplaceOnce($evidence, "Production enablement remains\n`NOT_AUTHORIZED`.", 'Production enablement is AUTHORIZED.')),
+            self::case('evidence_production_enablement_has_been_authorized', 'evidence_production_enablement_authorized', $baseline, self::evidenceReplaceOnce($evidence, "Production enablement remains\n`NOT_AUTHORIZED`.", 'Production enablement has been authorized.')),
+            self::case('evidence_layer_d_approved', 'evidence_layer_d_not_pending_external', $baseline, self::evidenceReplaceOnce($evidence, 'Product, Security, Privacy, and Support/Operations remain `PENDING_EXTERNAL`.', 'Product, Security, Privacy, and Support/Operations remain `APPROVED`.')),
+            self::case('evidence_approver_email', 'evidence_approver_signoff_present', $baseline, self::evidenceInsertAfter($evidence, 'not governance evidence and do not approve this policy.', "\n\nApproved by security-lead@example.com")),
+            self::case('evidence_hybrid_national_id_not_found', 'evidence_hybrid_permits_sensitive_client_state', $baseline, self::evidenceReplaceOnce($evidence, 'client contract (`manual_review_required`', 'client contract (`national_id_not_found`')),
+            self::case('evidence_legacy_profile_exists', 'evidence_legacy_permits_sensitive_client_state', $baseline, self::evidenceReplaceOnce($evidence, 'The client still sees generic', 'Legacy clients receive `profile_exists`. The client still sees generic')),
+            self::case('evidence_pc002_otp_removed', 'evidence_pc002_missing_otp', $baseline, self::evidenceReplaceOnce($evidence, "3. A fresh consumed `profile_claim` OTP exists on the claimant's\n   already-verified phone.\n", '')),
+            self::case('evidence_pc002_dob_sufficient', 'evidence_pc002_dob_sufficient', $baseline, self::evidenceReplaceOnce($evidence, 'remain insufficient as independent', 'DOB alone is sufficient as independent')),
+            self::case('evidence_already_bound_reclaim', 'evidence_already_bound_reclaim_allowed', $baseline, self::evidenceReplaceOnce($evidence, 'cannot be reclaimed', 'can be reclaimed')),
+            self::case('evidence_pc020_kill_switch_removed', 'evidence_pc020_prerequisites_incomplete', $baseline, self::evidenceReplaceOnce($evidence, "- verified kill switch\n", '')),
+            self::case('evidence_resolver_true_in_production', 'evidence_runtime_resolver_true_in_production', $baseline, self::evidenceReplaceOnce($evidence, 'the resolver returns false even if the env flag is', 'the resolver returns true in production even if the env flag is')),
+            self::case('evidence_status_approved_production', 'evidence_status_approved_production_policy', $baseline, self::evidenceReplaceOnce($evidence, '| Status | **not** `APPROVED_PRODUCTION_POLICY` |', '| Status | `APPROVED_PRODUCTION_POLICY` |')),
+            self::case('evidence_pc015_invented_status', 'evidence_pc015_invented_status', $baseline, self::evidenceReplaceOnce($evidence, 'No new status is invented.', 'Freeze uses invented status `claim_frozen`.')),
+            self::case('evidence_pc002_rejected_removed', 'evidence_pc002_rejected_proof_incomplete', $baseline, self::evidenceReplaceOnce($evidence, "DOB, name, gender, blood type, NID-derived demographics, NID+OTP alone,\nand patient verification-document upload remain insufficient as independent\nadditional proof.\n", '')),
+            self::case('evidence_pc002_nid_otp_sufficient', 'evidence_pc002_nid_otp_sufficient', $baseline, self::evidenceReplaceOnce($evidence, 'NID+OTP alone,', 'NID+OTP alone is sufficient. Ignored,')),
+            self::case('evidence_pc020_governance_removed', 'evidence_pc020_prerequisites_incomplete', $baseline, self::evidenceReplaceOnce($evidence, "- external governance approvals\n", '')),
+            self::case('evidence_pc020_independent_qa_removed', 'evidence_pc020_prerequisites_incomplete', $baseline, self::evidenceReplaceOnce($evidence, "- independent engineering QA\n", '')),
+            self::case('evidence_client_must_not_learn_extra', 'evidence_client_must_not_learn_unexpected_member', $baseline, self::evidenceReplaceOnce($evidence, "- nid_exists\n", "- nid_exists\n- secret_exists\n")),
+            self::case('evidence_client_must_not_learn_duplicate', 'evidence_client_must_not_learn_duplicate_member', $baseline, self::evidenceReplaceOnce($evidence, "- nid_exists\n", "- nid_exists\n- nid_exists\n")),
+            self::case('evidence_prohibited_state_extra', 'evidence_prohibited_client_states_unexpected_member', $baseline, self::evidenceReplaceOnce($evidence, '`wrong_claim_code`,', '`wrong_claim_code`, `otp_invalid`,')),
+            self::case('evidence_prohibited_state_duplicate', 'evidence_prohibited_client_states_duplicate_member', $baseline, self::evidenceReplaceOnce($evidence, '`wrong_claim_code`,', '`wrong_claim_code`, `wrong_claim_code`,')),
+            self::case('evidence_plaintext_destination_removed', 'evidence_plaintext_destinations_incomplete', $baseline, self::evidenceReplaceOnce($evidence, ', telemetry.', '.')),
+            self::case('evidence_plaintext_destination_extra', 'evidence_plaintext_destinations_unexpected_member', $baseline, self::evidenceReplaceOnce($evidence, 'telemetry.', 'telemetry, screenshots.')),
+            self::case('evidence_plaintext_destination_duplicate', 'evidence_plaintext_destinations_duplicate_member', $baseline, self::evidenceReplaceOnce($evidence, 'persistence, logs,', 'persistence, persistence, logs,')),
+            self::case('evidence_pc020_prerequisite_extra', 'evidence_pc020_prerequisites_unexpected_member', $baseline, self::evidenceReplaceOnce($evidence, "- tests complete\n", "- tests complete\n- secret dashboard\n")),
+            self::case('evidence_pc020_prerequisite_duplicate', 'evidence_pc020_prerequisites_duplicate_member', $baseline, self::evidenceReplaceOnce($evidence, "- tests complete\n", "- tests complete\n- tests complete\n")),
         ];
     }
 
@@ -526,6 +563,40 @@ final class Phase02ProfileClaimPolicyMutations
         ));
 
         return $artifact;
+    }
+
+    /**
+     * @param  array<string, mixed>  $artifact
+     * @return array<string, mixed>
+     */
+    public static function transientAudit005Classification(array $artifact): array
+    {
+        $artifact = self::copy($artifact);
+        $artifact['external_audit_boundaries']['P02-AUDIT-005']['classification'] = 'POLICY_V1_REMEDIATED_AWAITING_INDEPENDENT_RE_QA';
+
+        return $artifact;
+    }
+
+    public static function evidenceInsertBefore(string $evidence, string $needle, string $insert): string
+    {
+        $count = 0;
+        $replaced = preg_replace('/'.preg_quote($needle, '/').'/', $insert.$needle, $evidence, 1, $count);
+        if (! is_string($replaced) || $count !== 1) {
+            throw new RuntimeException('Failed to insert before '.json_encode($needle).', found '.$count);
+        }
+
+        return $replaced;
+    }
+
+    public static function evidenceInsertAfter(string $evidence, string $needle, string $insert): string
+    {
+        $count = 0;
+        $replaced = preg_replace('/'.preg_quote($needle, '/').'/', $needle.$insert, $evidence, 1, $count);
+        if (! is_string($replaced) || $count !== 1) {
+            throw new RuntimeException('Failed to insert after '.json_encode($needle).', found '.$count);
+        }
+
+        return $replaced;
     }
 
     public static function evidenceFinalStatus(string $evidence, string $identity, string $from, string $to): string

@@ -410,6 +410,38 @@ describe('P02-AUDIT-005 evidence-document consistency', function () {
 
         expect($issues)->toContain('evidence_prose_p02_audit_005_closed');
     });
+
+    it('treats Markdown set-valued collections as order-insensitive', function () {
+        $validator = new Phase02ProfileClaimPolicyValidator;
+        $artifact = Artifact::decoded();
+        $evidence = Artifact::evidenceRaw();
+
+        $learnReordered = Mutations::evidenceReplaceOnce(
+            $evidence,
+            "- nid_exists\n- nid_does_not_exist\n",
+            "- nid_does_not_exist\n- nid_exists\n",
+        );
+        $statesReordered = Mutations::evidenceReplaceOnce(
+            $evidence,
+            "`wrong_claim_code`,\n`profile_exists`",
+            "`profile_exists`,\n`wrong_claim_code`",
+        );
+        $plaintextReordered = Mutations::evidenceReplaceOnce(
+            $evidence,
+            'persistence, logs,',
+            'logs, persistence,',
+        );
+        $pc020Reordered = Mutations::evidenceReplaceOnce(
+            $evidence,
+            "- policy recorded\n- ceremony implementation complete\n",
+            "- ceremony implementation complete\n- policy recorded\n",
+        );
+
+        expect($validator->validate($artifact, $learnReordered))->toBe([])
+            ->and($validator->validate($artifact, $statesReordered))->toBe([])
+            ->and($validator->validate($artifact, $plaintextReordered))->toBe([])
+            ->and($validator->validate($artifact, $pc020Reordered))->toBe([]);
+    });
 });
 
 describe('P02-AUDIT-005 policy mutation detection', function () {
@@ -431,6 +463,7 @@ describe('P02-AUDIT-005 policy mutation detection', function () {
 
         expect($evidence)->toContain('test oracles only')
             ->and($evidence)->toContain('A Controller freeze is not Product approval')
+            ->and($evidence)->not->toContain('POLICY_V1_REMEDIATED_AWAITING_INDEPENDENT_RE_QA')
             ->and($evidence)->not->toMatch('/Controller freeze is Product approval/');
     });
 });

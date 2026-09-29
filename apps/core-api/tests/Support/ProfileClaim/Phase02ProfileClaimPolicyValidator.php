@@ -69,6 +69,7 @@ final class Phase02ProfileClaimPolicyValidator
             'json.non_enumeration.hidden_denial' => 'hidden_denial_is_not_not_found',
             'json.production_enablement' => 'production_enablement_not_not_authorized',
             'json.feature_state' => 'feature_state_not_disabled',
+            'json.external_audit_boundaries.P02-AUDIT-005.classification' => 'p02_audit_005_classification_not_durable',
         ];
         foreach ($aliases as $path => $alias) {
             if (in_array('json_mismatch:'.$path, $issues, true) || in_array('json_missing:'.$path, $issues, true)) {
@@ -175,6 +176,15 @@ final class Phase02ProfileClaimPolicyValidator
         $audit006 = is_array($boundaries['P02-AUDIT-006'] ?? null) ? $boundaries['P02-AUDIT-006'] : [];
         $audit007 = is_array($boundaries['P02-AUDIT-007'] ?? null) ? $boundaries['P02-AUDIT-007'] : [];
         $this->expectSame($audit005['status'] ?? null, 'OPEN', 'p02_audit_005_boundary_not_open', $issues);
+        $this->expectSame($audit005['classification'] ?? null, Phase02ProfileClaimPolicyArtifact::CLASSIFICATION, 'p02_audit_005_classification_not_durable', $issues);
+        $audit005Note = is_string($audit005['note'] ?? null) ? $audit005['note'] : '';
+        if (preg_match('/remediated|awaiting re-QA|unmerged artifact|ready to merge|POLICY_V1_REMEDIATED/i', $audit005Note.' '.($audit005['classification'] ?? '')) === 1) {
+            $issues[] = 'p02_audit_005_transient_lifecycle_state';
+        }
+        $encoded = json_encode($artifact, JSON_THROW_ON_ERROR);
+        if (is_string($encoded) && str_contains($encoded, 'POLICY_V1_REMEDIATED_AWAITING_INDEPENDENT_RE_QA')) {
+            $issues[] = 'p02_audit_005_transient_lifecycle_state';
+        }
         $this->expectSame($audit006['status'] ?? null, 'OPEN / UNCHANGED', 'p02_audit_006_boundary_changed', $issues);
         $this->expectSame($audit007['status'] ?? null, 'OPEN / EXTERNAL_HUMAN', 'p02_audit_007_boundary_not_open_external_human', $issues);
         $this->expectSame($audit007['g_08_04'] ?? null, 'OPEN / EXTERNAL_HUMAN', 'p02_audit_007_g_08_04_not_open_external_human', $issues);
@@ -479,20 +489,33 @@ final class Phase02ProfileClaimPolicyValidator
         $identity = $doc->identityTable();
         $final = $doc->finalStatusMap();
 
-        $this->assertSiteState($identity, 'P02-AUDIT-005', 'OPEN', 'evidence_identity_p02_audit_005_not_open', $issues, true);
-        $this->assertSiteState($final, 'P02-AUDIT-005', 'OPEN', 'evidence_final_status_p02_audit_005_not_open', $issues);
-        $this->assertSiteState($identity, 'T46', 'OPEN', 'evidence_identity_t46_not_open', $issues, true);
-        $this->assertSiteState($final, 'T46', 'OPEN', 'evidence_final_status_t46_not_open', $issues);
-        $this->assertSiteContains($identity, 'P02-AUDIT-006', 'OPEN / UNCHANGED', 'evidence_identity_p02_audit_006_not_open_unchanged', $issues, true);
-        $this->assertSiteState($final, 'P02-AUDIT-006', 'OPEN / UNCHANGED', 'evidence_final_status_p02_audit_006_not_open_unchanged', $issues);
-        $this->assertSiteState($identity, 'P02-AUDIT-007', 'OPEN / EXTERNAL_HUMAN', 'evidence_identity_p02_audit_007_not_open_external_human', $issues, true);
-        $this->assertSiteState($final, 'P02-AUDIT-007', 'OPEN / EXTERNAL_HUMAN', 'evidence_final_status_p02_audit_007_not_open_external_human', $issues);
-        $this->assertSiteContains($identity, 'G-08-04', 'OPEN / EXTERNAL_HUMAN', 'evidence_identity_g_08_04_not_open_external_human', $issues, true);
-        $this->assertSiteState($final, 'G-08-04', 'OPEN / EXTERNAL_HUMAN', 'evidence_final_status_g_08_04_not_open_external_human', $issues);
-        $this->assertSiteState($identity, 'Production enablement', 'NOT_AUTHORIZED', 'evidence_identity_production_enablement_not_not_authorized', $issues);
-        $this->assertSiteState($final, 'Production enablement', 'NOT_AUTHORIZED', 'evidence_final_status_production_enablement_not_not_authorized', $issues);
-        $this->assertSiteState($identity, 'Feature state', 'DISABLED', 'evidence_identity_feature_state_not_disabled', $issues);
-        $this->assertSiteState($final, 'Feature state', 'DISABLED', 'evidence_final_status_feature_state_not_disabled', $issues);
+        $this->assertAllStates($doc->identityStatesFor('P02-AUDIT-005'), 'OPEN', 'evidence_identity_p02_audit_005_not_open', $issues);
+        $this->assertAllStates($doc->finalStatesFor('P02-AUDIT-005'), 'OPEN', 'evidence_final_status_p02_audit_005_not_open', $issues);
+        $this->assertAllStates($doc->identityStatesFor('T46'), 'OPEN', 'evidence_identity_t46_not_open', $issues);
+        $this->assertAllStates($doc->finalStatesFor('T46'), 'OPEN', 'evidence_final_status_t46_not_open', $issues);
+        $this->assertAllStates($doc->identityStatesFor('P02-AUDIT-006'), 'OPEN / UNCHANGED', 'evidence_identity_p02_audit_006_not_open_unchanged', $issues, true);
+        $this->assertAllStates($doc->finalStatesFor('P02-AUDIT-006'), 'OPEN / UNCHANGED', 'evidence_final_status_p02_audit_006_not_open_unchanged', $issues, true);
+        $this->assertAllStates($doc->identityStatesFor('P02-AUDIT-007'), 'OPEN / EXTERNAL_HUMAN', 'evidence_identity_p02_audit_007_not_open_external_human', $issues, true);
+        $this->assertAllStates($doc->finalStatesFor('P02-AUDIT-007'), 'OPEN / EXTERNAL_HUMAN', 'evidence_final_status_p02_audit_007_not_open_external_human', $issues, true);
+        $this->assertAllStates($doc->identityStatesFor('G-08-04'), 'OPEN / EXTERNAL_HUMAN', 'evidence_identity_g_08_04_not_open_external_human', $issues, true);
+        $this->assertAllStates($doc->finalStatesFor('G-08-04'), 'OPEN / EXTERNAL_HUMAN', 'evidence_final_status_g_08_04_not_open_external_human', $issues, true);
+        $this->assertAllStates($doc->identityStatesFor('Production enablement'), 'NOT_AUTHORIZED', 'evidence_identity_production_enablement_not_not_authorized', $issues);
+        $this->assertAllStates($doc->finalStatesFor('Production enablement'), 'NOT_AUTHORIZED', 'evidence_final_status_production_enablement_not_not_authorized', $issues);
+        $this->assertAllStates($doc->identityStatesFor('Feature state'), 'DISABLED', 'evidence_identity_feature_state_not_disabled', $issues);
+        $this->assertAllStates($doc->finalStatesFor('Feature state'), 'DISABLED', 'evidence_final_status_feature_state_not_disabled', $issues);
+
+        if ($this->hasConflict($doc->identityStatesFor('T46'))) {
+            $issues[] = 'evidence_identity_t46_conflict';
+        }
+        if ($this->hasConflict($doc->finalStatesFor('T46'))) {
+            $issues[] = 'evidence_final_status_t46_conflict';
+        }
+        if ($this->hasConflict($doc->identityStatesFor('P02-AUDIT-005'))) {
+            $issues[] = 'evidence_identity_p02_audit_005_conflict';
+        }
+        if ($this->hasConflict($doc->finalStatesFor('P02-AUDIT-005'))) {
+            $issues[] = 'evidence_final_status_p02_audit_005_conflict';
+        }
 
         foreach ($doc->positiveStateAssignments('P02-AUDIT-005') as $assignment) {
             if ($this->stateIs($assignment['state'], 'CLOSED')) {
@@ -529,9 +552,13 @@ final class Phase02ProfileClaimPolicyValidator
             $issues[] = 'evidence_prose_t46_not_open';
         }
 
+        if ($doc->claimsProductionAuthorized()) {
+            $issues[] = 'evidence_production_enablement_authorized';
+        }
+
         foreach (array_merge(
-            isset($identity['Production enablement']) ? [['state' => $identity['Production enablement']]] : [],
-            isset($final['Production enablement']) ? [['state' => $final['Production enablement']]] : [],
+            array_map(static fn (string $state): array => ['state' => $state], $doc->identityStatesFor('Production enablement')),
+            array_map(static fn (string $state): array => ['state' => $state], $doc->finalStatesFor('Production enablement')),
         ) as $assignment) {
             if ($this->stateIs($assignment['state'], 'AUTHORIZED') && ! str_contains($assignment['state'], 'NOT_AUTHORIZED')) {
                 $issues[] = 'evidence_production_enablement_authorized';
@@ -575,7 +602,17 @@ final class Phase02ProfileClaimPolicyValidator
         if (($optionB['Generation'] ?? null) !== 'cryptographically secure random') {
             $issues[] = 'evidence_missing_csprng';
         }
-        if ($doc->plaintextDestinations() !== Phase02ProfileClaimPolicyArtifact::PLAINTEXT_PROHIBITED_IN) {
+        if ($doc->plaintextDestinations() !== []) {
+            $plaintextIssues = Phase02ProfileClaimPolicyEvidenceDocument::setIssues(
+                Phase02ProfileClaimPolicyArtifact::PLAINTEXT_PROHIBITED_IN,
+                $doc->plaintextDestinations(),
+                'evidence_plaintext_destinations',
+            );
+            if (in_array('evidence_plaintext_destinations_incomplete', $plaintextIssues, true)) {
+                $plaintextIssues[] = 'evidence_missing_plaintext_boundary';
+            }
+            $issues = array_merge($issues, $plaintextIssues);
+        } else {
             $issues[] = 'evidence_missing_plaintext_boundary';
         }
 
@@ -602,12 +639,24 @@ final class Phase02ProfileClaimPolicyValidator
             }
         }
 
-        if ($doc->clientMustNotLearn() !== Phase02ProfileClaimPolicyArtifact::CLIENT_MUST_NOT_LEARN) {
-            $issues[] = 'evidence_client_must_not_learn_incomplete';
-        }
-        if ($doc->prohibitedClientStates() !== Phase02ProfileClaimPolicyArtifact::PROHIBITED_CLIENT_STATES) {
-            $issues[] = 'evidence_prohibited_client_states_incomplete';
-        }
+        $learnIssues = Phase02ProfileClaimPolicyEvidenceDocument::setIssues(
+            Phase02ProfileClaimPolicyArtifact::CLIENT_MUST_NOT_LEARN,
+            $doc->clientMustNotLearn(),
+            'evidence_client_must_not_learn',
+        );
+        $issues = array_merge($issues, $learnIssues);
+        $stateIssues = Phase02ProfileClaimPolicyEvidenceDocument::setIssues(
+            Phase02ProfileClaimPolicyArtifact::PROHIBITED_CLIENT_STATES,
+            $doc->prohibitedClientStates(),
+            'evidence_prohibited_client_states',
+        );
+        $issues = array_merge($issues, $stateIssues);
+        $pc020Issues = Phase02ProfileClaimPolicyEvidenceDocument::setIssues(
+            Phase02ProfileClaimPolicyEvidenceDocument::PC020_MARKDOWN_PREREQUISITES,
+            $doc->pc020PrerequisiteItems(),
+            'evidence_pc020_prerequisites',
+        );
+        $issues = array_merge($issues, $pc020Issues);
         if ($doc->genericPending() !== 'manual_review_required') {
             $issues[] = 'evidence_generic_pending_mismatch';
         }
@@ -637,8 +686,97 @@ final class Phase02ProfileClaimPolicyValidator
         if (! str_contains($evidence, 'non-empty bound National-ID') && ! str_contains($evidence, 'non-empty matching account-bound National-ID')) {
             $issues[] = 'evidence_missing_bound_nid_requirement';
         }
+        if (str_contains($evidence, 'POLICY_V1_REMEDIATED_AWAITING_INDEPENDENT_RE_QA')) {
+            $issues[] = 'evidence_transient_lifecycle_state';
+        }
+        if ($doc->hasApproverSignOff() || $doc->signOffEmails() !== []) {
+            $issues[] = 'evidence_approver_signoff_present';
+        }
+        if ($doc->hybridPermitsSensitive()) {
+            $issues[] = 'evidence_hybrid_permits_sensitive_client_state';
+        }
+        if ($doc->legacyPermitsSensitive()) {
+            $issues[] = 'evidence_legacy_permits_sensitive_client_state';
+        }
+        foreach ($doc->pc002MissingFactors() as $factor) {
+            $issues[] = 'evidence_pc002_missing_'.$factor;
+        }
+        if ($doc->pc002ClaimsDobSufficient()) {
+            $issues[] = 'evidence_pc002_dob_sufficient';
+        }
+        if ($doc->pc002ClaimsNidOtpSufficient()) {
+            $issues[] = 'evidence_pc002_nid_otp_sufficient';
+        }
+        if ($doc->pc002RejectedProofIncomplete()) {
+            $issues[] = 'evidence_pc002_rejected_proof_incomplete';
+        }
+        if ($doc->alreadyBoundAllowsReclaim()) {
+            $issues[] = 'evidence_already_bound_reclaim_allowed';
+        }
+        if ($doc->alreadyBoundAllowsOverwriteOrReassignment()) {
+            $issues[] = 'evidence_already_bound_overwrite_or_reassignment_allowed';
+        }
+        if ($doc->runtimeResolverReturnsTrueInProduction()) {
+            $issues[] = 'evidence_runtime_resolver_true_in_production';
+        }
+        if ($doc->runtimeMissingDarkClaims()) {
+            $issues[] = 'evidence_runtime_dark_claims_missing';
+        }
+        if ($doc->ceremonyClaimedImplemented()) {
+            $issues[] = 'evidence_ceremony_claimed_implemented';
+        }
+        if ($doc->statusClaimsApprovedProductionPolicy()) {
+            $issues[] = 'evidence_status_approved_production_policy';
+        }
+        if ($doc->pc015InventedStatus()) {
+            $issues[] = 'evidence_pc015_invented_status';
+        }
+        if ($doc->layerDLacksPendingExternal()) {
+            $issues[] = 'evidence_layer_d_not_pending_external';
+        }
+        if ($doc->envFlagAloneEnablesProduction()) {
+            $issues[] = 'evidence_env_flag_alone_enables_production';
+        }
 
         return array_values(array_unique($issues));
+    }
+
+    /**
+     * @param  list<string>  $states
+     * @param  list<string>  $issues
+     */
+    private function assertAllStates(array $states, string $expected, string $issue, array &$issues, bool $contains = false): void
+    {
+        if ($states === []) {
+            $issues[] = $issue;
+
+            return;
+        }
+        foreach ($states as $state) {
+            if ($contains) {
+                if (! str_contains($state, $expected)) {
+                    $issues[] = $issue;
+                }
+
+                continue;
+            }
+            if ($state !== $expected && ! str_starts_with($state, $expected)) {
+                $issues[] = $issue;
+            }
+        }
+    }
+
+    /**
+     * @param  list<string>  $states
+     */
+    private function hasConflict(array $states): bool
+    {
+        $normalized = array_values(array_unique(array_map(
+            static fn (string $state): string => strtoupper(trim($state)),
+            $states,
+        )));
+
+        return count($normalized) > 1;
     }
 
     /**

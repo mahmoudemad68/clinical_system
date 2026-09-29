@@ -627,8 +627,8 @@ final class Phase02ProfileClaimPolicyExpected
   "external_audit_boundaries": {
     "P02-AUDIT-005": {
       "status": "OPEN",
-      "classification": "POLICY_V1_REMEDIATED_AWAITING_INDEPENDENT_RE_QA",
-      "note": "Controller Policy v1 is recorded and QA-P02A005 findings are remediated in this unmerged artifact. Ceremony is not implemented. Production remains disabled. This is not closure."
+      "classification": "POLICY_DECISIONS_RECORDED_AWAITING_EXTERNAL_GOVERNANCE_AND_IMPLEMENTATION",
+      "note": "Controller-frozen Policy v1 decisions are recorded. This artifact is not Product, Security, Privacy, or Support/Operations approval. Ceremony implementation is incomplete. External governance remains pending. P02-AUDIT-005 remains OPEN. T46 remains OPEN. Production enablement remains NOT_AUTHORIZED. Feature state remains DISABLED. Independent implementation and enablement QA is required before any future production enablement. This is not closure."
     },
     "P02-AUDIT-006": {
       "status": "OPEN / UNCHANGED",

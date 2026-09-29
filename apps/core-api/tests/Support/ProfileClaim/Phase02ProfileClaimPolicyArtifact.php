@@ -53,9 +53,9 @@ final class Phase02ProfileClaimPolicyArtifact
 
     public const SHOW_PRINT_SEND = 'once_at_issuance';
 
-    public const PUBLISHED_SHA256 = '3f704817002c0b169bb80cf0026dad0a78e0da950919d8fb52c64de5b42e4396';
+    public const PUBLISHED_SHA256 = '7a13fbbd1a36bb789f53d22f30335a926ced3160d720962c3d52405972ca55e5';
 
-    public const SUPERSEDED_UNMERGED_SHA256 = '36a7a20cc96b18cf421209ec69de5b0554a59d0a3f8ddbfd85a396309ae5050a';
+    public const SUPERSEDED_UNMERGED_SHA256 = '3f704817002c0b169bb80cf0026dad0a78e0da950919d8fb52c64de5b42e4396';
 
     /** @var list<string> */
     public const DECISION_IDS = [
@@ -122,7 +122,12 @@ final class Phase02ProfileClaimPolicyArtifact
         'telemetry',
     ];
 
-    /** @var list<string> */
+    /**
+     * JSON prerequisite order is part of the QA-008 oracle. Markdown copies of
+     * this collection are compared as sets.
+     *
+     * @var list<string>
+     */
     public const PC020_PREREQUISITES = [
         'policy_recorded',
         'ceremony_implementation_complete',

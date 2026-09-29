@@ -15,8 +15,8 @@ runbooks.
 
 **v1.0.0-phase02** is the first recorded Profile-Claim policy version. It
 has never been merged to `main`. Closed independent-QA items QA-P02A005-001,
-QA-P02A005-003, QA-P02A005-004, and QA-P02A005-005 remain closed. Remaining
-alignment-tooling findings are corrected **in place** on this same unmerged
+QA-P02A005-003, QA-P02A005-004, QA-P02A005-005, and QA-P02A005-008 remain
+closed. Alignment-tooling corrections stay on this same `v1.0.0-phase02`
 artifact. There is no `v1.0.1`.
 
 | Field | Value |
@@ -34,8 +34,8 @@ artifact. There is no `v1.0.1`.
 | Release date | `2026-09-28` |
 | Artifact | [phase02-profile-claim-policy.v1.0.0-phase02.json](reference-data/phase02-profile-claim-policy.v1.0.0-phase02.json) |
 | SHA-256 companion | [phase02-profile-claim-policy.v1.0.0-phase02.sha256](reference-data/phase02-profile-claim-policy.v1.0.0-phase02.sha256) |
-| SHA-256 | `3f704817002c0b169bb80cf0026dad0a78e0da950919d8fb52c64de5b42e4396` |
-| Superseded unmerged digest | `36a7a20cc96b18cf421209ec69de5b0554a59d0a3f8ddbfd85a396309ae5050a` (not authoritative) |
+| SHA-256 | `7a13fbbd1a36bb789f53d22f30335a926ced3160d720962c3d52405972ca55e5` |
+| Superseded unmerged digest | `3f704817002c0b169bb80cf0026dad0a78e0da950919d8fb52c64de5b42e4396` (not authoritative) |
 | Production enablement | `NOT_AUTHORIZED` |
 | Feature state | `DISABLED` |
 | Product approval | `PENDING_EXTERNAL` |
@@ -63,22 +63,20 @@ This artifact converts that gap into:
 
 `POLICY_DECISIONS_RECORDED_AWAITING_EXTERNAL_GOVERNANCE_AND_IMPLEMENTATION`
 
-Independent engineering QA of the first unmerged candidate returned
-`POLICY_V1_REMEDIATION_REQUIRED`. This in-place correction is:
-
-`POLICY_V1_REMEDIATED_AWAITING_INDEPENDENT_RE_QA`
-
-It does **not** convert T46 to MITIGATED or CLOSED. T46 still lacks
-ceremony implementation, production-reachable attach, implementation
-evidence, independent QA, and external enablement/governance evidence.
+Recording Controller-frozen Policy v1 does **not** close P02-AUDIT-005
+or T46, does **not** authorize ceremony implementation, and does **not**
+authorize production enablement. Independent QA of implementation and
+production enablement remains required. T46 still lacks ceremony
+implementation, production-reachable attach, implementation evidence,
+independent QA, and external enablement/governance evidence.
 
 ## Four layers (must not be collapsed)
 
-| Layer | State after this PR |
+| Layer | State recorded by this artifact |
 | --- | --- |
 | A. Controller policy freeze | Completed by this artifact |
 | B. Engineering implementation | **Not** completed |
-| C. Independent engineering QA | **Not** completed (re-QA of this remediation is pending) |
+| C. Independent engineering QA | Independent QA is required for implementation and production enablement; this policy artifact alone does not authorize either. |
 | D. External governance / human review | Product, Security, Privacy, and Support/Operations remain `PENDING_EXTERNAL`. **G-08-04 / P02-AUDIT-007 remains `OPEN` / `EXTERNAL_HUMAN`** |
 
 Controller selection of Hybrid Policy v1 is **not** independent
@@ -190,7 +188,7 @@ urls, audit_metadata, events, metrics, analytics, telemetry.
 Option A (~50-bit) was rejected as too weak if hashes leak or rate limits
 fail. Option C (~100-bit) was rejected as unnecessary typing cost.
 
-**These rules are recorded. They are not implemented in this PR.**
+**These rules are recorded. They are not implemented by this artifact.**
 
 ## Non-enumeration
 
@@ -263,7 +261,7 @@ PC-015 mapping is **not** ambiguous: `patient_profiles.status` already
 allows `disputed` (`PatientStatus::Disputed`). The freeze **workflow** is
 still unimplemented. No new status is invented.
 
-PC-020 is **not** performed in this PR. Prerequisites before any later
+PC-020 is **not** performed by this artifact. Prerequisites before any later
 production hard-off removal:
 
 - policy recorded
@@ -314,7 +312,7 @@ blocks production enablement.
 true. `LinkVerifiedPatientAccount` throws `FeatureUnavailable` while the
 flag is off. Isolated flag-on tests still do not attach `user_id`.
 
-This PR does not change that behavior. The env flag alone cannot enable
+This artifact does not change that behavior. The env flag alone cannot enable
 production.
 
 ## T46 remains OPEN
@@ -324,25 +322,25 @@ P02-AUDIT-005. Policy recording closes **policy-selection uncertainty**.
 It does not close the threat. Status counts in the threat-model file are
 unchanged.
 
-## Next engineering stage (not this PR)
+## Next engineering stage (not authorized by this artifact)
 
-After independent re-QA of this Policy v1 artifact, a **later** task may
-implement the ceremony **behind the existing disabled flag**: credential
-issuance at unlinked create, hashed storage, OTP purpose wiring,
-`attachAccount` CAS, abuse counters, notifications, and client collection
-of the claim code.
+After independent QA of implementation and enablement is complete, a
+**later** task may implement the ceremony **behind the existing disabled
+flag**: credential issuance at unlinked create, hashed storage, OTP
+purpose wiring, `attachAccount` CAS, abuse counters, notifications, and
+client collection of the claim code.
 
 That later task still must **not** set `FEATURE_IDENTITY_PROFILE_CLAIM=true`
 and must **not** remove the production hard-off (PC-020 is a separately
 authorized change).
 
-## Recommended QA action
+## Independent QA requirement
 
-Independent re-QA of this evidence-only PR: confirm the JSON/SHA/tests
-match the frozen Hybrid decisions, confirm no runtime source changed, and
-confirm T46 / P02-AUDIT-005 remain OPEN.
+Independent engineering QA of implementation and production enablement is
+required before any future production enablement. This policy artifact
+alone does not authorize ceremony implementation or production enablement.
 
-## Final blocker state after this evidence PR
+## Final blocker state
 
 Current material state: P02-AUDIT-005 is OPEN.
 
