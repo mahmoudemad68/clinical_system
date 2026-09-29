@@ -1,0 +1,645 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Support\ProfileClaim;
+
+use JsonException;
+use RuntimeException;
+
+/**
+ * Independently frozen Profile-Claim Policy v1 semantic oracle.
+ *
+ * This is a Pest test fixture, not governance evidence. It must not be loaded
+ * from the artifact under test at runtime.
+ */
+final class Phase02ProfileClaimPolicyExpected
+{
+    /**
+     * @return array<string, mixed>
+     */
+    public static function artifact(): array
+    {
+        try {
+            $decoded = json_decode(self::FROZEN_JSON, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new RuntimeException('Frozen expected policy JSON is invalid.', 0, $exception);
+        }
+
+        if (! is_array($decoded)) {
+            throw new RuntimeException('Frozen expected policy JSON must decode to an object.');
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function evidenceNumericCells(): array
+    {
+        return [
+            'OTP length' => '6 digits',
+            'OTP TTL' => '300 seconds',
+            'OTP max verification attempts' => '5',
+            'OTP resend cooldown' => '60 seconds',
+            'OTP requests / phone-HMAC / hour' => '5',
+            'OTP requests / IP / hour' => '20',
+            'Global OTP requests / hour' => '200',
+            'Claim credential length' => '16 Crockford Base32 characters',
+            'Claim credential entropy' => 'approximately 80 bits',
+            'Claim credential TTL' => '30 days',
+            'Claim credential successful uses' => '1',
+            'Credential failures / account+NID-HMAC / hour' => '5',
+            'Cooldown after hourly credential budget' => '15 minutes',
+            'Credential failures / account+NID-HMAC / 24h' => '15 → internal Manual Review lock',
+            'Claim ceremony starts / account / hour' => '5',
+            'Claim ceremony starts / IP / hour' => '20',
+            'Claim ceremony starts / NID-HMAC / hour' => '5',
+            'profile_claim OTP recency at attach' => '10 minutes',
+            'Feature default' => 'false',
+            'Production state' => 'hard-off pending separate PC-020 gate',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function evidenceOptionBCells(): array
+    {
+        return [
+            'Option' => 'B',
+            'Encoding' => 'Crockford Base32',
+            'Length' => '16 characters (~80-bit)',
+            'Alphabet' => '0123456789ABCDEFGHJKMNPQRSTVWXYZ',
+            'Excluded' => 'I L O U',
+            'Display-only' => 'XXXX-XXXX-XXXX-XXXX',
+            'Canonical secret' => '16 characters, no separators',
+            'Generation' => 'cryptographically secure random',
+            'Issuer' => 'clinic',
+            'Bound to' => 'exactly one patient profile',
+            'Comparison' => 'case canonicalization; display-separator stripping; hyphens never enter the canonical secret or hash input',
+            'Show/print/send-once' => 'once at issuance only',
+            'TTL' => '30 days from issuance',
+            'Uses' => '1 successful use',
+            'Storage' => 'peppered-hash-only',
+            'Plaintext persistence' => 'false',
+        ];
+    }
+
+    /**
+     * @return array<string, array{implementation_status: string, blocks_production_enablement: bool}>
+     */
+    public static function evidenceDecisionMatrix(): array
+    {
+        $matrix = [];
+        foreach (self::artifact()['decisions'] as $decision) {
+            $matrix[$decision['id']] = [
+                'implementation_status' => $decision['implementation_status'],
+                'blocks_production_enablement' => $decision['blocks_production_enablement'],
+            ];
+        }
+
+        return $matrix;
+    }
+
+    private const FROZEN_JSON = <<<'JSON'
+{
+  "policy_id": "phase02-profile-claim",
+  "policy_namespace": "phase02-profile-claim",
+  "distinct_from_profile_correction_policy": true,
+  "distinct_from_verification_policy": true,
+  "title": "Phase 02 Profile Claim Policy",
+  "version": "v1.0.0-phase02",
+  "supersedes": null,
+  "release_date": "2026-09-28",
+  "status": "CONTROLLER_POLICY_V1_FROZEN",
+  "decision": "HYBRID_PROFILE_CLAIM",
+  "decision_state": "CONTROLLER_POLICY_V1_FROZEN",
+  "controller": "Mahmoud",
+  "classification": "POLICY_DECISIONS_RECORDED_AWAITING_EXTERNAL_GOVERNANCE_AND_IMPLEMENTATION",
+  "production_enablement": "NOT_AUTHORIZED",
+  "feature_state": "DISABLED",
+  "p02_audit_005": "OPEN",
+  "t46": "OPEN",
+  "independent_enablement": "EXTERNAL_HUMAN",
+  "not_approved_production_policy": true,
+  "p02_mapping": {
+    "audit_id": "P02-AUDIT-005",
+    "threat_id": "P02-T46",
+    "canonical_gate": "Phase 02 measurable exit gate: existing-profile claim meets the approved assurance policy and never returns candidate existence to the client"
+  },
+  "layers": {
+    "A_controller_policy_freeze": "COMPLETED_BY_THIS_ARTIFACT",
+    "B_engineering_implementation": "NOT_COMPLETED",
+    "C_independent_engineering_qa": "NOT_COMPLETED",
+    "D_external_governance_human_review": "PENDING"
+  },
+  "governance": {
+    "product_approval": "PENDING_EXTERNAL",
+    "security_approval": "PENDING_EXTERNAL",
+    "privacy_approval": "PENDING_EXTERNAL",
+    "support_operations_approval": "PENDING_EXTERNAL",
+    "independent_security_privacy_review": "G-08-04 / P02-AUDIT-007 remains OPEN / EXTERNAL_HUMAN",
+    "g_08_04": "OPEN / EXTERNAL_HUMAN",
+    "g_08_04_claimed_approved": false,
+    "does_not_reuse_profile_correction_approval": true,
+    "does_not_copy_approver_identities_from_other_policies": true,
+    "controller_freeze_is_not_product_security_privacy_approval": true
+  },
+  "non_claims": [
+    "This artifact records Controller-frozen Policy v1 decisions. It is not APPROVED_PRODUCTION_POLICY.",
+    "This artifact does not reuse or inherit Product, Security, or Privacy approval from the Profile-Correction policy.",
+    "This artifact does not copy Product/Privacy/Security approver identities from another policy as if they approved Profile Claim.",
+    "This artifact is not G-08-04 independent human security/privacy approval.",
+    "This artifact does not close P02-AUDIT-005.",
+    "This artifact does not change P02-T46 from OPEN.",
+    "This artifact does not implement the claim ceremony.",
+    "This artifact does not authorize FEATURE_IDENTITY_PROFILE_CLAIM=true.",
+    "This artifact does not authorize removal of the production hard-off.",
+    "This artifact does not remediate SF-001 / P02-AUDIT-006.",
+    "This artifact does not close P02-AUDIT-007.",
+    "National ID plus a newly verified phone remains insufficient under ADR 0011.",
+    "Date of birth, full name, gender, and other National-ID-printed or National-ID-derived demographics are not independent additional proof.",
+    "Current runtime remains dark and fail-closed."
+  ],
+  "adr_0011": {
+    "relationship": "extends_rather_than_weakens",
+    "reference": "docs/adr/0011-identity-assurance-and-profile-claim.md",
+    "preserves": [
+      "National ID plus a newly verified phone is not sufficient when a candidate exists",
+      "Self-service auto-link without additional approved proof is not allowed",
+      "SIM-swap plus National ID knowledge is not an automatic link",
+      "Non-enumeration remains mandatory"
+    ],
+    "hybrid_additional_factor": "clinic-issued profile-bound single-use claim credential"
+  },
+  "model": {
+    "name": "HYBRID_PROFILE_CLAIM",
+    "high_confidence": "future self-service attach when the full PC-002 proof bundle and eligibility rules are satisfied",
+    "otherwise": "internal Manual Review using the existing non-enumerating client contract",
+    "current_runtime": "dark"
+  },
+  "claim_credential": {
+    "option": "B",
+    "encoding": "Crockford Base32",
+    "length_characters": 16,
+    "entropy_bits_approximate": 80,
+    "alphabet": "0123456789ABCDEFGHJKMNPQRSTVWXYZ",
+    "excluded_characters": "ILOU",
+    "canonical_form": "16 characters with no separators",
+    "display_only_format": "XXXX-XXXX-XXXX-XXXX",
+    "generation": "cryptographically_secure_random",
+    "issuer": "clinic",
+    "bound_to": "exactly_one_patient_profile",
+    "issuance_workflow": "approved_future_walk_in_issuance_only",
+    "successful_uses": 1,
+    "ttl_days": 30,
+    "show_print_send": "once_at_issuance",
+    "storage": "peppered_hash_only",
+    "plaintext_persistence": false,
+    "comparison": {
+      "strip_display_separators": true,
+      "canonicalize_case": true,
+      "hyphens_never_part_of_canonical_secret_or_hash_input": true
+    },
+    "plaintext_prohibited_in": [
+      "persistence",
+      "logs",
+      "urls",
+      "audit_metadata",
+      "events",
+      "metrics",
+      "analytics",
+      "telemetry"
+    ]
+  },
+  "legacy_profiles": {
+    "unlinked_without_issued_credential": "MANUAL_REVIEW_ONLY",
+    "external_response": "manual_review_required",
+    "retroactive_credential_generation": false,
+    "automatic_credential_generation": false
+  },
+  "proof": {
+    "high_confidence_requires_all": [
+      "canonical_national_id_hmac_matches_exactly_one_active_unlinked_patient_profile",
+      "claimant_account_has_non_empty_bound_national_id_identity_that_matches_the_target_profile",
+      "fresh_purpose_bound_profile_claim_otp_consumed_on_already_verified_phone",
+      "valid_clinic_issued_claim_credential_for_that_exact_patient_profile"
+    ],
+    "account_bound_national_id_required": true,
+    "missing_account_bound_national_id_is_not_high_confidence": true,
+    "missing_account_bound_national_id_routes_to": "internal_manual_review_generic_client_contract",
+    "matches_bound_identity_null_stored_hmac_is_not_high_confidence": true,
+    "not_independent_additional_proof": [
+      "date_of_birth",
+      "full_name",
+      "gender",
+      "blood_type",
+      "other_demographic_data_printed_on_or_derivable_from_national_id",
+      "national_id_plus_otp_alone",
+      "patient_verification_document_upload_as_v1_high_confidence_path"
+    ],
+    "national_id_plus_otp_alone_insufficient": true
+  },
+  "assurance_states": {
+    "high_confidence_self_service_bind": "ial2_verified_link",
+    "manual_review_pending": "ial2_proof_pending",
+    "operator_bind_after_sod_review": "ial3_operator",
+    "operator_workflow_authorized_by_this_artifact": false
+  },
+  "eligibility": {
+    "account_type": "Patient",
+    "account_status": "Active",
+    "ineligible_account_statuses": [
+      "pending_phone",
+      "suspended",
+      "locked",
+      "closed"
+    ],
+    "self_service_profile_status": "active",
+    "self_service_requires_user_id_null": true,
+    "already_bound": {
+      "self_reclaim": false,
+      "overwrite": false,
+      "automatic_reassignment": false,
+      "automatic_transfer_to_another_user": false,
+      "existing_user_id_unchanged": true,
+      "disclose_already_bound": false
+    }
+  },
+  "ownership": {
+    "one_user_one_patient_profile": true,
+    "user_id_unique_index": "patient_profiles_user_id_unique",
+    "one_authoritative_profile_one_user": true,
+    "authoritative_hmac_unique_predicate": "status <> merged",
+    "proxy_or_shared_profile_in_v1": false
+  },
+  "non_enumeration": {
+    "client_must_not_learn": [
+      "nid_exists",
+      "nid_does_not_exist",
+      "profile_is_linked",
+      "profile_is_unlinked",
+      "credential_exists",
+      "credential_does_not_exist",
+      "credential_is_wrong",
+      "credential_is_expired",
+      "credential_is_reused",
+      "profile_is_disputed",
+      "profile_is_restricted",
+      "profile_is_archived",
+      "rate_limit_or_risk_rule_caused_review"
+    ],
+    "prohibited_client_visible_states": [
+      "wrong_claim_code",
+      "profile_exists",
+      "profile_already_linked",
+      "claim_code_expired",
+      "national_id_not_found"
+    ],
+    "generic_pending": "manual_review_required",
+    "hidden_denial": "NOT_FOUND"
+  },
+  "dispute": {
+    "wrong_bind_or_ownership_dispute": "freeze_then_authorized_operator_review",
+    "automatic_reassignment": false,
+    "automatic_transfer_to_another_user": false,
+    "known_patient_status_model": [
+      "active",
+      "disputed",
+      "merged",
+      "restricted",
+      "archived"
+    ],
+    "freeze_status_target": "disputed",
+    "freeze_status_enum": "Modules\\Patients\\Enums\\PatientStatus::Disputed",
+    "runtime_freeze_workflow": "NOT_IMPLEMENTED",
+    "implementation_mapping": "KNOWN_SCHEMA_VALUE",
+    "implementation_mapping_required": false
+  },
+  "notifications": {
+    "required_events": [
+      "successful_profile_bind",
+      "failed_proof_lockout",
+      "dispute_freeze"
+    ],
+    "must_not_contain": [
+      "national_id",
+      "phone_number",
+      "claim_credential",
+      "secret_or_proof_material"
+    ],
+    "implementation_status": "NOT_IMPLEMENTED"
+  },
+  "observability_prerequisites_before_pc020": [
+    "metrics",
+    "alerts",
+    "dashboard_visibility",
+    "monitored_rollout_or_cohorts"
+  ],
+  "runbook": {
+    "dedicated_profile_claim_incident_runbook_required_before_production_enablement": true,
+    "stale_registry_unavailable_statement_must_be_corrected": true,
+    "this_task_edits_runbook": false,
+    "implementation_status": "EVIDENCE_REQUIRED"
+  },
+  "kill_switch": {
+    "disabling_stops_new_claims": true,
+    "disabling_does_not_automatically_unlink_valid_links": true,
+    "dispute_recovery_handled_separately": true,
+    "verified_kill_switch_required_before_pc020": true,
+    "post_pc020_env_false_disables_without_code_change": true,
+    "process_or_config_reload_may_be_required": true,
+    "current_production_already_hard_off": true,
+    "env_flag_true_alone_cannot_enable_production": true
+  },
+  "pc020_prerequisites": [
+    "policy_recorded",
+    "ceremony_implementation_complete",
+    "tests_complete",
+    "observability_complete",
+    "monitored_rollout_or_cohort_controls_ready",
+    "verified_kill_switch",
+    "external_governance_approvals",
+    "independent_engineering_qa",
+    "applicable_independent_human_gates"
+  ],
+  "otp_step_up": {
+    "purpose": "profile_claim",
+    "new_otp_on_already_verified_phone_required": true,
+    "aal1_session_alone_insufficient": true,
+    "patient_totp_required_in_v1": false,
+    "recency_at_attach_minutes": 10,
+    "ceremony": "issue_verify_consume_then_attach_only_if_remaining_pc002_bundle_valid",
+    "otp_verified_without_credential_and_bind_is_not_a_completed_claim": true
+  },
+  "numeric_table": {
+    "otp_length_digits": 6,
+    "otp_ttl_seconds": 300,
+    "otp_max_verification_attempts": 5,
+    "otp_resend_cooldown_seconds": 60,
+    "otp_requests_per_phone_hmac_per_hour": 5,
+    "otp_requests_per_ip_per_hour": 20,
+    "otp_global_requests_per_hour": 200,
+    "claim_credential_length_characters": 16,
+    "claim_credential_entropy_bits_approximate": 80,
+    "claim_credential_ttl_days": 30,
+    "claim_credential_successful_uses": 1,
+    "credential_failures_per_account_nid_hmac_per_hour": 5,
+    "credential_hourly_budget_cooldown_minutes": 15,
+    "credential_failures_per_account_nid_hmac_per_24h": 15,
+    "credential_24h_lock_action": "internal_manual_review_lock",
+    "claim_ceremony_starts_per_account_per_hour": 5,
+    "claim_ceremony_starts_per_ip_per_hour": 20,
+    "claim_ceremony_starts_per_nid_hmac_per_hour": 5,
+    "profile_claim_otp_recency_at_attach_minutes": 10,
+    "feature_default": false,
+    "production_state": "hard-off pending separate PC-020 gate"
+  },
+  "current_runtime": {
+    "feature_flag_name": "FEATURE_IDENTITY_PROFILE_CLAIM",
+    "feature_constant": "identity-profile-claim",
+    "config_key": "identity.profile_claim_enabled",
+    "default": false,
+    "phpunit_default": false,
+    "production_hard_off": true,
+    "production_env_flag_cannot_enable": true,
+    "link_verified_patient_account_throws_feature_unavailable_while_off": true,
+    "attach_not_performed_even_when_flag_on_in_isolated_tests": true,
+    "this_artifact_does_not_change_runtime": true
+  },
+  "threat_register": {
+    "T46": {
+      "id": "P02-T46",
+      "status": "OPEN",
+      "owner": "P02-AUDIT-005",
+      "this_artifact_does_not_close_t46": true,
+      "still_lacking": [
+        "ceremony_implementation",
+        "production_reachable_attach",
+        "implementation_evidence",
+        "independent_qa",
+        "external_enablement_governance_evidence"
+      ]
+    }
+  },
+  "decisions": [
+    {
+      "id": "PC-001",
+      "title": "claimant_eligibility",
+      "policy_decision": "Only AccountType Patient with AccountStatus Active may start a Profile Claim ceremony.",
+      "rationale": "Pending, suspended, locked, and closed accounts must not start claim. External contract stays hidden or generic.",
+      "implementation_status": "PARTIALLY_ENFORCED",
+      "implementation_evidence_requirement": "Ceremony must reuse Patient plus Active gates. Do not implement the ceremony in the policy-recording task.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-002",
+      "title": "high_confidence_proof_bundle",
+      "policy_decision": "High-confidence self-service requires all four factors: (1) canonical National-ID HMAC resolves exactly one Active unlinked target profile; (2) the claimant account has a non-empty bound National-ID identity representation and that bound identity matches the target profile identity; (3) a fresh consumed profile_claim OTP exists on the claimant's already-verified phone; (4) a valid clinic-issued, profile-bound, single-use claim credential exists for that exact profile. A missing account-bound National ID is not high-confidence and routes to internal Manual Review with the generic client contract. matchesBoundIdentity treating a null stored HMAC as a match is not the approved high-confidence rule. DOB, full name, gender, blood type, other NID-derived demographics, National ID plus OTP alone, and patient verification-document upload are not independent additional proof.",
+      "rationale": "ADR 0011: National ID plus a newly verified phone is insufficient. Card demographics are not possession of the walk-in record. A missing account-bound National ID cannot be treated as identity match. The additional factor is the clinic-issued profile-bound credential.",
+      "implementation_status": "NOT_IMPLEMENTED",
+      "implementation_evidence_requirement": "Future ceremony must enforce the full bundle before attachAccount.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-003",
+      "title": "assurance_states",
+      "policy_decision": "Successful high-confidence self-service bind records ial2_verified_link. Manual-review pending records ial2_proof_pending. Operator bind after Separation-of-Duties review records ial3_operator.",
+      "rationale": "Aligns with ADR 0011 assurance vocabulary.",
+      "implementation_status": "NOT_IMPLEMENTED",
+      "implementation_evidence_requirement": "Future attach and operator paths must persist these values. This artifact does not authorize operator workflow implementation.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-004",
+      "title": "fresh_otp_required",
+      "policy_decision": "A new profile_claim OTP on the already-verified phone is required. A pre-existing AAL1 session alone is insufficient.",
+      "rationale": "Step-up for the ceremony, not entitlement from a long-lived device session.",
+      "implementation_status": "NOT_IMPLEMENTED",
+      "implementation_evidence_requirement": "Wire purpose-bound OTP into the future attach ceremony.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-005",
+      "title": "account_status",
+      "policy_decision": "Only AccountStatus Active. No self-service claim for pending_phone, suspended, locked, or closed. Do not expose sensitive eligibility information.",
+      "rationale": "Same non-disclosing denial envelope already used for pending business routes.",
+      "implementation_status": "PARTIALLY_ENFORCED",
+      "implementation_evidence_requirement": "Keep hidden NOT_FOUND or generic pending as applicable; do not add eligibility oracles.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-006",
+      "title": "self_service_profile_eligibility",
+      "policy_decision": "Self-service requires profile status Active and user_id IS NULL. Anything else routes to internal Manual Review with the generic external pending contract.",
+      "rationale": "Unlinked Active walk-in rows are the only high-confidence target class.",
+      "implementation_status": "PARTIALLY_ENFORCED",
+      "implementation_evidence_requirement": "findClaimCandidate already returns only unlinked Active rows; attach remains unused.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-007",
+      "title": "already_bound_profile",
+      "policy_decision": "No self-reclaim, no overwrite, no automatic reassignment. Existing user_id remains unchanged. Route internally to Manual Review where appropriate. Do not disclose that the profile is already bound.",
+      "rationale": "Prevents account takeover of an owned profile.",
+      "implementation_status": "PARTIALLY_ENFORCED",
+      "implementation_evidence_requirement": "Unique user_id and collision pending already prevent overwrite; ceremony must preserve that.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-008",
+      "title": "one_user_one_profile",
+      "policy_decision": "One user maps to one patient profile. Preserve patient_profiles_user_id_unique. No v1 change to 1:1 ownership.",
+      "rationale": "Caregiver, guardian, and proxy models remain Phase 01 non-goals.",
+      "implementation_status": "ALREADY_ENFORCED",
+      "implementation_evidence_requirement": "Keep the partial unique index. Ceremony must not create a second linked row for a user.",
+      "blocks_production_enablement": false
+    },
+    {
+      "id": "PC-009",
+      "title": "one_profile_one_user",
+      "policy_decision": "One authoritative patient profile maps to one user. Preserve authoritative National-ID-HMAC uniqueness where status <> merged. No proxy or shared-profile model in Policy v1.",
+      "rationale": "Duplicate active identities are a takeover and integrity failure.",
+      "implementation_status": "ALREADY_ENFORCED",
+      "implementation_evidence_requirement": "Keep patient_profiles_authoritative_hmac_unique.",
+      "blocks_production_enablement": false
+    },
+    {
+      "id": "PC-010",
+      "title": "credential_attempt_budget",
+      "policy_decision": "Failed credential attempts are budgeted by account plus NID-HMAC: 5 per hour then 15-minute cooldown; 15 per 24 hours then internal Manual Review lock. External response remains generic. Do not expose attempt count or credential existence, correctness, expiry, or reuse.",
+      "rationale": "Brute-force resistance without an enumeration oracle.",
+      "implementation_status": "NOT_IMPLEMENTED",
+      "implementation_evidence_requirement": "Implement counters only in the future ceremony task.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-011",
+      "title": "rate_limits",
+      "policy_decision": "Ceremony starts: 5 per account per hour, 20 per IP per hour, 5 per NID-HMAC per hour. OTP: 6 digits, 300 second TTL, 5 verification attempts, 60 second resend, 5 per phone-HMAC per hour, 20 per IP per hour, 200 global per hour.",
+      "rationale": "Reuse the existing OTP abuse budget and add claim-specific ceremony-start keys.",
+      "implementation_status": "PARTIALLY_ENFORCED",
+      "implementation_evidence_requirement": "OTP numeric values already exist in identity config. Claim ceremony-start limiters are not implemented.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-012",
+      "title": "non_enumeration",
+      "policy_decision": "The client must not learn NID existence, link state, credential state, disputed/restricted/archived state, or that a rate-limit or risk rule caused review. Do not introduce wrong_claim_code, profile_exists, profile_already_linked, claim_code_expired, or national_id_not_found. Use manual_review_required or existing hidden NOT_FOUND.",
+      "rationale": "G-01-22 and ADR 0011 non-disclosure.",
+      "implementation_status": "PARTIALLY_ENFORCED",
+      "implementation_evidence_requirement": "Current collision and disabled-OTP envelopes are generic. Future ceremony must not add oracles.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-013",
+      "title": "otp_is_part_of_attach_ceremony",
+      "policy_decision": "profile_claim OTP is part of the future attach ceremony: issue, verify, consume, then attach only when the remaining PC-002 bundle is valid. There must be no successful profile_claim OTP path that means a completed claim without the credential and bind.",
+      "rationale": "The purpose enum must not become a dangling OTP without attach semantics.",
+      "implementation_status": "NOT_IMPLEMENTED",
+      "implementation_evidence_requirement": "VerifyOtpService currently has no ProfileClaim attach branch. Do not wire it in the policy-recording task.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-014",
+      "title": "hybrid_routing",
+      "policy_decision": "All high-confidence requirements satisfied: eligible for future self-service attach. Anything missing, invalid, expired, reused, ambiguous, rate-limited, risk-flagged, or ineligible: Manual Review. Client response remains generic.",
+      "rationale": "Hybrid model selected by the Controller.",
+      "implementation_status": "NOT_IMPLEMENTED",
+      "implementation_evidence_requirement": "Implement routing in the future ceremony behind the disabled flag.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-015",
+      "title": "dispute_and_wrong_bind",
+      "policy_decision": "Wrong bind or ownership dispute freezes the affected profile using status disputed, which already exists on patient_profiles. Authorized operator review is required. No automatic reassignment or transfer.",
+      "rationale": "Schema already includes disputed. This artifact does not invent a status and does not implement the freeze workflow.",
+      "implementation_status": "NOT_IMPLEMENTED",
+      "implementation_evidence_requirement": "Map freeze writes to PatientStatus::Disputed in a later implementation task.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-016",
+      "title": "notifications",
+      "policy_decision": "Notify on successful profile bind, failed-proof lockout, and dispute freeze. Notification content must not contain National ID, phone number, claim credential, or other secret proof material.",
+      "rationale": "Phase 02 named linked-account notifications; privacy forbids proof leakage.",
+      "implementation_status": "NOT_IMPLEMENTED",
+      "implementation_evidence_requirement": "Future notification service work. Not this task.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-017",
+      "title": "observability_before_enablement",
+      "policy_decision": "PC-017 is a production-enablement blocker. Metrics, alerts, dashboard visibility, and monitored rollout or cohorts are prerequisites before PC-020.",
+      "rationale": "Canonical Phase 02 rollout: enable claim separately with monitored cohorts and a kill switch.",
+      "implementation_status": "PARTIALLY_ENFORCED",
+      "implementation_evidence_requirement": "clinic_profile_claims_total exists but is unused in production. Alerts and dashboards are absent. Do not implement them in this task.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-018",
+      "title": "incident_runbook",
+      "policy_decision": "A dedicated Profile Claim incident/runbook is required before production enablement. The stale statement that the patient identity registry is unavailable must eventually be corrected. This task does not edit the runbook.",
+      "rationale": "docs/runbooks/disputed-profile-link.md still describes a Phase 01 stub registry.",
+      "implementation_status": "EVIDENCE_REQUIRED",
+      "implementation_evidence_requirement": "Correct and expand the runbook in a later evidence/implementation task.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-019",
+      "title": "kill_switch_preserves_valid_links",
+      "policy_decision": "PC-019 is a production-enablement blocker. A verified kill switch that stops new claims without unlinking valid existing links is required before production enablement. Dispute and recovery are separate.",
+      "rationale": "Canonical Phase 02 rollback preserves submitted profiles and links. Production must not be reachable without a demonstrated new-claim kill switch.",
+      "implementation_status": "PARTIALLY_ENFORCED",
+      "implementation_evidence_requirement": "Current kill switch is global hard-off with no live claim binds. Future disable must not un-bind. Demonstrate the verified kill switch before PC-020.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-020",
+      "title": "production_remains_hard_off",
+      "policy_decision": "Production remains hard-off. This artifact is not permission to enable production, set FEATURE_IDENTITY_PROFILE_CLAIM=true, or remove APP_ENV=production hard-off. The env flag alone cannot enable production. Enablement requires a later separately authorized PC-020 change after all of: policy recorded; ceremony implementation complete; tests complete; observability complete; monitored rollout/cohort controls ready; verified kill switch; external governance approvals; independent engineering QA; and any applicable independent-human gates.",
+      "rationale": "Silent env enablement is an accepted ADR 0011 residual that production force-off currently blocks. PC-020 is not performed by this artifact.",
+      "implementation_status": "ALREADY_ENFORCED",
+      "implementation_evidence_requirement": "Keep PlatformFeatures production short-circuit unchanged in this task. Do not perform PC-020 here.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-021",
+      "title": "otp_recency_step_up",
+      "policy_decision": "The profile_claim OTP must have been successfully consumed within 10 minutes of attach. AAL1 session alone is insufficient. Patient TOTP is not required by Policy v1.",
+      "rationale": "Recent possession of the verified phone at bind time.",
+      "implementation_status": "NOT_IMPLEMENTED",
+      "implementation_evidence_requirement": "Enforce recency in the future attach transaction.",
+      "blocks_production_enablement": true
+    },
+    {
+      "id": "PC-022",
+      "title": "post_enablement_env_kill_switch",
+      "policy_decision": "PC-022 is a production-enablement blocker until the future post-hard-off env/config kill-switch behavior is demonstrated. After the separately authorized PC-020 change, setting FEATURE_IDENTITY_PROFILE_CLAIM=false must prevent new claims without a code deployment; a config or process reload may still be required. Current production is already hard-off. Do not alter current behavior in this task.",
+      "rationale": "Production enablement must not proceed until operators can disable new claims by env/config after the hard-off is removed.",
+      "implementation_status": "PARTIALLY_ENFORCED",
+      "implementation_evidence_requirement": "Today the production short-circuit ignores the env flag. Do not remove it here. Demonstrate post-hard-off FEATURE_IDENTITY_PROFILE_CLAIM=false before PC-020.",
+      "blocks_production_enablement": true
+    }
+  ],
+  "external_audit_boundaries": {
+    "P02-AUDIT-005": {
+      "status": "OPEN",
+      "classification": "POLICY_V1_REMEDIATED_AWAITING_INDEPENDENT_RE_QA",
+      "note": "Controller Policy v1 is recorded and QA-P02A005 findings are remediated in this unmerged artifact. Ceremony is not implemented. Production remains disabled. This is not closure."
+    },
+    "P02-AUDIT-006": {
+      "status": "OPEN / UNCHANGED",
+      "sf_001": "OPEN / UNCHANGED",
+      "package": "extract-zip@2.0.1"
+    },
+    "P02-AUDIT-007": {
+      "status": "OPEN / EXTERNAL_HUMAN",
+      "g_08_04": "OPEN / EXTERNAL_HUMAN"
+    }
+  }
+}
+JSON;
+}

@@ -18,6 +18,7 @@ final class Phase02ProfileClaimPolicyValidator
     public function validate(array $artifact, string $evidence = ''): array
     {
         $issues = [];
+        $issues = array_merge($issues, $this->structureIssues($artifact));
         $issues = array_merge($issues, $this->identityIssues($artifact));
         $issues = array_merge($issues, $this->governanceIssues($artifact, $evidence));
         $issues = array_merge($issues, $this->decisionIssues($artifact));
@@ -32,6 +33,95 @@ final class Phase02ProfileClaimPolicyValidator
         $issues = array_merge($issues, $this->evidenceIssues($evidence));
 
         return array_values($issues);
+    }
+
+    /**
+     * Deep-compare the candidate JSON against the independently frozen expected map.
+     *
+     * @param  array<string, mixed>  $artifact
+     * @return list<string>
+     */
+    private function structureIssues(array $artifact): array
+    {
+        $issues = [];
+        $this->compareExpected(Phase02ProfileClaimPolicyExpected::artifact(), $artifact, 'json', $issues);
+
+        $aliases = [
+            'json.claim_credential.length_characters' => 'credential_length_not_16',
+            'json.claim_credential.alphabet' => 'crockford_alphabet_altered',
+            'json.claim_credential.ttl_days' => 'credential_ttl_not_30_days',
+            'json.claim_credential.storage' => 'credential_storage_not_peppered_hash_only',
+            'json.claim_credential.generation' => 'credential_generation_not_csprng',
+            'json.claim_credential.encoding' => 'credential_encoding_not_crockford_base32',
+            'json.claim_credential.excluded_characters' => 'credential_excluded_characters_altered',
+            'json.proof.national_id_plus_otp_alone_insufficient' => 'nid_plus_otp_insufficient_flag_removed',
+            'json.legacy_profiles.unlinked_without_issued_credential' => 'legacy_manual_review_only_removed',
+            'json.legacy_profiles.automatic_credential_generation' => 'automatic_credential_generation_not_forbidden',
+            'json.current_runtime.production_hard_off' => 'production_hard_off_requirement_removed',
+            'json.current_runtime.default' => 'feature_default_not_false',
+            'json.t46' => 't46_not_open',
+            'json.p02_audit_005' => 'p02_audit_005_not_open',
+            'json.governance.product_approval' => 'product_approval_not_pending_external',
+            'json.otp_step_up.recency_at_attach_minutes' => 'otp_recency_not_10_minutes',
+            'json.numeric_table.credential_failures_per_account_nid_hmac_per_hour' => 'numeric_table_credential_failures_per_account_nid_hmac_per_hour_drifted',
+            'json.eligibility.already_bound.self_reclaim' => 'already_bound_self_reclaim_allowed',
+            'json.eligibility.already_bound.automatic_reassignment' => 'already_bound_automatic_reassignment_allowed',
+            'json.non_enumeration.hidden_denial' => 'hidden_denial_is_not_not_found',
+            'json.production_enablement' => 'production_enablement_not_not_authorized',
+            'json.feature_state' => 'feature_state_not_disabled',
+        ];
+        foreach ($aliases as $path => $alias) {
+            if (in_array('json_mismatch:'.$path, $issues, true) || in_array('json_missing:'.$path, $issues, true)) {
+                $issues[] = $alias;
+            }
+        }
+
+        return $issues;
+    }
+
+    /**
+     * @param  list<string>  $issues
+     */
+    private function compareExpected(mixed $expected, mixed $actual, string $path, array &$issues): void
+    {
+        if (is_array($expected) && array_is_list($expected)) {
+            if (! is_array($actual) || ! array_is_list($actual)) {
+                $issues[] = 'json_mismatch:'.$path;
+
+                return;
+            }
+            if (count($expected) !== count($actual)) {
+                $issues[] = 'json_mismatch:'.$path;
+            }
+            foreach ($expected as $index => $item) {
+                $this->compareExpected($item, $actual[$index] ?? null, $path.'.'.$index, $issues);
+            }
+
+            return;
+        }
+
+        if (is_array($expected)) {
+            if (! is_array($actual) || array_is_list($actual)) {
+                $issues[] = 'json_mismatch:'.$path;
+
+                return;
+            }
+            foreach ($expected as $key => $item) {
+                $child = $path.'.'.$key;
+                if (! array_key_exists($key, $actual)) {
+                    $issues[] = 'json_missing:'.$child;
+
+                    continue;
+                }
+                $this->compareExpected($item, $actual[$key], $child, $issues);
+            }
+
+            return;
+        }
+
+        if ($expected !== $actual) {
+            $issues[] = 'json_mismatch:'.$path;
+        }
     }
 
     /**
@@ -379,145 +469,219 @@ final class Phase02ProfileClaimPolicyValidator
             return [];
         }
 
+        $doc = new Phase02ProfileClaimPolicyEvidenceDocument($evidence);
         $issues = [];
-        if (! str_contains($evidence, 'CONTROLLER_POLICY_V1_FROZEN')) {
-            $issues[] = 'evidence_missing_decision_state';
+        $identity = $doc->identityTable();
+        $final = $doc->finalStatusMap();
+
+        $this->assertSiteState($identity, 'P02-AUDIT-005', 'OPEN', 'evidence_identity_p02_audit_005_not_open', $issues, true);
+        $this->assertSiteState($final, 'P02-AUDIT-005', 'OPEN', 'evidence_final_status_p02_audit_005_not_open', $issues);
+        $this->assertSiteState($identity, 'T46', 'OPEN', 'evidence_identity_t46_not_open', $issues, true);
+        $this->assertSiteState($final, 'T46', 'OPEN', 'evidence_final_status_t46_not_open', $issues);
+        $this->assertSiteContains($identity, 'P02-AUDIT-006', 'OPEN / UNCHANGED', 'evidence_identity_p02_audit_006_not_open_unchanged', $issues, true);
+        $this->assertSiteState($final, 'P02-AUDIT-006', 'OPEN / UNCHANGED', 'evidence_final_status_p02_audit_006_not_open_unchanged', $issues);
+        $this->assertSiteState($identity, 'P02-AUDIT-007', 'OPEN / EXTERNAL_HUMAN', 'evidence_identity_p02_audit_007_not_open_external_human', $issues, true);
+        $this->assertSiteState($final, 'P02-AUDIT-007', 'OPEN / EXTERNAL_HUMAN', 'evidence_final_status_p02_audit_007_not_open_external_human', $issues);
+        $this->assertSiteContains($identity, 'G-08-04', 'OPEN / EXTERNAL_HUMAN', 'evidence_identity_g_08_04_not_open_external_human', $issues, true);
+        $this->assertSiteState($final, 'G-08-04', 'OPEN / EXTERNAL_HUMAN', 'evidence_final_status_g_08_04_not_open_external_human', $issues);
+        $this->assertSiteState($identity, 'Production enablement', 'NOT_AUTHORIZED', 'evidence_identity_production_enablement_not_not_authorized', $issues);
+        $this->assertSiteState($final, 'Production enablement', 'NOT_AUTHORIZED', 'evidence_final_status_production_enablement_not_not_authorized', $issues);
+        $this->assertSiteState($identity, 'Feature state', 'DISABLED', 'evidence_identity_feature_state_not_disabled', $issues);
+        $this->assertSiteState($final, 'Feature state', 'DISABLED', 'evidence_final_status_feature_state_not_disabled', $issues);
+
+        foreach ($doc->positiveStateAssignments('P02-AUDIT-005') as $assignment) {
+            if ($this->stateIs($assignment['state'], 'CLOSED')) {
+                $issues[] = $assignment['site'] === 'final_status'
+                    ? 'evidence_final_status_p02_audit_005_closed'
+                    : ($assignment['site'] === 'prose'
+                        ? 'evidence_prose_p02_audit_005_closed'
+                        : 'evidence_p02_audit_005_explicitly_closed');
+            }
         }
-        if (! str_contains($evidence, 'does not reuse') && ! str_contains($evidence, 'does **not** reuse')) {
-            $issues[] = 'evidence_reuses_profile_correction_approval';
+        $prose005 = $doc->proseAssignments('P02-AUDIT-005');
+        if (! in_array('OPEN', $prose005, true)) {
+            $issues[] = 'evidence_prose_p02_audit_005_not_open';
         }
-        if (! $this->markdownHasIdentityState($evidence, 'P02-AUDIT-005', 'OPEN')) {
-            $issues[] = 'evidence_p02_audit_005_not_explicitly_open';
+
+        foreach ($doc->positiveStateAssignments('T46') as $assignment) {
+            if ($this->stateIs($assignment['state'], 'CLOSED')) {
+                $issues[] = $assignment['site'] === 'final_status'
+                    ? 'evidence_final_status_t46_closed'
+                    : 'evidence_t46_explicitly_closed';
+            }
+            if ($this->stateIs($assignment['state'], 'MITIGATED')) {
+                $issues[] = 'evidence_prose_t46_mitigated';
+            }
         }
-        if ($this->markdownHasIdentityState($evidence, 'P02-AUDIT-005', 'CLOSED')) {
-            $issues[] = 'evidence_p02_audit_005_explicitly_closed';
+        $proseT46 = $doc->proseAssignments('T46');
+        if (! in_array('OPEN', $proseT46, true)) {
+            $issues[] = 'evidence_prose_t46_not_open';
         }
-        if (! $this->markdownHasIdentityState($evidence, 'T46', 'OPEN')) {
-            $issues[] = 'evidence_t46_not_explicitly_open';
+
+        foreach (array_merge(
+            isset($identity['Production enablement']) ? [['state' => $identity['Production enablement']]] : [],
+            isset($final['Production enablement']) ? [['state' => $final['Production enablement']]] : [],
+        ) as $assignment) {
+            if ($this->stateIs($assignment['state'], 'AUTHORIZED') && ! str_contains($assignment['state'], 'NOT_AUTHORIZED')) {
+                $issues[] = 'evidence_production_enablement_authorized';
+            }
         }
-        if ($this->markdownHasIdentityState($evidence, 'T46', 'CLOSED')) {
-            $issues[] = 'evidence_t46_explicitly_closed';
+
+        $governance = [
+            'Product approval' => 'evidence_product_governance_approved',
+            'Security approval' => 'evidence_security_governance_approved',
+            'Privacy approval' => 'evidence_privacy_governance_approved',
+            'Support/Operations approval' => 'evidence_support_operations_governance_approved',
+        ];
+        foreach ($governance as $label => $approvedIssue) {
+            $value = $this->tableValue($identity, $label);
+            if ($value !== 'PENDING_EXTERNAL') {
+                $issues[] = 'evidence_governance_not_pending_external';
+            }
+            if ($doc->hasMaterialGovernanceApproved($label) || ($value !== null && str_contains(strtoupper($value), 'APPROVED') && ! str_contains(strtoupper($value), 'PENDING'))) {
+                $issues[] = $approvedIssue;
+                $issues[] = 'evidence_governance_approved';
+            }
         }
-        if (! str_contains($evidence, '**G-08-04**') || ! str_contains($evidence, 'EXTERNAL_HUMAN')) {
-            $issues[] = 'evidence_g_08_04_not_open_external_human';
+        if ($doc->claimsControllerFreezeIsGovernanceApproval()) {
+            $issues[] = 'evidence_controller_freeze_claimed_as_governance_approval';
         }
-        if (! str_contains($evidence, Phase02ProfileClaimPolicyArtifact::PUBLISHED_SHA256)) {
+
+        foreach (Phase02ProfileClaimPolicyExpected::evidenceOptionBCells() as $rule => $expected) {
+            $actual = $doc->optionBTable()[$rule] ?? null;
+            if ($actual !== $expected) {
+                $issues[] = 'evidence_option_b_'.$this->slug($rule).'_mismatch';
+            }
+        }
+        $optionB = $doc->optionBTable();
+        if (($optionB['Storage'] ?? null) !== 'peppered-hash-only') {
+            $issues[] = 'evidence_storage_not_peppered_hash_only';
+        }
+        if (! str_contains($optionB['Comparison'] ?? '', 'case canonicalization')
+            || ! str_contains($optionB['Comparison'] ?? '', 'display-separator stripping')) {
+            $issues[] = 'evidence_option_b_comparison_mismatch';
+        }
+        if (($optionB['Generation'] ?? null) !== 'cryptographically secure random') {
+            $issues[] = 'evidence_missing_csprng';
+        }
+        if ($doc->plaintextDestinations() !== Phase02ProfileClaimPolicyArtifact::PLAINTEXT_PROHIBITED_IN) {
+            $issues[] = 'evidence_missing_plaintext_boundary';
+        }
+
+        foreach (Phase02ProfileClaimPolicyExpected::evidenceNumericCells() as $control => $expected) {
+            $actual = $doc->numericTable()[$control] ?? null;
+            if ($actual !== $expected) {
+                $issues[] = 'evidence_numeric_'.$this->slug($control).'_mismatch';
+            }
+        }
+
+        $matrix = $doc->decisionMatrix();
+        foreach (Phase02ProfileClaimPolicyArtifact::DECISION_EXPECTATIONS as $id => $expected) {
+            $row = $matrix[$id] ?? null;
+            if (! is_array($row)) {
+                $issues[] = 'evidence_decision_'.$id.'_missing';
+
+                continue;
+            }
+            if ($row['implementation_status'] !== $expected['implementation_status']) {
+                $issues[] = 'evidence_decision_'.$id.'_implementation_status_mismatch';
+            }
+            if ($row['blocks_production_enablement'] !== $expected['blocks_production_enablement']) {
+                $issues[] = 'evidence_decision_'.$id.'_blocker_mismatch';
+            }
+        }
+
+        if ($doc->clientMustNotLearn() !== Phase02ProfileClaimPolicyArtifact::CLIENT_MUST_NOT_LEARN) {
+            $issues[] = 'evidence_client_must_not_learn_incomplete';
+        }
+        if ($doc->prohibitedClientStates() !== Phase02ProfileClaimPolicyArtifact::PROHIBITED_CLIENT_STATES) {
+            $issues[] = 'evidence_prohibited_client_states_incomplete';
+        }
+        if ($doc->genericPending() !== 'manual_review_required') {
+            $issues[] = 'evidence_generic_pending_mismatch';
+        }
+        if ($doc->hiddenDenial() !== 'NOT_FOUND') {
+            $issues[] = 'evidence_hidden_denial_is_not_not_found';
+        }
+        if ($doc->permitsSensitiveClientState()) {
+            $issues[] = 'evidence_permits_sensitive_client_state';
+        }
+
+        if (($identity['SHA-256'] ?? null) !== Phase02ProfileClaimPolicyArtifact::PUBLISHED_SHA256) {
             $issues[] = 'evidence_sha256_mismatch';
         }
-        if (preg_match('/SHA-256 \| `'.Phase02ProfileClaimPolicyArtifact::SUPERSEDED_UNMERGED_SHA256.'`/', $evidence) === 1) {
-            $issues[] = 'evidence_authoritative_sha_is_superseded_digest';
+        if (! str_contains($evidence, 'does **not** reuse') && ! str_contains($evidence, 'does not reuse')) {
+            $issues[] = 'evidence_reuses_profile_correction_approval';
         }
-        if (! $this->markdownHasIdentityState($evidence, 'Production enablement', 'NOT_AUTHORIZED')) {
-            $issues[] = 'evidence_production_enablement_not_not_authorized';
-        }
-        if ($this->markdownHasIdentityState($evidence, 'Production enablement', 'AUTHORIZED')) {
-            $issues[] = 'evidence_production_enablement_authorized';
-        }
-        if (! $this->markdownHasIdentityState($evidence, 'Feature state', 'DISABLED')) {
-            $issues[] = 'evidence_feature_state_not_disabled';
-        }
-        if (! preg_match('/Length \| \*\*16\*\*/', $evidence) && ! str_contains($evidence, '16 Crockford Base32 characters')) {
-            $issues[] = 'evidence_credential_length_not_16';
-        }
-        if (preg_match('/Length \| \*\*10\*\*/', $evidence) === 1) {
-            $issues[] = 'evidence_credential_length_not_16';
-        }
-        if (! str_contains($evidence, 'peppered-hash-only') && ! str_contains($evidence, 'peppered hash only')) {
-            $issues[] = 'evidence_storage_not_peppered_hash_only';
-        }
-        if (preg_match('/\bplain(?:text)?[- ]hash\b/i', $evidence) === 1 && ! str_contains($evidence, 'peppered-hash-only')) {
-            $issues[] = 'evidence_storage_not_peppered_hash_only';
-        }
-        if (str_contains($evidence, 'plain-hash-only') || str_contains($evidence, 'Storage | plain hash')) {
-            $issues[] = 'evidence_storage_not_peppered_hash_only';
+        if (($identity['Decision state'] ?? null) !== 'CONTROLLER_POLICY_V1_FROZEN') {
+            $issues[] = 'evidence_missing_decision_state';
         }
         if (! str_contains($evidence, 'MANUAL_REVIEW_ONLY')) {
             $issues[] = 'evidence_legacy_not_manual_review_only';
         }
         $normalizedEvidence = preg_replace('/\s+/', ' ', $evidence) ?? $evidence;
-        if (! str_contains($normalizedEvidence, 'Automatic or retroactive credential generation is **not** authorized')
-            && ! str_contains($normalizedEvidence, 'automatic or retroactive credential generation is **not** authorized')) {
+        if (! str_contains($normalizedEvidence, 'Automatic or retroactive credential generation is **not** authorized')) {
             $issues[] = 'evidence_legacy_automatic_credential_generation';
-        }
-        foreach (['Product approval', 'Security approval', 'Privacy approval'] as $label) {
-            if ($this->markdownHasIdentityState($evidence, $label, 'APPROVED')) {
-                $issues[] = 'evidence_governance_approved';
-            }
-            if (! $this->markdownHasIdentityState($evidence, $label, 'PENDING_EXTERNAL')) {
-                $issues[] = 'evidence_governance_not_pending_external';
-            }
-        }
-        if (! str_contains($evidence, 'cryptographically secure random')) {
-            $issues[] = 'evidence_missing_csprng';
-        }
-        if (! str_contains($evidence, 'case canonicalization')) {
-            $issues[] = 'evidence_missing_case_canonicalization';
-        }
-        if (! str_contains($evidence, 'display-separator stripping')) {
-            $issues[] = 'evidence_missing_separator_stripping';
-        }
-        if (! str_contains($evidence, 'show/print/send-once') && ! str_contains($evidence, 'Show/print/send-once')) {
-            $issues[] = 'evidence_missing_show_once';
-        }
-        foreach (Phase02ProfileClaimPolicyArtifact::PLAINTEXT_PROHIBITED_IN as $destination) {
-            if (! str_contains($evidence, $destination)) {
-                $issues[] = 'evidence_missing_plaintext_boundary';
-                break;
-            }
-        }
-        foreach (Phase02ProfileClaimPolicyArtifact::CLIENT_MUST_NOT_LEARN as $item) {
-            if (! str_contains($evidence, $item)) {
-                $issues[] = 'evidence_missing_client_must_not_learn';
-                break;
-            }
         }
         if (! str_contains($evidence, 'non-empty bound National-ID') && ! str_contains($evidence, 'non-empty matching account-bound National-ID')) {
             $issues[] = 'evidence_missing_bound_nid_requirement';
-        }
-        if (! str_contains($evidence, 'missing account-bound National ID is **not** high-confidence')
-            && ! str_contains($evidence, 'A missing account-bound National ID is **not** high-confidence')) {
-            $issues[] = 'evidence_missing_bound_nid_requirement';
-        }
-        if (! str_contains($evidence, 'PC-017 is a production-enablement blocker')) {
-            $issues[] = 'evidence_missing_pc017_blocker';
-        }
-        if (! str_contains($evidence, 'PC-019 is a production-enablement blocker')) {
-            $issues[] = 'evidence_missing_pc019_blocker';
-        }
-        if (! str_contains($evidence, 'PC-022 is a production-enablement blocker')) {
-            $issues[] = 'evidence_missing_pc022_blocker';
-        }
-        if (! str_contains($evidence, 'verified kill switch')) {
-            $issues[] = 'evidence_missing_verified_kill_switch';
-        }
-        if (! str_contains($evidence, 'env flag alone cannot enable production')) {
-            $issues[] = 'evidence_missing_pc020_env_flag_limitation';
-        }
-        foreach (['policy recorded', 'ceremony implementation complete', 'tests complete', 'observability complete', 'verified kill switch'] as $prerequisite) {
-            if (! str_contains($evidence, $prerequisite)) {
-                $issues[] = 'evidence_missing_pc020_prerequisites';
-                break;
-            }
         }
 
         return array_values(array_unique($issues));
     }
 
     /**
-     * Detects `IDENTITY: STATE` or table `| IDENTITY | STATE |` markers.
-     * Does not treat "does not close IDENTITY" as a state assignment.
+     * @param  array<string, string>  $map
+     * @param  list<string>  $issues
      */
-    private function markdownHasIdentityState(string $text, string $identity, string $state): bool
+    private function assertSiteState(array $map, string $identity, string $expected, string $issue, array &$issues, bool $containsKey = false): void
     {
-        $id = $identity === 'T46'
-            ? '(?<![A-Za-z0-9-])T46(?![A-Za-z0-9-])'
-            : preg_quote($identity, '/');
-        $st = preg_quote($state, '/');
+        $value = $containsKey ? $this->tableValue($map, $identity) : ($map[$identity] ?? null);
+        if ($value !== $expected && ($value === null || ! str_starts_with($value, $expected))) {
+            $issues[] = $issue;
+        }
+    }
 
-        return preg_match(
-            '/(?:^|\n)\s*(?:\|\s*)?(?:\*\*)?'.$id.'(?:\*\*)?\s*(?:\||:)\s*(?:\*\*)?`?'.$st.'`?/u',
-            $text,
-        ) === 1;
+    /**
+     * @param  array<string, string>  $map
+     * @param  list<string>  $issues
+     */
+    private function assertSiteContains(array $map, string $identity, string $expected, string $issue, array &$issues, bool $containsKey = false): void
+    {
+        $value = $containsKey ? $this->tableValue($map, $identity) : ($map[$identity] ?? null);
+        if ($value === null || ! str_contains($value, $expected)) {
+            $issues[] = $issue;
+        }
+    }
+
+    /**
+     * @param  array<string, string>  $map
+     */
+    private function tableValue(array $map, string $identity): ?string
+    {
+        if (isset($map[$identity])) {
+            return $map[$identity];
+        }
+        foreach ($map as $key => $value) {
+            if (str_contains($key, $identity)) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function stateIs(string $actual, string $state): bool
+    {
+        return str_contains(strtoupper($actual), strtoupper($state));
+    }
+
+    private function slug(string $label): string
+    {
+        $slug = strtolower($label);
+        $slug = preg_replace('/[^a-z0-9]+/', '_', $slug) ?? $slug;
+
+        return trim($slug, '_');
     }
 
     /**

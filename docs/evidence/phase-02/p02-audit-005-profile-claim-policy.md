@@ -14,9 +14,10 @@ behavior, OTP verification, migrations, routes, clients, monitoring, or
 runbooks.
 
 **v1.0.0-phase02** is the first recorded Profile-Claim policy version. It
-has never been merged to `main`, so independent-QA findings QA-P02A005-001,
-QA-P02A005-002, QA-P02A005-003, and QA-P02A005-005 are corrected **in
-place** on this same unmerged artifact. There is no `v1.0.1`.
+has never been merged to `main`. Closed independent-QA items QA-P02A005-001,
+QA-P02A005-003, QA-P02A005-004, and QA-P02A005-005 remain closed. Remaining
+alignment-tooling findings are corrected **in place** on this same unmerged
+artifact. There is no `v1.0.1`.
 
 | Field | Value |
 | --- | --- |
@@ -81,8 +82,14 @@ evidence, independent QA, and external enablement/governance evidence.
 | D. External governance / human review | Product, Security, Privacy, and Support/Operations remain `PENDING_EXTERNAL`. **G-08-04 / P02-AUDIT-007 remains `OPEN` / `EXTERNAL_HUMAN`** |
 
 Controller selection of Hybrid Policy v1 is **not** independent
-Security/Privacy approval and is **not** Product/Security/Privacy sign-off
-for production.
+Security/Privacy approval and is **not** Product/Security/Privacy/Support
+sign-off for production. A Controller freeze is not Product approval, is
+not Security approval, is not Privacy approval, and is not
+Support/Operations approval.
+
+Independently frozen Pest expected maps under
+`apps/core-api/tests/Support/ProfileClaim` are test oracles only. They are
+not governance evidence and do not approve this policy.
 
 ## This policy does not inherit Profile-Correction approval
 
@@ -167,6 +174,8 @@ additional proof.
 | Display-only | `XXXX-XXXX-XXXX-XXXX` |
 | Canonical secret | 16 characters, no separators |
 | Generation | cryptographically secure random |
+| Issuer | clinic |
+| Bound to | exactly one patient profile |
 | Comparison | case canonicalization; display-separator stripping; hyphens never enter the canonical secret or hash input |
 | Show/print/send-once | once at issuance only |
 | TTL | 30 days from issuance |
@@ -335,20 +344,28 @@ confirm T46 / P02-AUDIT-005 remain OPEN.
 
 ## Final blocker state after this evidence PR
 
+Current material state: P02-AUDIT-005 is OPEN.
+
+Current material state: T46 is OPEN.
+
 `P02-AUDIT-005: OPEN`
 
 `T46: OPEN`
-
-`FEATURE_IDENTITY_PROFILE_CLAIM=false`
-
-`Production hard-off: PRESENT / UNCHANGED`
-
-`Ceremony implementation: NOT IMPLEMENTED`
 
 `P02-AUDIT-006: OPEN / UNCHANGED`
 
 `P02-AUDIT-007: OPEN / EXTERNAL_HUMAN`
 
 `G-08-04: OPEN / EXTERNAL_HUMAN`
+
+`Production enablement: NOT_AUTHORIZED`
+
+`Feature state: DISABLED`
+
+`FEATURE_IDENTITY_PROFILE_CLAIM=false`
+
+`Production hard-off: PRESENT / UNCHANGED`
+
+`Ceremony implementation: NOT IMPLEMENTED`
 
 `Phase 02: NOT PASS`

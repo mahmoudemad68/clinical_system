@@ -6,6 +6,7 @@ use Modules\Identity\Services\LinkVerifiedPatientAccount;
 use Modules\Patients\Enums\PatientStatus;
 use Modules\Platform\Services\Features\PlatformFeatures;
 use Tests\Support\ProfileClaim\Phase02ProfileClaimPolicyArtifact as Artifact;
+use Tests\Support\ProfileClaim\Phase02ProfileClaimPolicyExpected;
 use Tests\Support\ProfileClaim\Phase02ProfileClaimPolicyMutations as Mutations;
 use Tests\Support\ProfileClaim\Phase02ProfileClaimPolicyValidator;
 use Tests\TestCase;
@@ -61,7 +62,22 @@ describe('P02-AUDIT-005 profile-claim policy artifact', function () {
 
         expect($ids)->toBe(Artifact::DECISION_IDS)
             ->and(array_unique($ids))->toHaveCount(22)
+            ->and($artifact)->toEqual(Phase02ProfileClaimPolicyExpected::artifact())
             ->and((new Phase02ProfileClaimPolicyValidator)->validate($artifact, Artifact::evidenceRaw()))->toBe([]);
+    });
+
+    it('does not generate the expected semantic map from the artifact under test', function () {
+        $path = (new ReflectionClass(Phase02ProfileClaimPolicyExpected::class))->getFileName();
+
+        expect($path)->toBeString();
+
+        $source = (string) file_get_contents((string) $path);
+
+        expect($source)->toContain('Pest test fixture, not governance evidence')
+            ->and($source)->not->toContain('RELATIVE_JSON')
+            ->and($source)->not->toContain('jsonPath()')
+            ->and($source)->not->toContain('file_get_contents')
+            ->and($source)->not->toContain(Artifact::RELATIVE_JSON);
     });
 
     it('validates each PC decision against independently frozen identity, status, blocker flag, and policy text', function (string $id) {
@@ -333,10 +349,21 @@ describe('P02-AUDIT-005 evidence-document consistency', function () {
 
         expect($normalized)->toContain('does **not** close P02-AUDIT-005')
             ->and($normalized)->toContain('does **not** change T46 from OPEN')
-            ->and($issues)->not->toContain('evidence_p02_audit_005_explicitly_closed')
-            ->and($issues)->not->toContain('evidence_t46_explicitly_closed')
-            ->and($issues)->not->toContain('evidence_p02_audit_005_not_explicitly_open')
-            ->and($issues)->not->toContain('evidence_t46_not_explicitly_open');
+            ->and($issues)->toBe([])
+            ->and($issues)->not->toContain('evidence_final_status_p02_audit_005_closed')
+            ->and($issues)->not->toContain('evidence_prose_p02_audit_005_closed')
+            ->and($issues)->not->toContain('evidence_final_status_t46_closed')
+            ->and($issues)->not->toContain('evidence_prose_t46_mitigated');
+    });
+
+    it('fails a contradictory final-status T46 CLOSED while the identity table remains OPEN', function () {
+        $issues = (new Phase02ProfileClaimPolicyValidator)->validate(
+            Artifact::decoded(),
+            Mutations::evidenceFinalStatus(Artifact::evidenceRaw(), 'T46', 'OPEN', 'CLOSED'),
+        );
+
+        expect($issues)->toContain('evidence_final_status_t46_closed')
+            ->and($issues)->toContain('evidence_final_status_t46_not_open');
     });
 });
 
@@ -352,5 +379,13 @@ describe('P02-AUDIT-005 policy mutation detection', function () {
             $issues = $validator->validate($case['artifact'], $case['evidence']);
             expect($issues)->toContain($case['expected_issue']);
         }
+    });
+
+    it('keeps independently frozen test oracles from being treated as governance approval', function () {
+        $evidence = Artifact::evidenceRaw();
+
+        expect($evidence)->toContain('test oracles only')
+            ->and($evidence)->toContain('A Controller freeze is not Product approval')
+            ->and($evidence)->not->toMatch('/Controller freeze is Product approval/');
     });
 });

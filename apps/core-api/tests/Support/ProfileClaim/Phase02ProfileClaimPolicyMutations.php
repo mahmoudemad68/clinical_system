@@ -72,13 +72,25 @@ final class Phase02ProfileClaimPolicyMutations
             self::case('pc017_blocker_removed', 'PC-017_blocks_production_enablement_mismatch', self::decisionBlocksProduction($baseline, 'PC-017', false), $evidence),
             self::case('duplicate_pc_id', 'duplicate_pc_id', self::duplicatePc001($baseline), $evidence),
             self::case('missing_pc_022', 'missing_pc_id:PC-022', self::dropDecision($baseline, 'PC-022'), $evidence),
-            self::case('evidence_t46_closed', 'evidence_t46_explicitly_closed', $baseline, self::evidenceCloseT46($evidence)),
-            self::case('evidence_audit_005_closed', 'evidence_p02_audit_005_explicitly_closed', $baseline, self::evidenceCloseAudit005($evidence)),
-            self::case('evidence_governance_approved', 'evidence_governance_approved', $baseline, self::evidenceApproveGovernance($evidence)),
-            self::case('evidence_credential_length_10', 'evidence_credential_length_not_16', $baseline, self::evidenceCredentialLength10($evidence)),
-            self::case('evidence_plain_hash', 'evidence_storage_not_peppered_hash_only', $baseline, self::evidencePlainHash($evidence)),
+            self::case('evidence_final_t46_closed', 'evidence_final_status_t46_closed', $baseline, self::evidenceFinalStatus($evidence, 'T46', 'OPEN', 'CLOSED')),
+            self::case('evidence_final_audit_005_closed', 'evidence_final_status_p02_audit_005_closed', $baseline, self::evidenceFinalStatus($evidence, 'P02-AUDIT-005', 'OPEN', 'CLOSED')),
+            self::case('evidence_prose_audit_005_closed', 'evidence_prose_p02_audit_005_closed', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: P02-AUDIT-005 is OPEN.', 'Current material state: P02-AUDIT-005 is CLOSED.')),
+            self::case('evidence_prose_t46_mitigated', 'evidence_prose_t46_mitigated', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: T46 is OPEN.', 'Current material state: T46 is MITIGATED.')),
+            self::case('evidence_product_approved', 'evidence_product_governance_approved', $baseline, self::evidenceIdentityApproval($evidence, 'Product approval')),
+            self::case('evidence_security_approved', 'evidence_security_governance_approved', $baseline, self::evidenceIdentityApproval($evidence, 'Security approval')),
+            self::case('evidence_privacy_approved', 'evidence_privacy_governance_approved', $baseline, self::evidenceIdentityApproval($evidence, 'Privacy approval')),
+            self::case('evidence_support_approved', 'evidence_support_operations_governance_approved', $baseline, self::evidenceIdentityApproval($evidence, 'Support/Operations approval')),
+            self::case('evidence_numeric_credential_length_10', 'evidence_numeric_claim_credential_length_mismatch', $baseline, self::evidenceReplaceOnce($evidence, '| Claim credential length | 16 Crockford Base32 characters |', '| Claim credential length | 10 Crockford Base32 characters |')),
+            self::case('evidence_numeric_ttl_365', 'evidence_numeric_claim_credential_ttl_mismatch', $baseline, self::evidenceReplaceOnce($evidence, '| Claim credential TTL | 30 days |', '| Claim credential TTL | 365 days |')),
+            self::case('evidence_numeric_otp_recency_30', 'evidence_numeric_profile_claim_otp_recency_at_attach_mismatch', $baseline, self::evidenceReplaceOnce($evidence, '| `profile_claim` OTP recency at attach | 10 minutes |', '| `profile_claim` OTP recency at attach | 30 minutes |')),
+            self::case('evidence_pc019_blocker_false', 'evidence_decision_PC-019_blocker_mismatch', $baseline, self::evidenceDecisionBlocker($evidence, 'PC-019', 'yes', 'no')),
+            self::case('evidence_pc022_blocker_false', 'evidence_decision_PC-022_blocker_mismatch', $baseline, self::evidenceDecisionBlocker($evidence, 'PC-022', 'yes', 'no')),
+            self::case('evidence_prohibited_state_removed', 'evidence_prohibited_client_states_incomplete', $baseline, self::evidenceReplaceOnce($evidence, '`national_id_not_found`.', '.')),
+            self::case('evidence_hidden_denial_linked', 'evidence_hidden_denial_is_not_not_found', $baseline, self::evidenceReplaceOnce($evidence, 'Hidden denial is `NOT_FOUND`.', 'Hidden denial is `profile_already_linked`.')),
+            self::case('evidence_client_must_not_learn_item_removed', 'evidence_client_must_not_learn_incomplete', $baseline, self::evidenceReplaceOnce($evidence, "- nid_exists\n", '')),
+            self::case('evidence_production_authorized', 'evidence_production_enablement_authorized', $baseline, self::evidenceReplaceOnce($evidence, '| Production enablement | `NOT_AUTHORIZED` |', '| Production enablement | `AUTHORIZED` |')),
+            self::case('evidence_plain_hash', 'evidence_storage_not_peppered_hash_only', $baseline, self::evidenceReplaceOnce($evidence, '| Storage | peppered-hash-only |', '| Storage | plain-hash-only |')),
             self::case('evidence_legacy_auto_generation', 'evidence_legacy_automatic_credential_generation', $baseline, self::evidenceLegacyAutoGeneration($evidence)),
-            self::case('evidence_production_authorized', 'evidence_production_enablement_authorized', $baseline, self::evidenceProductionAuthorized($evidence)),
         ];
     }
 
@@ -498,59 +510,52 @@ final class Phase02ProfileClaimPolicyMutations
         return $artifact;
     }
 
-    public static function evidenceCloseT46(string $evidence): string
+    public static function evidenceFinalStatus(string $evidence, string $identity, string $from, string $to): string
     {
-        $replaced = preg_replace('/(\*\*T46\*\*\s*\|\s*\*\*`)OPEN(`\*\*)/', '$1CLOSED$2', $evidence, 1);
-        $replaced = is_string($replaced) ? $replaced : $evidence;
-
-        return str_replace('`T46: OPEN`', '`T46: CLOSED`', $replaced);
+        return self::evidenceReplaceOnce($evidence, '`'.$identity.': '.$from.'`', '`'.$identity.': '.$to.'`');
     }
 
-    public static function evidenceCloseAudit005(string $evidence): string
+    public static function evidenceIdentityApproval(string $evidence, string $label): string
     {
-        $replaced = preg_replace('/(\*\*P02-AUDIT-005\*\*\s*\|\s*\*\*`)OPEN(`\*\*)/', '$1CLOSED$2', $evidence, 1);
-        $replaced = is_string($replaced) ? $replaced : $evidence;
-
-        return str_replace('`P02-AUDIT-005: OPEN`', '`P02-AUDIT-005: CLOSED`', $replaced);
-    }
-
-    public static function evidenceApproveGovernance(string $evidence): string
-    {
-        return (string) preg_replace(
-            '/(\| Product approval \| `)PENDING_EXTERNAL(`)/',
-            '$1APPROVED$2',
+        return self::evidenceReplaceOnce(
             $evidence,
-            1,
+            '| '.$label.' | `PENDING_EXTERNAL` |',
+            '| '.$label.' | `APPROVED` |',
         );
     }
 
-    public static function evidenceCredentialLength10(string $evidence): string
+    public static function evidenceDecisionBlocker(string $evidence, string $id, string $from, string $to): string
     {
-        return (string) preg_replace('/(\| Length \| \*\*)16(\*\*)/', '${1}10$2', $evidence, 1);
+        $replaced = preg_replace(
+            '/^(\| '.preg_quote($id, '/').' \|.*\| )'.preg_quote($from, '/').'( \|)$/m',
+            '$1'.$to.'$2',
+            $evidence,
+            1,
+            $count,
+        );
+        if (! is_string($replaced) || $count !== 1) {
+            throw new RuntimeException('Failed to mutate decision matrix blocker for '.$id);
+        }
+
+        return $replaced;
     }
 
-    public static function evidencePlainHash(string $evidence): string
+    public static function evidenceReplaceOnce(string $evidence, string $search, string $replace): string
     {
-        return str_replace('peppered-hash-only', 'plain-hash-only', $evidence);
+        $count = 0;
+        $replaced = str_replace($search, $replace, $evidence, $count);
+        if ($count !== 1) {
+            throw new RuntimeException('Expected one occurrence of '.json_encode($search).', found '.$count);
+        }
+
+        return $replaced;
     }
 
     public static function evidenceLegacyAutoGeneration(string $evidence): string
     {
-        $evidence = str_replace('**MANUAL_REVIEW_ONLY**', '**SELF_SERVICE**', $evidence);
-
         return (string) preg_replace(
             '/Automatic or retroactive credential generation\s+is \*\*not\*\* authorized\./',
             'Automatic credential generation is authorized.',
-            $evidence,
-            1,
-        );
-    }
-
-    public static function evidenceProductionAuthorized(string $evidence): string
-    {
-        return (string) preg_replace(
-            '/(\| Production enablement \| `)NOT_AUTHORIZED(`)/',
-            '$1AUTHORIZED$2',
             $evidence,
             1,
         );
