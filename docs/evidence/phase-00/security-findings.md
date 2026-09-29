@@ -159,3 +159,28 @@ This implementer cannot close SF-001. Independent retest remains required (G-08-
 
 Evidence ledger gate G-06-05. It is `PARTIAL`, not `PASS`, and not `BLOCKED`:
 the Critical is resolved, one High root remains with no upstream fix.
+
+### Remediation candidate (2026-09-29) — not independent acceptance
+
+Controller-authorized Option A removed the unscoped `extract-zip` package
+from both npm graphs:
+
+- root override `@electron/packager` `20.3.0` (Forge `7.11.2` retained)
+- `tests/desktop-e2e` override `@puppeteer/browsers` `3.2.3` (WDIO 9.x retained)
+
+`@electron-internal/extract-zip` may still appear. That is a different npm
+package. CVE-2026-56876 / GHSA-jmr9-qjv8-65gv are no longer listed in
+`infra/security/trivy-merge.ignore`. ISR-015 now fails if `extract-zip`
+reappears in either lockfile or if those IDs are restored to the merge
+ignore.
+
+The historical MERGE_ONLY exception is retained as history in
+[`infra/security/exceptions/SF-001.json`](../../../infra/security/exceptions/SF-001.json)
+with `graph_status: ABSENT` and
+`remediation_status: REMEDIATED_CANDIDATE_AWAITING_INDEPENDENT_QA`.
+`independent_acceptance_status` remains `PENDING_INDEPENDENT_ACCEPTANCE`.
+P02-AUDIT-006 remains OPEN. This section does **not** close SF-001.
+
+See
+[`docs/evidence/phase-02/p02-audit-006-sf001-extract-zip-remediation-candidate.md`](../phase-02/p02-audit-006-sf001-extract-zip-remediation-candidate.md).
+

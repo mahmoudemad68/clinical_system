@@ -6,18 +6,27 @@
     "CVE-2026-56876",
     "GHSA-jmr9-qjv8-65gv"
   ],
-  "scope": "MERGE_ONLY",
+  "scope": "HISTORICAL_MERGE_ONLY",
   "promotion_allowed": false,
   "expires_at": "2026-11-26T00:00:00Z",
   "owner": "@clinic/security",
-  "justification": "extract-zip@2.0.1 is the latest published version and the advisory covers <=2.0.1. No patched upstream release exists. ADR 0008 allows a time-boxed High merge exception; promotion remains blocked.",
+  "justification": "Historical High: extract-zip@2.0.1 was present via @electron/packager 18.x and @puppeteer/browsers 2.x. No patched extract-zip release existed, so ADR 0008 allowed a time-boxed MERGE_ONLY exception while promotion stayed blocked. Controller-authorized Option A removed the unscoped extract-zip package by overriding @electron/packager to 20.3.0 (Forge 7.11.2 retained) and @puppeteer/browsers to 3.2.3 (WDIO 9.x retained). This manifest must not ignore CVE-2026-56876 / GHSA-jmr9-qjv8-65gv. Independent QA has not accepted P02-AUDIT-006.",
   "compensating_controls": [
-    "Build-time Electron packaging only; absent from packaged runtime artifacts",
-    "Extracts Electron CDN archives fetched over TLS, not attacker-supplied zips",
-    "CI builders are ephemeral",
-    "Pull-request lane does not receive signing credentials"
+    "Unscoped extract-zip package must remain absent from package-lock.json and tests/desktop-e2e/package-lock.json",
+    "ISR-015 fails if extract-zip reappears in either npm graph",
+    "CVE-2026-56876 / GHSA-jmr9-qjv8-65gv must not appear in infra/security/trivy-merge.ignore",
+    "@electron-internal/extract-zip is a different npm package and is not treated as extract-zip without a matching advisory"
   ],
   "independent_acceptance_status": "PENDING_INDEPENDENT_ACCEPTANCE",
   "lockfile": "package-lock.json",
-  "package_lock_key": "node_modules/extract-zip"
+  "package_lock_key": "node_modules/extract-zip",
+  "lockfiles": [
+    "package-lock.json",
+    "tests/desktop-e2e/package-lock.json"
+  ],
+  "graph_status": "ABSENT",
+  "remediation_status": "REMEDIATED_CANDIDATE_AWAITING_INDEPENDENT_QA",
+  "historical_scope": "MERGE_ONLY",
+  "historical_merge_exception_active": false,
+  "p02_audit_006": "OPEN"
 }
