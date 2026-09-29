@@ -29,6 +29,25 @@ on merge.
 | SF-001 | `REMEDIATED_CANDIDATE_AWAITING_INDEPENDENT_QA` |
 | Promotion blocked specifically by SF-001 merge exception | **no** (old ignore is gone; package is absent). Remaining hold is independent QA plus unrelated open gates. |
 
+## STOP — Forge 7.11.2 cannot package with Packager 20.3.0
+
+Doctor and Pharmacy `electron-forge package` both fail at Finalizing
+package:
+
+`TypeError: done is not a function` in
+`@electron-forge/core@7.11.2` `package.js:76`
+(`sequentialFinalizePackageTargetsHooks`). Packager 20 invokes promise
+hooks as `hook(opts)` and does not pass a `done` callback.
+
+Forge 8 was **not** attempted.
+
+See [p02-audit-006-sf001-option-a-packaging-stop.md](p02-audit-006-sf001-option-a-packaging-stop.md).
+
 This implementer cannot close SF-001. Independent QA must verify the
 graphs, Forge 7 + Packager 20 packaging, WDIO + Browsers 3 E2E, Trivy,
 and exact-head CI before any acceptance decision.
+
+```
+FORGE8_OR_ARCHITECTURAL_MIGRATION_REQUIRES_SEPARATE_AUTHORIZATION
+```
+
