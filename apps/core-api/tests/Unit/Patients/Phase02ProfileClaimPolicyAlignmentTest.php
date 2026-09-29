@@ -7,6 +7,7 @@ use Modules\Patients\Enums\PatientStatus;
 use Modules\Platform\Services\Features\PlatformFeatures;
 use Tests\Support\ProfileClaim\Phase02ProfileClaimPolicyArtifact as Artifact;
 use Tests\Support\ProfileClaim\Phase02ProfileClaimPolicyExpected;
+use Tests\Support\ProfileClaim\Phase02ProfileClaimPolicyExpectedMarkdown;
 use Tests\Support\ProfileClaim\Phase02ProfileClaimPolicyMutations as Mutations;
 use Tests\Support\ProfileClaim\Phase02ProfileClaimPolicyValidator;
 use Tests\TestCase;
@@ -78,6 +79,34 @@ describe('P02-AUDIT-005 profile-claim policy artifact', function () {
             ->and($source)->not->toContain('jsonPath()')
             ->and($source)->not->toContain('file_get_contents')
             ->and($source)->not->toContain(Artifact::RELATIVE_JSON);
+    });
+
+    it('does not generate expected markdown from the evidence file at runtime', function () {
+        $path = (new ReflectionClass(Phase02ProfileClaimPolicyExpectedMarkdown::class))->getFileName();
+
+        expect($path)->toBeString();
+
+        $source = (string) file_get_contents((string) $path);
+
+        expect($source)->toContain('TEST ORACLE — NOT GOVERNANCE EVIDENCE')
+            ->and($source)->not->toContain('RELATIVE_EVIDENCE')
+            ->and($source)->not->toContain('evidencePath')
+            ->and($source)->not->toContain('evidenceRaw')
+            ->and($source)->not->toContain('file_get_contents')
+            ->and($source)->not->toContain(Artifact::RELATIVE_EVIDENCE)
+            ->and($source)->not->toContain('jsonPath()')
+            ->and(Phase02ProfileClaimPolicyExpectedMarkdown::frozen())
+            ->toBe(Phase02ProfileClaimPolicyExpectedMarkdown::canonicalize(Artifact::evidenceRaw()));
+    });
+
+    it('compares canonical markdown deterministically without JSON SHA', function () {
+        $crlf = str_replace("\n", "\r\n", Artifact::evidenceRaw());
+        $again = Phase02ProfileClaimPolicyExpectedMarkdown::canonicalize($crlf);
+
+        expect(Phase02ProfileClaimPolicyExpectedMarkdown::canonicalize($crlf))
+            ->toBe(Phase02ProfileClaimPolicyExpectedMarkdown::frozen())
+            ->and($again)->toBe(Phase02ProfileClaimPolicyExpectedMarkdown::canonicalize($again))
+            ->and((new Phase02ProfileClaimPolicyValidator)->validate(Artifact::decoded(), $crlf))->toBe([]);
     });
 
     it('validates each PC decision against independently frozen identity, status, blocker flag, and policy text', function (string $id) {
@@ -411,7 +440,7 @@ describe('P02-AUDIT-005 evidence-document consistency', function () {
         expect($issues)->toContain('evidence_prose_p02_audit_005_closed');
     });
 
-    it('treats Markdown set-valued collections as order-insensitive', function () {
+    it('keeps Markdown set-valued diagnostic checks order-insensitive while the frozen oracle flags document reorder', function () {
         $validator = new Phase02ProfileClaimPolicyValidator;
         $artifact = Artifact::decoded();
         $evidence = Artifact::evidenceRaw();
@@ -437,10 +466,20 @@ describe('P02-AUDIT-005 evidence-document consistency', function () {
             "- ceremony implementation complete\n- policy recorded\n",
         );
 
-        expect($validator->validate($artifact, $learnReordered))->toBe([])
-            ->and($validator->validate($artifact, $statesReordered))->toBe([])
-            ->and($validator->validate($artifact, $plaintextReordered))->toBe([])
-            ->and($validator->validate($artifact, $pc020Reordered))->toBe([]);
+        $learnIssues = $validator->validate($artifact, $learnReordered);
+        $stateIssues = $validator->validate($artifact, $statesReordered);
+        $plaintextIssues = $validator->validate($artifact, $plaintextReordered);
+        $pc020Issues = $validator->validate($artifact, $pc020Reordered);
+
+        expect($learnIssues)->toContain('evidence_markdown_drift')
+            ->and($learnIssues)->not->toContain('evidence_client_must_not_learn_incomplete')
+            ->and($learnIssues)->not->toContain('evidence_client_must_not_learn_unexpected_member')
+            ->and($stateIssues)->toContain('evidence_markdown_drift')
+            ->and($stateIssues)->not->toContain('evidence_prohibited_client_states_incomplete')
+            ->and($plaintextIssues)->toContain('evidence_markdown_drift')
+            ->and($plaintextIssues)->not->toContain('evidence_plaintext_destinations_incomplete')
+            ->and($pc020Issues)->toContain('evidence_markdown_drift')
+            ->and($pc020Issues)->not->toContain('evidence_pc020_prerequisites_incomplete');
     });
 });
 
@@ -455,7 +494,145 @@ describe('P02-AUDIT-005 policy mutation detection', function () {
         foreach (Mutations::isolatedCases($baseline, $evidence) as $case) {
             $issues = $validator->validate($case['artifact'], $case['evidence']);
             expect($issues)->toContain($case['expected_issue']);
+            if ($case['evidence'] === $evidence) {
+                expect($issues)->not->toContain('evidence_markdown_drift');
+            } else {
+                expect($issues)->toContain('evidence_markdown_drift');
+            }
         }
+    });
+
+    it('emits evidence_markdown_drift for every previous markdown survivor independently of phrase checks', function () {
+        $validator = new Phase02ProfileClaimPolicyValidator;
+        $artifact = Artifact::decoded();
+        $evidence = Artifact::evidenceRaw();
+        $missed = [];
+
+        expect(Mutations::previousMarkdownSurvivorCases($evidence))->toHaveCount(35);
+
+        foreach (Mutations::previousMarkdownSurvivorCases($evidence) as $case) {
+            $issues = $validator->validate($artifact, $case['evidence']);
+            if (! in_array('evidence_markdown_drift', $issues, true)) {
+                $missed[] = $case['id'];
+            }
+        }
+
+        expect($missed)->toBe([]);
+    });
+
+    it('emits evidence_markdown_drift for every previous fresh-adversarial markdown survivor', function () {
+        $validator = new Phase02ProfileClaimPolicyValidator;
+        $artifact = Artifact::decoded();
+        $evidence = Artifact::evidenceRaw();
+        $missed = [];
+
+        expect(Mutations::previousFreshAdversarialSurvivorCases($evidence))->toHaveCount(23);
+
+        foreach (Mutations::previousFreshAdversarialSurvivorCases($evidence) as $case) {
+            $issues = $validator->validate($artifact, $case['evidence']);
+            if (! in_array('evidence_markdown_drift', $issues, true)) {
+                $missed[] = $case['id'];
+            }
+        }
+
+        expect($missed)->toBe([]);
+    });
+
+    it('emits evidence_markdown_drift for every fresh arbitrary markdown mutation', function () {
+        $validator = new Phase02ProfileClaimPolicyValidator;
+        $artifact = Artifact::decoded();
+        $evidence = Artifact::evidenceRaw();
+        $missed = [];
+
+        expect(Mutations::freshMarkdownAdversarialCases($evidence))->toHaveCount(37);
+
+        foreach (Mutations::freshMarkdownAdversarialCases($evidence) as $case) {
+            $issues = $validator->validate($artifact, $case['evidence']);
+            if (! in_array('evidence_markdown_drift', $issues, true)) {
+                $missed[] = $case['id'];
+            }
+        }
+
+        expect($missed)->toBe([]);
+    });
+
+    it('emits evidence_markdown_drift for independence mutations even when phrase checks are irrelevant', function () {
+        $validator = new Phase02ProfileClaimPolicyValidator;
+        $artifact = Artifact::decoded();
+        $evidence = Artifact::evidenceRaw();
+
+        $lorem = $validator->validate(
+            $artifact,
+            Mutations::evidenceAppendParagraph($evidence, 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.'),
+        );
+        $removed = $validator->validate(
+            $artifact,
+            Mutations::evidenceReplaceOnce(
+                $evidence,
+                "AI/agent authoring is engineering evidence, not independent human approval.\n",
+                '',
+            ),
+        );
+        $word = $validator->validate($artifact, Mutations::evidenceReplaceOnce($evidence, 'walk-in row', 'walk-in record'));
+        $status = $validator->validate($artifact, Mutations::evidenceReplaceOnce($evidence, '| **T46** | **`OPEN`** |', '| **T46** | **`CLOSED`** |'));
+        $number = $validator->validate($artifact, Mutations::evidenceReplaceOnce($evidence, '| OTP length | 6 digits |', '| OTP length | 8 digits |'));
+        $heading = $validator->validate($artifact, Mutations::evidenceReplaceOnce($evidence, '## Hybrid model', '## Hybrid scheme'));
+        $approval = $validator->validate($artifact, Mutations::evidenceAppendParagraph($evidence, 'This policy is APPROVED by Product.'));
+        $closure = $validator->validate($artifact, Mutations::evidenceAppendParagraph($evidence, 'P02-AUDIT-005 is CLOSED.'));
+        $authorization = $validator->validate($artifact, Mutations::evidenceAppendParagraph($evidence, 'Production enablement is AUTHORIZED.'));
+        $proof = $validator->validate($artifact, Mutations::evidenceReplaceOnce($evidence, 'requires **all four** factors:', 'requires **three** factors:'));
+        $revealing = $validator->validate($artifact, Mutations::evidenceAppendParagraph($evidence, 'Clients may observe profile_exists.'));
+
+        expect($lorem)->toContain('evidence_markdown_drift')
+            ->and($removed)->toContain('evidence_markdown_drift')
+            ->and($word)->toContain('evidence_markdown_drift')
+            ->and($status)->toContain('evidence_markdown_drift')
+            ->and($number)->toContain('evidence_markdown_drift')
+            ->and($heading)->toContain('evidence_markdown_drift')
+            ->and($approval)->toContain('evidence_markdown_drift')
+            ->and($closure)->toContain('evidence_markdown_drift')
+            ->and($authorization)->toContain('evidence_markdown_drift')
+            ->and($proof)->toContain('evidence_markdown_drift')
+            ->and($revealing)->toContain('evidence_markdown_drift');
+    });
+
+    it('accepts only documented formatting-only markdown normalization', function () {
+        $validator = new Phase02ProfileClaimPolicyValidator;
+        $artifact = Artifact::decoded();
+        $evidence = Artifact::evidenceRaw();
+        $unexpected = [];
+
+        expect(Mutations::markdownFormattingOnlyCases($evidence))->toHaveCount(4);
+
+        foreach (Mutations::markdownFormattingOnlyCases($evidence) as $case) {
+            $issues = $validator->validate($artifact, $case['evidence']);
+            if ($issues !== []) {
+                $unexpected[] = $case['id'].':'.implode(',', $issues);
+            }
+        }
+
+        expect($unexpected)->toBe([]);
+    });
+
+    it('records zero semantic markdown survivors across all oracle campaigns', function () {
+        $validator = new Phase02ProfileClaimPolicyValidator;
+        $artifact = Artifact::decoded();
+        $evidence = Artifact::evidenceRaw();
+        $semanticMissed = [];
+        $semanticCaught = 0;
+
+        foreach (Mutations::markdownSemanticOracleCases($evidence) as $case) {
+            $issues = $validator->validate($artifact, $case['evidence']);
+            if (in_array('evidence_markdown_drift', $issues, true)) {
+                $semanticCaught++;
+            } else {
+                $semanticMissed[] = $case['id'];
+            }
+        }
+
+        expect($semanticMissed)->toBe([])
+            ->and($semanticCaught)->toBe(count(Mutations::markdownSemanticOracleCases($evidence)))
+            ->and($semanticCaught)->toBeGreaterThanOrEqual(35 + 23 + 30);
     });
 
     it('keeps independently frozen test oracles from being treated as governance approval', function () {
@@ -464,6 +641,7 @@ describe('P02-AUDIT-005 policy mutation detection', function () {
         expect($evidence)->toContain('test oracles only')
             ->and($evidence)->toContain('A Controller freeze is not Product approval')
             ->and($evidence)->not->toContain('POLICY_V1_REMEDIATED_AWAITING_INDEPENDENT_RE_QA')
+            ->and($evidence)->not->toContain('It has never been merged to `main`.')
             ->and($evidence)->not->toMatch('/Controller freeze is Product approval/');
     });
 });

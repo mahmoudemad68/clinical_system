@@ -138,6 +138,236 @@ final class Phase02ProfileClaimPolicyMutations
     }
 
     /**
+     * Semantic Markdown mutations that must emit evidence_markdown_drift.
+     *
+     * @return list<array{id: string, campaign: string, kind: string, evidence: string}>
+     */
+    public static function markdownSemanticOracleCases(string $evidence): array
+    {
+        return array_merge(
+            self::previousMarkdownSurvivorCases($evidence),
+            self::previousFreshAdversarialSurvivorCases($evidence),
+            self::freshMarkdownAdversarialCases($evidence),
+            self::markdownIndependenceCases($evidence),
+        );
+    }
+
+    /**
+     * Prior independent-QA Markdown survivors (35). Each is a durable-content
+     * change that previously bypassed phrase/regex checks.
+     *
+     * @return list<array{id: string, campaign: string, kind: string, evidence: string}>
+     */
+    public static function previousMarkdownSurvivorCases(string $evidence): array
+    {
+        return [
+            self::markdownCase('survivor_historically_open_t46_now_closed', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Historically OPEN, T46 is now CLOSED.')),
+            self::markdownCase('survivor_does_not_close_t46_already_closed', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'does not close T46 because T46 is already CLOSED')),
+            self::markdownCase('survivor_t46_is_not_open', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'T46 is not OPEN.')),
+            self::markdownCase('survivor_closed_across_line_break', 'previous_survivor', self::evidenceAppendParagraph($evidence, "T46 is\nCLOSED.")),
+            self::markdownCase('survivor_t46_nbsp_closed', 'previous_survivor', self::evidenceAppendParagraph($evidence, "T46 is\u{00A0}CLOSED.")),
+            self::markdownCase('survivor_t46_emdash_closed', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'T46 — CLOSED')),
+            self::markdownCase('survivor_audit_005_emdash_closed', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'P02-AUDIT-005 — CLOSED')),
+            self::markdownCase('survivor_t46_equals_closed', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'T46=CLOSED')),
+            self::markdownCase('survivor_t46_status_colon_closed', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'T46 status: CLOSED')),
+            self::markdownCase('survivor_heading_t46_closed', 'previous_survivor', self::evidenceAppendParagraph($evidence, '### T46 CLOSED')),
+            self::markdownCase('survivor_audit_005_resolved', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'P02-AUDIT-005 is resolved.')),
+            self::markdownCase('survivor_bare_production_enablement_authorized', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Production enablement: AUTHORIZED')),
+            self::markdownCase('survivor_product_alone_approved', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Product alone APPROVED')),
+            self::markdownCase('survivor_security_alone_approved', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Security alone APPROVED')),
+            self::markdownCase('survivor_privacy_alone_approved', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Privacy alone APPROVED')),
+            self::markdownCase('survivor_support_alone_approved', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Support/Operations alone APPROVED')),
+            self::markdownCase('survivor_product_has_approved', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Product has approved')),
+            self::markdownCase('survivor_security_approved', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Security approved')),
+            self::markdownCase('survivor_controller_freeze_counts_as_product_approval', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Controller freeze counts as Product approval')),
+            self::markdownCase('survivor_signed_off', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'signed off')),
+            self::markdownCase('survivor_sign_off_complete', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'sign-off complete')),
+            self::markdownCase('survivor_ratified', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'ratified')),
+            self::markdownCase('survivor_endorsed', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'endorsed')),
+            self::markdownCase('survivor_governance_approvals_complete', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Governance approvals: complete')),
+            self::markdownCase('survivor_approver_email_signoff', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'Approved by reviewer@example.com; sign-off recorded.')),
+            self::markdownCase('survivor_document_upload_sufficient', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'document upload sufficient')),
+            self::markdownCase('survivor_missing_bound_nid_high_confidence', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'missing bound NID accepted as high confidence')),
+            self::markdownCase('survivor_nid_otp_fallback_sufficient', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'NID+OTP fallback sufficient')),
+            self::markdownCase('survivor_dob_alone_sufficient', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'DOB alone sufficient')),
+            self::markdownCase(
+                'survivor_pc002_factor_removed',
+                'previous_survivor',
+                self::evidenceReplaceOnce(
+                    $evidence,
+                    "2. The claimant account has a **non-empty bound National-ID identity**\n   representation, and that bound identity matches the target profile\n   identity.\n",
+                    '',
+                ),
+            ),
+            self::markdownCase('survivor_credential_reusable_three_times', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'credential reusable three times')),
+            self::markdownCase('survivor_ttl_extendable_365_days', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'TTL extendable to 365 days')),
+            self::markdownCase('survivor_feature_flag_true_enables_production', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'FEATURE_IDENTITY_PROFILE_CLAIM=true alone enables production')),
+            self::markdownCase('survivor_ceremony_is_implemented', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'ceremony is implemented')),
+            self::markdownCase('survivor_credential_runtime_exists', 'previous_survivor', self::evidenceAppendParagraph($evidence, 'credential runtime exists')),
+        ];
+    }
+
+    /**
+     * Prior fresh-adversarial Markdown survivors (23).
+     *
+     * @return list<array{id: string, campaign: string, kind: string, evidence: string}>
+     */
+    public static function previousFreshAdversarialSurvivorCases(string $evidence): array
+    {
+        return [
+            self::markdownCase('fresh_survivor_hard_off_removed', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'hard-off removed')),
+            self::markdownCase('fresh_survivor_resolver_live_claim', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'resolver returns true for live claims')),
+            self::markdownCase('fresh_survivor_production_permitted', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'production is permitted')),
+            self::markdownCase('fresh_survivor_automatic_reassignment', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'automatic reassignment')),
+            self::markdownCase('fresh_survivor_no_freeze_on_dispute', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'no freeze on dispute')),
+            self::markdownCase('fresh_survivor_client_shown_profile_exists', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'client shown profile_exists')),
+            self::markdownCase('fresh_survivor_client_told_credential_is_expired', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'client told credential_is_expired')),
+            self::markdownCase('fresh_survivor_added_revealing_nid_exists', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'client may learn nid_exists')),
+            self::markdownCase('fresh_survivor_t46_zwsp_closed', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, "T46 is\u{200B} CLOSED")),
+            self::markdownCase('fresh_survivor_t46_parenthetical_closed', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'T46 (CLOSED)')),
+            self::markdownCase('fresh_survivor_threat_is_closed', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'the threat is closed')),
+            self::markdownCase('fresh_survivor_audit_005_complete', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'P02-AUDIT-005 complete')),
+            self::markdownCase('fresh_survivor_enablement_granted', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'enablement granted')),
+            self::markdownCase('fresh_survivor_ceremony_already_shipped', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'ceremony already shipped')),
+            self::markdownCase('fresh_survivor_otp_only_claim_allowed', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'OTP-only claim is allowed')),
+            self::markdownCase('fresh_survivor_bound_nid_optional', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'bound National ID is optional')),
+            self::markdownCase('fresh_survivor_g0804_closed_by_artifact', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'G-08-04 closed by this artifact')),
+            self::markdownCase('fresh_survivor_manual_review_optional', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'manual review optional')),
+            self::markdownCase('fresh_survivor_legacy_auto_issue', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'legacy profiles auto-issue credentials')),
+            self::markdownCase('fresh_survivor_uses_three', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'claim credential uses: 3')),
+            self::markdownCase('fresh_survivor_flag_may_be_true_in_production', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'FEATURE_IDENTITY_PROFILE_CLAIM may be true in production')),
+            self::markdownCase('fresh_survivor_production_authorization_synonym', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'production authorization is complete')),
+            self::markdownCase('fresh_survivor_document_upload_is_enough', 'previous_fresh_survivor', self::evidenceAppendParagraph($evidence, 'patient document upload is enough for high-confidence attach')),
+        ];
+    }
+
+    /**
+     * Fresh arbitrary Markdown mutations (not phrase-list designed).
+     *
+     * @return list<array{id: string, campaign: string, kind: string, evidence: string}>
+     */
+    public static function freshMarkdownAdversarialCases(string $evidence): array
+    {
+        return [
+            self::markdownCase('adv_insert_why_audit_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Why this audit needed policy input', "\n\nUnauthorized extra policy sentence in the audit-rationale section.")),
+            self::markdownCase('adv_insert_four_layers_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Four layers (must not be collapsed)', "\n\nUnauthorized extra policy sentence in the four-layers section.")),
+            self::markdownCase('adv_insert_no_inherit_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## This policy does not inherit Profile-Correction approval', "\n\nUnauthorized extra policy sentence in the non-inheritance section.")),
+            self::markdownCase('adv_insert_hybrid_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Hybrid model', "\n\nUnauthorized extra policy sentence in the hybrid-model section.")),
+            self::markdownCase('adv_insert_credential_rationale_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Why the additional proof is a clinic-issued claim credential', "\n\nUnauthorized extra policy sentence in the credential-rationale section.")),
+            self::markdownCase('adv_insert_pc002_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## PC-002 high-confidence proof bundle', "\n\nUnauthorized extra policy sentence in the PC-002 section.")),
+            self::markdownCase('adv_insert_option_b_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Option B credential', "\n\nUnauthorized extra policy sentence in the Option B section.")),
+            self::markdownCase('adv_insert_non_enumeration_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Non-enumeration', "\n\nUnauthorized extra policy sentence in the non-enumeration section.")),
+            self::markdownCase('adv_insert_legacy_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Legacy unlinked profiles', "\n\nUnauthorized extra policy sentence in the legacy section.")),
+            self::markdownCase('adv_insert_already_bound_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Already-bound profiles', "\n\nUnauthorized extra policy sentence in the already-bound section.")),
+            self::markdownCase('adv_insert_pc_matrix_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## PC-001 through PC-022', "\n\nUnauthorized extra policy sentence in the decision-matrix section.")),
+            self::markdownCase('adv_insert_numeric_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Numeric Policy v1', "\n\nUnauthorized extra policy sentence in the numeric section.")),
+            self::markdownCase('adv_insert_runtime_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Current runtime (must stay dark)', "\n\nUnauthorized extra policy sentence in the runtime section.")),
+            self::markdownCase('adv_insert_t46_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## T46 remains OPEN', "\n\nUnauthorized extra policy sentence in the T46 section.")),
+            self::markdownCase('adv_insert_next_stage_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Next engineering stage (not authorized by this artifact)', "\n\nUnauthorized extra policy sentence in the next-stage section.")),
+            self::markdownCase('adv_insert_independent_qa_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Independent QA requirement', "\n\nUnauthorized extra policy sentence in the independent-QA section.")),
+            self::markdownCase('adv_insert_final_blocker_section', 'fresh_adversarial', self::evidenceInsertAfter($evidence, '## Final blocker state', "\n\nUnauthorized extra policy sentence in the final-blocker section.")),
+            self::markdownCase(
+                'adv_delete_legitimate_sentence',
+                'fresh_adversarial',
+                self::evidenceReplaceOnce(
+                    $evidence,
+                    "The P02-T46 threat-register entry still records status **OPEN**, owner\nP02-AUDIT-005. ",
+                    '',
+                ),
+            ),
+            self::markdownCase('adv_replace_noun_issuer', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, '| Issuer | clinic |', '| Issuer | hospital |')),
+            self::markdownCase('adv_replace_status_t46', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, '| **T46** | **`OPEN`** |', '| **T46** | **`CLOSED`** |')),
+            self::markdownCase('adv_change_numeric_otp_length', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, '| OTP length | 6 digits |', '| OTP length | 8 digits |')),
+            self::markdownCase('adv_change_credential_uses', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, '| Uses | 1 successful use |', '| Uses | 3 successful uses |')),
+            self::markdownCase('adv_change_governance_product', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, '| Product approval | `PENDING_EXTERNAL` |', '| Product approval | `APPROVED` |')),
+            self::markdownCase('adv_change_proof_all_four', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, 'requires **all four** factors:', 'requires **any two** factors:')),
+            self::markdownCase('adv_change_runtime_env_flag', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, 'The env flag alone cannot enable', 'The env flag alone can enable')),
+            self::markdownCase('adv_change_audit_heading', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, '## T46 remains OPEN', '## T46 remains CLOSED')),
+            self::markdownCase('adv_change_non_enumeration_member', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, "- nid_exists\n", '')),
+            self::markdownCase('adv_duplicate_contradictory_paragraph', 'fresh_adversarial', self::evidenceAppendParagraph($evidence, 'Current material state: T46 is CLOSED.')),
+            self::markdownCase('adv_new_heading_false_policy', 'fresh_adversarial', self::evidenceAppendParagraph($evidence, "## Production authorization\n\nThis policy authorizes production enablement.")),
+            self::markdownCase(
+                'adv_alter_table_sha_cell',
+                'fresh_adversarial',
+                self::evidenceReplaceOnce(
+                    $evidence,
+                    '`7a13fbbd1a36bb789f53d22f30335a926ced3160d720962c3d52405972ca55e5`',
+                    '`7a13fbbd1a36bb789f53d22f30335a926ced3160d720962c3d52405972ca55e6`',
+                ),
+            ),
+            self::markdownCase('adv_alter_bullet_hmac', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, '1. Canonical National-ID HMAC resolves exactly one Active unlinked target', '1. Optional National-ID HMAC resolves exactly one Active unlinked target')),
+            self::markdownCase('adv_unicode_punctuation', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, 'existing non-enumerating', 'existing non—enumerating')),
+            self::markdownCase('adv_line_wrap_alters_semantic_text', 'fresh_adversarial', self::evidenceReplaceOnce($evidence, 'Current material state: T46 is OPEN.', "Current material state: T46 is no\nlonger OPEN.")),
+            self::markdownCase('adv_extra_approval_sentence', 'fresh_adversarial', self::evidenceAppendParagraph($evidence, 'Product signed off on this policy.')),
+            self::markdownCase('adv_extra_closure_sentence', 'fresh_adversarial', self::evidenceAppendParagraph($evidence, 'This artifact closes P02-AUDIT-005.')),
+            self::markdownCase('adv_extra_authorization_sentence', 'fresh_adversarial', self::evidenceAppendParagraph($evidence, 'Production enablement is hereby authorized.')),
+            self::markdownCase(
+                'adv_trailing_space_on_heading',
+                'fresh_adversarial',
+                self::evidenceReplaceOnce(
+                    $evidence,
+                    '# P02-AUDIT-005 — Phase 02 Profile-Claim Policy v1 (not phase PASS)',
+                    '# P02-AUDIT-005 — Phase 02 Profile-Claim Policy v1 (not phase PASS) ',
+                ),
+            ),
+        ];
+    }
+
+    /**
+     * Independence proofs: content changes the phrase parser need not catch.
+     *
+     * @return list<array{id: string, campaign: string, kind: string, evidence: string}>
+     */
+    public static function markdownIndependenceCases(string $evidence): array
+    {
+        return [
+            self::markdownCase('independence_added_sentence', 'independence', self::evidenceAppendParagraph($evidence, 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.')),
+            self::markdownCase(
+                'independence_removed_sentence',
+                'independence',
+                self::evidenceReplaceOnce($evidence, "AI/agent authoring is engineering evidence, not independent human approval.\n", ''),
+            ),
+            self::markdownCase('independence_changed_word', 'independence', self::evidenceReplaceOnce($evidence, 'walk-in row', 'walk-in record')),
+            self::markdownCase('independence_changed_status', 'independence', self::evidenceReplaceOnce($evidence, '| **T46** | **`OPEN`** |', '| **T46** | **`CLOSED`** |')),
+            self::markdownCase('independence_changed_heading', 'independence', self::evidenceReplaceOnce($evidence, '## Hybrid model', '## Hybrid scheme')),
+            self::markdownCase('independence_changed_number', 'independence', self::evidenceReplaceOnce($evidence, '| OTP length | 6 digits |', '| OTP length | 8 digits |')),
+            self::markdownCase('independence_inserted_approval', 'independence', self::evidenceAppendParagraph($evidence, 'This policy is APPROVED by Product.')),
+            self::markdownCase('independence_inserted_closure', 'independence', self::evidenceAppendParagraph($evidence, 'P02-AUDIT-005 is CLOSED.')),
+            self::markdownCase('independence_inserted_authorization', 'independence', self::evidenceAppendParagraph($evidence, 'Production enablement is AUTHORIZED.')),
+            self::markdownCase('independence_weakened_proof', 'independence', self::evidenceReplaceOnce($evidence, 'requires **all four** factors:', 'requires **three** factors:')),
+            self::markdownCase('independence_revealing_client_state', 'independence', self::evidenceAppendParagraph($evidence, 'Clients may observe profile_exists.')),
+        ];
+    }
+
+    /**
+     * Documented formatting-only mutations that canonicalize must accept.
+     *
+     * @return list<array{id: string, campaign: string, kind: string, evidence: string}>
+     */
+    public static function markdownFormattingOnlyCases(string $evidence): array
+    {
+        return [
+            self::markdownCase('formatting_crlf_line_endings', 'formatting', str_replace("\n", "\r\n", $evidence), 'formatting'),
+            self::markdownCase('formatting_cr_line_endings', 'formatting', str_replace("\n", "\r", $evidence), 'formatting'),
+            self::markdownCase('formatting_missing_final_newline', 'formatting', rtrim($evidence, "\n"), 'formatting'),
+            self::markdownCase('formatting_extra_final_newlines', 'formatting', rtrim($evidence, "\n")."\n\n\n", 'formatting'),
+        ];
+    }
+
+    /**
+     * @return array{id: string, campaign: string, kind: string, evidence: string}
+     */
+    private static function markdownCase(string $id, string $campaign, string $evidence, string $kind = 'semantic'): array
+    {
+        return [
+            'id' => $id,
+            'campaign' => $campaign,
+            'kind' => $kind,
+            'evidence' => $evidence,
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $artifact
      * @return array{id: string, expected_issue: string, artifact: array<string, mixed>, evidence: string}
      */
@@ -627,6 +857,11 @@ final class Phase02ProfileClaimPolicyMutations
         }
 
         return $replaced;
+    }
+
+    public static function evidenceAppendParagraph(string $evidence, string $paragraph): string
+    {
+        return rtrim($evidence, "\n")."\n\n".$paragraph."\n";
     }
 
     public static function evidenceReplaceOnce(string $evidence, string $search, string $replace): string

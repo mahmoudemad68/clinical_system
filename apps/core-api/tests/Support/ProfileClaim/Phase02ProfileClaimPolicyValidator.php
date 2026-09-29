@@ -7,7 +7,8 @@ namespace Tests\Support\ProfileClaim;
 /**
  * Structural validator for Profile-Claim Policy v1 artifacts.
  * Used against the committed JSON and against in-memory mutations.
- * Expected values are independently frozen in Phase02ProfileClaimPolicyArtifact.
+ * Expected JSON is independently frozen in Phase02ProfileClaimPolicyExpected.
+ * Expected Markdown is independently frozen in Phase02ProfileClaimPolicyExpectedMarkdown.
  */
 final class Phase02ProfileClaimPolicyValidator
 {
@@ -476,6 +477,24 @@ final class Phase02ProfileClaimPolicyValidator
     }
 
     /**
+     * Completeness layer: any unauthorized durable Markdown change fails
+     * independently of JSON SHA, companion hash, and phrase regexes.
+     *
+     * @return list<string>
+     */
+    private function evidenceMarkdownOracleIssues(string $evidence): array
+    {
+        $actual = Phase02ProfileClaimPolicyExpectedMarkdown::canonicalize($evidence);
+        $expected = Phase02ProfileClaimPolicyExpectedMarkdown::frozen();
+
+        if ($actual !== $expected) {
+            return ['evidence_markdown_drift'];
+        }
+
+        return [];
+    }
+
+    /**
      * @return list<string>
      */
     private function evidenceIssues(string $evidence): array
@@ -485,7 +504,7 @@ final class Phase02ProfileClaimPolicyValidator
         }
 
         $doc = new Phase02ProfileClaimPolicyEvidenceDocument($evidence);
-        $issues = [];
+        $issues = $this->evidenceMarkdownOracleIssues($evidence);
         $identity = $doc->identityTable();
         $final = $doc->finalStatusMap();
 

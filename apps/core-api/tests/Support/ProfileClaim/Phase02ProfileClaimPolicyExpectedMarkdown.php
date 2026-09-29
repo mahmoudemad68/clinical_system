@@ -1,3 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Support\ProfileClaim;
+
+/**
+ * Independently frozen canonical Profile-Claim Policy v1 evidence Markdown.
+ *
+ * TEST ORACLE — NOT GOVERNANCE EVIDENCE
+ *
+ * This is a Pest test fixture, not a docs/ governance artifact. It must not
+ * be loaded from the committed durable evidence Markdown at runtime. That
+ * Markdown is the subject under test; this class is the independently
+ * authored expected canonical copy.
+ */
+final class Phase02ProfileClaimPolicyExpectedMarkdown
+{
+    public static function frozen(): string
+    {
+        return self::canonicalize(self::FROZEN_MARKDOWN);
+    }
+
+    /**
+     * Deterministic formatting-only normalization that cannot hide semantic
+     * changes: CRLF/CR become LF, and the document is required to end with
+     * exactly one newline. Words, punctuation, headings, tables, lists,
+     * identifiers, statuses, and blank lines in the body are preserved.
+     */
+    public static function canonicalize(string $markdown): string
+    {
+        $markdown = str_replace(["\r\n", "\r"], "\n", $markdown);
+
+        return rtrim($markdown, "\n")."\n";
+    }
+
+    private const FROZEN_MARKDOWN = <<<'FROZEN_EVIDENCE_MARKDOWN'
 # P02-AUDIT-005 — Phase 02 Profile-Claim Policy v1 (not phase PASS)
 
 Engineering evidence for **P02-AUDIT-005 / P02-T46** only. This file
@@ -368,3 +405,6 @@ Current material state: T46 is OPEN.
 `Ceremony implementation: NOT IMPLEMENTED`
 
 `Phase 02: NOT PASS`
+
+FROZEN_EVIDENCE_MARKDOWN;
+}
