@@ -17,6 +17,7 @@ use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
 use Modules\Platform\Exceptions\InvalidValueObject;
+use Modules\Platform\Services\Features\PlatformFeatures;
 use Modules\Platform\Support\Identifier;
 
 final class VerifyOtpService
@@ -75,6 +76,20 @@ final class VerifyOtpService
                 return [
                     'denied' => false,
                     'status' => 'recovery_verified',
+                    'challenge_id' => $id->value,
+                ];
+            }
+
+            if ($purpose === OtpPurpose::ProfileClaim->value) {
+                if (! PlatformFeatures::enabled(PlatformFeatures::IDENTITY_PROFILE_CLAIM)) {
+                    return ['denied' => true];
+                }
+
+                $this->auth->consumeOtp($id, $now);
+
+                return [
+                    'denied' => false,
+                    'status' => 'otp_verified',
                     'challenge_id' => $id->value,
                 ];
             }

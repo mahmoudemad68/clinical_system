@@ -21,7 +21,7 @@ final class PatientProfileController
     public function onboard(Request $request, CreatePatientProfile $handler): JsonResponse
     {
         $data = ClosedJsonValidator::validate($request, DemographicRules::onboarding());
-        $outcome = $handler->handle($this->actor($request), $data, $this->requestId($request));
+        $outcome = $handler->handle($this->actor($request), $data, $this->requestId($request), $this->ipPrefix($request));
 
         if ($outcome->created) {
             return Envelope::created($outcome->toArray(), $this->requestId($request));
@@ -62,5 +62,20 @@ final class PatientProfileController
         return $assigned instanceof Identifier
             ? $assigned
             : Identifier::fromTrusted('00000000-0000-7000-8000-000000000000');
+    }
+
+    private function ipPrefix(Request $request): string
+    {
+        $ip = $request->ip() ?? '0.0.0.0';
+
+        if (str_contains($ip, ':')) {
+            $parts = explode(':', $ip);
+
+            return implode(':', array_slice($parts, 0, 4)).'::';
+        }
+
+        $parts = explode('.', $ip);
+
+        return count($parts) === 4 ? $parts[0].'.'.$parts[1].'.'.$parts[2].'.0' : '0.0.0.0';
     }
 }

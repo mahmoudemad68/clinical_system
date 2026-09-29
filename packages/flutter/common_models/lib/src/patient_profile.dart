@@ -259,6 +259,7 @@ class PatientOnboardingRequest {
     this.weightKg,
     this.maritalStatus,
     this.bloodType,
+    this.claimCredential,
   });
 
   final String nationalId;
@@ -269,6 +270,10 @@ class PatientOnboardingRequest {
   final double? weightKg;
   final String? maritalStatus;
   final String? bloodType;
+
+  /// Write-only clinic-issued claim credential. Production UI must leave this
+  /// null so the disabled flag path cannot become a usable claim client.
+  final String? claimCredential;
 
   /// Wire JSON. Callers must not print this map.
   Map<String, dynamic> toWire() {
@@ -283,6 +288,8 @@ class PatientOnboardingRequest {
       if (maritalStatus != null && maritalStatus!.isNotEmpty)
         'marital_status': maritalStatus,
       if (bloodType != null && bloodType!.isNotEmpty) 'blood_type': bloodType,
+      if (claimCredential != null && claimCredential!.isNotEmpty)
+        'claim_credential': claimCredential,
     };
   }
 
@@ -296,6 +303,7 @@ class PatientOnboardingRequest {
     weightKg,
     maritalStatus,
     bloodType,
+    claimCredential,
   );
 
   @override

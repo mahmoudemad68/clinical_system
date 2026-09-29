@@ -9,7 +9,9 @@ use Modules\Auth\Contracts\AuthenticationRateLimiter;
 use Modules\Auth\Enums\OtpPurpose;
 use Modules\Auth\Events\OtpDeliveryRequested;
 use Modules\Identity\Contracts\UserDirectory;
+use Modules\Identity\Enums\AccountType;
 use Modules\Identity\Services\NationalIdProtector;
+use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
 use Modules\Platform\Contracts\IdentityGenerator;
 use Modules\Platform\Contracts\TransactionContext;
@@ -30,7 +32,7 @@ final class RequestOtpService
         private readonly AuthenticationRateLimiter $rates,
     ) {}
 
-    public function handle(string $phone, string $purpose, string $locale, ?string $ipPrefix): OtpChallengeResult
+    public function handle(string $phone, string $purpose, string $locale, ?string $ipPrefix, ?ActorContext $actor = null): OtpChallengeResult
     {
         $otpPurpose = OtpPurpose::from($purpose);
 
@@ -38,8 +40,8 @@ final class RequestOtpService
             throw new FeatureUnavailable;
         }
 
-        if ($otpPurpose === OtpPurpose::ProfileClaim && ! PlatformFeatures::enabled(PlatformFeatures::IDENTITY_PROFILE_CLAIM)) {
-            throw new FeatureUnavailable;
+        if ($otpPurpose === OtpPurpose::ProfileClaim) {
+            $this->assertProfileClaimOtpAllowed($actor, $phone);
         }
 
         $parsed = $this->protector->phone($phone);
@@ -79,5 +81,37 @@ final class RequestOtpService
 
             return new OtpChallengeResult($challengeId->value, 'otp_required');
         });
+    }
+
+    private function assertProfileClaimOtpAllowed(?ActorContext $actor, string $phone): void
+    {
+        if (! PlatformFeatures::enabled(PlatformFeatures::IDENTITY_PROFILE_CLAIM)) {
+            throw new FeatureUnavailable;
+        }
+
+        if (! $actor instanceof ActorContext
+            || $actor->accountType !== AccountType::Patient
+            || ! $actor->status->canAccessBusinessEndpoints()) {
+            throw new FeatureUnavailable;
+        }
+
+        $user = $this->identities->findById($actor->userId);
+        if ($user === null || ! $user->phoneVerified) {
+            throw new FeatureUnavailable;
+        }
+
+        $storedHmac = $this->identities->phoneLookupHmac($actor->userId);
+        if ($storedHmac === null || $storedHmac === '') {
+            throw new FeatureUnavailable;
+        }
+
+        $requested = $this->protector->phone($phone);
+        foreach ($this->protector->phoneLookupHmacs($requested) as $hmac) {
+            if (hash_equals($storedHmac, $hmac)) {
+                return;
+            }
+        }
+
+        throw new FeatureUnavailable;
     }
 }

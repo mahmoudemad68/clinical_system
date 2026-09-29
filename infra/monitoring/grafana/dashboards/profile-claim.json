@@ -1,0 +1,87 @@
+{
+  "uid": "clinic-profile-claim",
+  "title": "Clinic Platform \u2014 Profile Claim (dark)",
+  "description": "PC-017 dashboard for the still-disabled Profile Claim ceremony. Bounded labels only: result, assurance_level, reason_code. Series labels must not carry identity identifiers. Production remains hard-off.",
+  "tags": [
+    "clinic",
+    "phase-02",
+    "profile-claim",
+    "disabled"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Profile claims by result",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (increase(clinic_profile_claims_total[5m]))",
+          "legendFormat": "{{result}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Profile claims by assurance level",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (assurance_level) (increase(clinic_profile_claims_total[5m]))",
+          "legendFormat": "{{assurance_level}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Duplicate-match conflicts",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (reason_code) (increase(clinic_profile_claim_conflicts_total[5m]))",
+          "legendFormat": "{{reason_code}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

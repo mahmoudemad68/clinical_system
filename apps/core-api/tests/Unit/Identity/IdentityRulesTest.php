@@ -126,6 +126,8 @@ describe('default-deny authorizer', function () {
             ->and($authorizer->decide($actor, Capabilities::DOCTORS_ADMIN_CREATE)->reasonCode)->toBe('insufficient_assurance');
         expect($authorizer->decide($actor, Capabilities::PATIENTS_UNLINKED_CREATE)->allowed)->toBeFalse()
             ->and($authorizer->decide($actor, Capabilities::PATIENTS_UNLINKED_CREATE)->reasonCode)->toBe('capability_absent');
+        expect($authorizer->decide($actor, Capabilities::PATIENTS_PROFILE_DISPUTE_FREEZE)->allowed)->toBeFalse()
+            ->and($authorizer->decide($actor, Capabilities::PATIENTS_PROFILE_DISPUTE_FREEZE)->reasonCode)->toBe('insufficient_assurance');
         expect(Capabilities::isKnown(Capabilities::PATIENTS_UNLINKED_RESOLVE))->toBeTrue();
         expect($authorizer->decide($actor, 'clinical.record.read')->allowed)->toBeFalse()
             ->and($authorizer->decide($actor, 'clinical.record.read')->reasonCode)->toBe('unknown_action');

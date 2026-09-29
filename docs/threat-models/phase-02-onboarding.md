@@ -993,8 +993,8 @@ Independent QA of QA-P02A003-014 has not run. G-08-04 remains OPEN separately.
 | Attacker | Operator enabling flag; user claiming another profile |
 | STRIDE / privacy | Elevation |
 | Abuse scenario | Live claim ceremony without approved assurance policy |
-| Existing control | Flag default false; forced false in production; `LinkVerifiedPatientAccount` throws `FeatureUnavailable`; even isolated flag-on tests do not attach |
-| Evidence | `IdentityAccessPortsTest`; `PatientProfileFlowsTest`; `PlatformFeatures` |
+| Existing control | Flag default false; forced false in production; `PlatformFeatures` is the canonical enablement check; hybrid ceremony attaches only in isolated non-production tests when the flag is explicitly on and the full PC-002 bundle is present; disabling stops new claims without unlinking valid `user_id` values; Product/Security/Privacy/Support/independent QA remain pending |
+| Evidence | `IdentityAccessPortsTest`; `PatientProfileFlowsTest`; `ProfileClaimCeremonyTest`; `PlatformFeatures`; engineering evidence `docs/evidence/phase-02/p02-audit-005-profile-claim-ceremony-implementation.md`. Production enablement and independent QA are **not** evidenced here. |
 | Residual | Enablement is **P02-AUDIT-005**, not this task |
 | Status | **OPEN** |
 | Owner | P02-AUDIT-005 |

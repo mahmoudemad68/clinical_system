@@ -30,4 +30,9 @@ interface AuthTelemetry
      * @param  array<string, string>  $labels
      */
     public function claim(array $labels): void;
+
+    /**
+     * @param  array<string, string>  $labels
+     */
+    public function claimConflict(array $labels): void;
 }

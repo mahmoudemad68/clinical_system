@@ -244,3 +244,18 @@ groups:
           description: May be stuffing against TOTP. Privileged sessions must not issue at AAL1.
           runbook: docs/runbooks/mfa-recovery.md
 
+      - alert: ProfileClaimDuplicateMatchConflict
+        expr: increase(clinic_profile_claim_conflicts_total{reason_code="duplicate_match"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          owner: identity
+        annotations:
+          summary: Profile Claim duplicate-match conflict
+          description: >-
+            More than one authoritative patient profile matched a National-ID
+            HMAC during a claim ceremony. Labels are bounded to reason_code
+            only. Do not page applicant, document, or profile identifiers.
+            Production Profile Claim remains hard-off.
+          runbook: docs/runbooks/disputed-profile-link.md
+

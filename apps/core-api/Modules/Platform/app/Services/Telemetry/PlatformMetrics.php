@@ -150,6 +150,11 @@ final class PlatformMetrics
             'type' => 'counter',
             'samples' => [],
         ];
+        $this->families['clinic_profile_claim_conflicts_total'] = [
+            'help' => 'Profile-claim duplicate-match conflicts by bounded reason code',
+            'type' => 'counter',
+            'samples' => [],
+        ];
         $this->families['clinic_otp_delivery_age_seconds'] = [
             'help' => 'Age in seconds of an OTP at delivery time',
             'type' => 'gauge',

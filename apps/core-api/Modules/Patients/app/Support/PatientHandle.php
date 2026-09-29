@@ -15,5 +15,6 @@ final readonly class PatientHandle
     public function __construct(
         public Identifier $patientId,
         public string $status,
+        public ?string $claimCredential = null,
     ) {}
 }

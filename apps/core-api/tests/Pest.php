@@ -10,6 +10,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__.'/Support/patientHttpHelpers.php';
+require_once __DIR__.'/Support/profileClaimHelpers.php';
 require_once __DIR__.'/Support/doctorHttpHelpers.php';
 require_once __DIR__.'/Support/pharmacyHttpHelpers.php';
 require_once __DIR__.'/Support/verificationHttpHelpers.php';

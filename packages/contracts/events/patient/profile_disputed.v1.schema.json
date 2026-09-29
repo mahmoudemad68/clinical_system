@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/patient/profile_disputed.v1.schema.json",
+  "title": "patient.profile_disputed v1",
+  "description": "A patient profile was frozen to disputed. No National ID, phone, credential, or demographics.",
+  "type": "object",
+  "required": ["reason_code"],
+  "additionalProperties": false,
+  "properties": {
+    "reason_code": {
+      "type": "string",
+      "const": "dispute_freeze"
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Patients",
+    "classification": "internal",
+    "consumers": ["notifications.inbox"],
+    "retention_days": 365
+  }
+}
