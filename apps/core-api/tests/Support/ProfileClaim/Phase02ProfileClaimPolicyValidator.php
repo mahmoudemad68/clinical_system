@@ -503,8 +503,9 @@ final class Phase02ProfileClaimPolicyValidator
             return [];
         }
 
-        $doc = new Phase02ProfileClaimPolicyEvidenceDocument($evidence);
         $issues = $this->evidenceMarkdownOracleIssues($evidence);
+        $evidence = Phase02ProfileClaimPolicyExpectedMarkdown::canonicalize($evidence);
+        $doc = new Phase02ProfileClaimPolicyEvidenceDocument($evidence);
         $identity = $doc->identityTable();
         $final = $doc->finalStatusMap();
 
