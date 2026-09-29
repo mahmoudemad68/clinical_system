@@ -6,9 +6,11 @@
 # distro fix. apk upgrade in core-api.Dockerfile already applies OpenSSL
 # 3.5.8-r0; do not ignore CVE-2026-14456 for Alpine after that upgrade.
 #
-# extract-zip (SF-001) is NOT listed here. Merge fs scans use
-# infra/security/trivy-merge.ignore. post-merge promotion-fs-scan uses neither
-# file and stays blocked on High/Critical, including SF-001.
+# extract-zip (SF-001) is NOT listed here. The unscoped extract-zip package
+# must remain absent from both npm lockfiles. Merge fs scans may still
+# receive infra/security/trivy-merge.ignore, which must not list
+# CVE-2026-56876 / GHSA-jmr9-qjv8-65gv. post-merge promotion-fs-scan uses
+# neither ignore file and stays blocked on High/Critical.
 
 # FrankenPHP Caddy/Go stdlib (dunglas/frankenphp alpine gobinary)
 GHSA-r277-6w6q-xmqw

@@ -14,8 +14,11 @@ owner, engineering status, independent-acceptance state, and an explicit
 starting main `d16fcde5b07844f69547a7ed7be52187a44800d8`. Subsequent
 **QA-P02A003-014** evidence reconciliation of P02-T45 against main
 `8083ad0c85ce60a0346910416a83472861d971ca` after the merged profile-correction
-policy v1.0.2. This is **not** independent human approval and does **not**
-recast this file as a new original P02-AUDIT-004 closer.
+policy v1.0.2. A later closure-consistency pointer records current linked
+authority for P02-T49 (live `SF-001.json` / P02-AUDIT-006 `CLOSED`) without
+changing this register's P02-T49 Status `OPEN`. This is **not** independent
+human approval and does **not** recast this file as a new original
+P02-AUDIT-004 closer.
 
 **INDEPENDENT/HUMAN ACCEPTANCE:** `PENDING_INDEPENDENT_REVIEW`. Assessor and
 remediator remain concentrated. Independent workshop/sign-off remains Phase 00
@@ -1173,3 +1176,26 @@ here.
 | Production promotion | NOT executed |
 | Production KMS | NOT live |
 | Public location search | NOT in Phase 02 |
+
+---
+
+## Current linked authority (not this P02-AUDIT-004 Status column)
+
+This section is a later closure-consistency pointer. It does **not** rewrite
+the P02-AUDIT-004 threat-register Status column, `STATUS_COUNTS`, or the
+implemented-vs-future snapshot above.
+
+- **P02-T49 historical state:** `OPEN` at the original P02-AUDIT-004 snapshot.
+  The register row Status remains **OPEN**. Combined OPEN rows remain T46 and
+  T49 (`OPEN=2`).
+- **Current linked authority:** live `infra/security/exceptions/SF-001.json`
+  records graph ABSENT and `p02_audit_006: CLOSED` after later SF-001 /
+  P02-AUDIT-006 independent technical QA and Controller-supplied human
+  acceptance. Independent-acceptance vocabulary for that finding lives in
+  that JSON, not in this register. This snapshot's **SF-001** row remains
+  `OPEN / UNCHANGED` as of the original assessment.
+- **G-08-04:** remains `OPEN` / `EXTERNAL_HUMAN`. This pointer does not close
+  that gate.
+- **P02-AUDIT-007:** remains `OPEN` / `EXTERNAL_HUMAN`.
+- **P02-AUDIT-005 / P02-T46 / Profile Claim:** unchanged / `OPEN`. Closing
+  SF-001 / P02-AUDIT-006 does not enable Profile Claim.

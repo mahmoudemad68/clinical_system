@@ -81,23 +81,90 @@ def main() -> int:
             "malformed JSON",
         )
 
-        extra_ignore = write(
-            tmpdir / "extra.ignore",
-            "CVE-2026-56876\nGHSA-jmr9-qjv8-65gv\nCVE-0000-0000\n",
+        waived_ignore = write(
+            tmpdir / "waived.ignore",
+            "CVE-2026-56876\nGHSA-jmr9-qjv8-65gv\n",
         )
-        missing_ignore = write(tmpdir / "missing.ignore", "CVE-2026-56876\n")
-        expired = dict(manifest)
-        expired["expires_at"] = "2020-01-01T00:00:00Z"
-        expired_path = write(tmpdir / "expired.json", json.dumps(expired, indent=2) + "\n")
+        cve_only_ignore = write(tmpdir / "cve-only.ignore", "CVE-2026-56876\n")
+        ghsa_only_ignore = write(tmpdir / "ghsa-only.ignore", "GHSA-jmr9-qjv8-65gv\n")
         malformed_expiry = dict(manifest)
         malformed_expiry["expires_at"] = "2026-11-26"
         malformed_path = write(tmpdir / "malformed-expiry.json", json.dumps(malformed_expiry, indent=2) + "\n")
-        mismatch = dict(manifest)
-        mismatch["affected_version"] = "9.9.9"
-        mismatch_path = write(tmpdir / "mismatch.json", json.dumps(mismatch, indent=2) + "\n")
         stale = dict(manifest)
-        stale["package_lock_key"] = "node_modules/definitely-not-extract-zip"
+        stale["scope"] = "MERGE_ONLY"
+        stale["historical_merge_exception_active"] = True
+        stale["graph_status"] = "PRESENT"
         stale_path = write(tmpdir / "stale.json", json.dumps(stale, indent=2) + "\n")
+        accepted = dict(manifest)
+        accepted["independent_acceptance_status"] = "ACCEPTED"
+        accepted_path = write(tmpdir / "accepted.json", json.dumps(accepted, indent=2) + "\n")
+        pending = dict(manifest)
+        pending["independent_acceptance_status"] = "PENDING_INDEPENDENT_ACCEPTANCE"
+        pending_path = write(tmpdir / "pending.json", json.dumps(pending, indent=2) + "\n")
+        open_audit = dict(manifest)
+        open_audit["p02_audit_006"] = "OPEN"
+        open_path = write(tmpdir / "open-audit.json", json.dumps(open_audit, indent=2) + "\n")
+        g08_closed = dict(manifest)
+        g08_closed["g_08_04"] = "CLOSED"
+        g08_path = write(tmpdir / "g08-closed.json", json.dumps(g08_closed, indent=2) + "\n")
+        audit007_closed = dict(manifest)
+        audit007_closed["p02_audit_007"] = "CLOSED"
+        audit007_path = write(tmpdir / "audit007-closed.json", json.dumps(audit007_closed, indent=2) + "\n")
+        wrong_sha = dict(manifest)
+        wrong_sha["reviewed_candidate_sha"] = "0" * 40
+        wrong_sha_path = write(tmpdir / "wrong-sha.json", json.dumps(wrong_sha, indent=2) + "\n")
+        missing_findings = dict(manifest)
+        missing_findings["nonblocking_qa_findings"] = ["QA-SF001-001"]
+        missing_findings_path = write(
+            tmpdir / "missing-findings.json", json.dumps(missing_findings, indent=2) + "\n"
+        )
+        root_lock = ROOT / "package-lock.json"
+        e2e_lock = ROOT / "tests" / "desktop-e2e" / "package-lock.json"
+        fixtures = tmpdir / "sf001-locks"
+        fixtures.mkdir()
+        clean_root = fixtures / "package-lock.json"
+        clean_e2e = fixtures / "desktop-e2e" / "package-lock.json"
+        clean_e2e.parent.mkdir()
+        clean_root.write_bytes(root_lock.read_bytes())
+        clean_e2e.write_bytes(e2e_lock.read_bytes())
+
+        def inject_extract_zip(src: Path, dest: Path, *, mode: str) -> Path:
+            data = json.loads(src.read_text(encoding="utf-8"))
+            packages = data.setdefault("packages", {})
+            if mode == "hoisted":
+                packages["node_modules/extract-zip"] = {
+                    "version": "2.0.1",
+                    "resolved": "https://registry.npmjs.org/extract-zip/-/extract-zip-2.0.1.tgz",
+                }
+            elif mode == "nested":
+                packages["node_modules/@electron/packager/node_modules/extract-zip"] = {
+                    "version": "2.0.1",
+                    "resolved": "https://registry.npmjs.org/extract-zip/-/extract-zip-2.0.1.tgz",
+                }
+            elif mode == "dependency":
+                packager = packages.setdefault("node_modules/@electron/packager", {})
+                deps = packager.setdefault("dependencies", {})
+                deps["extract-zip"] = "^2.0.0"
+            else:
+                raise SystemExit(f"unknown extract-zip inject mode {mode}")
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(json.dumps(data) + "\n", encoding="utf-8")
+            return dest
+
+        dirty_root = inject_extract_zip(
+            root_lock, fixtures / "dirty-root" / "package-lock.json", mode="hoisted"
+        )
+        dirty_nested_root = inject_extract_zip(
+            root_lock, fixtures / "dirty-nested" / "package-lock.json", mode="nested"
+        )
+        dirty_dep_root = inject_extract_zip(
+            root_lock, fixtures / "dirty-dep" / "package-lock.json", mode="dependency"
+        )
+        dirty_e2e = inject_extract_zip(
+            e2e_lock,
+            fixtures / "dirty-e2e" / "desktop-e2e" / "package-lock.json",
+            mode="hoisted",
+        )
         promotion_bad = write(
             tmpdir / "promotion-with-merge-ignore.yaml",
             """
@@ -161,18 +228,97 @@ jobs:
 """,
         )
 
-        expect_pass("H valid SF-001 manifest", ["sf001"])
-        expect_fail("I extra trivy ignore ID", ["sf001", "--ignore-file", str(extra_ignore)], "extra=")
-        expect_fail("J missing trivy ignore ID", ["sf001", "--ignore-file", str(missing_ignore)], "missing=")
-        expect_fail("K malformed expiry", ["sf001", "--manifest", str(malformed_path)], "strict UTC")
-        expect_fail("L expired exception", ["sf001", "--manifest", str(expired_path)], "expired")
-        expect_fail(
-            "L expiry reached at boundary",
-            ["sf001", "--now", "2026-11-26T00:00:00Z"],
-            "expired",
+        expect_pass("H valid SF-001 absence", ["sf001"])
+        expect_pass(
+            "H clean lockfile copies still pass",
+            ["sf001", "--lock", str(clean_root), "--lock", str(clean_e2e)],
         )
-        expect_fail("M package/version mismatch", ["sf001", "--manifest", str(mismatch_path)], "package/version mismatch")
-        expect_fail("N stale exception", ["sf001", "--manifest", str(stale_path)], "stale")
+        expect_fail(
+            "I SF-001 CVE/GHSA merge ignore reintroduced",
+            ["sf001", "--ignore-file", str(waived_ignore)],
+            "must not ignore SF-001 advisories",
+        )
+        expect_fail(
+            "I CVE-only merge ignore reintroduced",
+            ["sf001", "--ignore-file", str(cve_only_ignore)],
+            "must not ignore SF-001 advisories",
+        )
+        expect_fail(
+            "I GHSA-only merge ignore reintroduced",
+            ["sf001", "--ignore-file", str(ghsa_only_ignore)],
+            "must not ignore SF-001 advisories",
+        )
+        expect_fail("K malformed expiry", ["sf001", "--manifest", str(malformed_path)], "strict UTC")
+        expect_fail(
+            "N stale exception claims extract-zip remains present",
+            ["sf001", "--manifest", str(stale_path)],
+            "intentionally present",
+        )
+        expect_fail(
+            "N unbound ACCEPTED token is not the recorded human decision",
+            ["sf001", "--manifest", str(accepted_path)],
+            "independent_acceptance_status must be APPROVED",
+        )
+        expect_fail(
+            "N stale PENDING independent acceptance after recorded approval",
+            ["sf001", "--manifest", str(pending_path)],
+            "independent_acceptance_status must be APPROVED",
+        )
+        expect_fail(
+            "N P02-AUDIT-006 must remain CLOSED after recorded human acceptance",
+            ["sf001", "--manifest", str(open_path)],
+            "p02_audit_006 must be CLOSED",
+        )
+        expect_fail(
+            "N G-08-04 must remain OPEN",
+            ["sf001", "--manifest", str(g08_path)],
+            "g_08_04 must remain OPEN",
+        )
+        expect_fail(
+            "N P02-AUDIT-007 must remain OPEN",
+            ["sf001", "--manifest", str(audit007_path)],
+            "p02_audit_007 must remain OPEN",
+        )
+        expect_fail(
+            "N reviewed_candidate_sha drift is rejected",
+            ["sf001", "--manifest", str(wrong_sha_path)],
+            "reviewed_candidate_sha must remain the human-reviewed SF-001 candidate",
+        )
+        expect_fail(
+            "N six nonblocking QA findings must be preserved",
+            ["sf001", "--manifest", str(missing_findings_path)],
+            "nonblocking_qa_findings must preserve QA-SF001-001 through QA-SF001-006",
+        )
+        expect_fail(
+            "J extract-zip reintroduced in root lockfile only",
+            ["sf001", "--lock", str(dirty_root), "--lock", str(clean_e2e)],
+            "extract-zip must not be present",
+        )
+        expect_fail(
+            "J nested extract-zip reintroduced in root lockfile",
+            ["sf001", "--lock", str(dirty_nested_root), "--lock", str(clean_e2e)],
+            "extract-zip must not be present",
+        )
+        expect_fail(
+            "J extract-zip dependency edge reintroduced in root lockfile",
+            ["sf001", "--lock", str(dirty_dep_root), "--lock", str(clean_e2e)],
+            "extract-zip must not be present",
+        )
+        expect_fail(
+            "J extract-zip reintroduced in desktop-e2e lockfile only",
+            ["sf001", "--lock", str(clean_root), "--lock", str(dirty_e2e)],
+            "extract-zip must not be present",
+        )
+        expect_fail(
+            "N only one lockfile checked",
+            ["sf001", "--lock", str(clean_root)],
+            "must cover both",
+        )
+        expect_fail(
+            "N both lockfile arguments are root",
+            ["sf001", "--lock", str(clean_root), "--lock", str(dirty_root)],
+            "must cover both",
+        )
         expect_fail(
             "O promotion merge-ignore",
             ["promotion-isolation", "--workflow", str(promotion_bad)],

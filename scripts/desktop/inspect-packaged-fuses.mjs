@@ -11,9 +11,28 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..');
-const requireFromRoot = createRequire(pathToFileURL(join(repoRoot, 'package.json')));
-const { FuseV1Options, getCurrentFuseWire } = requireFromRoot('@electron/fuses');
-const { FuseState } = requireFromRoot('@electron/fuses/dist/constants.js');
+
+function loadFusesModule() {
+  const candidates = [
+    join(repoRoot, 'apps', 'doctor-desktop', 'package.json'),
+    join(repoRoot, 'apps', 'pharmacy-desktop', 'package.json'),
+    join(repoRoot, 'package.json'),
+  ];
+  const errors = [];
+  for (const pkgJson of candidates) {
+    try {
+      const requireFromPkg = createRequire(pathToFileURL(pkgJson));
+      return requireFromPkg('@electron/fuses');
+    } catch (err) {
+      errors.push(`${pkgJson}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  throw new Error(
+    `Unable to resolve @electron/fuses from desktop workspaces:\n${errors.join('\n')}`,
+  );
+}
+
+const { FuseV1Options, FuseState, getCurrentFuseWire } = loadFusesModule();
 
 const REQUIRED = {
   RunAsNode: 'DISABLE',

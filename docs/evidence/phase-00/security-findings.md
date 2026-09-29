@@ -18,9 +18,13 @@ the "no critical security findings" release rule regardless.
 
 ## SF-001 — `extract-zip` symlink path traversal in the Electron build toolchain
 
-- **Severity:** high (1 true root; 20 packages flagged along transitive paths)
-- **Status:** OPEN — blocks **promotion**. Merge is permissible only with a
-  recorded, time-boxed exception under ADR 0008.
+- **Severity:** high (historical root; original 20 packages flagged along
+  transitive paths). Unscoped `extract-zip` is now **ABSENT**. This file does
+  **not** claim the repository has zero High findings.
+- **Status:** SF-001 independent acceptance **APPROVED** for P02-AUDIT-006 by
+  Human Independent Reviewer / Project Owner on reviewed candidate
+  `ccc95cddca6691781485c47ba4b5d21d872bca09`. Promotion remains blocked
+  (`promotion_allowed: false`). G-08-04 and P02-AUDIT-007 remain OPEN.
 - **Advisory:** [GHSA-…](https://github.com/advisories) *extract-zip unvalidated
   symlink path traversal*, affected range `<= 2.0.1`
 - **Discovered:** 2026-08-25 · **Superseded diagnosis:** 2026-08-25 (see below)
@@ -155,7 +159,89 @@ ignore and never set `ignore-unfixed`. SF-001 therefore still blocks promotion.
 
 This implementer cannot close SF-001. Independent retest remains required (G-08-04 OPEN).
 
+Historical note: the paragraph above is the pre-acceptance implementer
+boundary. Independent technical QA and the later Human Independent Reviewer /
+Project Owner decision are recorded after the Forge 8 candidate section.
+G-08-04 remains OPEN as a **separate** Security/Privacy workshop gate.
+
 ### Tracking
 
-Evidence ledger gate G-06-05. It is `PARTIAL`, not `PASS`, and not `BLOCKED`:
-the Critical is resolved, one High root remains with no upstream fix.
+Evidence ledger gate G-06-05 remains the SBOM / High-Critical scan mechanism
+(`PASS` as a repository mechanism). SF-001 independent acceptance for
+P02-AUDIT-006 is recorded in SF-001.json as `APPROVED` after the Forge 8
+graph absence and the supplied human decision. Promotion stays blocked.
+G-08-04 remains OPEN.
+
+### Remediation candidate (2026-09-29) — Forge 8, not independent acceptance
+
+Controller-authorized Forge `8.0.0-alpha.10` (npm `alpha`; upstream still
+warns it is not ready for general consumption) is the first **declared**
+Forge graph whose Packager range no longer depends on unscoped
+`extract-zip`. Failed Option A (PR #35, Forge 7.11.2 + undeclared Packager
+20.3.0 override) is historical packaging-incompatible evidence and must not
+be merged.
+
+Candidate graph:
+
+- Doctor/Pharmacy direct Forge packages pinned to `8.0.0-alpha.10`
+- `@electron-forge/core@8.0.0-alpha.10` → `@electron/packager@^20.0.1`
+  (resolved `20.3.0` in the lockfile; **no** root Packager override)
+- `@electron/fuses@2.0.0` (plugin-fuses 8 peer `^2.0.0`)
+- `electron@44.0.0` retained
+- `tests/desktop-e2e` override `@puppeteer/browsers@3.2.3` (WDIO 9.x retained)
+
+`@electron-internal/extract-zip` may still appear. That is a different npm
+package. CVE-2026-56876 / GHSA-jmr9-qjv8-65gv are no longer listed in
+`infra/security/trivy-merge.ignore`. ISR-015 fails if unscoped `extract-zip`
+reappears in either lockfile or if those IDs are restored to the merge
+ignore.
+
+At candidate time, the historical MERGE_ONLY exception was retained in
+[`infra/security/exceptions/SF-001.json`](../../../infra/security/exceptions/SF-001.json)
+with `graph_status: ABSENT` and
+`remediation_status: REMEDIATED_CANDIDATE_AWAITING_INDEPENDENT_QA`.
+`independent_acceptance_status` was `PENDING_INDEPENDENT_ACCEPTANCE`.
+P02-AUDIT-006 was OPEN. This candidate section did **not** close SF-001.
+
+See
+[`docs/evidence/phase-02/p02-audit-006-sf001-forge8-remediation-candidate.md`](../phase-02/p02-audit-006-sf001-forge8-remediation-candidate.md).
+
+### Human Independent Reviewer / Project Owner decision (SF-001 / P02-AUDIT-006)
+
+Controller-supplied human decision. No reviewer name, organization, timestamp,
+signature, Security-team membership, or Privacy-team membership was supplied;
+none is invented here.
+
+| Field | Value |
+| --- | --- |
+| Reviewer type | Human Independent Reviewer / Project Owner |
+| Decision | APPROVED |
+| Scope | SF-001 / P02-AUDIT-006 remediation candidate |
+| Reviewed candidate | `ccc95cddca6691781485c47ba4b5d21d872bca09` |
+| Reviewed tree | `6535523e5e7fdd88625f7bb78641a2d83c5daffd` |
+| Technical QA verdict | `SF001_FORGE8_CANDIDATE_QA_PASS_WITH_NONBLOCKING_FINDINGS` |
+| Nonblocking findings | QA-SF001-001 through QA-SF001-006 accepted as nonblocking for this candidate |
+
+Live authority:
+[`infra/security/exceptions/SF-001.json`](../../../infra/security/exceptions/SF-001.json).
+
+Recorded machine fields after this decision:
+
+- `independent_acceptance_status: APPROVED`
+- `p02_audit_006: CLOSED`
+- `graph_status: ABSENT`
+- `remediation_status: REMEDIATED_INDEPENDENTLY_ACCEPTED_GRAPH_ABSENT`
+- `historical_severity: high`
+- `promotion_allowed: false`
+- `g_08_04: OPEN`
+- `p02_audit_007: OPEN`
+
+This closes **SF-001 independent acceptance** and **P02-AUDIT-006** for the
+reviewed Forge 8 candidate. It does **not** close G-08-04 or P02-AUDIT-007.
+It does **not** claim zero High findings. It does **not** authorize promotion.
+A later evidence-only HEAD is not the reviewed candidate; `reviewed_candidate_sha`
+remains `ccc95cddca6691781485c47ba4b5d21d872bca09`.
+
+See
+[`docs/evidence/phase-02/p02-audit-006-sf001-human-acceptance.md`](../phase-02/p02-audit-006-sf001-human-acceptance.md).
+

@@ -14,5 +14,8 @@
     "@wdio/mocha-framework": "9.31.2",
     "@wdio/spec-reporter": "9.31.2",
     "webdriverio": "9.31.3"
+  },
+  "overrides": {
+    "@puppeteer/browsers": "3.2.3"
   }
 }

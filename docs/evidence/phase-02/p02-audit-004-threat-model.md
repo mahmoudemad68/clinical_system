@@ -169,3 +169,22 @@ P02-AUDIT-003 `READY_FOR_RE_QA`.
 Not READY_TO_MERGE. Not Phase 02 PASS. G-08-04 not self-approved.
 P02-AUDIT-005 remains OPEN. P02-AUDIT-006 remains OPEN / UNCHANGED.
 P02-AUDIT-007 remains OPEN / EXTERNAL_HUMAN.
+
+## Current linked authority after later SF-001 / P02-AUDIT-006 acceptance
+
+This section is later than the original P02-AUDIT-004 register and later than
+QA-P02A003-014. It does **not** change P02-T49 Status `OPEN` in the snapshot
+table above, and it does **not** recast QA-P02A003-014 as having closed
+P02-AUDIT-006.
+
+- **P02-T49 historical state:** `OPEN` at snapshot. The OPEN table still lists
+  P02-T49 OPEN next to P02-T46 (`OPEN=2`).
+- **Current linked authority:** `infra/security/exceptions/SF-001.json`
+  (graph ABSENT; P02-AUDIT-006 CLOSED). See
+  [p02-audit-006-sf001-human-acceptance.md](p02-audit-006-sf001-human-acceptance.md).
+  The original register identity for **SF-001** in this file remains
+  `OPEN / UNCHANGED`.
+- **G-08-04:** remains OPEN / EXTERNAL_HUMAN.
+- **P02-AUDIT-007:** remains OPEN / EXTERNAL_HUMAN.
+- **P02-AUDIT-005 / Profile Claim:** remains OPEN / disabled. Closing SF-001
+  does not enable Profile Claim.

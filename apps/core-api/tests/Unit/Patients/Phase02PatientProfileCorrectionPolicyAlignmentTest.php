@@ -273,11 +273,18 @@ describe('P02-AUDIT-003 profile-correction policy artifact', function () {
             JSON_THROW_ON_ERROR,
         );
 
+        // Correction policy freeze recorded SF-001 as OPEN / UNCHANGED
+        // relative to this artifact. Live SF-001.json may now be APPROVED
+        // / P02-AUDIT-006 CLOSED without enabling Profile Claim.
         expect($sf001['exception_id'])->toBe('SF-001')
             ->and($sf001['package'])->toBe('extract-zip')
             ->and($sf001['affected_version'])->toBe('2.0.1')
-            ->and($sf001['independent_acceptance_status'])->toBe('PENDING_INDEPENDENT_ACCEPTANCE')
+            ->and($sf001['independent_acceptance_status'])->toBe('APPROVED')
+            ->and($sf001['p02_audit_006'])->toBe('CLOSED')
+            ->and($sf001['graph_status'])->toBe('ABSENT')
             ->and($sf001['promotion_allowed'])->toBeFalse()
+            ->and($sf001['g_08_04'])->toBe('OPEN')
+            ->and($sf001['p02_audit_007'])->toBe('OPEN')
             ->and($artifact['external_audit_boundaries']['P02-AUDIT-006']['status'])->toBe('OPEN / UNCHANGED')
             ->and($artifact['external_audit_boundaries']['P02-AUDIT-006']['sf_001'])->toBe('OPEN / UNCHANGED')
             ->and($artifact['external_audit_boundaries']['P02-AUDIT-006']['package'])->toBe('extract-zip@2.0.1')

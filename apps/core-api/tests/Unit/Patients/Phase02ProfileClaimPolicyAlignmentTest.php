@@ -258,7 +258,7 @@ describe('P02-AUDIT-005 profile-claim policy artifact', function () {
         }
     });
 
-    it('keeps SF-001 / P02-AUDIT-006 untouched', function () {
+    it('keeps the frozen Profile Claim artifact from remediating SF-001', function () {
         $artifact = Artifact::decoded();
         $sf001 = json_decode(
             (string) file_get_contents(Artifact::repositoryRoot().'/'.Artifact::RELATIVE_SF001),
@@ -267,13 +267,23 @@ describe('P02-AUDIT-005 profile-claim policy artifact', function () {
             JSON_THROW_ON_ERROR,
         );
 
+        // Policy v1 froze "this artifact does not remediate SF-001" as
+        // OPEN / UNCHANGED. Live SF-001.json is later independently
+        // APPROVED / P02-AUDIT-006 CLOSED. Closing SF-001 must not enable
+        // Profile Claim; T46 / P02-AUDIT-005 remain the enablement blockers.
         expect($sf001['exception_id'])->toBe('SF-001')
             ->and($sf001['package'])->toBe('extract-zip')
             ->and($sf001['affected_version'])->toBe('2.0.1')
-            ->and($sf001['independent_acceptance_status'])->toBe('PENDING_INDEPENDENT_ACCEPTANCE')
+            ->and($sf001['independent_acceptance_status'])->toBe('APPROVED')
+            ->and($sf001['p02_audit_006'])->toBe('CLOSED')
+            ->and($sf001['graph_status'])->toBe('ABSENT')
             ->and($sf001['promotion_allowed'])->toBeFalse()
+            ->and($sf001['g_08_04'])->toBe('OPEN')
+            ->and($sf001['p02_audit_007'])->toBe('OPEN')
             ->and($artifact['external_audit_boundaries']['P02-AUDIT-006']['status'])->toBe('OPEN / UNCHANGED')
-            ->and($artifact['external_audit_boundaries']['P02-AUDIT-006']['sf_001'])->toBe('OPEN / UNCHANGED');
+            ->and($artifact['external_audit_boundaries']['P02-AUDIT-006']['sf_001'])->toBe('OPEN / UNCHANGED')
+            ->and($artifact['p02_audit_005'])->toBe('OPEN')
+            ->and(PlatformFeatures::enabled(PlatformFeatures::IDENTITY_PROFILE_CLAIM))->toBeFalse();
     });
 
     it('proves P02-AUDIT-005 is OPEN without using a generic OPEN substring', function () {

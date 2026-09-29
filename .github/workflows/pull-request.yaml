@@ -1260,7 +1260,7 @@ jobs:
               --config p/secrets \
               --config p/owasp-top-ten
 
-      - name: SF-001 merge exception binding
+      - name: SF-001 extract-zip absence
         run: python3 scripts/ci/isr015_policy.py sf001
 
       - name: Install Trivy

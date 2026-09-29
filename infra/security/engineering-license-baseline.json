@@ -3,6 +3,7 @@
   "legal_status": "NOT_LEGAL_APPROVAL",
   "description": "Engineering inventory of SPDX license identifiers observed in committed Node and Composer lockfiles. This is not legal approval, license compliance, or an open-source policy. New identifiers and unrecorded UNKNOWN/UNLICENSED third-party packages fail the technical gate.",
   "allowed_license_ids": [
+    "(BSD-3-Clause OR GPL-2.0)",
     "(MIT AND Zlib)",
     "(MIT OR CC0-1.0)",
     "(MIT OR GPL-3.0-or-later)",

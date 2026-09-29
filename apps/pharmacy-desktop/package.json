@@ -32,14 +32,14 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@electron-forge/cli": "7.11.2",
-    "@electron-forge/maker-deb": "7.11.2",
-    "@electron-forge/maker-squirrel": "7.11.2",
-    "@electron-forge/maker-zip": "7.11.2",
-    "@electron-forge/plugin-auto-unpack-natives": "7.11.2",
-    "@electron-forge/plugin-fuses": "7.11.2",
-    "@electron-forge/plugin-webpack": "7.11.2",
-    "@electron/fuses": "1.8.0",
+    "@electron-forge/cli": "8.0.0-alpha.10",
+    "@electron-forge/maker-deb": "8.0.0-alpha.10",
+    "@electron-forge/maker-squirrel": "8.0.0-alpha.10",
+    "@electron-forge/maker-zip": "8.0.0-alpha.10",
+    "@electron-forge/plugin-auto-unpack-natives": "8.0.0-alpha.10",
+    "@electron-forge/plugin-fuses": "8.0.0-alpha.10",
+    "@electron-forge/plugin-webpack": "8.0.0-alpha.10",
+    "@electron/fuses": "2.0.0",
     "@electron/rebuild": "4.2.0",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.2",
@@ -53,6 +53,7 @@
     "style-loader": "4.0.0",
     "ts-loader": "9.6.2",
     "typescript": "5.9.3",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "webpack-dev-server": "5.2.6"
   }
 }

@@ -55,7 +55,15 @@ const config: ForgeConfig = {
   makers: [
     new MakerSquirrel({ name: 'clinic-doctor' }),
     new MakerZIP({}, ['darwin']),
-    new MakerDeb({ options: { name: 'clinic-doctor', productName: 'Clinic Doctor' } }),
+    new MakerDeb({
+      options: {
+        name: 'clinic-doctor',
+        productName: 'Clinic Doctor',
+        // electron-installer-common defaults `bin` to package.json `name`
+        // (`@clinic/doctor-desktop`). Packager honors `executableName` instead.
+        bin: 'clinic-doctor',
+      },
+    }),
   ],
 
   plugins: [
