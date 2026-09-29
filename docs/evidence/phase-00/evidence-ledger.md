@@ -8,8 +8,9 @@ residual cell as `EXTERNAL_HUMAN`, `OPERATIONAL_FOLLOW_THROUGH`, or
 
 **Repository technical status:** `PASS`  
 **Overall phase status:** `OPEN` — G-08-04 independent security/privacy
-approval is `EXTERNAL_HUMAN` and cannot be self-granted. This is not unfinished
-product implementation.
+approval is `EXTERNAL_HUMAN` and cannot be self-granted. SF-001 / P02-AUDIT-006
+human acceptance does **not** close G-08-04. This is not unfinished product
+implementation.
 
 **Never in this ledger:** credentials, national IDs, medical content, raw
 prompts, object keys, or exploit payloads.
@@ -35,7 +36,9 @@ Documentation/evidence only. No product-code change. Exact SHA
 `8830a659ecf102b9672c274e83f4ed24e9eb5588`. Latest exact-SHA PR CI run
 [33408315440](https://github.com/mahmoudemad68/clinical_system/actions/runs/33408315440)
 `SUCCESS`. Gate counter expected `PASS=46,PARTIAL=0,BLOCKED=0,OPEN=1`. G-08-04
-remains `OPEN` / `EXTERNAL_HUMAN`. SF-001 is not accepted.
+remains `OPEN` / `EXTERNAL_HUMAN`. SF-001 / P02-AUDIT-006 later received a
+scoped Human Independent Reviewer / Project Owner APPROVED decision; that does
+**not** close G-08-04.
 
 ## ADR 0010 supersession notice — 2026-08-25, reconciled after migration
 
@@ -125,7 +128,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | G-06-02 | PR pipeline: format, lint, typecheck, architecture rules, contract validation, unit, integration, security scans, SBOM | devops | [pull-request.yaml](../../../.github/workflows/pull-request.yaml) | `PASS` | Path-filtered jobs covering all six units plus contracts and security. Latest exact-SHA evidence: SHA `8830a659ecf102b9672c274e83f4ed24e9eb5588`, run [33408315440](https://github.com/mahmoudemad68/clinical_system/actions/runs/33408315440) `SUCCESS`. |
 | G-06-03 | Post-merge: signed immutable artifacts, signed staging deploy, migrations with lock monitoring, smoke checks | devops | [post-merge.yaml](../../../.github/workflows/post-merge.yaml) | `PASS` | Repository wiring: build-once, keyless-sign-by-digest, attest, scan, and `verify-artifacts` before `deploy-staging`. Staging still intentionally fail-closed (`exit 1`; no target). Live staging is `OPERATIONAL_FOLLOW_THROUGH`. Production promotion is Phase 23 (`FUTURE_PHASE`). |
 | G-06-04 | All deployment units build reproducibly from locked dependencies | devops | `composer.lock`; `package-lock.json`; `requirements.txt` (hashed); root `pubspec.lock`; packaged Electron CI | `PASS` | Locked builds exist. Packaged Doctor and Pharmacy Forge artifacts run in CI on Ubuntu, Windows, and macOS (G-02-10). Signing and notarization remain Phase 23 (`FUTURE_PHASE`). |
-| G-06-05 | Images/artifacts carry SBOMs with no unaccepted critical findings | security | CI SBOM job; High/Critical Trivy; [SF-001.json](../../../infra/security/exceptions/SF-001.json); [security-findings.md](security-findings.md) | `PASS` | Repository mechanism: SBOM generated/retained; High/Critical scan executed. **Critical: 0.** SF-001 (`extract-zip@2.0.1`) remains High with `independent_acceptance_status: PENDING_INDEPENDENT_ACCEPTANCE`, `scope: MERGE_ONLY`, `promotion_allowed: false`. Independent acceptance is `EXTERNAL_HUMAN`. Green CI does not accept the High. |
+| G-06-05 | Images/artifacts carry SBOMs with no unaccepted critical findings | security | CI SBOM job; High/Critical Trivy; [SF-001.json](../../../infra/security/exceptions/SF-001.json); [security-findings.md](security-findings.md) | `PASS` | Repository mechanism: SBOM generated/retained; High/Critical scan executed. **Critical: 0.** SF-001 (`extract-zip@2.0.1`) historical High is graph-ABSENT. Independent acceptance for P02-AUDIT-006 is `APPROVED` by Human Independent Reviewer / Project Owner on reviewed SHA `ccc95cddca6691781485c47ba4b5d21d872bca09`. `promotion_allowed: false`. This does **not** close G-08-04. This does **not** claim zero High findings. |
 
 ## 7. Observability (Phase 00 §7)
 
@@ -144,7 +147,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | G-08-01 | STRIDE + privacy threat model across the 8 named trust boundaries | security | [phase-00-foundation.md](../../threat-models/phase-00-foundation.md) | `PASS` | ISR-016 repository threat-model completeness is closed (eight boundaries, DFDs, current Electron allowlist/E2E, HMAC/decrypt/erasure/flags/FCM in the Phase 01 delta). Independent workshop/sign-off remains `EXTERNAL_HUMAN` and is G-08-04, not this gate. |
 | G-08-02 | Mandatory controls: deny-by-default, request/content-size limits, safe parsers, no wildcard CORS, secure admin headers, secrets withheld from fork jobs, non-root/read-only containers, SBOM provenance, config/flag/secret audit trail, tested redaction, documented emergency rotation | security | `EnforceRequestBounds`; `CorsPolicyTest`; `PersonaStatusPageTest`; `ConfigChangeAuditor`; [emergency-credential-rotation.md](../../runbooks/emergency-credential-rotation.md); CI security/SBOM jobs | `PASS` | CI/security/SBOM executed (exact SHA `8830a659ecf102b9672c274e83f4ed24e9eb5588`, run `33408315440`). CORS `*` rejected. Inertia CSP `default-src 'self'`; API `default-src 'none'`. Telescope local-only. Independent threat-model approval remains G-08-04. |
 | G-08-03 | Versioned mappings to OWASP ASVS 5.0.0, OWASP API Security, OWASP MASVS/MASTG | security | [owasp-asvs-mapping.md](../../security/owasp-asvs-mapping.md) | `PASS` | Engineering taxonomy with APPLIED/PARTIAL/NOT_APPLICABLE/NOT_TESTED. Explicitly not statutory compliance. Owner acceptance of the Phase 00 draft is G-08-04; independent re-review remains Phase 22. |
-| G-08-04 | Threat model and data classification have security/privacy approval | security, privacy | [independent-phase-00-phase-01-review-2026-08-26.md](../security-review/independent-phase-00-phase-01-review-2026-08-26.md) | `OPEN` | Independent security/privacy approval is `EXTERNAL_HUMAN` and cannot be self-granted. Assessor/remediator separation is lost (Mahmoud holds every named owner role). Current AI/agent reviews are not human approval. Not statutory compliance. |
+| G-08-04 | Threat model and data classification have security/privacy approval | security, privacy | [independent-phase-00-phase-01-review-2026-08-26.md](../security-review/independent-phase-00-phase-01-review-2026-08-26.md) | `OPEN` | Independent security/privacy approval is `EXTERNAL_HUMAN` and cannot be self-granted. Assessor/remediator separation is lost (Mahmoud holds every named owner role). Current AI/agent reviews are not human approval. The later Human Independent Reviewer / Project Owner APPROVED decision is scoped to SF-001 / P02-AUDIT-006 only and does **not** close this gate. No Privacy approval was supplied. Not statutory compliance. |
 
 ## 9. Test plan (Phase 00 "Test plan")
 
@@ -163,7 +166,7 @@ the gate row wins** — the gate rows are re-evaluated on every verification run
 | E2E | Four clients show core health/version in Arabic and English | `PASS` | API `/api/v1/health` negotiates ar/en. First-party Inertia pages for all four personas render catalogue copy in ar/en with RTL. Flutter/admin/Electron locale tests exist. Packaged Electron locale/RTL is G-02-10 `PASS` on Ubuntu, Windows, and macOS. |
 | E2E | Committed synthetic event reaches a consumer exactly once despite forced duplicate delivery | `PASS` | OutboxDispatcherTest covers exactly-once. Packaged client E2E is G-02-10 `PASS`. |
 | System | Stop AI/Qdrant, flush Redis, kill a worker mid-outbox, roll a compatible schema change, graceful shutdown under load | `PASS` | Redis flush PASS. AI isolation unit PASS. Kill-worker covered by lease recovery. Graceful shutdown under load is Phase 21 (`FUTURE_PHASE`). |
-| Security | SAST, dependency, image, IaC, license, SBOM, secret scans with blocking severity policy | `PASS` | Executed on exact SHA `8830a659ecf102b9672c274e83f4ed24e9eb5588`, run `33408315440`. SF-001 High remains unaccepted (`EXTERNAL_HUMAN` / G-01-21). |
+| Security | SAST, dependency, image, IaC, license, SBOM, secret scans with blocking severity policy | `PASS` | Executed on exact SHA `8830a659ecf102b9672c274e83f4ed24e9eb5588`, run `33408315440`. SF-001 later independently APPROVED for P02-AUDIT-006; G-08-04 / G-01-21 remain OPEN. |
 | Security | Canary values for national ID, token, password, prescription-like and lab-like text appear nowhere in logs/traces/errors | `PASS` | RedactionCanaryTest + ExportRedactionTest |
 
 ---
@@ -253,8 +256,8 @@ These do **not** make repository technical status `PARTIAL`.
 
 | Item | Gate | Residual |
 | --- | --- | --- |
-| Independent security/privacy approval | G-08-04 | `OPEN`. Cannot be self-granted. Current AI/agent reviews are not human approval. |
-| SF-001 High (`extract-zip@2.0.1`) independent acceptance | G-06-05 / Phase 01 G-01-21 | `PENDING_INDEPENDENT_ACCEPTANCE`. Merge-only exception. `promotion_allowed=false`. |
+| Independent security/privacy approval | G-08-04 | `OPEN`. Cannot be self-granted. Current AI/agent reviews are not human approval. SF-001 / P02-AUDIT-006 Project Owner approval does not close this gate. |
+| SF-001 High (`extract-zip@2.0.1`) independent acceptance | G-06-05 / Phase 01 G-01-21 / P02-AUDIT-006 | Graph ABSENT. `independent_acceptance_status: APPROVED` for P02-AUDIT-006 by Human Independent Reviewer / Project Owner on reviewed SHA `ccc95cddca6691781485c47ba4b5d21d872bca09`. Historical MERGE_ONLY retained. `promotion_allowed=false`. Does not close G-01-21 or G-08-04. |
 | Real `@clinic/*` GitHub teams / ruleset enforcement | G-01-04 | CODEOWNERS file exists; teams do not. |
 | Lawful basis / statutory retention / PDPL | G-05-02 | Inventory and erasure are technical. Legal decisions remain human. |
 | National ID check-digit specification | Phase 01 / ADR 0014 | Structural validation only. Authoritative Egyptian checksum is deferred. |
@@ -344,10 +347,12 @@ satisfied the comparison.
 
 - **G-08-04 remains OPEN / `EXTERNAL_HUMAN`.** Independent security/privacy
   approval is absent and cannot be self-granted. Current AI/agent reviews are
-  not human approval.
-- **SF-001 remains High and unaccepted.** `extract-zip@2.0.1` has no published
-  fix. Canonical exception is merge-only, `promotion_allowed=false`,
-  `PENDING_INDEPENDENT_ACCEPTANCE`. Green CI does not accept the High.
+  not human approval. The Human Independent Reviewer / Project Owner APPROVED
+  decision is scoped to SF-001 / P02-AUDIT-006 and does **not** close G-08-04.
+- **SF-001 historical High is graph-ABSENT and independently APPROVED for
+  P02-AUDIT-006** on reviewed SHA `ccc95cddca6691781485c47ba4b5d21d872bca09`.
+  `promotion_allowed=false`. This does **not** claim zero High findings and
+  does **not** close G-01-21 or G-08-04.
 - **Packaged Electron E2E is PASS** on Ubuntu, Windows, and macOS (current SHA
   `8830a659ecf102b9672c274e83f4ed24e9eb5588`, run `33408315440`). Signing and
   notarization remain Phase 23.

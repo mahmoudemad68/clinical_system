@@ -6,18 +6,19 @@
     "CVE-2026-56876",
     "GHSA-jmr9-qjv8-65gv"
   ],
+  "historical_severity": "high",
   "scope": "HISTORICAL_MERGE_ONLY",
   "promotion_allowed": false,
   "expires_at": "2026-11-26T00:00:00Z",
   "owner": "@clinic/security",
-  "justification": "Historical High: extract-zip@2.0.1 was present via @electron/packager 18.x (Forge 7.11.2) and @puppeteer/browsers 2.x. No patched extract-zip release exists. ADR 0008 allowed a time-boxed MERGE_ONLY exception while promotion stayed blocked. Controller-authorized Forge 8.0.0-alpha.10 (prerelease; upstream not ready for general consumption) is the first declared Forge graph whose Packager ^20.0.1 depends on @electron-internal/extract-zip instead of unscoped extract-zip. tests/desktop-e2e independently overrides @puppeteer/browsers to 3.2.3 (WDIO 9.x retained). There is no undeclared @electron/packager override. This manifest must not ignore CVE-2026-56876 / GHSA-jmr9-qjv8-65gv. Independent QA has not accepted P02-AUDIT-006.",
+  "justification": "Historical High: extract-zip@2.0.1 was present via @electron/packager 18.x (Forge 7.11.2) and @puppeteer/browsers 2.x. No patched extract-zip release exists. ADR 0008 allowed a time-boxed MERGE_ONLY exception while promotion stayed blocked. Controller-authorized Forge 8.0.0-alpha.10 (prerelease; upstream not ready for general consumption) is the first declared Forge graph whose Packager ^20.0.1 depends on @electron-internal/extract-zip instead of unscoped extract-zip. tests/desktop-e2e independently overrides @puppeteer/browsers to 3.2.3 (WDIO 9.x retained). There is no undeclared @electron/packager override. Unscoped extract-zip is ABSENT from both npm lockfiles. This manifest must not ignore CVE-2026-56876 / GHSA-jmr9-qjv8-65gv. Independent technical QA verdict SF001_FORGE8_CANDIDATE_QA_PASS_WITH_NONBLOCKING_FINDINGS. Human Independent Reviewer / Project Owner APPROVED the reviewed candidate (ccc95cddca6691781485c47ba4b5d21d872bca09 / tree 6535523e5e7fdd88625f7bb78641a2d83c5daffd) including the six reported nonblocking QA findings. This approval is scoped to SF-001 / P02-AUDIT-006 only. It does not close G-08-04 or P02-AUDIT-007. It does not claim the repository has zero High findings. It does not authorize promotion.",
   "compensating_controls": [
     "Unscoped extract-zip package must remain absent from package-lock.json and tests/desktop-e2e/package-lock.json",
     "ISR-015 fails if extract-zip reappears in either npm graph",
     "CVE-2026-56876 / GHSA-jmr9-qjv8-65gv must not appear in infra/security/trivy-merge.ignore",
     "@electron-internal/extract-zip is a different npm package and is not treated as extract-zip without a matching advisory"
   ],
-  "independent_acceptance_status": "PENDING_INDEPENDENT_ACCEPTANCE",
+  "independent_acceptance_status": "APPROVED",
   "lockfile": "package-lock.json",
   "package_lock_key": "node_modules/extract-zip",
   "lockfiles": [
@@ -25,8 +26,29 @@
     "tests/desktop-e2e/package-lock.json"
   ],
   "graph_status": "ABSENT",
-  "remediation_status": "REMEDIATED_CANDIDATE_AWAITING_INDEPENDENT_QA",
+  "remediation_status": "REMEDIATED_INDEPENDENTLY_ACCEPTED_GRAPH_ABSENT",
   "historical_scope": "MERGE_ONLY",
   "historical_merge_exception_active": false,
-  "p02_audit_006": "OPEN"
+  "p02_audit_006": "CLOSED",
+  "reviewed_candidate_sha": "ccc95cddca6691781485c47ba4b5d21d872bca09",
+  "reviewed_tree": "6535523e5e7fdd88625f7bb78641a2d83c5daffd",
+  "technical_qa_verdict": "SF001_FORGE8_CANDIDATE_QA_PASS_WITH_NONBLOCKING_FINDINGS",
+  "human_reviewer_type": "Human Independent Reviewer / Project Owner",
+  "human_decision": "APPROVED",
+  "human_decision_scope": "SF-001 / P02-AUDIT-006 remediation candidate",
+  "nonblocking_qa_findings": [
+    "QA-SF001-001",
+    "QA-SF001-002",
+    "QA-SF001-003",
+    "QA-SF001-004",
+    "QA-SF001-005",
+    "QA-SF001-006"
+  ],
+  "nonblocking_qa_findings_disposition": "ACCEPTED_NONBLOCKING_FOR_THIS_SF001_CANDIDATE",
+  "g_08_04": "OPEN",
+  "p02_audit_007": "OPEN",
+  "does_not_satisfy_g_08_04": true,
+  "does_not_satisfy_p02_audit_007": true,
+  "does_not_claim_zero_high_findings": true,
+  "does_not_authorize_promotion": true
 }

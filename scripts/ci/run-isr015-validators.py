@@ -98,9 +98,26 @@ def main() -> int:
         accepted = dict(manifest)
         accepted["independent_acceptance_status"] = "ACCEPTED"
         accepted_path = write(tmpdir / "accepted.json", json.dumps(accepted, indent=2) + "\n")
-        closed_audit = dict(manifest)
-        closed_audit["p02_audit_006"] = "CLOSED"
-        closed_path = write(tmpdir / "closed.json", json.dumps(closed_audit, indent=2) + "\n")
+        pending = dict(manifest)
+        pending["independent_acceptance_status"] = "PENDING_INDEPENDENT_ACCEPTANCE"
+        pending_path = write(tmpdir / "pending.json", json.dumps(pending, indent=2) + "\n")
+        open_audit = dict(manifest)
+        open_audit["p02_audit_006"] = "OPEN"
+        open_path = write(tmpdir / "open-audit.json", json.dumps(open_audit, indent=2) + "\n")
+        g08_closed = dict(manifest)
+        g08_closed["g_08_04"] = "CLOSED"
+        g08_path = write(tmpdir / "g08-closed.json", json.dumps(g08_closed, indent=2) + "\n")
+        audit007_closed = dict(manifest)
+        audit007_closed["p02_audit_007"] = "CLOSED"
+        audit007_path = write(tmpdir / "audit007-closed.json", json.dumps(audit007_closed, indent=2) + "\n")
+        wrong_sha = dict(manifest)
+        wrong_sha["reviewed_candidate_sha"] = "0" * 40
+        wrong_sha_path = write(tmpdir / "wrong-sha.json", json.dumps(wrong_sha, indent=2) + "\n")
+        missing_findings = dict(manifest)
+        missing_findings["nonblocking_qa_findings"] = ["QA-SF001-001"]
+        missing_findings_path = write(
+            tmpdir / "missing-findings.json", json.dumps(missing_findings, indent=2) + "\n"
+        )
         root_lock = ROOT / "package-lock.json"
         e2e_lock = ROOT / "tests" / "desktop-e2e" / "package-lock.json"
         fixtures = tmpdir / "sf001-locks"
@@ -238,14 +255,39 @@ jobs:
             "intentionally present",
         )
         expect_fail(
-            "N independent acceptance must stay pending",
+            "N unbound ACCEPTED token is not the recorded human decision",
             ["sf001", "--manifest", str(accepted_path)],
-            "must not mark SF-001 accepted",
+            "independent_acceptance_status must be APPROVED",
         )
         expect_fail(
-            "N P02-AUDIT-006 must remain OPEN",
-            ["sf001", "--manifest", str(closed_path)],
-            "p02_audit_006 must remain OPEN",
+            "N stale PENDING independent acceptance after recorded approval",
+            ["sf001", "--manifest", str(pending_path)],
+            "independent_acceptance_status must be APPROVED",
+        )
+        expect_fail(
+            "N P02-AUDIT-006 must remain CLOSED after recorded human acceptance",
+            ["sf001", "--manifest", str(open_path)],
+            "p02_audit_006 must be CLOSED",
+        )
+        expect_fail(
+            "N G-08-04 must remain OPEN",
+            ["sf001", "--manifest", str(g08_path)],
+            "g_08_04 must remain OPEN",
+        )
+        expect_fail(
+            "N P02-AUDIT-007 must remain OPEN",
+            ["sf001", "--manifest", str(audit007_path)],
+            "p02_audit_007 must remain OPEN",
+        )
+        expect_fail(
+            "N reviewed_candidate_sha drift is rejected",
+            ["sf001", "--manifest", str(wrong_sha_path)],
+            "reviewed_candidate_sha must remain the human-reviewed SF-001 candidate",
+        )
+        expect_fail(
+            "N six nonblocking QA findings must be preserved",
+            ["sf001", "--manifest", str(missing_findings_path)],
+            "nonblocking_qa_findings must preserve QA-SF001-001 through QA-SF001-006",
         )
         expect_fail(
             "J extract-zip reintroduced in root lockfile only",

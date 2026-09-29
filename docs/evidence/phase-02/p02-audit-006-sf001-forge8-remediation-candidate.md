@@ -61,3 +61,11 @@ QA. P02-AUDIT-006 remains OPEN.
 - Not Profile Claim / T46 / P02-AUDIT-005 / P02-AUDIT-007 / G-08-04 changes
 - Not Vite, not Electron major, not WDIO major
 - Forge 8 alpha is an authorized engineering-risk tooling migration
+
+## Later human acceptance (historical pointer)
+
+The candidate section above is the pre-acceptance record. Human Independent
+Reviewer / Project Owner APPROVED this candidate for SF-001 / P02-AUDIT-006.
+That later record is
+[`p02-audit-006-sf001-human-acceptance.md`](p02-audit-006-sf001-human-acceptance.md).
+G-08-04 and P02-AUDIT-007 remain OPEN.

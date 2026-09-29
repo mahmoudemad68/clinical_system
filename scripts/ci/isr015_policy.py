@@ -466,10 +466,26 @@ def trivy_ignore_ids(text: str) -> list[str]:
 EXTRACT_ZIP_PACKAGE = "extract-zip"
 ELECTRON_INTERNAL_EXTRACT_ZIP = "@electron-internal/extract-zip"
 SF001_VULN_IDS = ("CVE-2026-56876", "GHSA-jmr9-qjv8-65gv")
-SF001_REMEDIATION_STATUS = "REMEDIATED_CANDIDATE_AWAITING_INDEPENDENT_QA"
+SF001_REMEDIATION_STATUS = "REMEDIATED_INDEPENDENTLY_ACCEPTED_GRAPH_ABSENT"
 SF001_GRAPH_ABSENT = "ABSENT"
 SF001_HISTORICAL_SCOPE = "HISTORICAL_MERGE_ONLY"
-FORBIDDEN_ACCEPTANCE = {"APPROVED", "PASS", "ACCEPTED", "CLOSED", "WAIVED"}
+SF001_INDEPENDENT_ACCEPTANCE = "APPROVED"
+SF001_REVIEWED_CANDIDATE_SHA = "ccc95cddca6691781485c47ba4b5d21d872bca09"
+SF001_REVIEWED_TREE = "6535523e5e7fdd88625f7bb78641a2d83c5daffd"
+SF001_TECHNICAL_QA_VERDICT = "SF001_FORGE8_CANDIDATE_QA_PASS_WITH_NONBLOCKING_FINDINGS"
+SF001_HUMAN_REVIEWER_TYPE = "Human Independent Reviewer / Project Owner"
+SF001_HUMAN_DECISION = "APPROVED"
+SF001_HUMAN_DECISION_SCOPE = "SF-001 / P02-AUDIT-006 remediation candidate"
+SF001_QA_FINDINGS = (
+    "QA-SF001-001",
+    "QA-SF001-002",
+    "QA-SF001-003",
+    "QA-SF001-004",
+    "QA-SF001-005",
+    "QA-SF001-006",
+)
+SF001_QA_FINDINGS_DISPOSITION = "ACCEPTED_NONBLOCKING_FOR_THIS_SF001_CANDIDATE"
+UNBOUND_ACCEPTANCE_TOKENS = {"PASS", "ACCEPTED", "CLOSED", "WAIVED"}
 
 
 def canonical_sf001_lockfiles() -> list[Path]:
@@ -571,6 +587,21 @@ def assert_sf001(
         "historical_merge_exception_active",
         "lockfiles",
         "p02_audit_006",
+        "reviewed_candidate_sha",
+        "reviewed_tree",
+        "technical_qa_verdict",
+        "human_reviewer_type",
+        "human_decision",
+        "human_decision_scope",
+        "nonblocking_qa_findings",
+        "nonblocking_qa_findings_disposition",
+        "g_08_04",
+        "p02_audit_007",
+        "historical_severity",
+        "does_not_satisfy_g_08_04",
+        "does_not_satisfy_p02_audit_007",
+        "does_not_claim_zero_high_findings",
+        "does_not_authorize_promotion",
     ]
     for key in required:
         if key not in manifest:
@@ -581,12 +612,10 @@ def assert_sf001(
         fail("SF-001 package must be extract-zip")
     if manifest["affected_version"] != "2.0.1":
         fail("SF-001 affected_version must remain 2.0.1 for historical traceability")
-    if manifest["independent_acceptance_status"] in FORBIDDEN_ACCEPTANCE:
-        fail("independent_acceptance_status must not mark SF-001 accepted")
-    if manifest["independent_acceptance_status"] != "PENDING_INDEPENDENT_ACCEPTANCE":
-        fail("independent_acceptance_status must be PENDING_INDEPENDENT_ACCEPTANCE")
-    if manifest["remediation_status"] in FORBIDDEN_ACCEPTANCE:
-        fail("remediation_status must not mark SF-001 accepted")
+    if manifest["independent_acceptance_status"] != SF001_INDEPENDENT_ACCEPTANCE:
+        fail("independent_acceptance_status must be APPROVED")
+    if manifest["remediation_status"] in UNBOUND_ACCEPTANCE_TOKENS:
+        fail("remediation_status must not use an unbound acceptance token")
     if manifest["remediation_status"] != SF001_REMEDIATION_STATUS:
         fail(f"remediation_status must be {SF001_REMEDIATION_STATUS}")
     if manifest["graph_status"] != SF001_GRAPH_ABSENT:
@@ -601,8 +630,39 @@ def assert_sf001(
         fail("historical_merge_exception_active must be false")
     if manifest["promotion_allowed"] is not False:
         fail("SF-001 promotion_allowed must be false")
-    if str(manifest.get("p02_audit_006") or "") != "OPEN":
-        fail("p02_audit_006 must remain OPEN")
+    if str(manifest.get("p02_audit_006") or "") != "CLOSED":
+        fail("p02_audit_006 must be CLOSED")
+    if str(manifest.get("g_08_04") or "") != "OPEN":
+        fail("g_08_04 must remain OPEN")
+    if str(manifest.get("p02_audit_007") or "") != "OPEN":
+        fail("p02_audit_007 must remain OPEN")
+    if str(manifest.get("reviewed_candidate_sha") or "") != SF001_REVIEWED_CANDIDATE_SHA:
+        fail("reviewed_candidate_sha must remain the human-reviewed SF-001 candidate")
+    if str(manifest.get("reviewed_tree") or "") != SF001_REVIEWED_TREE:
+        fail("reviewed_tree must remain the human-reviewed SF-001 tree")
+    if str(manifest.get("technical_qa_verdict") or "") != SF001_TECHNICAL_QA_VERDICT:
+        fail("technical_qa_verdict must remain SF001_FORGE8_CANDIDATE_QA_PASS_WITH_NONBLOCKING_FINDINGS")
+    if str(manifest.get("human_reviewer_type") or "") != SF001_HUMAN_REVIEWER_TYPE:
+        fail("human_reviewer_type must remain Human Independent Reviewer / Project Owner")
+    if str(manifest.get("human_decision") or "") != SF001_HUMAN_DECISION:
+        fail("human_decision must remain APPROVED")
+    if str(manifest.get("human_decision_scope") or "") != SF001_HUMAN_DECISION_SCOPE:
+        fail("human_decision_scope must remain SF-001 / P02-AUDIT-006 remediation candidate")
+    findings = manifest.get("nonblocking_qa_findings")
+    if not isinstance(findings, list) or findings != list(SF001_QA_FINDINGS):
+        fail("nonblocking_qa_findings must preserve QA-SF001-001 through QA-SF001-006")
+    if str(manifest.get("nonblocking_qa_findings_disposition") or "") != SF001_QA_FINDINGS_DISPOSITION:
+        fail("nonblocking_qa_findings_disposition must remain ACCEPTED_NONBLOCKING_FOR_THIS_SF001_CANDIDATE")
+    if manifest.get("does_not_satisfy_g_08_04") is not True:
+        fail("does_not_satisfy_g_08_04 must be true")
+    if manifest.get("does_not_satisfy_p02_audit_007") is not True:
+        fail("does_not_satisfy_p02_audit_007 must be true")
+    if manifest.get("does_not_claim_zero_high_findings") is not True:
+        fail("does_not_claim_zero_high_findings must be true")
+    if manifest.get("does_not_authorize_promotion") is not True:
+        fail("does_not_authorize_promotion must be true")
+    if str(manifest.get("historical_severity") or "") != "high":
+        fail("historical_severity must remain high")
     parse_utc_expiry(manifest["expires_at"])
     vuln_ids = manifest["vulnerability_ids"]
     if not isinstance(vuln_ids, list) or set(vuln_ids) != set(SF001_VULN_IDS):

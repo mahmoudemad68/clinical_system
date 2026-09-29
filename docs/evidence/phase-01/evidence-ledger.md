@@ -7,10 +7,12 @@ residual cell as `EXTERNAL_HUMAN`, `OPERATIONAL_FOLLOW_THROUGH`, or
 `FUTURE_PHASE`.
 
 **Repository technical status:** `PASS`  
-**Overall phase status:** `OPEN` — G-01-21 only. `extract-zip@2.0.1` remains
-an unaccepted High (SF-001). The repository merge-only exception does **not**
-constitute independent acceptance. Green CI does not change this. This is not
-unfinished product implementation.
+**Overall phase status:** `OPEN` — G-01-21 only. SF-001 / P02-AUDIT-006 later
+received a scoped Human Independent Reviewer / Project Owner APPROVED
+decision. That does **not** close G-01-21 (phase-wide unaccepted High gate;
+2026-08-26 independent review listed multiple Highs; no G-01-21-scoped human
+decision was supplied) and does **not** close G-08-04. Green CI does not
+change this. This is not unfinished product implementation.
 
 **Never in this ledger:** credentials, national IDs, medical content, raw
 prompts, object keys, or exploit payloads.
@@ -44,8 +46,9 @@ Electron E2E (G-02-10) is `PASS` on Ubuntu, Windows, and macOS (historical first
 close `33155677159` / SHA `4a98fac6538546b52f6eff0c5ef98a9608714b90`; current
 exact SHA `8830a659ecf102b9672c274e83f4ed24e9eb5588` / run `33408315440`
 `SUCCESS`). Remaining OS encryption cells are Phase 05 enablement, not a Phase
-00 technical gap. SF-001 High `extract-zip@2.0.1` remains unaccepted
-(`EXTERNAL_HUMAN` / G-01-21). Those residuals do not mean Phase 00 repository
+00 technical gap. SF-001 historical High `extract-zip@2.0.1` is graph-ABSENT
+and independently APPROVED for P02-AUDIT-006; G-01-21 remains `OPEN` because
+that decision is not a G-01-21 phase-gate close. Those residuals do not mean Phase 00 repository
 technical work is unfinished.
 
 ## Gates
@@ -72,7 +75,7 @@ technical work is unfinished.
 | G-01-18 | Octane alternating identity | test | [`g-01-18-octane-alternating-identity.md`](g-01-18-octane-alternating-identity.md); `bash scripts/perf/run-octane-alternating-identity.sh` | `PASS` | Live FrankenPHP Octane `--workers=1` from exact SHA `d27e2b3c1d74319b1f6f404bc0ab8c236749f780`: 50 alternating iterations + 20 concurrent paired GET `/me` (244 authenticated GETs), 0 leakage failures, worker PID 2401 reused. Not a production SLO proof. |
 | G-01-19 | Threat model + inventory + runbooks + alerts | security | `docs/threat-models/phase-01-identity.md`; `docs/threat-models/phase-01-entry-points.md`; inventory; identity runbooks; `infra/monitoring/alerts/platform.yaml` | `PASS` | ISR-016 repository threat-model completeness is closed (HMAC lifecycle, audited decrypt, erasure, named flags, FCM, DFDs, 27 HTTP + 16 non-HTTP entry points). Independent workshop/sign-off remains `EXTERNAL_HUMAN` and is Phase 00 G-08-04, not this gate. |
 | G-01-20 | k6 abuse harness | test | [`g-01-20-k6-auth-abuse.md`](g-01-20-k6-auth-abuse.md); `bash scripts/perf/run-k6-auth-abuse.sh` | `PASS` | Live dual FrankenPHP processes, Redis `ratelimit` DB 3. Shared 429 across processes; 429s on login/OTP request/resend/verify/refresh/MFA/recovery; below-threshold 401/200 with zero 429s; Retry-After present; 0 5xx; no canaries. Not production capacity proof. |
-| G-01-21 | No Critical/unaccepted High | security | [SF-001.json](../../../infra/security/exceptions/SF-001.json); [independent-phase-00-phase-01-review-2026-08-26.md](../security-review/independent-phase-00-phase-01-review-2026-08-26.md) | `OPEN` | `extract-zip@2.0.1` remains High. SF-001 exception is `MERGE_ONLY`, `promotion_allowed=false`, `independent_acceptance_status=PENDING_INDEPENDENT_ACCEPTANCE`. Independent acceptance is `EXTERNAL_HUMAN`. The merge-only exception is not independent acceptance. Green CI (run `33408315440` `SUCCESS`) does not change this. Keep separate from repository mechanism `PASS` (Phase 00 G-06-05). Current AI/agent reviews are not human approval. Assessor/remediator separation is lost. |
+| G-01-21 | No Critical/unaccepted High | security | [SF-001.json](../../../infra/security/exceptions/SF-001.json); [independent-phase-00-phase-01-review-2026-08-26.md](../security-review/independent-phase-00-phase-01-review-2026-08-26.md) | `OPEN` | SF-001 (`extract-zip@2.0.1`) is graph-ABSENT and `independent_acceptance_status=APPROVED` for P02-AUDIT-006 by Human Independent Reviewer / Project Owner on reviewed SHA `ccc95cddca6691781485c47ba4b5d21d872bca09`. `promotion_allowed=false`. Historical MERGE_ONLY retained. This decision is **not** a G-01-21 close: the 2026-08-26 independent review failed G-01-21 for multiple High findings beyond SF-001; no G-01-21-scoped human decision was supplied. Keep separate from repository mechanism `PASS` (Phase 00 G-06-05). Assessor/remediator separation is lost. |
 | G-01-22 | Profile claim never discloses | product/privacy | flag default false; phpunit claim false; OTP purpose `profile_claim` → 404 | `PASS` | Production enablement remains `EXTERNAL_HUMAN`. |
 | G-01-23 | Pint, PHPStan, deptrac, Pest, contracts | laravel/test | GitHub Actions run [33408315440](https://github.com/mahmoudemad68/clinical_system/actions/runs/33408315440) on SHA `8830a659ecf102b9672c274e83f4ed24e9eb5588` | `PASS` | Exact-SHA PR CI `SUCCESS`. Core API job includes Pint, PHPStan, Deptrac, Pest, and Browser CSRF/session-cookie Playwright. Contracts job includes OpenAPI lint, event schemas, TS/Dart generation. Historical local 2026-08-26 command log remains below; it does not override this CI record. |
 
@@ -183,8 +186,8 @@ These do **not** make repository technical status `PARTIAL`.
 
 | Item | Gate | Residual |
 | --- | --- | --- |
-| Independent High risk acceptance or upstream remediation | G-01-21 / SF-001 | `extract-zip@2.0.1` High. `MERGE_ONLY`. `promotion_allowed=false`. `PENDING_INDEPENDENT_ACCEPTANCE`. |
-| Independent security/privacy approval | Phase 00 G-08-04 | Cannot be self-granted. Current AI/agent reviews are not human approval. |
+| Independent High risk acceptance or upstream remediation | G-01-21 / SF-001 | SF-001 graph ABSENT and APPROVED for P02-AUDIT-006 only. G-01-21 remains OPEN: no G-01-21-scoped human decision; 2026-08-26 review listed multiple Highs. `promotion_allowed=false`. |
+| Independent security/privacy approval | Phase 00 G-08-04 | Cannot be self-granted. Current AI/agent reviews are not human approval. SF-001 / P02-AUDIT-006 approval does not close G-08-04. |
 | Real `@clinic/*` GitHub teams / ruleset enforcement | Phase 00 G-01-04 | CODEOWNERS file exists; teams/ruleset enforcement do not. |
 | Lawful basis / statutory retention / PDPL | Phase 00 G-05-02 | Inventory and erasure are technical. Legal decisions remain human. |
 | National ID check-digit specification | ISR-017 / ADR 0014 | Structural validation only. Authoritative Egyptian checksum is deferred. |
@@ -222,5 +225,5 @@ Do **not** claim these ceremonies executed.
 **23 gates: 22 PASS, 0 PARTIAL, 0 BLOCKED, 1 OPEN.**
 
 Phase 01 **repository technical** work is complete. Phase 01 is **not CLOSED
-overall** because G-01-21 is OPEN (`EXTERNAL_HUMAN` independent acceptance of
-SF-001). Overall OPEN does **not** imply unfinished product implementation.
+overall** because G-01-21 is OPEN (phase-wide unaccepted High gate; SF-001 /
+P02-AUDIT-006 approval is scoped and is not a G-01-21 close). Overall OPEN does **not** imply unfinished product implementation.
