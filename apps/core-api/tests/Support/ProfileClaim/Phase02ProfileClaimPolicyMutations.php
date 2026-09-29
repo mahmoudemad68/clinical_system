@@ -72,10 +72,16 @@ final class Phase02ProfileClaimPolicyMutations
             self::case('pc017_blocker_removed', 'PC-017_blocks_production_enablement_mismatch', self::decisionBlocksProduction($baseline, 'PC-017', false), $evidence),
             self::case('duplicate_pc_id', 'duplicate_pc_id', self::duplicatePc001($baseline), $evidence),
             self::case('missing_pc_022', 'missing_pc_id:PC-022', self::dropDecision($baseline, 'PC-022'), $evidence),
+            self::case('extra_json_enablement_key', 'json_extra:json.enablement', self::extraEnablementKey($baseline), $evidence),
             self::case('evidence_final_t46_closed', 'evidence_final_status_t46_closed', $baseline, self::evidenceFinalStatus($evidence, 'T46', 'OPEN', 'CLOSED')),
             self::case('evidence_final_audit_005_closed', 'evidence_final_status_p02_audit_005_closed', $baseline, self::evidenceFinalStatus($evidence, 'P02-AUDIT-005', 'OPEN', 'CLOSED')),
+            self::case('evidence_identity_audit_005_closed', 'evidence_identity_p02_audit_005_closed', $baseline, self::evidenceReplaceOnce($evidence, '| **P02-AUDIT-005** | **`OPEN`** |', '| **P02-AUDIT-005** | **`CLOSED`** |')),
+            self::case('evidence_identity_t46_closed', 'evidence_identity_t46_closed', $baseline, self::evidenceReplaceOnce($evidence, '| **T46** | **`OPEN`** |', '| **T46** | **`CLOSED`** |')),
             self::case('evidence_prose_audit_005_closed', 'evidence_prose_p02_audit_005_closed', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: P02-AUDIT-005 is OPEN.', 'Current material state: P02-AUDIT-005 is CLOSED.')),
+            self::case('evidence_prose_audit_005_wrapped_closed', 'evidence_prose_p02_audit_005_closed', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: P02-AUDIT-005 is OPEN.', 'Current material state: **`P02-AUDIT-005`** is **`CLOSED`**.')),
+            self::case('evidence_prose_audit_005_open_removed', 'evidence_prose_p02_audit_005_not_open', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: P02-AUDIT-005 is OPEN.', 'Current material state no longer assigns P02-AUDIT-005.')),
             self::case('evidence_prose_t46_mitigated', 'evidence_prose_t46_mitigated', $baseline, self::evidenceReplaceOnce($evidence, 'Current material state: T46 is OPEN.', 'Current material state: T46 is MITIGATED.')),
+            self::case('evidence_controller_freeze_is_product_approval', 'evidence_controller_freeze_claimed_as_governance_approval', $baseline, self::evidenceReplaceOnce($evidence, 'A Controller freeze is not Product approval', 'A Controller freeze is Product approval')),
             self::case('evidence_product_approved', 'evidence_product_governance_approved', $baseline, self::evidenceIdentityApproval($evidence, 'Product approval')),
             self::case('evidence_security_approved', 'evidence_security_governance_approved', $baseline, self::evidenceIdentityApproval($evidence, 'Security approval')),
             self::case('evidence_privacy_approved', 'evidence_privacy_governance_approved', $baseline, self::evidenceIdentityApproval($evidence, 'Privacy approval')),
@@ -491,6 +497,18 @@ final class Phase02ProfileClaimPolicyMutations
         if (is_array($first)) {
             $artifact['decisions'][] = $first;
         }
+
+        return $artifact;
+    }
+
+    /**
+     * @param  array<string, mixed>  $artifact
+     * @return array<string, mixed>
+     */
+    public static function extraEnablementKey(array $artifact): array
+    {
+        $artifact = self::copy($artifact);
+        $artifact['enablement'] = 'AUTHORIZED';
 
         return $artifact;
     }

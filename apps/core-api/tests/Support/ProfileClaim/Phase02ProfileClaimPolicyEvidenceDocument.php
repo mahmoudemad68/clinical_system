@@ -178,9 +178,14 @@ final class Phase02ProfileClaimPolicyEvidenceDocument
     {
         $section = $this->section('## Final blocker state after this evidence PR');
         $map = [];
-        if (preg_match_all('/^`([^:`]+):\s*([^`]+)`\s*$/m', $section, $matches, PREG_SET_ORDER) > 0) {
+        if (preg_match_all('/^(?:\*{0,2}`?)([^:`\n]+?)(?::)\s*(.+?)$/m', $section, $matches, PREG_SET_ORDER) > 0) {
             foreach ($matches as $match) {
-                $map[trim($match[1])] = trim($match[2]);
+                $identity = self::plain($match[1]);
+                $state = self::plain($match[2]);
+                if ($identity === '' || $state === '' || str_starts_with(strtolower($identity), 'current material state')) {
+                    continue;
+                }
+                $map[$identity] = $state;
             }
         }
 
@@ -196,14 +201,14 @@ final class Phase02ProfileClaimPolicyEvidenceDocument
     public function positiveStateAssignments(string $identity): array
     {
         $assignments = [];
-        $identityTable = $this->identityTable();
-        if (isset($identityTable[$identity])) {
-            $assignments[] = ['site' => 'identity_table', 'state' => $this->normalizeState($identityTable[$identity])];
+        $identityValue = $this->lookup($this->identityTable(), $identity);
+        if ($identityValue !== null) {
+            $assignments[] = ['site' => 'identity_table', 'state' => $this->normalizeState($identityValue)];
         }
 
-        $final = $this->finalStatusMap();
-        if (isset($final[$identity])) {
-            $assignments[] = ['site' => 'final_status', 'state' => $this->normalizeState($final[$identity])];
+        $finalValue = $this->lookup($this->finalStatusMap(), $identity);
+        if ($finalValue !== null) {
+            $assignments[] = ['site' => 'final_status', 'state' => $this->normalizeState($finalValue)];
         }
 
         foreach ($this->proseAssignments($identity) as $state) {
@@ -218,24 +223,20 @@ final class Phase02ProfileClaimPolicyEvidenceDocument
      */
     public function proseAssignments(string $identity): array
     {
-        $id = $identity === 'T46'
-            ? '(?<![A-Za-z0-9-])T46(?![A-Za-z0-9-])'
-            : preg_quote($identity, '/');
+        $id = $this->wrappedIdentityPattern($identity);
         $states = [];
-        if (preg_match_all('/'.$id.'\s+is\s+\*{0,2}`?(OPEN|CLOSED|MITIGATED|AUTHORIZED|NOT_AUTHORIZED|DISABLED|PENDING_EXTERNAL|APPROVED)`?\*{0,2}/i', $this->markdown, $matches, PREG_OFFSET_CAPTURE) > 0) {
-            foreach ($matches[0] as $index => $full) {
-                if ($this->isNegated((int) $full[1])) {
-                    continue;
+        foreach (['is', 'remains'] as $verb) {
+            $verbs = $verb === 'remains'
+                ? 'OPEN|CLOSED|MITIGATED'
+                : 'OPEN|CLOSED|MITIGATED|NOT_AUTHORIZED|AUTHORIZED|DISABLED|PENDING_EXTERNAL|APPROVED';
+            $state = '[`\*]*('.$verbs.')[`\*]*';
+            if (preg_match_all('/'.$id.'\s+'.$verb.'\s+'.$state.'/i', $this->markdown, $matches, PREG_OFFSET_CAPTURE) > 0) {
+                foreach ($matches[0] as $index => $full) {
+                    if ($this->isNegated((int) $full[1])) {
+                        continue;
+                    }
+                    $states[] = strtoupper($matches[1][$index][0]);
                 }
-                $states[] = strtoupper($matches[1][$index][0]);
-            }
-        }
-        if (preg_match_all('/'.$id.'\s+remains\s+\*{0,2}`?(OPEN|CLOSED|MITIGATED)`?\*{0,2}/i', $this->markdown, $matches, PREG_OFFSET_CAPTURE) > 0) {
-            foreach ($matches[0] as $index => $full) {
-                if ($this->isNegated((int) $full[1])) {
-                    continue;
-                }
-                $states[] = strtoupper($matches[1][$index][0]);
             }
         }
 
@@ -244,15 +245,17 @@ final class Phase02ProfileClaimPolicyEvidenceDocument
 
     public function plaintextDestinations(): array
     {
-        $section = $this->section('## Option B credential');
-        $found = [];
-        foreach (Phase02ProfileClaimPolicyArtifact::PLAINTEXT_PROHIBITED_IN as $destination) {
-            if (str_contains($section, $destination)) {
-                $found[] = $destination;
-            }
+        $section = preg_replace('/\s+/', ' ', $this->section('## Option B credential')) ?? '';
+        if (preg_match('/Plaintext of the claim credential is prohibited in:\s*([^.]+)/', $section, $matches) !== 1) {
+            return [];
         }
 
-        return $found;
+        $items = array_map(
+            static fn (string $item): string => trim($item),
+            explode(',', $matches[1]),
+        );
+
+        return array_values(array_filter($items, static fn (string $item): bool => $item !== ''));
     }
 
     public function permitsSensitiveClientState(): bool
@@ -272,12 +275,8 @@ final class Phase02ProfileClaimPolicyEvidenceDocument
 
     public function claimsControllerFreezeIsGovernanceApproval(): bool
     {
-        if (preg_match_all('/Controller freeze is not (Product|Security|Privacy|Support\/Operations) approval/i', $this->markdown, $negated) > 0) {
-            // Keep scanning for a positive claim.
-        }
-
         return preg_match(
-            '/Controller freeze is (Product|Security|Privacy|Support\/Operations) approval/i',
+            '/Controller freeze is (?!not\b)(Product|Security|Privacy|Support\/Operations) approval/i',
             $this->markdown,
         ) === 1;
     }
@@ -290,7 +289,7 @@ final class Phase02ProfileClaimPolicyEvidenceDocument
         }
 
         $quoted = preg_quote($label, '/');
-        if (preg_match('/'.$quoted.'\s*(?:\||:|is)\s*(?:\*\*)?`?APPROVED`?/i', $this->markdown, $match, PREG_OFFSET_CAPTURE) === 1) {
+        if (preg_match('/'.$quoted.'\s*(?:\||:|is|remains)\s*[`\*]*(APPROVED|GRANTED)[`\*]*/i', $this->markdown, $match, PREG_OFFSET_CAPTURE) === 1) {
             return ! $this->isNegated((int) $match[0][1]);
         }
 
@@ -299,10 +298,36 @@ final class Phase02ProfileClaimPolicyEvidenceDocument
 
     private function isNegated(int $offset): bool
     {
-        $window = substr($this->markdown, max(0, $offset - 96), 96);
+        $window = substr($this->markdown, max(0, $offset - 120), 120);
 
         return preg_match('/does\s+(?:\*\*)?not(?:\*\*)?\s+(?:close|change|convert|mark|claim|reuse|enable|authorize|implement)/i', $window) === 1
             || preg_match('/\*\*not\*\*\s+(?:close|change|convert|mark)/i', $window) === 1;
+    }
+
+    /**
+     * @param  array<string, string>  $map
+     */
+    private function lookup(array $map, string $identity): ?string
+    {
+        if (isset($map[$identity])) {
+            return $map[$identity];
+        }
+        foreach ($map as $key => $value) {
+            if (str_contains($key, $identity)) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function wrappedIdentityPattern(string $identity): string
+    {
+        $id = $identity === 'T46'
+            ? '(?<![A-Za-z0-9-])T46(?![A-Za-z0-9-])'
+            : preg_quote($identity, '/');
+
+        return '[`\*]*'.$id.'[`\*]*';
     }
 
     private function normalizeState(string $state): string

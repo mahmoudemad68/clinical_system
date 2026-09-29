@@ -115,6 +115,11 @@ final class Phase02ProfileClaimPolicyValidator
                 }
                 $this->compareExpected($item, $actual[$key], $child, $issues);
             }
+            foreach (array_keys($actual) as $key) {
+                if (! array_key_exists($key, $expected)) {
+                    $issues[] = 'json_extra:'.$path.'.'.$key;
+                }
+            }
 
             return;
         }
@@ -491,11 +496,11 @@ final class Phase02ProfileClaimPolicyValidator
 
         foreach ($doc->positiveStateAssignments('P02-AUDIT-005') as $assignment) {
             if ($this->stateIs($assignment['state'], 'CLOSED')) {
-                $issues[] = $assignment['site'] === 'final_status'
-                    ? 'evidence_final_status_p02_audit_005_closed'
-                    : ($assignment['site'] === 'prose'
-                        ? 'evidence_prose_p02_audit_005_closed'
-                        : 'evidence_p02_audit_005_explicitly_closed');
+                $issues[] = match ($assignment['site']) {
+                    'final_status' => 'evidence_final_status_p02_audit_005_closed',
+                    'prose' => 'evidence_prose_p02_audit_005_closed',
+                    default => 'evidence_identity_p02_audit_005_closed',
+                };
             }
         }
         $prose005 = $doc->proseAssignments('P02-AUDIT-005');
@@ -505,12 +510,18 @@ final class Phase02ProfileClaimPolicyValidator
 
         foreach ($doc->positiveStateAssignments('T46') as $assignment) {
             if ($this->stateIs($assignment['state'], 'CLOSED')) {
-                $issues[] = $assignment['site'] === 'final_status'
-                    ? 'evidence_final_status_t46_closed'
-                    : 'evidence_t46_explicitly_closed';
+                $issues[] = match ($assignment['site']) {
+                    'final_status' => 'evidence_final_status_t46_closed',
+                    'prose' => 'evidence_prose_t46_closed',
+                    default => 'evidence_identity_t46_closed',
+                };
             }
             if ($this->stateIs($assignment['state'], 'MITIGATED')) {
-                $issues[] = 'evidence_prose_t46_mitigated';
+                $issues[] = match ($assignment['site']) {
+                    'final_status' => 'evidence_final_status_t46_mitigated',
+                    'identity_table' => 'evidence_identity_t46_mitigated',
+                    default => 'evidence_prose_t46_mitigated',
+                };
             }
         }
         $proseT46 = $doc->proseAssignments('T46');

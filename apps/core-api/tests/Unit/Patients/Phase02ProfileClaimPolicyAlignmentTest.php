@@ -363,7 +363,52 @@ describe('P02-AUDIT-005 evidence-document consistency', function () {
         );
 
         expect($issues)->toContain('evidence_final_status_t46_closed')
-            ->and($issues)->toContain('evidence_final_status_t46_not_open');
+            ->and($issues)->toContain('evidence_final_status_t46_not_open')
+            ->and($issues)->not->toContain('evidence_identity_t46_closed');
+    });
+
+    it('does not treat a does-not-close sentence as P02-AUDIT-005 OPEN or CLOSED', function () {
+        $issues = (new Phase02ProfileClaimPolicyValidator)->validate(
+            Artifact::decoded(),
+            Mutations::evidenceReplaceOnce(
+                Artifact::evidenceRaw(),
+                'Current material state: P02-AUDIT-005 is OPEN.',
+                'Current material state no longer assigns P02-AUDIT-005.',
+            ),
+        );
+
+        expect($issues)->toContain('evidence_prose_p02_audit_005_not_open')
+            ->and($issues)->not->toContain('evidence_prose_p02_audit_005_closed')
+            ->and($issues)->not->toContain('evidence_final_status_p02_audit_005_closed')
+            ->and($issues)->not->toContain('evidence_identity_p02_audit_005_closed');
+    });
+
+    it('detects an identity-table CLOSED declaration independently of the final-status block', function () {
+        $issues = (new Phase02ProfileClaimPolicyValidator)->validate(
+            Artifact::decoded(),
+            Mutations::evidenceReplaceOnce(
+                Artifact::evidenceRaw(),
+                '| **P02-AUDIT-005** | **`OPEN`** |',
+                '| **P02-AUDIT-005** | **`CLOSED`** |',
+            ),
+        );
+
+        expect($issues)->toContain('evidence_identity_p02_audit_005_closed')
+            ->and($issues)->toContain('evidence_identity_p02_audit_005_not_open')
+            ->and($issues)->not->toContain('evidence_final_status_p02_audit_005_closed');
+    });
+
+    it('detects a backtick-and-emphasis wrapped prose CLOSED declaration', function () {
+        $issues = (new Phase02ProfileClaimPolicyValidator)->validate(
+            Artifact::decoded(),
+            Mutations::evidenceReplaceOnce(
+                Artifact::evidenceRaw(),
+                'Current material state: P02-AUDIT-005 is OPEN.',
+                'Current material state: **`P02-AUDIT-005`** is **`CLOSED`**.',
+            ),
+        );
+
+        expect($issues)->toContain('evidence_prose_p02_audit_005_closed');
     });
 });
 
