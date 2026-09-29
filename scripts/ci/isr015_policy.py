@@ -463,13 +463,84 @@ def trivy_ignore_ids(text: str) -> list[str]:
     return ids
 
 
-def extract_zip_version(lock_path: Path, package_key: str) -> str | None:
+EXTRACT_ZIP_PACKAGE = "extract-zip"
+ELECTRON_INTERNAL_EXTRACT_ZIP = "@electron-internal/extract-zip"
+SF001_VULN_IDS = ("CVE-2026-56876", "GHSA-jmr9-qjv8-65gv")
+SF001_REMEDIATION_STATUS = "REMEDIATED_CANDIDATE_AWAITING_INDEPENDENT_QA"
+SF001_GRAPH_ABSENT = "ABSENT"
+SF001_HISTORICAL_SCOPE = "HISTORICAL_MERGE_ONLY"
+FORBIDDEN_ACCEPTANCE = {"APPROVED", "PASS", "ACCEPTED", "CLOSED", "WAIVED"}
+
+
+def canonical_sf001_lockfiles() -> list[Path]:
+    return [
+        REPO_ROOT / "package-lock.json",
+        REPO_ROOT / "tests" / "desktop-e2e" / "package-lock.json",
+    ]
+
+
+def lockfile_kind(path: Path) -> str:
+    text = str(path.resolve()).replace("\\", "/")
+    if "desktop-e2e" in text:
+        return "desktop-e2e"
+    if path.name == "package-lock.json":
+        return "root"
+    fail(f"SF-001 lockfile is not a recognized npm tree: {path}")
+
+
+def require_both_sf001_lockfiles(lock_paths: list[Path]) -> None:
+    if len(lock_paths) < 2:
+        fail("SF-001 absence check must cover both the root and tests/desktop-e2e lockfiles")
+    kinds = {lockfile_kind(path) for path in lock_paths}
+    if kinds != {"root", "desktop-e2e"}:
+        fail("SF-001 absence check must cover both the root and tests/desktop-e2e lockfiles")
+
+
+def npm_package_name_from_location(loc: str) -> str:
+    text = loc.replace("\\", "/")
+    marker = "node_modules/"
+    idx = text.rfind(marker)
+    if idx >= 0:
+        return text[idx + len(marker) :]
+    return text
+
+
+def extract_zip_occurrences(lock_path: Path) -> list[str]:
     data = load_json(lock_path)
-    meta = (data.get("packages") or {}).get(package_key)
-    if not isinstance(meta, dict):
-        return None
-    version = meta.get("version")
-    return str(version) if version else None
+    packages = data.get("packages")
+    if not isinstance(packages, dict):
+        fail(f"{lock_path} packages must be an object")
+    hits: list[str] = []
+    dep_sections = (
+        "dependencies",
+        "optionalDependencies",
+        "devDependencies",
+        "peerDependencies",
+        "requires",
+    )
+    rel = str(lock_path)
+    for loc, meta in packages.items():
+        loc_s = str(loc)
+        key_name = npm_package_name_from_location(loc_s)
+        version = ""
+        declared_name = ""
+        if isinstance(meta, dict):
+            version = str(meta.get("version") or "")
+            declared_name = str(meta.get("name") or "")
+        if key_name == ELECTRON_INTERNAL_EXTRACT_ZIP or declared_name == ELECTRON_INTERNAL_EXTRACT_ZIP:
+            continue
+        if key_name == EXTRACT_ZIP_PACKAGE:
+            hits.append(f"{rel}:{loc_s}@{version or 'unknown'}")
+            continue
+        if declared_name == EXTRACT_ZIP_PACKAGE:
+            hits.append(f"{rel}:{loc_s} name={declared_name}@{version or 'unknown'}")
+        if not isinstance(meta, dict):
+            continue
+        for section in dep_sections:
+            deps = meta.get(section)
+            if isinstance(deps, dict) and EXTRACT_ZIP_PACKAGE in deps:
+                hits.append(f"{rel}:{loc_s}.{section}[{EXTRACT_ZIP_PACKAGE}]={deps[EXTRACT_ZIP_PACKAGE]}")
+    return hits
 
 
 def assert_sf001(
@@ -477,7 +548,9 @@ def assert_sf001(
     now: dt.datetime | None = None,
     ignore_text: str | None = None,
     manifest: dict[str, Any] | None = None,
+    lock_paths: list[Path] | None = None,
 ) -> None:
+    del now  # Historical MERGE_ONLY expiry is not a live exception clock.
     manifest = manifest if manifest is not None else load_json(SF001)
     ignore_text = TRIVY_MERGE_IGNORE.read_text(encoding="utf-8") if ignore_text is None else ignore_text
     required = [
@@ -492,47 +565,72 @@ def assert_sf001(
         "justification",
         "compensating_controls",
         "independent_acceptance_status",
+        "graph_status",
+        "remediation_status",
+        "historical_scope",
+        "historical_merge_exception_active",
+        "lockfiles",
+        "p02_audit_006",
     ]
     for key in required:
         if key not in manifest:
             fail(f"SF-001 manifest missing {key}")
     if manifest["exception_id"] != "SF-001":
         fail("exception_id must be SF-001")
-    if manifest["package"] != "extract-zip":
+    if manifest["package"] != EXTRACT_ZIP_PACKAGE:
         fail("SF-001 package must be extract-zip")
-    if manifest["independent_acceptance_status"] in {"APPROVED", "PASS", "ACCEPTED"}:
+    if manifest["affected_version"] != "2.0.1":
+        fail("SF-001 affected_version must remain 2.0.1 for historical traceability")
+    if manifest["independent_acceptance_status"] in FORBIDDEN_ACCEPTANCE:
         fail("independent_acceptance_status must not mark SF-001 accepted")
     if manifest["independent_acceptance_status"] != "PENDING_INDEPENDENT_ACCEPTANCE":
         fail("independent_acceptance_status must be PENDING_INDEPENDENT_ACCEPTANCE")
-    if manifest["scope"] != "MERGE_ONLY":
-        fail("SF-001 scope must be MERGE_ONLY")
+    if manifest["remediation_status"] in FORBIDDEN_ACCEPTANCE:
+        fail("remediation_status must not mark SF-001 accepted")
+    if manifest["remediation_status"] != SF001_REMEDIATION_STATUS:
+        fail(f"remediation_status must be {SF001_REMEDIATION_STATUS}")
+    if manifest["graph_status"] != SF001_GRAPH_ABSENT:
+        fail("stale SF-001 exception must not claim extract-zip remains intentionally present")
+    if manifest["scope"] == "MERGE_ONLY" or manifest.get("historical_merge_exception_active") is True:
+        fail("stale SF-001 exception must not claim extract-zip remains intentionally present")
+    if manifest["scope"] != SF001_HISTORICAL_SCOPE:
+        fail("SF-001 scope must be HISTORICAL_MERGE_ONLY")
+    if manifest["historical_scope"] != "MERGE_ONLY":
+        fail("historical_scope must record MERGE_ONLY")
+    if manifest["historical_merge_exception_active"] is not False:
+        fail("historical_merge_exception_active must be false")
     if manifest["promotion_allowed"] is not False:
         fail("SF-001 promotion_allowed must be false")
+    if str(manifest.get("p02_audit_006") or "") != "OPEN":
+        fail("p02_audit_006 must remain OPEN")
+    parse_utc_expiry(manifest["expires_at"])
     vuln_ids = manifest["vulnerability_ids"]
-    if not isinstance(vuln_ids, list) or not vuln_ids:
-        fail("vulnerability_ids must be a non-empty list")
+    if not isinstance(vuln_ids, list) or set(vuln_ids) != set(SF001_VULN_IDS):
+        fail("vulnerability_ids must be exactly CVE-2026-56876 and GHSA-jmr9-qjv8-65gv")
     if len(vuln_ids) != len(set(vuln_ids)):
         fail("duplicate vulnerability ids in the manifest")
     ignore_ids = trivy_ignore_ids(ignore_text)
     if len(ignore_ids) != len(set(ignore_ids)):
         fail("duplicate ids in trivy-merge.ignore")
-    if set(ignore_ids) != set(vuln_ids):
-        extra = sorted(set(ignore_ids) - set(vuln_ids))
-        missing = sorted(set(vuln_ids) - set(ignore_ids))
-        fail(f"trivy-merge.ignore IDs must equal manifest IDs extra={extra} missing={missing}")
-    expiry = parse_utc_expiry(manifest["expires_at"])
-    current = now or dt.datetime.now(dt.timezone.utc)
-    if current >= expiry:
-        fail("SF-001 exception expired")
-    lock_path = REPO_ROOT / str(manifest.get("lockfile") or "package-lock.json")
-    package_key = str(manifest.get("package_lock_key") or "node_modules/extract-zip")
-    version = extract_zip_version(lock_path, package_key)
-    expected = str(manifest["affected_version"])
-    if version is None:
-        fail("SF-001 is stale: extract-zip is missing from the lockfile")
-    if version != expected:
-        fail(f"SF-001 package/version mismatch: extract-zip is {version}, manifest expects {expected}")
-    print("sf001-exception: PASS")
+    waived = sorted(set(ignore_ids) & set(SF001_VULN_IDS))
+    if waived:
+        fail(f"trivy-merge.ignore must not ignore SF-001 advisories {waived}")
+    recorded_locks = manifest.get("lockfiles")
+    if not isinstance(recorded_locks, list) or {str(item) for item in recorded_locks} != {
+        "package-lock.json",
+        "tests/desktop-e2e/package-lock.json",
+    }:
+        fail("SF-001 lockfiles must list both npm lockfiles")
+    paths = lock_paths if lock_paths is not None else canonical_sf001_lockfiles()
+    require_both_sf001_lockfiles(paths)
+    hits: list[str] = []
+    for path in paths:
+        if not path.is_file():
+            fail(f"SF-001 lockfile missing: {path}")
+        hits.extend(extract_zip_occurrences(path))
+    if hits:
+        fail("extract-zip must not be present in either npm lockfile: " + "; ".join(hits))
+    print("sf001-absence: PASS")
 
 
 def assert_promotion_isolation(workflow_path: Path | None = None) -> None:
@@ -732,7 +830,8 @@ def main(argv: list[str] | None = None) -> int:
             now = parse_utc_expiry(args.now) if args.now else None
             ignore_text = Path(args.ignore_file).read_text(encoding="utf-8") if args.ignore_file else None
             manifest = load_json(Path(args.manifest)) if args.manifest else None
-            assert_sf001(now=now, ignore_text=ignore_text, manifest=manifest)
+            locks = [Path(item) for item in args.lock] if args.lock else None
+            assert_sf001(now=now, ignore_text=ignore_text, manifest=manifest, lock_paths=locks)
         elif args.command == "promotion-isolation":
             assert_promotion_isolation(workflow)
         elif args.command == "provenance-wiring":

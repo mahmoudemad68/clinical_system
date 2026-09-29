@@ -1,10 +1,10 @@
-# Merge-only Trivy ignore. IDs are bound 1:1 to
-# infra/security/exceptions/SF-001.json by scripts/ci/isr015_policy.py.
-# Promotion scans MUST NOT pass this file.
+# Merge-lane Trivy ignore file. Promotion scans MUST NOT pass this file.
 #
+# SF-001 (extract-zip@2.0.1 / CVE-2026-56876 / GHSA-jmr9-qjv8-65gv) is a
+# historical MERGE_ONLY exception. Those IDs must not be listed here.
+# ISR-015 proves the unscoped extract-zip package is absent from both npm
+# lockfiles. Do not restore a merge-only ignore for this finding.
 # Do not add OS, PHP, or unrelated npm findings here. Do not restore
-# ignore-unfixed. Expiry, scope, and package identity come from the
-# canonical manifest, not from this comment.
-
-CVE-2026-56876
-GHSA-jmr9-qjv8-65gv
+# ignore-unfixed.
+#
+# No merge-only vulnerability IDs are currently authorized.

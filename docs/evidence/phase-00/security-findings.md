@@ -158,4 +158,40 @@ This implementer cannot close SF-001. Independent retest remains required (G-08-
 ### Tracking
 
 Evidence ledger gate G-06-05. It is `PARTIAL`, not `PASS`, and not `BLOCKED`:
-the Critical is resolved, one High root remains with no upstream fix.
+the Critical is resolved; SF-001 remains OPEN pending independent QA of the
+Forge 8 candidate graph.
+
+### Remediation candidate (2026-09-29) — Forge 8, not independent acceptance
+
+Controller-authorized Forge `8.0.0-alpha.10` (npm `alpha`; upstream still
+warns it is not ready for general consumption) is the first **declared**
+Forge graph whose Packager range no longer depends on unscoped
+`extract-zip`. Failed Option A (PR #35, Forge 7.11.2 + undeclared Packager
+20.3.0 override) is historical packaging-incompatible evidence and must not
+be merged.
+
+Candidate graph:
+
+- Doctor/Pharmacy direct Forge packages pinned to `8.0.0-alpha.10`
+- `@electron-forge/core@8.0.0-alpha.10` → `@electron/packager@^20.0.1`
+  (resolved `20.3.0` in the lockfile; **no** root Packager override)
+- `@electron/fuses@2.0.0` (plugin-fuses 8 peer `^2.0.0`)
+- `electron@44.0.0` retained
+- `tests/desktop-e2e` override `@puppeteer/browsers@3.2.3` (WDIO 9.x retained)
+
+`@electron-internal/extract-zip` may still appear. That is a different npm
+package. CVE-2026-56876 / GHSA-jmr9-qjv8-65gv are no longer listed in
+`infra/security/trivy-merge.ignore`. ISR-015 fails if unscoped `extract-zip`
+reappears in either lockfile or if those IDs are restored to the merge
+ignore.
+
+The historical MERGE_ONLY exception is retained as history in
+[`infra/security/exceptions/SF-001.json`](../../../infra/security/exceptions/SF-001.json)
+with `graph_status: ABSENT` and
+`remediation_status: REMEDIATED_CANDIDATE_AWAITING_INDEPENDENT_QA`.
+`independent_acceptance_status` remains `PENDING_INDEPENDENT_ACCEPTANCE`.
+P02-AUDIT-006 remains OPEN. This section does **not** close SF-001.
+
+See
+[`docs/evidence/phase-02/p02-audit-006-sf001-forge8-remediation-candidate.md`](../phase-02/p02-audit-006-sf001-forge8-remediation-candidate.md).
+
