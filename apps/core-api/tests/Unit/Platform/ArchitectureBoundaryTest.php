@@ -13,6 +13,7 @@ use Modules\Identity\Services\EraseSubjectService;
 use Modules\Identity\Services\RotateIdentityKeysService;
 use Modules\Patients\Services\CreatePatientProfile;
 use Modules\Patients\Services\CreateUnlinkedPatientProfile;
+use Modules\Patients\Services\FreezeDisputedPatientProfile;
 use Modules\Patients\Services\ResolvePatientHandle;
 use Modules\Patients\Services\UpdateOwnDemographics;
 use Modules\Pharmacies\Services\RegisterPharmacyOrganization;
@@ -68,6 +69,10 @@ final class ArchitectureBoundaryTest extends TestCase
         );
         $this->assertContains(
             ResolvePatientHandle::class,
+            ApprovedCoordinators::classes(),
+        );
+        $this->assertContains(
+            FreezeDisputedPatientProfile::class,
             ApprovedCoordinators::classes(),
         );
         $this->assertContains(
@@ -224,7 +229,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/table\([\'"]patient_(profiles|demographic_revisions)/',
+                '/table\([\'"]patient_(profiles|demographic_revisions|claim_)/',
                 $contents,
                 $file.' Identity must not read or write Patients tables.',
             );
@@ -371,7 +376,7 @@ final class ArchitectureBoundaryTest extends TestCase
             $contents = (string) file_get_contents($file);
 
             $this->assertDoesNotMatchRegularExpression(
-                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions|pharmacy_organizations|pharmacy_branches|pharmacy_memberships|pharmacy_staff_invitations|clinic_locations|clinic_staff_profiles|clinic_staff_memberships|clinic_staff_invitations)/',
+                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions|patient_claim_credentials|patient_claim_failures|patient_claim_locks|pharmacy_organizations|pharmacy_branches|pharmacy_memberships|pharmacy_staff_invitations|clinic_locations|clinic_staff_profiles|clinic_staff_memberships|clinic_staff_invitations)/',
                 $contents,
                 $file.' Verification must not query Doctors, Patients, Pharmacies, or Clinics tables.',
             );
@@ -407,7 +412,7 @@ final class ArchitectureBoundaryTest extends TestCase
                 $file.' Admin must call Verification public services rather than query verification tables.',
             );
             $this->assertDoesNotMatchRegularExpression(
-                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions|pharmacy_organizations|pharmacy_branches|pharmacy_memberships|pharmacy_staff_invitations|clinic_locations|clinic_staff_profiles|clinic_staff_memberships|clinic_staff_invitations)/',
+                '/table\([\'"](doctor_profiles|specialties|patient_profiles|patient_demographic_revisions|patient_claim_credentials|patient_claim_failures|patient_claim_locks|pharmacy_organizations|pharmacy_branches|pharmacy_memberships|pharmacy_staff_invitations|clinic_locations|clinic_staff_profiles|clinic_staff_memberships|clinic_staff_invitations)/',
                 $contents,
                 $file.' Admin must not query Doctors, Patients, Pharmacies, or Clinics persistence.',
             );

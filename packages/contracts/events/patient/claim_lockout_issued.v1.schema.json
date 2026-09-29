@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.clinic.invalid/events/patient/claim_lockout_issued.v1.schema.json",
+  "title": "patient.claim_lockout_issued v1",
+  "description": "A Profile Claim failed-proof lockout was recorded. No National ID, phone, credential, or identifiers in the payload.",
+  "type": "object",
+  "required": ["reason_code"],
+  "additionalProperties": false,
+  "properties": {
+    "reason_code": {
+      "type": "string",
+      "const": "failed_proof_lockout"
+    }
+  },
+  "x-clinic": {
+    "owning_module": "Patients",
+    "classification": "internal",
+    "consumers": ["notifications.inbox"],
+    "retention_days": 365
+  }
+}

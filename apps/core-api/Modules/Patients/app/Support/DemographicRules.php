@@ -21,6 +21,7 @@ final class DemographicRules
             [
                 'national_id' => ['required', 'string', 'max:32'],
                 'full_name' => ['required', 'string', 'min:1', 'max:'.self::nameMax()],
+                'claim_credential' => ['sometimes', 'nullable', 'string', 'max:19'],
             ],
             self::shared(requiredGender: true),
         );

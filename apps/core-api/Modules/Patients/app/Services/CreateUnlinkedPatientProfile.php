@@ -20,6 +20,8 @@ use Modules\Platform\Support\Identifier;
 
 /**
  * Internal unlinked profile create for future Phase 03 booking. No HTTP.
+ * New walk-in rows receive a one-time clinic-issued claim credential (Option B).
+ * Existing rows are never issued a retroactive credential.
  */
 final class CreateUnlinkedPatientProfile
 {
@@ -28,6 +30,7 @@ final class CreateUnlinkedPatientProfile
         private readonly PostgresPatientProfileStore $store,
         private readonly NationalIdProtector $protector,
         private readonly CommitNewPatientProfile $commit,
+        private readonly IssueWalkInClaimCredential $credentials,
         private readonly Authorize $authorize,
     ) {}
 
@@ -71,7 +74,9 @@ final class CreateUnlinkedPatientProfile
                 return new PatientHandle($retry->id, $retry->status->value);
             }
 
-            return new PatientHandle($created->id, $created->status->value);
+            $plaintext = $this->credentials->issue($created->id);
+
+            return new PatientHandle($created->id, $created->status->value, $plaintext);
         });
     }
 }

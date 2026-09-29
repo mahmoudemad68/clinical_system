@@ -57,6 +57,31 @@ final class AuthRateLimiter implements AuthenticationRateLimiter
         $this->hit('auth-otp-verify-ip:'.$ipPrefix, (int) ($this->limits['otp_verify_per_ip_per_minute'] ?? 30), 60);
     }
 
+    public function consumeClaimCeremonyStart(string $accountId, string $nidHmacHex, string $ipPrefix): bool
+    {
+        $accountMax = (int) config('identity.profile_claim.ceremony_starts_per_account_per_hour', 5);
+        $ipMax = (int) config('identity.profile_claim.ceremony_starts_per_ip_per_hour', 20);
+        $nidMax = (int) config('identity.profile_claim.ceremony_starts_per_nid_hmac_per_hour', 5);
+
+        $keys = [
+            ['claim-ceremony-account:'.$accountId, $accountMax],
+            ['claim-ceremony-ip:'.$ipPrefix, $ipMax],
+            ['claim-ceremony-nid:'.$nidHmacHex, $nidMax],
+        ];
+
+        foreach ($keys as [$key, $max]) {
+            if ($this->limiter->tooManyAttempts($key, $max)) {
+                return false;
+            }
+        }
+
+        foreach ($keys as [$key, $max]) {
+            $this->limiter->hit($key, 3600);
+        }
+
+        return true;
+    }
+
     /**
      * @param  list<string>  $refreshFamilyIds
      * @param  list<string>  $mfaChallengeIds

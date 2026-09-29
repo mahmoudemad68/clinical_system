@@ -63,6 +63,13 @@ interface AuthDirectory
 
     public function consumeOtp(Identifier $id, DateTimeImmutable $now): void;
 
+    /**
+     * Latest consumed OTP for purpose and any of the subject HMACs.
+     *
+     * @param  list<string>  $subjectHmacs
+     */
+    public function latestConsumedOtp(string $purpose, array $subjectHmacs): ?stdClass;
+
     public function markOtpDelivery(Identifier $id, string $status, ?string $reference): void;
 
     public function otpById(Identifier $id): ?stdClass;

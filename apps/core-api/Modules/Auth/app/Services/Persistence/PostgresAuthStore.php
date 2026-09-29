@@ -216,6 +216,27 @@ final class PostgresAuthStore implements AuthDirectory
         ]);
     }
 
+    public function latestConsumedOtp(string $purpose, array $subjectHmacs): ?stdClass
+    {
+        if ($subjectHmacs === []) {
+            return null;
+        }
+
+        $query = $this->connection->table('otp_requests')
+            ->where('purpose', $purpose)
+            ->whereNotNull('consumed_at')
+            ->where(function ($inner) use ($subjectHmacs): void {
+                foreach ($subjectHmacs as $hmac) {
+                    $inner->orWhere('subject_lookup_hmac', BinaryColumn::bind($hmac));
+                }
+            })
+            ->orderByDesc('consumed_at');
+
+        $row = $query->first();
+
+        return $row instanceof stdClass ? $this->normalizeOtp($row) : null;
+    }
+
     public function markOtpDelivery(Identifier $id, string $status, ?string $reference): void
     {
         $this->connection->table('otp_requests')->where('id', $id->value)->update([

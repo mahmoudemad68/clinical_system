@@ -14,7 +14,10 @@ use Modules\Patients\Services\Adapters\PostgresPatientSubjectPrivacy;
 use Modules\Patients\Services\CommitNewPatientProfile;
 use Modules\Patients\Services\CreatePatientProfile;
 use Modules\Patients\Services\CreateUnlinkedPatientProfile;
+use Modules\Patients\Services\FreezeDisputedPatientProfile;
 use Modules\Patients\Services\GetOwnPatientProfile;
+use Modules\Patients\Services\IssueWalkInClaimCredential;
+use Modules\Patients\Services\Persistence\PostgresPatientClaimStore;
 use Modules\Patients\Services\Persistence\PostgresPatientProfileStore;
 use Modules\Patients\Services\ResolvePatientHandle;
 use Modules\Patients\Services\UpdateOwnDemographics;
@@ -32,6 +35,10 @@ final class PatientsServiceProvider extends ServiceProvider
             $app->make(ConnectionInterface::class),
         ));
 
+        $this->app->singleton(PostgresPatientClaimStore::class, static fn ($app): PostgresPatientClaimStore => new PostgresPatientClaimStore(
+            $app->make(ConnectionInterface::class),
+        ));
+
         $this->app->singleton(PatientIdentityRegistry::class, PostgresPatientIdentityRegistry::class);
         $this->app->singleton(PatientSubjectPrivacy::class, PostgresPatientSubjectPrivacy::class);
 
@@ -43,6 +50,8 @@ final class PatientsServiceProvider extends ServiceProvider
         $this->app->bind(GetOwnPatientProfile::class);
         $this->app->bind(UpdateOwnDemographics::class);
         $this->app->bind(CreateUnlinkedPatientProfile::class);
+        $this->app->bind(IssueWalkInClaimCredential::class);
+        $this->app->bind(FreezeDisputedPatientProfile::class);
         $this->app->bind(ResolvePatientHandle::class);
         $this->app->bind(PatientProfileController::class);
     }

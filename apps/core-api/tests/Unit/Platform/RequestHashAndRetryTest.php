@@ -51,6 +51,10 @@ final class RequestHashAndRetryTest extends TestCase
             $hasher->hash('POST', '/api/v1/auth/token/refresh', '{"refresh_token":"one"}'),
             $hasher->hash('POST', '/api/v1/auth/token/refresh', '{"refresh_token":"two"}'),
         );
+        $this->assertSame(
+            $hasher->hash('POST', '/api/v1/patients/onboarding', '{"full_name":"Ada","claim_credential":"0123456789ABCDEF"}'),
+            $hasher->hash('POST', '/api/v1/patients/onboarding', '{"full_name":"Ada","claim_credential":"ABCDEFGHJKMNPQRS"}'),
+        );
     }
 
     #[Test]

@@ -4000,6 +4000,16 @@ components:
           $ref: '#/components/schemas/PatientMaritalStatus'
         blood_type:
           $ref: '#/components/schemas/PatientBloodType'
+        claim_credential:
+          type: [string, 'null']
+          minLength: 16
+          maxLength: 19
+          writeOnly: true
+          description: >
+            Optional clinic-issued Profile Claim credential (Crockford Base32,
+            16 characters, optional display hyphens). Write-only. Never echoed.
+            Ignored while FEATURE_IDENTITY_PROFILE_CLAIM is disabled. Production
+            remains hard-off regardless of this field.
 
     PatientDemographicsPatchRequest:
       type: object

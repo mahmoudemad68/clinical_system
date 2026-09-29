@@ -19,6 +19,11 @@ interface AuthenticationRateLimiter
     public function hitOtpVerify(string $challengeId, string $ipPrefix): void;
 
     /**
+     * Claim ceremony-start budgets. Exhaustion is not 429; callers map it to generic pending.
+     */
+    public function consumeClaimCeremonyStart(string $accountId, string $nidHmacHex, string $ipPrefix): bool;
+
+    /**
      * Clear identifiable subject-scoped limiter keys. Shared IP keys are left alone.
      *
      * @param  list<string>  $refreshFamilyIds

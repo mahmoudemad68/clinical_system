@@ -62,5 +62,17 @@ void main() {
     );
     expect(request.toString(), isNot(contains(kSyntheticNationalId)));
     expect(request.toWire()['national_id'], kSyntheticNationalId);
+    expect(request.toWire().containsKey('claim_credential'), isFalse);
+  });
+
+  test('onboarding request omits claim_credential unless explicitly set', () {
+    const withCredential = PatientOnboardingRequest(
+      nationalId: kSyntheticNationalId,
+      fullName: 'Ada',
+      gender: 'female',
+      claimCredential: '0123456789ABCDEF',
+    );
+    expect(withCredential.toString(), isNot(contains('0123456789ABCDEF')));
+    expect(withCredential.toWire()['claim_credential'], '0123456789ABCDEF');
   });
 }

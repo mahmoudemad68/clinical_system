@@ -16,9 +16,12 @@ use Modules\Identity\Support\ActorContext;
 use Modules\Identity\Support\NationalId;
 use Modules\Patients\Enums\PatientSourceType;
 use Modules\Patients\Events\PatientAccountLinked;
+use Modules\Patients\Events\PatientClaimLockoutIssued;
 use Modules\Patients\Services\Persistence\PostgresPatientProfileStore;
 use Modules\Patients\Support\OnboardingOutcome;
 use Modules\Patients\Support\PatientProfileRecord;
+use Modules\Platform\Contracts\Clock;
+use Modules\Platform\Contracts\RecordInboxNotification;
 use Modules\Platform\Contracts\TransactionContext;
 use Modules\Platform\Contracts\TransactionRunner;
 use Modules\Platform\Exceptions\AuthorizationDenied;
@@ -44,12 +47,14 @@ final class CreatePatientProfile
         private readonly LinkVerifiedPatientAccount $claim,
         private readonly Authorize $authorize,
         private readonly AppendAuditEvent $audit,
+        private readonly RecordInboxNotification $inbox,
+        private readonly Clock $clock,
     ) {}
 
     /**
      * @param  array<string, mixed>  $input
      */
-    public function handle(ActorContext $actor, array $input, Identifier $requestId): OnboardingOutcome
+    public function handle(ActorContext $actor, array $input, Identifier $requestId, ?string $ipPrefix = null): OnboardingOutcome
     {
         if ($actor->accountType !== AccountType::Patient || ! $actor->status->canAccessBusinessEndpoints()) {
             throw new FeatureUnavailable;
@@ -68,7 +73,11 @@ final class CreatePatientProfile
             return $this->ready($already, false);
         }
 
-        return $this->transactions->run(function (TransactionContext $tx) use ($actor, $input, $nationalId, $hmacs, $requestId): OnboardingOutcome {
+        $credential = isset($input['claim_credential']) && is_string($input['claim_credential'])
+            ? $input['claim_credential']
+            : null;
+
+        return $this->transactions->run(function (TransactionContext $tx) use ($actor, $input, $nationalId, $hmacs, $requestId, $credential, $ipPrefix): OnboardingOutcome {
             if (! $this->matchesBoundIdentity($actor->userId, $hmacs)) {
                 return $this->manualReview($tx, $actor);
             }
@@ -77,7 +86,7 @@ final class CreatePatientProfile
 
             $existing = $this->store->findAuthoritativeByHmacs($hmacs, true);
             if ($existing instanceof PatientProfileRecord) {
-                return $this->existingPath($tx, $actor, $existing, (string) $input['national_id']);
+                return $this->existingPath($tx, $actor, $existing, (string) $input['national_id'], $credential, $ipPrefix);
             }
 
             try {
@@ -87,7 +96,7 @@ final class CreatePatientProfile
                     ?? $this->store->findAuthoritativeByHmacs($hmacs, true);
 
                 if ($retry instanceof PatientProfileRecord) {
-                    return $this->existingPath($tx, $actor, $retry, (string) $input['national_id']);
+                    return $this->existingPath($tx, $actor, $retry, (string) $input['national_id'], $credential, $ipPrefix);
                 }
 
                 return $this->manualReview($tx, $actor);
@@ -163,6 +172,8 @@ final class CreatePatientProfile
         ActorContext $actor,
         PatientProfileRecord $existing,
         string $nationalIdInput,
+        ?string $claimCredential,
+        ?string $ipPrefix,
     ): OnboardingOutcome {
         if ($existing->userId?->equals($actor->userId) === true) {
             return $this->ready($existing, false);
@@ -170,13 +181,67 @@ final class CreatePatientProfile
 
         if ($existing->userId === null && $existing->status->isClaimEligible()) {
             try {
-                $this->claim->handle($actor, $nationalIdInput);
+                $outcome = $this->claim->handle($actor, $nationalIdInput, $claimCredential, $ipPrefix);
+                if ($outcome->lockoutIssued) {
+                    $this->notifyLockout($tx, $actor);
+                }
+                if ($outcome->isLinked() && $outcome->patientId instanceof Identifier) {
+                    $attached = $this->store->findById($outcome->patientId, true);
+                    if ($attached instanceof PatientProfileRecord && $attached->userId?->equals($actor->userId) === true) {
+                        return $this->claimed($tx, $actor, $attached);
+                    }
+                }
             } catch (FeatureUnavailable) {
-                // Flag off: the ceremony ran; the client still sees pending.
+                // Flag off: the ceremony did not attach; the client still sees pending.
             }
         }
 
+        $owned = $this->store->findByUserId($actor->userId, true);
+        if ($owned instanceof PatientProfileRecord) {
+            return $this->ready($owned, false);
+        }
+
+        $refreshed = $this->store->findById($existing->id, true);
+        if ($refreshed instanceof PatientProfileRecord && $refreshed->userId?->equals($actor->userId) === true) {
+            return $this->ready($refreshed, false);
+        }
+
         return $this->manualReview($tx, $actor);
+    }
+
+    private function claimed(TransactionContext $tx, ActorContext $actor, PatientProfileRecord $attached): OnboardingOutcome
+    {
+        $this->audit->append(
+            $tx,
+            'patient.account_linked',
+            'patient_profile',
+            $attached->id,
+            [
+                'reason_code' => 'profile_claim',
+                'assurance_level' => AssuranceLevel::Ial2VerifiedLink->value,
+            ],
+            $actor->userId,
+            'user',
+        );
+        $tx->recordEvent(new PatientAccountLinked(
+            $attached->id,
+            $actor->userId,
+            AssuranceLevel::Ial2VerifiedLink->value,
+            $attached->updatedAt,
+        ));
+        $this->inbox->record('user', $actor->userId->value, 'patient.profile_bound', [
+            'reason_code' => 'successful_profile_bind',
+        ]);
+
+        return $this->ready($attached, false);
+    }
+
+    private function notifyLockout(TransactionContext $tx, ActorContext $actor): void
+    {
+        $this->inbox->record('user', $actor->userId->value, 'patient.claim_lockout', [
+            'reason_code' => 'failed_proof_lockout',
+        ]);
+        $tx->recordEvent(new PatientClaimLockoutIssued($actor->userId, $this->clock->now()));
     }
 
     private function manualReview(TransactionContext $tx, ActorContext $actor): OnboardingOutcome

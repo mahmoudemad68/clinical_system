@@ -32,7 +32,8 @@ Reconciled to committed Core migrations under
 `mfa_recovery_codes`, `mfa_challenges`, `auth_sessions`,
 `identity_profile_links`, `contextual_access_grants`, `audit_events`,
 `auth_refresh_consumptions`, `recovery_requests`, `patient_profiles`,
-`patient_demographic_revisions`, `specialties`, `doctor_profiles`,
+`patient_demographic_revisions`, `patient_claim_credentials`,
+`patient_claim_failures`, `patient_claim_locks`, `specialties`, `doctor_profiles`,
 `verification_cases`, `verification_documents`, `verification_decisions`,
 `verification_upload_intents`, `pharmacy_organizations`, `pharmacy_branches`,
 `pharmacy_memberships`, `clinic_locations`, `clinic_staff_profiles`,
@@ -398,6 +399,8 @@ Phase 00 status pages share only process liveness. No actor, tenant, host, check
 | `platform.diagnostics_round_trip_recorded` | 1 | internal | `diagnostics_id`, `label`, `echo_delay_ms`, `recorded_at` | `platform.diagnostics_consumer` | 7 days |
 | `patient.profile_created` | 1 | personal | `patient_id`, `linked_user_id` nullable, `source_type` | later projections | 7 days |
 | `patient.account_linked` | 1 | personal | `patient_id`, `user_id`, `assurance_level` | later projections | 7 days |
+| `patient.profile_disputed` | 1 | internal | `reason_code` (`dispute_freeze`) | notifications.inbox | 7 days |
+| `patient.claim_lockout_issued` | 1 | internal | `reason_code` (`failed_proof_lockout`) | notifications.inbox | 7 days |
 | `doctor.profile_created` | 1 | personal | `doctor_id`, `linked_user_id`, `source_type` | later projections | 7 days |
 | `doctor.verification_submitted` | 1 | internal | `doctor_id`, `case_id` | later projections | 7 days |
 | `doctor.verification_decided` | 1 | internal | `doctor_id`, `case_id`, `decision`, `reason_code` | later projections | 7 days |
@@ -456,7 +459,8 @@ Registered on `PlatformMetrics`. Call sites inspected 2026-08-28.
 | `clinic_otp_requests_total` | counter | `purpose` (otp purpose string), `result` (`sent`/`provider_disabled`) | `OtpDeliveryConsumer` only. `AuthTelemetry::otp()` has no other production caller | No. Purpose is `registration`/`recovery`/… |
 | `clinic_mfa_challenges_total` | counter | `result` (`expired`/`denied`/`issued`) | `CompleteMfaService` | No |
 | `clinic_authorization_decisions_total` | counter | *(family registered)* | `AuthTelemetry::authorization()` has **no production caller** as of this inventory | n/a until emitted |
-| `clinic_profile_claims_total` | counter | `result` (`manual_review`), `assurance_level` (`aal1`) | `LinkVerifiedPatientAccount` | No |
+| `clinic_profile_claims_total` | counter | `result` (`linked`/`manual_review`), `assurance_level` (`ial2_verified_link`/`ial2_proof_pending`) | `LinkVerifiedPatientAccount` | No |
+| `clinic_profile_claim_conflicts_total` | counter | `reason_code` (`duplicate_match`) | `LinkVerifiedPatientAccount` | No. Labels must not include applicant, document, profile, or user identifiers |
 | `clinic_otp_delivery_age_seconds` | gauge | `purpose` | `OtpDeliveryConsumer`; value is age in seconds | No |
 | `clinic_session_revocation_latency_seconds` | gauge | `client_class` (`unknown`) | `SessionRevokedConsumer` | No |
 | `clinic_active_sessions` | gauge | `client_class` (`all`) | `auth:prune-expired` | No. Count only |
@@ -764,6 +768,59 @@ denied by trigger. `clinic_app` may SELECT+INSERT only.
 | `profile_version` | internal | Profile version after the change | app | as row | at rest | Mahmoud | n/a |
 | `request_id` | internal | Correlation identifier | app | as row | at rest | Mahmoud | n/a |
 | `created_at` | internal | When the revision was appended | app | as row | at rest | Mahmoud | n/a |
+
+### `patient_claim_credentials`
+
+Clinic-issued Option B Profile Claim credentials (peppered HMAC only).
+Plaintext is shown at walk-in create at most once and is never stored.
+Production Profile Claim remains hard-off.
+
+**Writer.** Patients module via `clinic_app`. `clinic_worker` and
+`clinic_reporter` are revoked. `clinic_backup` is SELECT-only.
+
+**PII / sensitive.** `credential_lookup_hmac` is a purpose-bound HMAC of the
+canonical 16-character Crockford secret. Not a National ID. Not a session
+token.
+
+**Retention / deletion.** Open credentials expire after 30 days. Subject
+erasure of a linked profile archives the profile; leftover hashes cannot
+attach because only Active unlinked rows are claim-eligible. Legal retention:
+**OPEN_LEGAL_DECISION**.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Credential row identity | app | as row | at rest | Mahmoud | n/a |
+| `patient_id` | internal | Exact-profile binding | app | as row | at rest | Mahmoud | n/a |
+| `credential_lookup_hmac` | sensitive | Peppered hash of canonical credential | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `expires_at` | internal | 30-day TTL | app | as row | at rest | Mahmoud | n/a |
+| `consumed_at` | internal | Single-use consume stamp | app | as row | at rest | Mahmoud | n/a |
+| `issued_at`, `created_at` | internal | Issuance lifecycle | app | as row | at rest | Mahmoud | n/a |
+
+### `patient_claim_failures`
+
+Failed credential attempts for the PC-010 budget. External clients never
+see attempt counts.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Failure row identity | app | as row | at rest | Mahmoud | n/a |
+| `user_id` | personal | Claimant account | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `national_id_lookup_hmac` | sensitive | Blind NID index for the budget key | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `created_at` | internal | When the failed proof was recorded | app | as row | at rest | Mahmoud | n/a |
+
+### `patient_claim_locks`
+
+Hourly cooldown and 24-hour lock after failed proofs. External response
+stays generic `manual_review_required`.
+
+| Field | Class | Purpose | Read by | Retention | Encryption | Owner | lawful_basis |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `id` | internal | Lock row identity | app | as row | at rest | Mahmoud | n/a |
+| `user_id` | personal | Claimant account | app | as row | at rest | Mahmoud | owner_approved_2026-08-27 |
+| `national_id_lookup_hmac` | sensitive | Blind NID index for the lock key | app | as row | HMAC | Mahmoud | owner_approved_2026-08-27 |
+| `cooldown_until` | internal | 15-minute hourly cooldown | app | as row | at rest | Mahmoud | n/a |
+| `locked_at` | internal | Durable 24h lock stamp | app | as row | at rest | Mahmoud | n/a |
+| `created_at`, `updated_at` | internal | Row lifecycle | app | as row | at rest | Mahmoud | n/a |
 
 ### `specialties`
 
@@ -1275,6 +1332,8 @@ Serving role: `SELECT` + `EXECUTE clinic_append_audit_event`. No table INSERT.
 | `identity.profile_linked` | 1 | personal | user_id, profile_type, profile_id, assurance_level | later projections | 7 days |
 | `patient.profile_created` | 1 | personal | patient_id, linked_user_id nullable, source_type | later projections | 7 days |
 | `patient.account_linked` | 1 | personal | patient_id, user_id, assurance_level | later projections | 7 days |
+| `patient.profile_disputed` | 1 | internal | reason_code (dispute_freeze) | notifications.inbox | 7 days |
+| `patient.claim_lockout_issued` | 1 | internal | reason_code (failed_proof_lockout) | notifications.inbox | 7 days |
 | `doctor.profile_created` | 1 | personal | doctor_id, linked_user_id, source_type | later projections | 7 days |
 | `doctor.verification_submitted` | 1 | internal | doctor_id, case_id | later projections | 7 days |
 | `doctor.verification_decided` | 1 | internal | doctor_id, case_id, decision, reason_code | later projections | 7 days |

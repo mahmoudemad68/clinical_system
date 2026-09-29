@@ -15,7 +15,7 @@ it('keeps worker and reporter off patient tables', function () {
             $this->markTestSkipped($role.' is not present on this cluster');
         }
 
-        foreach (['patient_profiles', 'patient_demographic_revisions'] as $table) {
+        foreach (['patient_profiles', 'patient_demographic_revisions', 'patient_claim_credentials', 'patient_claim_failures', 'patient_claim_locks'] as $table) {
             $select = DB::selectOne("SELECT has_table_privilege('{$role}', '{$table}', 'SELECT') AS allowed");
             $insert = DB::selectOne("SELECT has_table_privilege('{$role}', '{$table}', 'INSERT') AS allowed");
             $update = DB::selectOne("SELECT has_table_privilege('{$role}', '{$table}', 'UPDATE') AS allowed");
@@ -43,6 +43,13 @@ it('lets clinic_app mutate profiles but only insert revisions', function () {
         ->and((bool) $revisionInsert->allowed)->toBeTrue()
         ->and((bool) $revisionUpdate->allowed)->toBeFalse()
         ->and((bool) $revisionDelete->allowed)->toBeFalse();
+
+    foreach (['patient_claim_credentials', 'patient_claim_failures', 'patient_claim_locks'] as $table) {
+        $update = DB::selectOne("SELECT has_table_privilege('clinic_app', '{$table}', 'UPDATE') AS allowed");
+        $insert = DB::selectOne("SELECT has_table_privilege('clinic_app', '{$table}', 'INSERT') AS allowed");
+        expect((bool) $update->allowed)->toBeTrue()
+            ->and((bool) $insert->allowed)->toBeTrue();
+    }
 
     $backup = DB::selectOne("SELECT 1 AS ok FROM pg_roles WHERE rolname = 'clinic_backup'");
     if ($backup === null) {

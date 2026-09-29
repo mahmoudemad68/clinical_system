@@ -91,6 +91,20 @@ return [
         'cooling_off_seconds' => (int) env('IDENTITY_RECOVERY_COOLING_OFF_SECONDS', 86400),
     ],
 
+    'profile_claim' => [
+        'credential_ttl_days' => 30,
+        'otp_recency_minutes' => 10,
+        'credential_failures_per_hour' => 5,
+        'credential_hourly_cooldown_minutes' => 15,
+        'credential_failures_per_24h' => 15,
+        'ceremony_starts_per_account_per_hour' => 5,
+        'ceremony_starts_per_ip_per_hour' => 20,
+        'ceremony_starts_per_nid_hmac_per_hour' => 5,
+        // Empty cohort cannot bypass PlatformFeatures. Non-empty is a future
+        // monitored-rollout allowlist and still requires the canonical flag.
+        'rollout_cohort' => (string) env('IDENTITY_PROFILE_CLAIM_ROLLOUT_COHORT', ''),
+    ],
+
     'retention' => [
         // ENGINEERING_DEFAULT values. Not statutory retention periods.
         // Legal duration remains OPEN_LEGAL_DECISION / EXTERNAL_HUMAN.

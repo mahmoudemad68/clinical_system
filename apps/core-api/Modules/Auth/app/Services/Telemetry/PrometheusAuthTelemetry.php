@@ -35,4 +35,9 @@ final class PrometheusAuthTelemetry implements AuthTelemetry
     {
         $this->metrics->increment('clinic_profile_claims_total', $labels);
     }
+
+    public function claimConflict(array $labels): void
+    {
+        $this->metrics->increment('clinic_profile_claim_conflicts_total', $labels);
+    }
 }

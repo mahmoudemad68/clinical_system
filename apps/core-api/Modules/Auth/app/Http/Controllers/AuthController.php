@@ -28,8 +28,10 @@ use Modules\Auth\Services\RotateRecoveryCodesService;
 use Modules\Auth\Services\SessionCommandService;
 use Modules\Auth\Services\VerifyOtpService;
 use Modules\Identity\Services\MeQuery;
+use Modules\Identity\Services\ResolveActorContext;
 use Modules\Identity\Support\ActorContext;
 use Modules\Platform\Contracts\Clock;
+use Modules\Platform\Exceptions\AuthenticationFailed;
 use Modules\Platform\Http\Responses\Envelope;
 use Modules\Platform\Http\Responses\ErrorCode;
 use Modules\Platform\Http\Responses\ErrorEnvelope;
@@ -65,7 +67,7 @@ final class AuthController
         return Envelope::created($result->toArray(), $this->requestId($request));
     }
 
-    public function requestOtp(Request $request, RequestOtpService $handler): JsonResponse
+    public function requestOtp(Request $request, RequestOtpService $handler, ResolveActorContext $resolver): JsonResponse
     {
         $data = ClosedJsonValidator::validate($request, [
             'phone' => ['required', 'string', 'max:32'],
@@ -78,6 +80,7 @@ final class AuthController
             $data['purpose'],
             $data['language'] ?? 'en',
             $this->ipPrefix($request),
+            $this->optionalActor($request, $resolver),
         );
 
         return Envelope::ok($result->toArray(), $this->requestId($request));
@@ -308,6 +311,25 @@ final class AuthController
         }
 
         return $actor;
+    }
+
+    private function optionalActor(Request $request, ResolveActorContext $resolver): ?ActorContext
+    {
+        $existing = $request->attributes->get(ActorContext::class);
+        if ($existing instanceof ActorContext) {
+            return $existing;
+        }
+
+        $bearer = $request->bearerToken();
+        if (! is_string($bearer) || $bearer === '') {
+            return null;
+        }
+
+        try {
+            return $resolver->fromAccessToken($bearer);
+        } catch (AuthenticationFailed) {
+            return null;
+        }
     }
 
     private function requestId(Request $request): Identifier

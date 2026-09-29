@@ -25,6 +25,8 @@ final class CanonicalRequestHasher
         'access_token',
         'national_id',
         'nationalId',
+        'claim_credential',
+        'claimCredential',
     ];
 
     public function hash(string $method, string $path, string $body): string

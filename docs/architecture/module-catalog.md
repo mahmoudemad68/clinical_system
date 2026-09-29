@@ -167,17 +167,22 @@ importing another module's persistence models. Unknown actions deny.
 **Built in:** 02 (chunk 01: Patients vertical slice). **Owner:** backend + clinical.
 **Public services:** `CreatePatientProfile`, `GetOwnPatientProfile`,
 `UpdateOwnDemographics`, `CreateUnlinkedPatientProfile`, `ResolvePatientHandle`,
+`FreezeDisputedPatientProfile`, `IssueWalkInClaimCredential`,
 `PatientSubjectPrivacy` (Identity erasure/export port).
-**Events:** `patient.profile_created`, `patient.account_linked`.
-**Tables:** `patient_profiles`, `patient_demographic_revisions`.
+**Events:** `patient.profile_created`, `patient.account_linked`,
+`patient.profile_disputed`, `patient.claim_lockout_issued`.
+**Tables:** `patient_profiles`, `patient_demographic_revisions`,
+`patient_claim_credentials`, `patient_claim_failures`, `patient_claim_locks`.
 **Classification:** sensitive.
 **Prohibited:** returning clinical history; public National ID lookup; exposing
-ciphertext, HMAC, or key versions on HTTP projections; Platform encoding of
-Patients replay types. A patient summary is demographic; clinical content belongs
-to `Clinical` and requires an access grant. Onboarding HTTP is compact (`status`,
-`patient_id`, `version`); `GET /patients/me/profile` is the canonical projection.
-Collisions return generic `manual_review_required`. Unlinked create/resolve
-are Access-gated and default-denied. `FEATURE_IDENTITY_PROFILE_CLAIM` remains off.
+ciphertext, HMAC, key versions, or claim-credential plaintext on HTTP
+projections; Platform encoding of Patients replay types. A patient summary is
+demographic; clinical content belongs to `Clinical` and requires an access
+grant. Onboarding HTTP is compact (`status`, `patient_id`, `version`);
+`GET /patients/me/profile` is the canonical projection. Collisions and failed
+claims return generic `manual_review_required`. Unlinked create/resolve and
+dispute freeze are Access-gated and default-denied. `FEATURE_IDENTITY_PROFILE_CLAIM`
+remains off; production hard-off is unchanged.
 
 ## `Doctors` — clinician profiles and specialties
 

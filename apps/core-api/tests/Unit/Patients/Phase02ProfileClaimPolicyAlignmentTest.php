@@ -325,7 +325,8 @@ describe('P02-AUDIT-005 fail-closed runtime boundary', function () {
             ->and($phpunit)->toContain('FEATURE_IDENTITY_PROFILE_CLAIM')
             ->and($phpunit)->toMatch('/FEATURE_IDENTITY_PROFILE_CLAIM"\s+value="false"/')
             ->and($dockerfile)->toContain('APP_ENV=production')
-            ->and($link)->not->toContain('attachAccount')
+            ->and($link)->toContain('attachAccount')
+            ->and($link)->toContain('PlatformFeatures::IDENTITY_PROFILE_CLAIM')
             ->and($link)->toContain('manual_review_required')
             ->and($link)->toContain('FeatureUnavailable');
     });
@@ -366,7 +367,7 @@ describe('P02-AUDIT-005 fail-closed runtime boundary', function () {
             ->and(Artifact::t46ThreatStatus())->toBe('OPEN');
     });
 
-    it('does not require the future ceremony class surface to exist beyond the dark stub', function () {
+    it('keeps the ceremony class and disputed status ineligible for self-service claim', function () {
         expect(class_exists(LinkVerifiedPatientAccount::class))->toBeTrue()
             ->and(PatientStatus::Disputed->value)->toBe('disputed')
             ->and(PatientStatus::from('disputed')->isClaimEligible())->toBeFalse();

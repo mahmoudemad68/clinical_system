@@ -44,6 +44,7 @@ final class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
             'access_token',
             'national_id',
             'phone',
+            'claim_credential',
         ]);
         Telescope::hideRequestHeaders([
             'cookie',

@@ -51,6 +51,12 @@ void main() {
     expect(vault.values.keys.where((key) => key.contains('profile')), isEmpty);
   });
 
+  test('patient-app onboarding does not expose a usable claim credential field', () {
+    final source = File('lib/onboarding/onboarding_controller.dart').readAsStringSync();
+    expect(source, isNot(contains('claimCredential')));
+    expect(source, isNot(contains('claim_credential')));
+  });
+
   test('patient-app sources do not persist National ID and do not log it', () {
     final files = Directory('lib')
         .listSync(recursive: true)

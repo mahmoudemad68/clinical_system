@@ -1946,6 +1946,8 @@ export interface components {
             weight_kg?: number | null;
             marital_status?: components["schemas"]["PatientMaritalStatus"];
             blood_type?: components["schemas"]["PatientBloodType"];
+            /** @description Optional clinic-issued Profile Claim credential (Crockford Base32, 16 characters, optional display hyphens). Write-only. Never echoed. Ignored while FEATURE_IDENTITY_PROFILE_CLAIM is disabled. Production remains hard-off regardless of this field. */
+            claim_credential?: string | null;
         };
         PatientDemographicsPatchRequest: {
             /** @description Expected current profile version (compare-and-set). */

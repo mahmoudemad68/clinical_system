@@ -46,6 +46,10 @@ $app = require dirname(__DIR__, 3).'/bootstrap/app.php';
 $console = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $console->bootstrap();
 
+if (isset($payload['config']) && is_array($payload['config'])) {
+    config($payload['config']);
+}
+
 if (($payload['scanner'] ?? '') === 'fixture') {
     $app->instance(ScanObject::class, new FixtureScanObject);
 }

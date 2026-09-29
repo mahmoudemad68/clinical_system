@@ -55,6 +55,25 @@ final class PostgresPatientProfileStore
         return $row instanceof stdClass ? $this->map($row) : null;
     }
 
+    /**
+     * @param  list<string>  $hmacs
+     */
+    public function countAuthoritativeByHmacs(array $hmacs): int
+    {
+        if ($hmacs === []) {
+            return 0;
+        }
+
+        return (int) $this->connection->table('patient_profiles')
+            ->where('status', '<>', PatientStatus::Merged->value)
+            ->where(function ($inner) use ($hmacs): void {
+                foreach ($hmacs as $hmac) {
+                    $inner->orWhere('national_id_lookup_hmac', BinaryColumn::bind($hmac));
+                }
+            })
+            ->count();
+    }
+
     public function findByUserId(Identifier $userId, bool $lock): ?PatientProfileRecord
     {
         $query = $this->connection->table('patient_profiles')->where('user_id', $userId->value);
@@ -117,6 +136,19 @@ final class PostgresPatientProfileStore
         } catch (UniqueConstraintViolationException) {
             throw new DuplicateIdentity;
         }
+    }
+
+    public function freezeDisputed(Identifier $id, int $expectedVersion, DateTimeImmutable $now): int
+    {
+        return $this->connection->table('patient_profiles')
+            ->where('id', $id->value)
+            ->where('version', $expectedVersion)
+            ->where('status', '<>', PatientStatus::Merged->value)
+            ->update([
+                'status' => PatientStatus::Disputed->value,
+                'version' => $expectedVersion + 1,
+                'updated_at' => $now->format('Y-m-d H:i:s.uP'),
+            ]);
     }
 
     /**

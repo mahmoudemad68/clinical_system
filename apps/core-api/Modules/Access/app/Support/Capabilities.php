@@ -32,6 +32,8 @@ final class Capabilities
 
     public const PATIENTS_UNLINKED_RESOLVE = 'patients.unlinked.resolve';
 
+    public const PATIENTS_PROFILE_DISPUTE_FREEZE = 'patients.profile.dispute_freeze';
+
     public const DOCTORS_ONBOARDING = 'doctors.onboarding.submit';
 
     public const DOCTORS_PROFILE_READ_OWN = 'doctors.profile.read_own';
@@ -137,6 +139,7 @@ final class Capabilities
         self::RECOVERY_APPLY,
         self::VERIFICATION_REVIEW,
         self::DOCTORS_ADMIN_CREATE,
+        self::PATIENTS_PROFILE_DISPUTE_FREEZE,
     ];
 
     /** @var list<string> */
