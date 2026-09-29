@@ -97,7 +97,7 @@ final class PostgresPatientClaimStore
         ];
 
         if ($existing instanceof stdClass) {
-            if (isset($existing->locked_at) && $existing->locked_at !== null && $lockedAt === null) {
+            if (isset($existing->locked_at) && $lockedAt === null) {
                 unset($payload['locked_at']);
             }
             $this->connection->table('patient_claim_locks')

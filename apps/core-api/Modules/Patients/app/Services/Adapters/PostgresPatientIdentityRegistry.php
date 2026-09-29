@@ -81,11 +81,11 @@ final class PostgresPatientIdentityRegistry implements PatientIdentityRegistry
             return false;
         }
 
-        if (isset($row->locked_at) && $row->locked_at !== null && (string) $row->locked_at !== '') {
+        if (isset($row->locked_at) && (string) $row->locked_at !== '') {
             return true;
         }
 
-        if (isset($row->cooldown_until) && $row->cooldown_until !== null && (string) $row->cooldown_until !== '') {
+        if (isset($row->cooldown_until) && (string) $row->cooldown_until !== '') {
             return new DateTimeImmutable((string) $row->cooldown_until) > $now;
         }
 
