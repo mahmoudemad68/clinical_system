@@ -43,7 +43,10 @@ describe('create doctor applicant', () => {
     vi.unstubAllGlobals();
   });
 
-  it('creates an applicant through the closed Admin API and does not persist identifiers', async () => {
+  // Closed create + evidence upload + submit is a long user-event journey.
+  // Exact-head run 36546183299 timed this case out at Vitest's 5s default
+  // (5028ms) under Admin-web CI load; the lockfile change selected this job.
+  it('creates an applicant through the closed Admin API and does not persist identifiers', { timeout: 15_000 }, async () => {
     const createBodies: unknown[] = [];
     stubApi({
       'GET /api/v1/me': () => jsonResponse(meBody()),
